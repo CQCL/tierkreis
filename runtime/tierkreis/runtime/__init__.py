@@ -1,5 +1,7 @@
 import asyncio
+from grpclib.exceptions import GRPCError
 from grpclib.server import Server
+from grpclib.const import Status as StatusCode
 from tierkreis.core.protos.tierkreis.python_worker import PythonWorkerBase, RunPythonResponse
 import tierkreis.core.protos.tierkreis.graph as pg
 from typing import Dict, Tuple
@@ -38,10 +40,10 @@ class Worker:
         inputs: Dict[str, "core.Value"]
     ) -> Dict[str, "core.Value"]:
         if not module in self.modules:
-            raise KeyError(f"Unknown module {module}")
+            raise FunctionNotFound(module, function)
 
         if not function in self.modules[module].functions:
-            raise KeyError(f"Unknown function {function} in module {module}")
+            raise FunctionNotFound(module, function)
 
         f = self.modules[module].functions[function]
 
@@ -64,6 +66,11 @@ class Worker:
 
             await server.wait_closed()
 
+class FunctionNotFound(Exception):
+    def __init__(self, module, function):
+        self.module = module
+        self.function = function
+
 class WorkerServerImpl(PythonWorkerBase):
     def __init__(self, worker):
         self.worker = worker
@@ -72,7 +79,21 @@ class WorkerServerImpl(PythonWorkerBase):
         self, module: str, function: str, inputs: Dict[str, "pg.Value"]
     ) -> "RunPythonResponse":
         inputs = core.decode_values(inputs)
-        outputs = core.encode_values(self.worker.run(module, function, inputs))
+
+        try:
+            outputs = self.worker.run(module, function, inputs)
+        except FunctionNotFound:
+            raise GRPCError(
+                status = StatusCode.UNIMPLEMENTED,
+                message = f"Unsupported operation: {module}/{function}'"
+            )
+        except Exception as err:
+            raise GRPCError(
+                status = StatusCode.UNKNOWN,
+                message = f"Error while running operation: {err}"
+            )
+
+        outputs = core.encode_values(outputs)
         return RunPythonResponse(outputs = outputs)
 
 async def main():

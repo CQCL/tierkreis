@@ -90,8 +90,8 @@ class WorkerServerImpl(PythonWorkerBase):
         except ValueError as err:
             raise GRPCError(
                 status=StatusCode.INVALID_ARGUMENT,
-                message=f"Error while decoding inputs: {err}",
-            )
+                message="Error while decoding inputs",
+            ) from err
 
         try:
             outputs = await self.worker.run(namespace, function, py_inputs)

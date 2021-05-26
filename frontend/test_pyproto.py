@@ -1,5 +1,5 @@
 import pytest
-from typing import List
+from typing import Dict, List
 from pytket import Circuit
 from tierkreis.frontend.proto_graph_builder import ProtoGraphBuilder
 from tierkreis.frontend.run_graph import run_graph
@@ -82,6 +82,17 @@ def test_circuit_idpy(bell_circuit):
     gb.register_output("id_out", Circuit, (id_node, "out"))
 
     assert run_graph(gb, {"id_in": bell_circuit}) == {"id_out": bell_circuit}
+
+
+def test_dictionary_idpy():
+    gb = ProtoGraphBuilder()
+    id_node = gb.add_node("id", "id_py")
+
+    gb.register_input("in", Circuit, (id_node, "in"))
+    gb.register_output("out", Circuit, (id_node, "out"))
+
+    dic: Dict[int, bool] = {1: True, 2: False}
+    assert run_graph(gb, {"in": dic}) == {"out": dic}
 
 
 def test_compile_circuit(bell_circuit):

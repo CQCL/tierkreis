@@ -4,7 +4,7 @@ from typing import Optional, Union, Dict, Tuple, List, cast, Type
 import betterproto
 from pytket.circuit import Circuit  # type: ignore
 
-Value = Union[int, bool, pg.Graph, Tuple, List]
+Value = Union[int, bool, pg.Graph, Tuple, List, Dict["Value", "Value"]]
 PyValMap = Dict[str, Value]
 
 # map for simple types
@@ -44,6 +44,14 @@ def encode_value(value: Value) -> pg.Value:
         elements = [encode_value(item) for item in value]
         array = pg.ArrayValue(array=elements)
         return pg.Value(array=array)
+    elif isinstance(value, Dict):
+        pgmap = pg.Map(
+            [
+                pg.PairValue(first=encode_value(k), second=encode_value(v))
+                for k, v in value.items()
+            ]
+        )
+        return pg.Value(map=pgmap)
     elif isinstance(value, Circuit):
         return pg.Value(circuit=json.dumps(value.to_dict()))
     else:
@@ -71,13 +79,18 @@ def decode_value(value: pg.Value) -> Value:
         return cast(bool, out_value)
     elif name == "pair":
         pair = cast(pg.PairValue, out_value)
-        first = decode_value(out_value.first)
-        second = decode_value(out_value.second)
+        first = decode_value(pair.first)
+        second = decode_value(pair.second)
         return (first, second)
     elif name == "array":
         return [
             decode_value(element) for element in cast(pg.ArrayValue, out_value).array
         ]
+    elif name == "map":
+        return {
+            decode_value(pair.first): decode_value(pair.second)
+            for pair in cast(pg.Map, out_value).pairs
+        }
     elif name == "circuit":
         return Circuit.from_dict(json.loads(cast(str, out_value)))
     else:
@@ -86,20 +99,24 @@ def decode_value(value: pg.Value) -> Value:
 
 def from_python_type(typ: Type) -> pg.Type:
     if typ == int:
-        return pg.Type(int = pg.Empty())
+        return pg.Type(int=pg.Empty())
     elif typ == bool:
-        return pg.Type(bool = pg.Empty())
+        return pg.Type(bool=pg.Empty())
     elif typ == Circuit:
-        return pg.Type(circuit = pg.Empty())
+        return pg.Type(circuit=pg.Empty())
     elif hasattr(typ, "__name__") and typ.__name__ == "ProtoGraphBuilder":
-        inputs = pg.RowType(content={
-            port_name: from_python_type(port_type)
-            for port_name, port_type in typ.inputs.items()
-        })
-        outputs = pg.RowType(content={
-            port_name: from_python_type(port_type)
-            for port_name, port_type in typ.outputs.items()
-        })
+        inputs = pg.RowType(
+            content={
+                port_name: from_python_type(port_type)
+                for port_name, port_type in typ.inputs.items()
+            }
+        )
+        outputs = pg.RowType(
+            content={
+                port_name: from_python_type(port_type)
+                for port_name, port_type in typ.outputs.items()
+            }
+        )
         graph_type = pg.GraphType(inputs=inputs, outputs=outputs)
         return pg.Type(graph=graph_type)
 
@@ -114,6 +131,14 @@ def from_python_type(typ: Type) -> pg.Type:
             assert len(typ.__args__) == 1
             element = from_python_type(typ.__args__[0])
             return pg.Type(array=element)
+        elif typ._name == "Dict":
+            assert len(typ.__args__) == 2
+            first = from_python_type(typ.__args__[0])
+            second = from_python_type(typ.__args__[1])
+            pair = pg.PairType(first=first, second=second)
+            return pg.Type(
+                map=pair,
+            )
     else:
         pass
 

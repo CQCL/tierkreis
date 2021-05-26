@@ -1,0 +1,2 @@
+# ignore generated protobuf file
+graph_pb2.py

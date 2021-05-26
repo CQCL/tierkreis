@@ -1,0 +1,106 @@
+import pytest
+from typing import List
+from pytket import Circuit
+from tierkreis_python.proto_graph_builder import ProtoGraphBuilder
+from tierkreis_python.run_graph import run_graph
+from tierkreis_python.values import write_value, convert_oneof_value
+from tierkreis_python.graph_pb2 import TypeData, Type, Value
+
+
+def nint_adder(n: int) -> ProtoGraphBuilder:
+    gb = ProtoGraphBuilder()
+
+    # c_node = gb.add_node("const1", "const", {"value": 67})
+    unp_node = gb.add_node("unp", "builtin/unpack_array", {"size": n})
+    # gb.add_edge((c_node, "out"), (add_node, "rhs"))
+    add_node0 = gb.add_node("add0", "add")
+    gb.add_edge((unp_node, "0"), (add_node0, "lhs"), int)
+    gb.add_edge((unp_node, "1"), (add_node0, "rhs"), int)
+    add_nodes = [add_node0]
+
+    for i in range(1, n - 1):
+        n_nod = gb.add_node(f"add{i}", "add")
+        gb.add_edge((add_nodes[i - 1], "out"), (n_nod, "lhs"), int)
+        gb.add_edge((unp_node, f"{i+1}"), (n_nod, "rhs"), int)
+        add_nodes.append(n_nod)
+
+    gb.register_input("in", List[int], (unp_node, "array"))
+    gb.register_output("out", int, (add_nodes[-1], "out"))
+
+    return gb
+
+
+def add_n_graph(n: int) -> ProtoGraphBuilder:
+    gb = ProtoGraphBuilder()
+    const_node = gb.add_node("increment", "builtin/const", {"value": n})
+    add_node = gb.add_node("add", "add")
+    gb.add_edge((const_node, "out"), (add_node, "lhs"), int)
+
+    gb.register_input("in", int, (add_node, "rhs"))
+    gb.register_output("out", int, (add_node, "out"))
+
+    return gb
+
+
+def test_nint_adder():
+    for in_list in ([1] * 5, list(range(5))):
+        gb = nint_adder(len(in_list))
+        assert run_graph(gb, {"in": in_list}) == {"out": sum(in_list)}
+
+
+def test_switch():
+    add_2_g = add_n_graph(2)
+    add_3_g = add_n_graph(3)
+    gb = ProtoGraphBuilder()
+
+    true_thunk = gb.add_node("true_thunk", "builtin/const", {"value": add_2_g.graph})
+    false_thunk = gb.add_node("false_thunk", "builtin/const", {"value": add_3_g.graph})
+
+    switch = gb.add_node("switch", "builtin/switch")
+    gb.add_edge((true_thunk, "out"), (switch, "true"), add_2_g.get_type())
+    gb.add_edge((false_thunk, "out"), (switch, "false"), add_3_g.get_type())
+
+    eval_node = gb.add_node("eval", "builtin/eval", {"args_len": 1, "returns_len": 1})
+    gb.add_edge((switch, "out"), (eval_node, "thunk"), add_2_g.get_type())
+
+    gb.register_input("in", int, (eval_node, "in"))
+    gb.register_input("flag", bool, (switch, "predicate"))
+    gb.register_output("out", int, (eval_node, "out"))
+
+    assert run_graph(gb, {"flag": True, "in": 3}) == {"out": 5}
+    assert run_graph(gb, {"flag": False, "in": 3}) == {"out": 6}
+
+
+@pytest.fixture
+def bell_circuit() -> Circuit:
+    return Circuit(2).H(0).CX(0, 1).measure_all()
+
+
+def test_circuit_serialize(bell_circuit):
+    val = Value()
+
+    write_value(val, bell_circuit)
+
+    assert bell_circuit == convert_oneof_value(val)
+
+
+def test_circuit_idpy(bell_circuit):
+    gb = ProtoGraphBuilder()
+    id_node = gb.add_node("id", "id_py")
+
+    gb.register_input("in", Circuit, (id_node, "in"))
+    gb.register_output("out", Circuit, (id_node, "out"))
+
+    assert run_graph(gb, {"in": bell_circuit}) == {"out": bell_circuit}
+
+
+def test_compile_circuit(bell_circuit):
+    gb = ProtoGraphBuilder()
+    id_node = gb.add_node("compile", "compile_circuit")
+
+    gb.register_input("in", Circuit, (id_node, "circuit"))
+    gb.register_output("out", Circuit, (id_node, "compiled_circuit"))
+    from pytket.passes import FullPeepholeOptimise
+    inp_circ = bell_circuit.copy()
+    FullPeepholeOptimise().apply(bell_circuit)
+    assert run_graph(gb, {"in": inp_circ}) == {"out": bell_circuit}

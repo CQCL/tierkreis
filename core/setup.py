@@ -26,8 +26,9 @@ class CustomDevelopCommand(develop):
         generate_proto_code()
 
 setuptools.setup(
-    name="tierkreis.core",
-    version="0.0.1",
+    name = "tierkreis.core",
+    version = "0.0.1",
+    description = "Common definitions and functions for tierkreis.",
     packages = setuptools.find_namespace_packages(include = "tierkreis.*"),
     cmdclass={
         'develop': CustomDevelopCommand,

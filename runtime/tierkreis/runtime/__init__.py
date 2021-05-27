@@ -78,10 +78,16 @@ class WorkerServerImpl(PythonWorkerBase):
     async def run_python(
         self, module: str, function: str, inputs: Dict[str, "pg.Value"]
     ) -> "RunPythonResponse":
-        inputs = core.decode_values(inputs)
+        try:
+            inputs = core.decode_values(inputs)
+        except ValueError as err:
+            raise GRPCError(
+                status = StatusCode.INVALID_ARGUMENT,
+                message = f"Error while decoding inputs: {err}"
+            )
 
         try:
-            outputs = self.worker.run(module, function, inputs)
+            outputs = await self.worker.run(module, function, inputs)
         except FunctionNotFound:
             raise GRPCError(
                 status = StatusCode.UNIMPLEMENTED,

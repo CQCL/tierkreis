@@ -11,7 +11,7 @@ import functools
 import typing
 import tierkreis.core as core
 
-class Module:
+class Namespace:
     def __init__(self, name: str):
         self.name = name
         self.functions = {}
@@ -28,24 +28,24 @@ class Module:
 
 class Worker:
     def __init__(self):
-        self.modules = {}
+        self.namespaces = {}
 
-    def add_module(self, module: "Module"):
-        self.modules[module.name] = module
+    def add_namespace(self, namespace: "Namespace"):
+        self.namespaces[namespace.name] = namespace
 
     def run(
         self,
-        module: str,
+        namespace: str,
         function: str,
         inputs: Dict[str, "core.Value"]
     ) -> Dict[str, "core.Value"]:
-        if not module in self.modules:
-            raise FunctionNotFound(module, function)
+        if not namespace in self.namespaces:
+            raise FunctionNotFound(namespace, function)
 
-        if not function in self.modules[module].functions:
-            raise FunctionNotFound(module, function)
+        if not function in self.namespaces[namespace].functions:
+            raise FunctionNotFound(namespace, function)
 
-        f = self.modules[module].functions[function]
+        f = self.namespaces[namespace].functions[function]
 
         return f(inputs)
 
@@ -67,8 +67,8 @@ class Worker:
             await server.wait_closed()
 
 class FunctionNotFound(Exception):
-    def __init__(self, module, function):
-        self.module = module
+    def __init__(self, namespace, function):
+        self.namespace = namespace
         self.function = function
 
 class WorkerServerImpl(PythonWorkerBase):
@@ -76,7 +76,7 @@ class WorkerServerImpl(PythonWorkerBase):
         self.worker = worker
 
     async def run_python(
-        self, module: str, function: str, inputs: Dict[str, "pg.Value"]
+        self, namespace: str, function: str, inputs: Dict[str, "pg.Value"]
     ) -> "RunPythonResponse":
         try:
             inputs = core.decode_values(inputs)
@@ -87,11 +87,11 @@ class WorkerServerImpl(PythonWorkerBase):
             )
 
         try:
-            outputs = await self.worker.run(module, function, inputs)
+            outputs = await self.worker.run(namespace, function, inputs)
         except FunctionNotFound:
             raise GRPCError(
                 status = StatusCode.UNIMPLEMENTED,
-                message = f"Unsupported operation: {module}/{function}'"
+                message = f"Unsupported operation: {namespace}/{function}'"
             )
         except Exception as err:
             raise GRPCError(

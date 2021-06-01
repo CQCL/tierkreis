@@ -1,7 +1,6 @@
 import tierkreis.core.protos.tierkreis.graph as pg
-from typing import Optional, Union, Dict, Tuple, List, IO, Type, GenericAlias
+from typing import Union, Dict, Tuple, List
 import betterproto
-import typing
 
 Value = Union[int, bool, pg.Graph, Tuple, List]
 

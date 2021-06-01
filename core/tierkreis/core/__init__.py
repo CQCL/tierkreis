@@ -1,11 +1,28 @@
+from dataclasses import asdict, dataclass, is_dataclass, make_dataclass
 import json
 import tierkreis.core.protos.tierkreis.graph as pg
-from typing import Optional, Union, Dict, Tuple, List, cast, Type
+from typing import Optional, Union, Dict, Tuple, List, cast, Type, NamedTuple
 import betterproto
 from pytket.circuit import Circuit  # type: ignore
 
-Value = Union[int, bool, pg.Graph, Tuple, List, Dict["Value", "Value"]]
+
+Value = Union[
+    int, bool, pg.Graph, Tuple["Value", "Value"], List["Value"], Dict["Value", "Value"]
+]
 PyValMap = Dict[str, Value]
+
+
+class TKStructTypeError(Exception):
+    pass
+
+
+@dataclass(eq=False, frozen=True)
+class TKStruct:
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, TKStruct):
+            return False
+        return asdict(self) == asdict(o)
+
 
 # map for simple types
 valtype_map = {
@@ -53,7 +70,16 @@ def encode_value(value: Value) -> pg.Value:
         )
         return pg.Value(map=pgmap)
     elif isinstance(value, Circuit):
-        return pg.Value(circuit=json.dumps(value.to_dict()))
+        return pg.Value(circuit=json.dumps(cast(Circuit, value).to_dict()))
+    elif isinstance(value, TKStruct):
+        # TODO preserve class name as alias for structural type
+        pgstruc = pg.Struct(
+            map={
+                field: encode_value(value.__getattribute__(field))
+                for field in value.__annotations__.keys()
+            },
+        )
+        return pg.Value(struct=pgstruc)
     else:
         raise ValueError(f"Value can not be encoded: {value}")
 
@@ -93,6 +119,18 @@ def decode_value(value: pg.Value) -> Value:
         }
     elif name == "circuit":
         return Circuit.from_dict(json.loads(cast(str, out_value)))
+    elif name == "struct":
+        pgstruct = cast(pg.Struct, out_value)
+        decoded_fields = decode_values(pgstruct.map)
+        # TODO when original struct name is preserved as an alias name
+        # use that as the name of the dataclass here.
+        cls = make_dataclass(
+            "TKStruct",
+            fields=[(key, type(val)) for key, val in decoded_fields.items()],
+            bases=(TKStruct,),
+            eq=False,
+        )
+        return cls(**decode_values(pgstruct.map))
     else:
         raise ValueError(f"Unknown value type: {name}")
 

@@ -1,7 +1,9 @@
+from typing import Dict, List, Tuple
+from dataclasses import dataclass
 import pytest
-from typing import Dict, List
 from pytket import Circuit
 from tierkreis.frontend.proto_graph_builder import ProtoGraphBuilder
+from tierkreis.core import TKStruct
 from tierkreis.frontend.run_graph import run_graph
 
 
@@ -88,11 +90,39 @@ def test_dictionary_idpy():
     gb = ProtoGraphBuilder()
     id_node = gb.add_node("id", "id_py")
 
-    gb.register_input("in", Circuit, (id_node, "in"))
-    gb.register_output("out", Circuit, (id_node, "out"))
+    gb.register_input("in", Dict[int, bool], (id_node, "in"))
+    gb.register_output("out", Dict[int, bool], (id_node, "out"))
 
     dic: Dict[int, bool] = {1: True, 2: False}
     assert run_graph(gb, {"in": dic}) == {"out": dic}
+
+
+@dataclass
+class NestedStruct(TKStruct):
+    s: List[int]
+    a: Tuple[int, bool]
+
+
+@dataclass
+class TestStruct(TKStruct):
+    x: int
+    y: bool
+    c: Circuit
+    m: Dict[int, int]
+    n: NestedStruct
+
+
+def test_struct_idpy():
+    gb = ProtoGraphBuilder()
+    id_node = gb.add_node("id", "id_py")
+
+    gb.register_input("in", TestStruct, (id_node, "in"))
+    gb.register_output("out", TestStruct, (id_node, "out"))
+
+    nestst = NestedStruct([1, 2, 3], (5, True))
+    testst = TestStruct(2, False, Circuit(1), {66: 77}, nestst)
+
+    assert run_graph(gb, {"in": testst}) == {"out": testst}
 
 
 def test_compile_circuit(bell_circuit):

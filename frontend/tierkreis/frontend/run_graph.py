@@ -4,35 +4,26 @@ from pathlib import Path
 import requests
 from requests.models import HTTPError
 from .proto_graph_builder import ProtoGraphBuilder
-from .values import (
-    PyValMap,
-    write_vals_to_file,
-    read_vals_from_file,
-    proto_to_valmap,
-    valmap_to_proto,
-)
-from .graph_pb2 import RunRequest, RunResponse
+
+from tierkreis.core.protos.tierkreis.graph import RunRequest, RunResponse, ValueMap
+from tierkreis.core import PyValMap, encode_values, decode_values
 
 
 def run_graph(gb: ProtoGraphBuilder, inputs: PyValMap) -> PyValMap:
     URL = "http://127.0.0.1:8080"
 
-    req = RunRequest()
-    req.graph.CopyFrom(gb.graph)
-    valmap_to_proto(inputs, req.inputs)
-
+    req = RunRequest(graph=gb.graph, inputs=ValueMap(map=encode_values(inputs)))
     resp = requests.post(
         URL + "/run",
         headers={"content-type": "application/protobuf"},
-        data=req.SerializeToString(),
+        data=bytes(req),
     )
     if resp.status_code != 200:
         raise HTTPError(
-            f"Run request failed with code {resp.status_code} and message {resp.content}"
+            f"Run request"
+            f" failed with code {resp.status_code} and message {resp.content}"
         )
-    out = RunResponse()
-    out.ParseFromString(resp.content)
-
-    outputs = proto_to_valmap(out.outputs)
+    out = RunResponse().parse(resp.content)
+    outputs = decode_values(out.outputs.map)
 
     return outputs

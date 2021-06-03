@@ -1,10 +1,8 @@
 import pytest
 from typing import List
 from pytket import Circuit
-from tierkreis_python.proto_graph_builder import ProtoGraphBuilder
-from tierkreis_python.run_graph import run_graph
-from tierkreis_python.values import write_value, convert_oneof_value
-from tierkreis_python.graph_pb2 import TypeData, Type, Value
+from tierkreis.frontend.proto_graph_builder import ProtoGraphBuilder
+from tierkreis.frontend.run_graph import run_graph
 
 
 def nint_adder(n: int) -> ProtoGraphBuilder:
@@ -76,22 +74,14 @@ def bell_circuit() -> Circuit:
     return Circuit(2).H(0).CX(0, 1).measure_all()
 
 
-def test_circuit_serialize(bell_circuit):
-    val = Value()
-
-    write_value(val, bell_circuit)
-
-    assert bell_circuit == convert_oneof_value(val)
-
-
 def test_circuit_idpy(bell_circuit):
     gb = ProtoGraphBuilder()
-    id_node = gb.add_node("id", "id_py")
+    id_node = gb.add_node("id_py", "id_py")
 
-    gb.register_input("in", Circuit, (id_node, "in"))
-    gb.register_output("out", Circuit, (id_node, "out"))
+    gb.register_input("id_in", Circuit, (id_node, "in"))
+    gb.register_output("id_out", Circuit, (id_node, "out"))
 
-    assert run_graph(gb, {"in": bell_circuit}) == {"out": bell_circuit}
+    assert run_graph(gb, {"id_in": bell_circuit}) == {"id_out": bell_circuit}
 
 
 def test_compile_circuit(bell_circuit):

@@ -1,25 +1,25 @@
 from typing import Dict, Optional, Tuple, IO, Type
-from .values import PyValMap, valmap_to_proto, GraphIOType, from_python_type
-from .graph_pb2 import (  # type: ignore
-    Graph,
-    NodeWeight,
-    EdgeWeight,
-)
 
-# generate graph_pb2 from protos folder
-# protoc -I=protos --python_out=../python_frontend/tierkreis_python ./protos/graph.proto
+
+import tierkreis.core.protos.tierkreis.graph as pg
+from tierkreis.core import (
+    encode_values,
+    PyValMap,
+    from_python_type,
+    GraphIOType,
+)
 
 
 class ProtoGraphBuilder:
     def __init__(self) -> None:
-        self._g = Graph()
+        self._g = pg.Graph()
         self._input_types: Dict[str, Type] = dict()
         self._output_types: Dict[str, Type] = dict()
         self._input_node: Optional[int] = None
         self._output_node: Optional[int] = None
 
     @property
-    def graph(self) -> Graph:
+    def graph(self) -> pg.Graph:
         return self._g
 
     @property
@@ -46,12 +46,12 @@ class ProtoGraphBuilder:
         op: str,
         pre_args: Optional[PyValMap] = None,
     ) -> int:
-        new_node = NodeWeight()
+        new_node = pg.NodeWeight()
         new_node.id = self.n_nodes
         new_node.name = name
         new_node.op = op
         if pre_args:
-            valmap_to_proto(pre_args, new_node.pre_args)
+            new_node.pre_args.map = encode_values(pre_args)
 
         self._g.nodes.append(new_node)
         return new_node.id
@@ -62,10 +62,10 @@ class ProtoGraphBuilder:
         node_port_to: Tuple[int, str],
         edge_type: Type,
     ):
-        new_edge = EdgeWeight()
+        new_edge = pg.EdgeWeight()
         new_edge.node_from, new_edge.port_from = node_port_from
         new_edge.node_to, new_edge.port_to = node_port_to
-        new_edge.edge_type.CopyFrom(from_python_type(edge_type))
+        new_edge.edge_type = from_python_type(edge_type)
         self._g.edges.append(new_edge)
 
     def register_input(self, name: str, edge_type: Type, node_port: Tuple[int, str]):
@@ -89,5 +89,5 @@ class ProtoGraphBuilder:
     @classmethod
     def read_from_file(cls, fp: IO[bytes]) -> "ProtoGraphBuilder":
         new = cls()
-        new._g.ParseFromString(fp.read())
+        new._g.parse(fp.read())
         return new

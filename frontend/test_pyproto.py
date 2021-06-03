@@ -101,6 +101,7 @@ def test_compile_circuit(bell_circuit):
     gb.register_input("in", Circuit, (id_node, "circuit"))
     gb.register_output("out", Circuit, (id_node, "compiled_circuit"))
     from pytket.passes import FullPeepholeOptimise
+
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)
     assert run_graph(gb, {"in": inp_circ}) == {"out": bell_circuit}

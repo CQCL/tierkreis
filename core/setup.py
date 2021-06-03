@@ -4,6 +4,7 @@ import os
 from subprocess import check_call
 from setuptools.command.develop import develop
 
+
 def generate_proto_code():
     proto_dir = "../../tierkreis-proto/protos"
     output_dir = "./tierkreis/core/protos"
@@ -13,7 +14,11 @@ def generate_proto_code():
 
     proto_files = pathlib.Path().glob(proto_dir + "/**/*")
     proto_files = [str(proto) for proto in proto_files if proto.is_file()]
-    check_call(["protoc", "--python_betterproto_out=" + output_dir, "-I", proto_dir] + proto_files)
+    check_call(
+        ["protoc", "--python_betterproto_out=" + output_dir, "-I", proto_dir]
+        + proto_files
+    )
+
 
 class CustomDevelopCommand(develop):
     uninstall = False
@@ -25,12 +30,13 @@ class CustomDevelopCommand(develop):
         develop.install_for_development(self)
         generate_proto_code()
 
+
 setuptools.setup(
-    name = "tierkreis.core",
-    version = "0.0.1",
-    description = "Common definitions and functions for tierkreis.",
-    packages = setuptools.find_namespace_packages(include = "tierkreis.*"),
+    name="tierkreis.core",
+    version="0.0.1",
+    description="Common definitions and functions for tierkreis.",
+    packages=setuptools.find_namespace_packages(include="tierkreis.*"),
     cmdclass={
-        'develop': CustomDevelopCommand,
+        "develop": CustomDevelopCommand,
     },
 )

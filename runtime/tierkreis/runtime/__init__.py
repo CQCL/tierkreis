@@ -2,7 +2,10 @@ import asyncio
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
 from grpclib.const import Status as StatusCode
-from tierkreis.core.protos.tierkreis.python_worker import PythonWorkerBase, RunPythonResponse
+from tierkreis.core.protos.tierkreis.python_worker import (
+    PythonWorkerBase,
+    RunPythonResponse,
+)
 import tierkreis.core.protos.tierkreis.graph as pg
 from typing import Dict, Tuple
 from tempfile import TemporaryDirectory
@@ -11,20 +14,23 @@ import functools
 import typing
 import tierkreis.core as core
 
+
 class Namespace:
     def __init__(self, name: str):
         self.name = name
         self.functions = {}
 
-    def function(self, name = None):
+    def function(self, name=None):
         def decorator(func):
             func_name = name
-            if func_name == None:
+            if func_name is None:
                 func_name = func.__name__
 
             self.functions[func_name] = func
             return func
+
         return decorator
+
 
 class Worker:
     def __init__(self):
@@ -34,15 +40,12 @@ class Worker:
         self.namespaces[namespace.name] = namespace
 
     def run(
-        self,
-        namespace: str,
-        function: str,
-        inputs: Dict[str, "core.Value"]
+        self, namespace: str, function: str, inputs: Dict[str, "core.Value"]
     ) -> Dict[str, "core.Value"]:
-        if not namespace in self.namespaces:
+        if namespace not in self.namespaces:
             raise FunctionNotFound(namespace, function)
 
-        if not function in self.namespaces[namespace].functions:
+        if function not in self.namespaces[namespace].functions:
             raise FunctionNotFound(namespace, function)
 
         f = self.namespaces[namespace].functions[function]
@@ -56,7 +59,7 @@ class Worker:
 
             # Start the python worker gRPC server and bind to the unix domain socket.
             server = Server([WorkerServerImpl(self)])
-            await server.start(path = socket_path)
+            await server.start(path=socket_path)
 
             # Print the path of the unix domain socket to stdout so the runtime can
             # connect to it. Without the flush the runtime did not receive the
@@ -66,10 +69,12 @@ class Worker:
 
             await server.wait_closed()
 
+
 class FunctionNotFound(Exception):
     def __init__(self, namespace, function):
         self.namespace = namespace
         self.function = function
+
 
 class WorkerServerImpl(PythonWorkerBase):
     def __init__(self, worker):
@@ -79,32 +84,34 @@ class WorkerServerImpl(PythonWorkerBase):
         self, namespace: str, function: str, inputs: Dict[str, "pg.Value"]
     ) -> "RunPythonResponse":
         try:
-            inputs = core.decode_values(inputs)
+            py_inputs = core.decode_values(inputs)
         except ValueError as err:
             raise GRPCError(
-                status = StatusCode.INVALID_ARGUMENT,
-                message = f"Error while decoding inputs: {err}"
+                status=StatusCode.INVALID_ARGUMENT,
+                message=f"Error while decoding inputs: {err}",
             )
 
         try:
-            outputs = await self.worker.run(namespace, function, inputs)
+            outputs = await self.worker.run(namespace, function, py_inputs)
         except FunctionNotFound:
             raise GRPCError(
-                status = StatusCode.UNIMPLEMENTED,
-                message = f"Unsupported operation: {namespace}/{function}'"
+                status=StatusCode.UNIMPLEMENTED,
+                message=f"Unsupported operation: {namespace}/{function}'",
             )
         except Exception as err:
             raise GRPCError(
-                status = StatusCode.UNKNOWN,
-                message = f"Error while running operation: {err}"
+                status=StatusCode.UNKNOWN,
+                message=f"Error while running operation: {err}",
             )
 
         outputs = core.encode_values(outputs)
-        return RunPythonResponse(outputs = outputs)
+        return RunPythonResponse(outputs=outputs)
+
 
 async def main():
     worker = Worker()
     await worker.start()
+
 
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()

@@ -7,11 +7,10 @@ from tierkreis.core.protos.tierkreis.python_worker import (
     RunPythonResponse,
 )
 import tierkreis.core.protos.tierkreis.graph as pg
-from typing import Dict, Tuple
+from tierkreis.core import PyValMap
+from typing import Dict
 from tempfile import TemporaryDirectory
 import sys
-import functools
-import typing
 import tierkreis.core as core
 
 
@@ -26,8 +25,11 @@ class Namespace:
             if func_name is None:
                 func_name = func.__name__
 
-            self.functions[func_name] = func
-            return func
+            async def unpacked_func(inputs: PyValMap) -> PyValMap:
+                return await func(**inputs)
+
+            self.functions[func_name] = unpacked_func
+            return unpacked_func
 
         return decorator
 

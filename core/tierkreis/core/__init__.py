@@ -1,6 +1,8 @@
+import json
 import tierkreis.core.protos.tierkreis.graph as pg
 from typing import Optional, Union, Dict, Tuple, List, cast
 import betterproto
+from pytket.circuit import Circuit
 
 Value = Union[int, bool, pg.Graph, Tuple, List]
 
@@ -31,7 +33,8 @@ def encode_value(value: Value) -> pg.Value:
         elements = [encode_value(item) for item in value]
         array = pg.ArrayValue(array=elements)
         return pg.Value(array=array)
-    # TODO: Circuit
+    elif isinstance(value, Circuit):
+        return pg.Value(circuit=json.dumps(value.to_dict()))
     else:
         raise ValueError(f"Value can not be encoded: {value}")
 
@@ -64,6 +67,7 @@ def decode_value(value: pg.Value) -> Value:
         return [
             decode_value(element) for element in cast(pg.ArrayValue, out_value).array
         ]
-    # TODO: Circuit
+    elif name == "circuit":
+        return Circuit.from_dict(json.loads(cast(str, out_value)))
     else:
         raise ValueError(f"Unknown value type: {name}")

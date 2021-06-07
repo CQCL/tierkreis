@@ -18,13 +18,6 @@ class GraphIOType(Type):
     pass
 
 
-fixed_type_map = {
-    int: pg.Type.TYPE_INT,
-    bool: pg.Type.TYPE_BOOL,
-    Circuit: pg.Type.TYPE_CIRCUIT,
-}
-
-
 def encode_values(values: PyValMap) -> Dict[str, pg.Value]:
     """
     Encode a dict of python values into their protobuf representations.
@@ -91,38 +84,37 @@ def decode_value(value: pg.Value) -> Value:
         raise ValueError(f"Unknown value type: {name}")
 
 
-def gen_typedata(pytyp: Type, name: Optional[str] = None) -> pg.TypeDataWithPort:
-    out = pg.TypeDataWithPort()
-    if name:
-        out.port = name
-    out.type_data = from_python_type(pytyp)
-    return out
-
-
-def from_python_type(typ: Type) -> pg.TypeData:
-    typdat = pg.TypeData()
-    if typ in fixed_type_map:
-        typdat.type = fixed_type_map[typ]
-
-    elif hasattr(typ, "__name__"):
-        if typ.__name__ == "ProtoGraphBuilder":
-            typdat.type = pg.Type.TYPE_GRAPH
-            for incoming, proto in zip(
-                (typ.inputs.items(), typ.ouputs.items()),
-                (typdat.input_types, typdat.output_types),
-            ):
-                proto.extend([gen_typedata(pytyp, name) for name, pytyp in incoming])
+def from_python_type(typ: Type) -> pg.Type:
+    if typ == int:
+        return pg.Type(int = pg.Empty())
+    elif typ == bool:
+        return pg.Type(bool = pg.Empty())
+    elif typ == Circuit:
+        return pg.Type(circuit = pg.Empty())
+    elif hasattr(typ, "__name__") and typ.__name__ == "ProtoGraphBuilder":
+        inputs = pg.RowType(content={
+            port_name: from_python_type(port_type)
+            for port_name, port_type in typ.inputs.items()
+        })
+        outputs = pg.RowType(content={
+            port_name: from_python_type(port_type)
+            for port_name, port_type in typ.outputs.items()
+        })
+        graph_type = pg.GraphType(inputs=inputs, outputs=outputs)
+        return pg.Type(graph=graph_type)
 
     elif hasattr(typ, "_name"):
         if typ._name == "Tuple":
-            typdat.type = pg.Type.TYPE_PAIR
-            assert len(typdat.__args__) == 2
-            typdat.input_types.extend((gen_typedata(arg) for arg in typ.__args__))
+            assert len(typ.__args__) == 2
+            first = from_python_type(typ.__args__[0])
+            second = from_python_type(typ.__args__[1])
+            pair = pg.PairType(first=first, second=second)
+            return pg.Type(pair=pair)
         elif typ._name == "List":
-            typdat.type = pg.Type.TYPE_ARRAY
-            typdat.input_types.append(gen_typedata(typ.__args__[0]))
+            assert len(typ.__args__) == 1
+            element = from_python_type(typ.__args__[0])
+            return pg.Type(array=element)
+    else:
+        pass
 
-    if typdat.type == 0 and typ != int:
-        raise ValueError(f"{typ} is not supported for conversion.")
-
-    return typdat
+    raise ValueError(f"{typ} is not supported for conversion.")

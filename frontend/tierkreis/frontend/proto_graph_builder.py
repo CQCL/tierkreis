@@ -80,7 +80,7 @@ class ProtoGraphBuilder:
         return GraphIOType(
             "ProtoGraphBuilder",
             (ProtoGraphBuilder,),
-            {"inputs": self._input_types, "ouputs": self._output_types},
+            {"inputs": self._input_types, "outputs": self._output_types},
         )
 
     def write_to_file(self, fp: IO[bytes]):

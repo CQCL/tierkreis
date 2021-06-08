@@ -1,12 +1,12 @@
-from typing import Dict, Optional, Tuple, IO, Type
+from typing import Dict, Optional, Tuple, IO, Type, Union
 
 
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core import (
-    encode_values,
-    PyValMap,
+    encode_value,
     from_python_type,
     GraphIOType,
+    Value
 )
 
 
@@ -15,8 +15,8 @@ class ProtoGraphBuilder:
         self._g = pg.Graph()
         self._input_types: Dict[str, Type] = dict()
         self._output_types: Dict[str, Type] = dict()
-        self._input_node: Optional[int] = None
-        self._output_node: Optional[int] = None
+        self._g.nodes["input"] = pg.Node(output=pg.Empty())
+        self._g.nodes["output"] = pg.Node(output=pg.Empty())
 
     @property
     def graph(self) -> pg.Graph:
@@ -27,52 +27,62 @@ class ProtoGraphBuilder:
         return len(self._g.nodes)
 
     @property
-    def input_node(self) -> int:
-        if self._input_node is None:
-            self._input_node = self.add_node("input", "builtin/input")
-
-        return self._input_node
+    def input_node(self) -> str:
+        return "input"
 
     @property
-    def output_node(self) -> int:
-        if self._output_node is None:
-            self._output_node = self.add_node("output", "builtin/output")
-
-        return self._output_node
+    def output_node(self) -> str:
+        return "output"
 
     def add_node(
         self,
         name: str,
-        op: str,
-        pre_args: Optional[PyValMap] = None,
-    ) -> int:
-        new_node = pg.NodeWeight()
-        new_node.id = self.n_nodes
-        new_node.name = name
-        new_node.op = op
-        if pre_args:
-            new_node.pre_args.map = encode_values(pre_args)
+        function: str,
+    ) -> str:
+        self._g.nodes[name] = pg.Node(function=function)
+        return name
 
-        self._g.nodes.append(new_node)
-        return new_node.id
+    def add_const(
+        self,
+        name: str,
+        value: Value
+    ) -> str:
+        self._g.nodes[name] = pg.Node(const=encode_value(value))
+        return name
+
+    def add_box(
+        self,
+        name: str,
+        graph: Union["ProtoGraphBuilder", pg.Graph]
+    ) -> str:
+        if isinstance(graph, ProtoGraphBuilder):
+            self._g.nodes[name] = pg.Node(box=graph._g)
+        else:
+            self._g.nodes[name] = pg.Node(box=graph)
+        return name
 
     def add_edge(
         self,
-        node_port_from: Tuple[int, str],
-        node_port_to: Tuple[int, str],
+        node_port_from: Tuple[str, str],
+        node_port_to: Tuple[str, str],
         edge_type: Type,
     ):
-        new_edge = pg.EdgeWeight()
+        new_edge = pg.Edge()
         new_edge.node_from, new_edge.port_from = node_port_from
         new_edge.node_to, new_edge.port_to = node_port_to
-        new_edge.edge_type = from_python_type(edge_type)
+        new_edge.edge_type = from_python_type(edge_type) 
         self._g.edges.append(new_edge)
 
-    def register_input(self, name: str, edge_type: Type, node_port: Tuple[int, str]):
+        if node_port_from[0] == "input":
+            self._input_types[node_port_from[1]] = edge_type
+        if node_port_to[0] == "output":
+            self._output_types[node_port_to[1]] = edge_type
+
+    def register_input(self, name: str, edge_type: Type, node_port: Tuple[str, str]):
         self._input_types[name] = edge_type
         self.add_edge((self.input_node, name), node_port, edge_type)
 
-    def register_output(self, name: str, edge_type: Type, node_port: Tuple[int, str]):
+    def register_output(self, name: str, edge_type: Type, node_port: Tuple[str, str]):
         self._output_types[name] = edge_type
         self.add_edge(node_port, (self.output_node, name), edge_type)
 

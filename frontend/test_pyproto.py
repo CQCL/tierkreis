@@ -9,7 +9,7 @@ def nint_adder(n: int) -> ProtoGraphBuilder:
     gb = ProtoGraphBuilder()
 
     # c_node = gb.add_node("const1", "const", {"value": 67})
-    unp_node = gb.add_node("unp", "builtin/unpack_array", {"size": n})
+    unp_node = gb.add_node("unp", "builtin/unpack_array")
     # gb.add_edge((c_node, "out"), (add_node, "rhs"))
     add_node0 = gb.add_node("add0", "add")
     gb.add_edge((unp_node, "0"), (add_node0, "lhs"), int)
@@ -30,7 +30,7 @@ def nint_adder(n: int) -> ProtoGraphBuilder:
 
 def add_n_graph(n: int) -> ProtoGraphBuilder:
     gb = ProtoGraphBuilder()
-    const_node = gb.add_node("increment", "builtin/const", {"value": n})
+    const_node = gb.add_const("increment", n)
     add_node = gb.add_node("add", "add")
     gb.add_edge((const_node, "out"), (add_node, "lhs"), int)
 
@@ -51,14 +51,14 @@ def test_switch():
     add_3_g = add_n_graph(3)
     gb = ProtoGraphBuilder()
 
-    true_thunk = gb.add_node("true_thunk", "builtin/const", {"value": add_2_g.graph})
-    false_thunk = gb.add_node("false_thunk", "builtin/const", {"value": add_3_g.graph})
+    true_thunk = gb.add_const("true_thunk", add_2_g.graph)
+    false_thunk = gb.add_const("false_thunk", add_3_g.graph)
 
     switch = gb.add_node("switch", "builtin/switch")
     gb.add_edge((true_thunk, "out"), (switch, "true"), add_2_g.get_type())
     gb.add_edge((false_thunk, "out"), (switch, "false"), add_3_g.get_type())
 
-    eval_node = gb.add_node("eval", "builtin/eval", {"args_len": 1, "returns_len": 1})
+    eval_node = gb.add_node("eval", "builtin/eval")
     gb.add_edge((switch, "out"), (eval_node, "thunk"), add_2_g.get_type())
 
     gb.register_input("in", int, (eval_node, "in"))

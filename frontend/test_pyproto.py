@@ -114,6 +114,7 @@ def test_idpy(bell_circuit):
         (bell_circuit, Circuit),
         (dic, Dict[int, bool]),
         (testst, TstStruct),
+        ("test123", str),
     ]:
         assert assert_id_py(val, typ)
 

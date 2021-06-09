@@ -7,7 +7,13 @@ from pytket.circuit import Circuit  # type: ignore
 
 
 Value = Union[
-    int, bool, pg.Graph, Tuple["Value", "Value"], List["Value"], Dict["Value", "Value"]
+    int,
+    bool,
+    str,
+    pg.Graph,
+    Tuple["Value", "Value"],
+    List["Value"],
+    Dict["Value", "Value"],
 ]
 PyValMap = Dict[str, Value]
 
@@ -28,6 +34,7 @@ class TKStruct:
 valtype_map = {
     int: "integer",
     bool: "boolean",
+    str: "string",
 }
 
 
@@ -48,10 +55,8 @@ def encode_value(value: Value) -> pg.Value:
     """
     if isinstance(value, pg.Graph):
         return pg.Value(graph=value)
-    elif isinstance(value, bool):
-        return pg.Value(boolean=value)
-    elif isinstance(value, int):
-        return pg.Value(integer=value)
+    elif type(value) in valtype_map:
+        return pg.Value(**{valtype_map[type(value)]: value})
     elif isinstance(value, Tuple):
         first = encode_value(value[0])
         second = encode_value(value[1])
@@ -103,6 +108,8 @@ def decode_value(value: pg.Value) -> Value:
         return cast(int, out_value)
     elif name == "boolean":
         return cast(bool, out_value)
+    elif name == "string":
+        return cast(str, out_value)
     elif name == "pair":
         pair = cast(pg.PairValue, out_value)
         first = decode_value(pair.first)
@@ -140,6 +147,8 @@ def from_python_type(typ: Type) -> pg.Type:
         return pg.Type(int=pg.Empty())
     elif typ == bool:
         return pg.Type(bool=pg.Empty())
+    elif typ == str:
+        return pg.Type(str=pg.Empty())
     elif typ == Circuit:
         return pg.Type(circuit=pg.Empty())
     elif hasattr(typ, "__name__") and typ.__name__ == "ProtoGraphBuilder":

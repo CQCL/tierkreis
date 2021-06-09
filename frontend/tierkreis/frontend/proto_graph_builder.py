@@ -15,7 +15,7 @@ class ProtoGraphBuilder:
         self._g = pg.Graph()
         self._input_types: Dict[str, Type] = dict()
         self._output_types: Dict[str, Type] = dict()
-        self._g.nodes["input"] = pg.Node(output=pg.Empty())
+        self._g.nodes["input"] = pg.Node(input=pg.Empty())
         self._g.nodes["output"] = pg.Node(output=pg.Empty())
 
     @property

@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass, is_dataclass, make_dataclass
 import json
 import tierkreis.core.protos.tierkreis.graph as pg
-from typing import Optional, Union, Dict, Tuple, List, cast, Type, NamedTuple
+from typing import Optional, Union, Dict, Tuple, List, cast, Type, TypeVar
 import betterproto
 from pytket.circuit import Circuit  # type: ignore
 

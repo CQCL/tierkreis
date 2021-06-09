@@ -6,7 +6,7 @@ from setuptools.command.develop import develop
 
 
 def generate_proto_code():
-    proto_dir = "../../tierkreis-proto/protos"
+    proto_dir = "../../protos"
     output_dir = "./tierkreis/core/protos"
 
     if not os.path.exists(output_dir):

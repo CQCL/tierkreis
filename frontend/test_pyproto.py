@@ -1,9 +1,9 @@
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Type
 from dataclasses import dataclass
 import pytest
 from pytket import Circuit
 from tierkreis.frontend.proto_graph_builder import ProtoGraphBuilder
-from tierkreis.core import TKStruct
+from tierkreis.core import TKStruct, Value
 from tierkreis.frontend.run_graph import run_graph
 
 
@@ -76,27 +76,6 @@ def bell_circuit() -> Circuit:
     return Circuit(2).H(0).CX(0, 1).measure_all()
 
 
-def test_circuit_idpy(bell_circuit):
-    gb = ProtoGraphBuilder()
-    id_node = gb.add_node("id_py", "id_py")
-
-    gb.register_input("id_in", Circuit, (id_node, "in"))
-    gb.register_output("id_out", Circuit, (id_node, "out"))
-
-    assert run_graph(gb, {"id_in": bell_circuit}) == {"id_out": bell_circuit}
-
-
-def test_dictionary_idpy():
-    gb = ProtoGraphBuilder()
-    id_node = gb.add_node("id", "id_py")
-
-    gb.register_input("in", Dict[int, bool], (id_node, "in"))
-    gb.register_output("out", Dict[int, bool], (id_node, "out"))
-
-    dic: Dict[int, bool] = {1: True, 2: False}
-    assert run_graph(gb, {"in": dic}) == {"out": dic}
-
-
 @dataclass
 class NestedStruct(TKStruct):
     s: List[int]
@@ -104,7 +83,7 @@ class NestedStruct(TKStruct):
 
 
 @dataclass
-class TestStruct(TKStruct):
+class TstStruct(TKStruct):
     x: int
     y: bool
     c: Circuit
@@ -112,17 +91,31 @@ class TestStruct(TKStruct):
     n: NestedStruct
 
 
-def test_struct_idpy():
+def idpy_graph(typ: Type) -> ProtoGraphBuilder:
     gb = ProtoGraphBuilder()
-    id_node = gb.add_node("id", "id_py")
+    id_node = gb.add_node("id_py", "id_py")
 
-    gb.register_input("in", TestStruct, (id_node, "in"))
-    gb.register_output("out", TestStruct, (id_node, "out"))
+    gb.register_input("id_in", typ, (id_node, "in"))
+    gb.register_output("id_out", typ, (id_node, "out"))
+
+    return gb
+
+
+def test_idpy(bell_circuit):
+    def assert_id_py(val: Value, typ: Type) -> bool:
+        gb = idpy_graph(typ)
+        return run_graph(gb, {"id_in": val}) == {"id_out": val}
+
+    dic: Dict[int, bool] = {1: True, 2: False}
 
     nestst = NestedStruct([1, 2, 3], (5, True))
-    testst = TestStruct(2, False, Circuit(1), {66: 77}, nestst)
-
-    assert run_graph(gb, {"in": testst}) == {"out": testst}
+    testst = TstStruct(2, False, Circuit(1), {66: 77}, nestst)
+    for val, typ in [
+        (bell_circuit, Circuit),
+        (dic, Dict[int, bool]),
+        (testst, TstStruct),
+    ]:
+        assert assert_id_py(val, typ)
 
 
 def test_compile_circuit(bell_circuit):

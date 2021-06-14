@@ -5,14 +5,14 @@ import requests
 from requests.models import HTTPError
 from .proto_graph_builder import ProtoGraphBuilder
 
-from tierkreis.core.protos.tierkreis.graph import RunRequest, RunResponse, Struct
+from tierkreis.core.protos.tierkreis.graph import RunRequest, RunResponse, StructValue
 from tierkreis.core import PyValMap, encode_values, decode_values, TKStruct
 
 
 def run_graph(gb: ProtoGraphBuilder, inputs: PyValMap) -> PyValMap:
     URL = "http://127.0.0.1:8080"
 
-    req = RunRequest(graph=gb.graph, inputs=Struct(map=encode_values(inputs)))
+    req = RunRequest(graph=gb.graph, inputs=StructValue(map=encode_values(inputs)))
     resp = requests.post(
         URL + "/run",
         headers={"content-type": "application/protobuf"},

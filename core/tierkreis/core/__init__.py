@@ -10,6 +10,7 @@ Value = Union[
     int,
     bool,
     str,
+    float,
     pg.Graph,
     Tuple["Value", "Value"],
     List["Value"],
@@ -34,7 +35,8 @@ class TKStruct:
 valtype_map = {
     int: "integer",
     bool: "boolean",
-    str: "string",
+    str: "str_",
+    float: "flt",
 }
 
 
@@ -67,7 +69,7 @@ def encode_value(value: Value) -> pg.Value:
         array = pg.ArrayValue(array=elements)
         return pg.Value(array=array)
     elif isinstance(value, Dict):
-        pgmap = pg.Map(
+        pgmap = pg.MapValue(
             [
                 pg.PairValue(first=encode_value(k), second=encode_value(v))
                 for k, v in value.items()
@@ -78,7 +80,7 @@ def encode_value(value: Value) -> pg.Value:
         return pg.Value(circuit=json.dumps(cast(Circuit, value).to_dict()))
     elif isinstance(value, TKStruct):
         # TODO preserve class name as alias for structural type
-        pgstruc = pg.Struct(
+        pgstruc = pg.StructValue(
             map={
                 field: encode_value(value.__getattribute__(field))
                 for field in value.__annotations__.keys()
@@ -108,8 +110,10 @@ def decode_value(value: pg.Value) -> Value:
         return cast(int, out_value)
     elif name == "boolean":
         return cast(bool, out_value)
-    elif name == "string":
+    elif name == "str_":
         return cast(str, out_value)
+    elif name == "flt":
+        return cast(float, out_value)
     elif name == "pair":
         pair = cast(pg.PairValue, out_value)
         first = decode_value(pair.first)
@@ -122,12 +126,12 @@ def decode_value(value: pg.Value) -> Value:
     elif name == "map":
         return {
             decode_value(pair.first): decode_value(pair.second)
-            for pair in cast(pg.Map, out_value).pairs
+            for pair in cast(pg.MapValue, out_value).pairs
         }
     elif name == "circuit":
         return Circuit.from_dict(json.loads(cast(str, out_value)))
     elif name == "struct":
-        pgstruct = cast(pg.Struct, out_value)
+        pgstruct = cast(pg.StructValue, out_value)
         decoded_fields = decode_values(pgstruct.map)
         # TODO when original struct name is preserved as an alias name
         # use that as the name of the dataclass here.
@@ -148,9 +152,11 @@ def from_python_type(typ: Type) -> pg.Type:
     elif typ == bool:
         return pg.Type(bool=pg.Empty())
     elif typ == str:
-        return pg.Type(str=pg.Empty())
+        return pg.Type(str_=pg.Empty())
     elif typ == Circuit:
         return pg.Type(circuit=pg.Empty())
+    elif typ == float:
+        return pg.Type(flt=pg.Empty())
     elif hasattr(typ, "__name__") and typ.__name__ == "ProtoGraphBuilder":
         inputs = pg.RowType(
             content={

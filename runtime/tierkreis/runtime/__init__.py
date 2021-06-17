@@ -131,7 +131,8 @@ class Worker:
 
         f = self.functions[function]
 
-        return f.run(inputs)
+        # See https://github.com/python/mypy/issues/5485
+        return cast(Any, f).run(inputs)
 
     async def start(self):
         with TemporaryDirectory() as socket_dir:

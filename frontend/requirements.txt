@@ -1,4 +1,0 @@
-pytest
-pytket>0.10.1
-protobuf
-requests

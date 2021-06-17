@@ -13,19 +13,19 @@ def nint_adder(n: int) -> ProtoGraphBuilder:
     # c_node = gb.add_node("const1", "const", {"value": 67})
     unp_node = gb.add_node("unp", "builtin/unpack_array")
     # gb.add_edge((c_node, "out"), (add_node, "rhs"))
-    add_node0 = gb.add_node("add0", "add")
-    gb.add_edge((unp_node, "0"), (add_node0, "lhs"), int)
-    gb.add_edge((unp_node, "1"), (add_node0, "rhs"), int)
+    add_node0 = gb.add_node("add0", "python_nodes/add")
+    gb.add_edge((unp_node, "0"), (add_node0, "a"), int)
+    gb.add_edge((unp_node, "1"), (add_node0, "b"), int)
     add_nodes = [add_node0]
 
     for i in range(1, n - 1):
-        n_nod = gb.add_node(f"add{i}", "add")
-        gb.add_edge((add_nodes[i - 1], "out"), (n_nod, "lhs"), int)
-        gb.add_edge((unp_node, f"{i+1}"), (n_nod, "rhs"), int)
+        n_nod = gb.add_node(f"add{i}", "python_nodes/add")
+        gb.add_edge((add_nodes[i - 1], "c"), (n_nod, "a"), int)
+        gb.add_edge((unp_node, f"{i+1}"), (n_nod, "b"), int)
         add_nodes.append(n_nod)
 
     gb.register_input("in", List[int], (unp_node, "array"))
-    gb.register_output("out", int, (add_nodes[-1], "out"))
+    gb.register_output("out", int, (add_nodes[-1], "c"))
 
     return gb
 
@@ -33,11 +33,11 @@ def nint_adder(n: int) -> ProtoGraphBuilder:
 def add_n_graph(n: int) -> ProtoGraphBuilder:
     gb = ProtoGraphBuilder()
     const_node = gb.add_const("increment", n)
-    add_node = gb.add_node("add", "add")
-    gb.add_edge((const_node, "out"), (add_node, "lhs"), int)
+    add_node = gb.add_node("add", "python_nodes/add")
+    gb.add_edge((const_node, "value"), (add_node, "a"), int)
 
-    gb.register_input("in", int, (add_node, "rhs"))
-    gb.register_output("out", int, (add_node, "out"))
+    gb.register_input("in", int, (add_node, "b"))
+    gb.register_output("out", int, (add_node, "c"))
 
     return gb
 
@@ -57,11 +57,11 @@ def test_switch():
     false_thunk = gb.add_const("false_thunk", add_3_g.graph)
 
     switch = gb.add_node("switch", "builtin/switch")
-    gb.add_edge((true_thunk, "out"), (switch, "true"), add_2_g.get_type())
-    gb.add_edge((false_thunk, "out"), (switch, "false"), add_3_g.get_type())
+    gb.add_edge((true_thunk, "value"), (switch, "true"), add_2_g.get_type())
+    gb.add_edge((false_thunk, "value"), (switch, "false"), add_3_g.get_type())
 
     eval_node = gb.add_node("eval", "builtin/eval")
-    gb.add_edge((switch, "out"), (eval_node, "thunk"), add_2_g.get_type())
+    gb.add_edge((switch, "value"), (eval_node, "thunk"), add_2_g.get_type())
 
     gb.register_input("in", int, (eval_node, "in"))
     gb.register_input("flag", bool, (switch, "predicate"))
@@ -93,10 +93,10 @@ class TstStruct(TKStruct):
 
 def idpy_graph(typ: Type) -> ProtoGraphBuilder:
     gb = ProtoGraphBuilder()
-    id_node = gb.add_node("id_py", "id_py")
+    id_node = gb.add_node("id_py", "python_nodes/id_py")
 
-    gb.register_input("id_in", typ, (id_node, "in"))
-    gb.register_output("id_out", typ, (id_node, "out"))
+    gb.register_input("id_in", typ, (id_node, "value"))
+    gb.register_output("id_out", typ, (id_node, "value"))
 
     return gb
 
@@ -121,7 +121,7 @@ def test_idpy(bell_circuit):
 
 def test_compile_circuit(bell_circuit):
     gb = ProtoGraphBuilder()
-    id_node = gb.add_node("compile", "compile_circuit")
+    id_node = gb.add_node("compile", "python_nodes/compile_circuit")
 
     gb.register_input("in", Circuit, (id_node, "circuit"))
     gb.register_output("out", Circuit, (id_node, "compiled_circuit"))

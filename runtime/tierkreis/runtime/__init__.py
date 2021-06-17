@@ -8,13 +8,14 @@ from tierkreis.core.protos.tierkreis.worker import (
     SignatureResponse,
 )
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core import PyValMap 
-from typing import Dict, Callable, Awaitable, Optional, List, Tuple 
+from tierkreis.core import PyValMap
+from typing import Dict, Callable, Awaitable, Optional, List, Tuple
 from tempfile import TemporaryDirectory
 import sys
 import tierkreis.core as core
 from dataclasses import dataclass
 from inspect import getdoc
+
 
 @dataclass
 class Function:
@@ -22,13 +23,14 @@ class Function:
     type_scheme: pg.TypeScheme
     docs: Optional[str]
 
+
 class Namespace:
     name: str
     functions: Dict[str, Function]
 
     def __init__(self, name: str):
         self.name = name
-        self.functions = {}
+        self.functions = dict()
 
     def function(
         self,
@@ -36,7 +38,7 @@ class Namespace:
         constraints: List[pg.Constraint] = [],
         type_vars: List[Tuple[str, pg.Kind]] = [],
         input_types: Dict[str, pg.Type] = {},
-        output_types: Dict[str, pg.Type] = {}
+        output_types: Dict[str, pg.Type] = {},
     ):
         def decorator(func):
             func_name = name
@@ -49,11 +51,15 @@ class Namespace:
             # Construct the type schema of the function
             type_scheme = pg.TypeScheme(
                 constraints=constraints,
-                variables=[pg.TypeSchemeVar(name=var[0], kind=var[1]) for var in type_vars],
-                body=pg.Type(graph=pg.GraphType(
-                    inputs=pg.RowType(content=input_types),
-                    outputs=pg.RowType(content=output_types),
-                ))
+                variables=[
+                    pg.TypeSchemeVar(name=var[0], kind=var[1]) for var in type_vars
+                ],
+                body=pg.Type(
+                    graph=pg.GraphType(
+                        inputs=pg.RowType(content=input_types),
+                        outputs=pg.RowType(content=output_types),
+                    )
+                ),
             )
 
             self.functions[func_name] = Function(
@@ -143,9 +149,7 @@ class WorkerServerImpl(WorkerBase):
     async def signature(self) -> "SignatureResponse":
         entries = [
             pg.SignatureEntry(
-                name=function_name,
-                type_scheme=function.type_scheme,
-                docs=function.docs
+                name=function_name, type_scheme=function.type_scheme, docs=function.docs
             )
             for (function_name, function) in self.worker.functions.items()
         ]

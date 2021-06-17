@@ -1,7 +1,7 @@
 from dataclasses import asdict, dataclass, is_dataclass, make_dataclass
 import json
 import tierkreis.core.protos.tierkreis.graph as pg
-from typing import Optional, Union, Dict, Tuple, List, cast, Type, TypeVar
+from typing import Any, Union, Dict, Tuple, List, cast, Type
 import betterproto
 from pytket.circuit import Circuit  # type: ignore
 
@@ -12,6 +12,8 @@ Value = Union[
     str,
     float,
     pg.Graph,
+    Circuit,
+    "TKStruct",
     Tuple["Value", "Value"],
     List["Value"],
     Dict["Value", "Value"],
@@ -23,7 +25,7 @@ class TKStructTypeError(Exception):
     pass
 
 
-@dataclass(eq=False, frozen=True)
+@dataclass(eq=False)
 class TKStruct:
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, TKStruct):
@@ -36,12 +38,9 @@ valtype_map = {
     int: "integer",
     bool: "boolean",
     str: "str_",
+    pg.Graph: "graph",
     float: "flt",
 }
-
-
-class GraphIOType(Type):
-    pass
 
 
 def encode_values(values: PyValMap) -> Dict[str, pg.Value]:
@@ -55,11 +54,9 @@ def encode_value(value: Value) -> pg.Value:
     """
     Encode a python value into its protobuf representation.
     """
-    if isinstance(value, pg.Graph):
-        return pg.Value(graph=value)
-    elif type(value) in valtype_map:
+    if type(value) in valtype_map:
         return pg.Value(**{valtype_map[type(value)]: value})
-    elif isinstance(value, Tuple):
+    elif isinstance(value, tuple):
         first = encode_value(value[0])
         second = encode_value(value[1])
         pair = pg.PairValue(first=first, second=second)
@@ -68,7 +65,7 @@ def encode_value(value: Value) -> pg.Value:
         elements = [encode_value(item) for item in value]
         array = pg.ArrayValue(array=elements)
         return pg.Value(array=array)
-    elif isinstance(value, Dict):
+    elif isinstance(value, dict):
         pgmap = pg.MapValue(
             [
                 pg.PairValue(first=encode_value(k), second=encode_value(v))
@@ -103,7 +100,6 @@ def decode_value(value: pg.Value) -> Value:
     Decode a value from its protobuf representation.
     """
     name, out_value = betterproto.which_one_of(value, "value")
-
     if name == "graph":
         return cast(pg.Graph, out_value)
     elif name == "integer":
@@ -157,6 +153,12 @@ def from_python_type(typ: Type) -> pg.Type:
         return pg.Type(circuit=pg.Empty())
     elif typ == float:
         return pg.Type(flt=pg.Empty())
+    elif is_dataclass(typ) and issubclass(typ, TKStruct):
+        return pg.Type(
+            struct=pg.RowType(
+                {k: from_python_type(v) for k, v in typ.__annotations__.items()}
+            )
+        )
     elif hasattr(typ, "__name__") and typ.__name__ == "ProtoGraphBuilder":
         inputs = pg.RowType(
             content={

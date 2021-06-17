@@ -1,0 +1,26 @@
+[tool.poetry]
+name = "tierkreis.core"
+version = "0.1.0"
+description = "Common definitions and functions for tierkreis."
+authors = [
+    "Seyon Sivarajah <seyon.sivarajah@cambridgequantum.com>",
+    "Lukas Heidemann <lukas.heidemann@cambridgequantum.com>",
+    "John Children <john.children@cambridgequantum.com>",
+]
+packages = [{ include="tierkreis" }, { include="tierkreis/core/protos" }]
+
+
+[tool.poetry.dependencies]
+python = "^3.8"
+betterproto = "^2.0.0b3"
+grpclib = "^0.4.1"
+pytket = "^0.11.0"
+
+[tool.poetry.dev-dependencies]
+black = "^21.5b1"
+mypy = "^0.812"
+pylint = "^2.8.3"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

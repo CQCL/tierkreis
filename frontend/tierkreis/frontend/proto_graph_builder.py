@@ -1,11 +1,13 @@
-from typing import Dict, List, Optional, Set, Tuple, IO, Type, Union
-
+"""Utilities for building tierkreis graphs."""
+from typing import IO, Dict, List, Optional, Set, Tuple, Type, Union
 
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core import encode_value, from_python_type, GraphIOType, Value
+from tierkreis.core import Value, encode_value, from_python_type
 
 
 class ProtoGraphBuilder:
+    """Builder for tierkreis graphs."""
+
     def __init__(self) -> None:
         self._g = pg.Graph()
         self._input_types: Dict[str, Optional[Type]] = dict()
@@ -43,7 +45,7 @@ class ProtoGraphBuilder:
 
     def add_box(self, name: str, graph: Union["ProtoGraphBuilder", pg.Graph]) -> str:
         if isinstance(graph, ProtoGraphBuilder):
-            self._g.nodes[name] = pg.Node(box=graph._g)
+            self._g.nodes[name] = pg.Node(box=graph.graph)
         else:
             self._g.nodes[name] = pg.Node(box=graph)
         return name
@@ -94,7 +96,7 @@ class ProtoGraphBuilder:
         self, node_port_from: Tuple[str, str], node_port_to: Tuple[str, str]
     ) -> pg.Edge:
 
-        e = next(
+        edge = next(
             (
                 e
                 for e in self._g.edges
@@ -102,21 +104,21 @@ class ProtoGraphBuilder:
                 == (node_port_from, node_port_to)
             )
         )
-        self._g.edges.remove(e)
-        return e
+        self._g.edges.remove(edge)
+        return edge
 
-    def get_type(self) -> GraphIOType:
-        return GraphIOType(
+    def get_type(self) -> Type:
+        return type(
             "ProtoGraphBuilder",
             (ProtoGraphBuilder,),
             {"inputs": self._input_types, "outputs": self._output_types},
         )
 
-    def write_to_file(self, fp: IO[bytes]):
-        fp.write(self._g.SerializeToString())
+    def write_to_file(self, file_pointer: IO[bytes]):
+        file_pointer.write(self._g.SerializeToString())
 
     @classmethod
-    def read_from_file(cls, fp: IO[bytes]) -> "ProtoGraphBuilder":
+    def read_from_file(cls, file_pointer: IO[bytes]) -> "ProtoGraphBuilder":
         new = cls()
-        new._g.parse(fp.read())
+        new._g.parse(file_pointer.read())
         return new

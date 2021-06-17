@@ -1,9 +1,9 @@
-from typing import Dict, List, Tuple, Type
+from typing import Dict, List, Tuple, Type, Any
 from dataclasses import dataclass
 import pytest
-from pytket import Circuit
+from pytket import Circuit  # type: ignore
 from tierkreis.frontend.proto_graph_builder import ProtoGraphBuilder
-from tierkreis.core import TKStruct, Value
+from tierkreis.core.values import TierkreisValue, TierkreisStruct
 from tierkreis.frontend.run_graph import run_graph
 
 
@@ -45,7 +45,9 @@ def add_n_graph(n: int) -> ProtoGraphBuilder:
 def test_nint_adder():
     for in_list in ([1] * 5, list(range(5))):
         gb = nint_adder(len(in_list))
-        assert run_graph(gb, {"in": in_list}) == {"out": sum(in_list)}
+        in_list_value = TierkreisValue.from_python(in_list)
+        outputs = run_graph(gb, {"in": in_list_value})
+        assert TierkreisValue.to_python(outputs["out"], int) == sum(in_list)
 
 
 def test_switch():
@@ -67,8 +69,16 @@ def test_switch():
     gb.register_input("flag", bool, (switch, "predicate"))
     gb.register_output("out", int, (eval_node, "out"))
 
-    assert run_graph(gb, {"flag": True, "in": 3}) == {"out": 5}
-    assert run_graph(gb, {"flag": False, "in": 3}) == {"out": 6}
+    true_value = TierkreisValue.from_python(True)
+    false_value = TierkreisValue.from_python(True)
+    in_value = TierkreisValue.from_python(3)
+
+    assert run_graph(gb, {"flag": true_value, "in": in_value}) == {
+        "out": TierkreisValue.from_python(5)
+    }
+    assert run_graph(gb, {"flag": false_value, "in": in_value}) == {
+        "out": TierkreisValue.from_python(6)
+    }
 
 
 @pytest.fixture
@@ -77,13 +87,13 @@ def bell_circuit() -> Circuit:
 
 
 @dataclass
-class NestedStruct(TKStruct):
+class NestedStruct(TierkreisStruct):
     s: List[int]
     a: Tuple[int, bool]
 
 
 @dataclass
-class TstStruct(TKStruct):
+class TstStruct(TierkreisStruct):
     x: int
     y: bool
     c: Circuit
@@ -102,9 +112,12 @@ def idpy_graph(typ: Type) -> ProtoGraphBuilder:
 
 
 def test_idpy(bell_circuit):
-    def assert_id_py(val: Value, typ: Type) -> bool:
+    def assert_id_py(val: Any, typ: Type) -> bool:
+        val_encoded = TierkreisValue.from_python(val)
         gb = idpy_graph(typ)
-        return run_graph(gb, {"id_in": val}) == {"id_out": val}
+        output = run_graph(gb, {"id_in": val_encoded})
+        val_decoded = TierkreisValue.to_python(output["id_out"], typ)
+        return val_decoded == val
 
     dic: Dict[int, bool] = {1: True, 2: False}
 
@@ -125,7 +138,7 @@ def test_compile_circuit(bell_circuit):
 
     gb.register_input("in", Circuit, (id_node, "circuit"))
     gb.register_output("out", Circuit, (id_node, "compiled_circuit"))
-    from pytket.passes import FullPeepholeOptimise
+    from pytket.passes import FullPeepholeOptimise  # type: ignore
 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)

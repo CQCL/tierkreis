@@ -1,8 +1,11 @@
 """Utilities for building tierkreis graphs."""
-from typing import IO, Dict, List, Optional, Set, Tuple, Type, Union
+from typing import IO, Dict, List, Optional, Set, Tuple, Type, Union, Any
 
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core import Value, encode_value, from_python_type
+from tierkreis.core.values import TierkreisValue
+from tierkreis.core.types import TierkreisType
+
+# from tierkreis.core import Value, encode_value, from_python_type
 
 
 class ProtoGraphBuilder:
@@ -10,8 +13,8 @@ class ProtoGraphBuilder:
 
     def __init__(self) -> None:
         self._g = pg.Graph()
-        self._input_types: Dict[str, Optional[Type]] = dict()
-        self._output_types: Dict[str, Optional[Type]] = dict()
+        self._input_types: Dict[str, Optional[TierkreisType]] = dict()
+        self._output_types: Dict[str, Optional[TierkreisType]] = dict()
         self._g.nodes["input"] = pg.Node(input=pg.Empty())
         self._g.nodes["output"] = pg.Node(output=pg.Empty())
 
@@ -39,8 +42,10 @@ class ProtoGraphBuilder:
         self._g.nodes[name] = pg.Node(function=function)
         return name
 
-    def add_const(self, name: str, value: Value) -> str:
-        self._g.nodes[name] = pg.Node(const=encode_value(value))
+    def add_const(self, name: str, value: Any) -> str:
+        self._g.nodes[name] = pg.Node(
+            const=TierkreisValue.from_python(value).to_proto()
+        )
         return name
 
     def add_box(self, name: str, graph: Union["ProtoGraphBuilder", pg.Graph]) -> str:
@@ -58,19 +63,26 @@ class ProtoGraphBuilder:
         self,
         node_port_from: Tuple[str, str],
         node_port_to: Tuple[str, str],
-        edge_type: Optional[Type] = None,
+        edge_type: Optional[Union[Type, TierkreisType]] = None,
     ):
         new_edge = pg.Edge()
         new_edge.node_from, new_edge.port_from = node_port_from
         new_edge.node_to, new_edge.port_to = node_port_to
         self._g.edges.append(new_edge)
-        if edge_type is not None:
-            new_edge.edge_type = from_python_type(edge_type)
+
+        if edge_type is None:
+            tierkreis_type = None
+        elif isinstance(edge_type, TierkreisType):
+            tierkreis_type = edge_type
+            new_edge.edge_type = tierkreis_type.to_proto()
+        else:
+            tierkreis_type = TierkreisType.from_python(edge_type)
+            new_edge.edge_type = tierkreis_type.to_proto()
 
         if node_port_from[0] == "input":
-            self._input_types[node_port_from[1]] = edge_type
+            self._input_types[node_port_from[1]] = tierkreis_type
         if node_port_to[0] == "output":
-            self._output_types[node_port_to[1]] = edge_type
+            self._output_types[node_port_to[1]] = tierkreis_type
 
     def register_input(self, name: str, edge_type: Type, node_port: Tuple[str, str]):
         self._input_types[name] = edge_type

@@ -8,19 +8,29 @@ from tierkreis.core.protos.tierkreis.worker import (
     SignatureResponse,
 )
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core import PyValMap
-from typing import Dict, Callable, Awaitable, Optional, List, Tuple
+from tierkreis.core.types import (
+    Constraint,
+    Kind,
+    TypeScheme,
+    Row,
+    GraphType,
+)
+from tierkreis.core.values import (
+    TierkreisValue,
+    StructValue,
+)
+from typing import Dict, Callable, Awaitable, Optional, List, Tuple, Any, cast, Union
+import typing
 from tempfile import TemporaryDirectory
 import sys
-import tierkreis.core as core
 from dataclasses import dataclass
 from inspect import getdoc
 
 
 @dataclass
 class Function:
-    run: Callable[[PyValMap], Awaitable[PyValMap]]
-    type_scheme: pg.TypeScheme
+    run: Callable[[StructValue], Awaitable[StructValue]]
+    type_scheme: TypeScheme
     docs: Optional[str]
 
 
@@ -35,39 +45,72 @@ class Namespace:
     def function(
         self,
         name: Optional[str] = None,
-        constraints: List[pg.Constraint] = [],
-        type_vars: List[Tuple[str, pg.Kind]] = [],
-        input_types: Dict[str, pg.Type] = {},
-        output_types: Dict[str, pg.Type] = {},
+        constraints: List[Constraint] = [],
+        type_vars: dict[Union[str, typing.TypeVar], Kind] = {},
     ):
         def decorator(func):
             func_name = name
             if func_name is None:
                 func_name = func.__name__
 
-            async def unpacked_func(inputs: PyValMap) -> PyValMap:
-                return await func(**inputs)
+            # Get input and output type hints
+            type_hints = typing.get_type_hints(func)
+
+            if "inputs" not in type_hints:
+                raise ValueError(
+                    "Tierkreis function must have an argument 'inputs' with a type hint."
+                )
+
+            if "return" not in type_hints:
+                raise ValueError("Tierkreis function needs return type hint.")
+
+            hint_inputs = type_hints["inputs"]
+            hint_outputs = type_hints["return"]
+
+            # Convert type hints into tierkreis types
+            type_inputs = Row.from_python(hint_inputs)
+            type_outputs = Row.from_python(hint_outputs)
+
+            # Wrap function with input and output conversions
+            async def wrapped_func(inputs: StructValue) -> StructValue:
+                try:
+                    python_inputs = inputs.to_python(hint_inputs)
+                except Exception as error:
+                    raise DecodeInputError() from error
+                python_outputs = await func(python_inputs)
+                try:
+                    outputs = TierkreisValue.from_python(python_outputs)
+                except Exception as error:
+                    raise EncodeOutputError() from error
+                return cast(StructValue, outputs)
+
+            # Convert the type vars to names
+            def type_var_to_name(type_var: Union[str, typing.TypeVar]) -> str:
+                if isinstance(type_var, typing.TypeVar):
+                    return type_var.__name__
+                else:
+                    return type_var
+
+            type_vars_by_name = {
+                type_var_to_name(var): kind for var, kind in type_vars.items()
+            }
 
             # Construct the type schema of the function
-            type_scheme = pg.TypeScheme(
+            type_scheme = TypeScheme(
                 constraints=constraints,
-                variables=[
-                    pg.TypeSchemeVar(name=var[0], kind=var[1]) for var in type_vars
-                ],
-                body=pg.Type(
-                    graph=pg.GraphType(
-                        inputs=pg.RowType(content=input_types),
-                        outputs=pg.RowType(content=output_types),
-                    )
+                variables=type_vars_by_name,
+                body=GraphType(
+                    inputs=type_inputs,
+                    outputs=type_outputs,
                 ),
             )
 
             self.functions[func_name] = Function(
-                run=unpacked_func,
+                run=wrapped_func,
                 type_scheme=type_scheme,
                 docs=getdoc(func),
             )
-            return unpacked_func
+            return func
 
         return decorator
 
@@ -82,9 +125,7 @@ class Worker:
         for (name, function) in namespace.functions.items():
             self.functions[f"{namespace.name}/{name}"] = function
 
-    def run(
-        self, function: str, inputs: Dict[str, "core.Value"]
-    ) -> Awaitable[Dict[str, "core.Value"]]:
+    def run(self, function: str, inputs: StructValue) -> Awaitable[StructValue]:
         if function not in self.functions:
             raise FunctionNotFound(function)
 
@@ -115,6 +156,14 @@ class FunctionNotFound(Exception):
         self.function = function
 
 
+class DecodeInputError(Exception):
+    pass
+
+
+class EncodeOutputError(Exception):
+    pass
+
+
 class WorkerServerImpl(WorkerBase):
     def __init__(self, worker):
         self.worker = worker
@@ -123,19 +172,24 @@ class WorkerServerImpl(WorkerBase):
         self, function: str, inputs: Dict[str, "pg.Value"]
     ) -> "RunFunctionResponse":
         try:
-            py_inputs = core.decode_values(inputs)
-        except ValueError as err:
+            inputs_struct = StructValue.from_proto_dict(inputs)
+            outputs_struct = await self.worker.run(function, inputs_struct)
+            outputs = outputs_struct.to_proto_dict()
+            return RunFunctionResponse(outputs=outputs)
+        except DecodeInputError as err:
             raise GRPCError(
                 status=StatusCode.INVALID_ARGUMENT,
-                message="Error while decoding inputs",
-            ) from err
-
-        try:
-            outputs = await self.worker.run(function, py_inputs)
-        except FunctionNotFound:
+                message=f"Error while decoding inputs: {err}",
+            )
+        except EncodeOutputError as err:
+            raise GRPCError(
+                status=StatusCode.INTERNAL,
+                message=f"Error while encoding outputs: {err}",
+            )
+        except FunctionNotFound as err:
             raise GRPCError(
                 status=StatusCode.UNIMPLEMENTED,
-                message=f"Unsupported operation: {function}'",
+                message=f"Unsupported function: {function}",
             )
         except Exception as err:
             raise GRPCError(
@@ -143,13 +197,12 @@ class WorkerServerImpl(WorkerBase):
                 message=f"Error while running operation: {err}",
             )
 
-        outputs = core.encode_values(outputs)
-        return RunFunctionResponse(outputs=outputs)
-
     async def signature(self) -> "SignatureResponse":
         entries = [
             pg.SignatureEntry(
-                name=function_name, type_scheme=function.type_scheme, docs=function.docs
+                name=function_name,
+                type_scheme=function.type_scheme.to_proto(),
+                docs=function.docs,
             )
             for (function_name, function) in self.worker.functions.items()
         ]

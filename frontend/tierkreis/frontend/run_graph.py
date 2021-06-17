@@ -1,15 +1,17 @@
 """Send requests to tierkreis server to execute a graph."""
 import requests
 from requests.models import HTTPError
-from tierkreis.core import PyValMap, decode_values, encode_values
-from tierkreis.core.protos.tierkreis.graph import RunRequest, RunResponse, StructValue
+from tierkreis.core.values import TierkreisValue, StructValue
+import tierkreis.core.protos.tierkreis.graph as pg
 
 from .proto_graph_builder import ProtoGraphBuilder
 
 URL = "http://127.0.0.1:8080"
 
 
-def run_graph(graph_builder: ProtoGraphBuilder, inputs: PyValMap) -> PyValMap:
+def run_graph(
+    graph_builder: ProtoGraphBuilder, inputs: dict[str, TierkreisValue]
+) -> dict[str, TierkreisValue]:
     """Run a graph and return results
 
     :param gb: Graph to run.
@@ -21,8 +23,9 @@ def run_graph(graph_builder: ProtoGraphBuilder, inputs: PyValMap) -> PyValMap:
     :rtype: PyValMap
     """
 
-    req = RunRequest(
-        graph=graph_builder.graph, inputs=StructValue(map=encode_values(inputs))
+    req = pg.RunRequest(
+        graph=graph_builder.graph,
+        inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
     )
     resp = requests.post(
         URL + "/run",
@@ -34,7 +37,6 @@ def run_graph(graph_builder: ProtoGraphBuilder, inputs: PyValMap) -> PyValMap:
             "Run request"
             f" failed with code {resp.status_code} and message {str(resp.content)}"
         )
-    out = RunResponse().parse(resp.content)
-    outputs = decode_values(out.outputs.map)
-
+    out = pg.RunResponse().parse(resp.content)
+    outputs = StructValue.from_proto_dict(out.outputs.map).values
     return outputs

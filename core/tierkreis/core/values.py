@@ -1,12 +1,17 @@
+from __future__ import annotations
 import typing
 from typing import cast, Any, Callable, Optional
 import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
-from dataclasses import dataclass 
+from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from tierkreis.core.internal import python_struct_fields
-from pytket.circuit import Circuit # type: ignore
-from tierkreis.core.types import TierkreisType
+from pytket.circuit import Circuit  # type: ignore
+
+
+if typing.TYPE_CHECKING:
+    from tierkreis.core.graph import Graph
+
 
 T = typing.TypeVar("T")
 
@@ -205,7 +210,7 @@ class CircuitValue(TierkreisValue):
 
 @dataclass(frozen=True)
 class GraphValue(TierkreisValue):
-    value: "Graph"
+    value: Graph
 
     def to_proto(self) -> pg.Value:
         return pg.Value(graph=self.value.to_proto())
@@ -330,76 +335,3 @@ class StructValue(TierkreisValue):
 
     def to_proto_dict(self) -> dict[str, pg.Value]:
         return {name: value.to_proto() for name, value in self.values.items()}
-
-
-class GraphNode(ABC):
-    @abstractmethod
-    def to_proto(self) -> pg.Node:
-        pass
-
-
-@dataclass(frozen=True)
-class ConstNode(GraphNode):
-    value: TierkreisValue
-
-    def to_proto(self) -> pg.Node:
-        return pg.Node(const=self.value.to_proto())
-
-
-@dataclass(frozen=True)
-class FunctionNode(GraphNode):
-    function: str
-
-    def to_proto(self) -> pg.Node:
-        return pg.Node(function=self.function)
-
-
-@dataclass(frozen=True)
-class InputNode(GraphNode):
-    def to_proto(self) -> pg.Node:
-        return pg.Node(input=pg.Empty())
-
-
-@dataclass(frozen=True)
-class OutputNode(GraphNode):
-    def to_proto(self) -> pg.Node:
-        return pg.Node(output=pg.Empty())
-
-
-@dataclass(frozen=True)
-class NodePort:
-    node: str
-    port: str
-
-
-@dataclass
-class GraphEdge:
-    source: NodePort
-    target: NodePort
-    type: Optional[TierkreisType]
-
-    def to_proto(self) -> pg.Edge:
-        if self.type is None:
-            edge_type = None
-        else:
-            edge_type = self.type.to_proto()
-
-        return pg.Edge(
-            port_from=self.source.port,
-            node_from=self.source.node,
-            port_to=self.target.port,
-            node_to=self.target.node,
-            edge_type=cast(pg.Type, edge_type),
-        )
-
-
-@dataclass
-class Graph:
-    nodes: dict[str, GraphNode]
-    edges: list[GraphEdge]
-
-    def to_proto(self) -> pg.Graph:
-        return pg.Graph(
-            nodes={name: node.to_proto() for name, node in self.nodes.items()},
-            edges=[edge.to_proto() for edge in self.edges],
-        )

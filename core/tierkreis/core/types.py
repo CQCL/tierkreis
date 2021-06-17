@@ -2,10 +2,10 @@ from abc import ABC, abstractmethod
 import typing
 from dataclasses import dataclass, field
 import tierkreis.core.protos.tierkreis.graph as pg
-from pytket.circuit import Circuit # type: ignore
-from typing import Optional
+from pytket.circuit import Circuit  # type: ignore
+from typing import Optional, cast
 from tierkreis.core.internal import python_struct_fields
-
+import betterproto
 
 
 class TierkreisType(ABC):
@@ -53,7 +53,9 @@ class TierkreisType(ABC):
             return VarType(name=type_.__name__)
         elif type_origin is RuntimeGraph:
             args = typing.get_args(type_)
-            return GraphType(inputs=Row.from_python(args[0]), outputs=Row.from_python(args[1]))
+            return GraphType(
+                inputs=Row.from_python(args[0]), outputs=Row.from_python(args[1])
+            )
         elif type_origin is None and RuntimeStruct in type_.__bases__:
             return StructType(shape=Row.from_python(type_))
         elif type_origin is not None and RuntimeStruct in type_origin.__bases__:
@@ -62,6 +64,41 @@ class TierkreisType(ABC):
             raise ValueError(
                 f"Could not convert python type to tierkreis type: {type_}"
             )
+
+    @staticmethod
+    def from_proto(type_: pg.Type) -> "TierkreisType":
+        name, out_type = betterproto.which_one_of(type_, "type")
+
+        if name == "int":
+            return IntType()
+        elif name == "bool":
+            return BoolType()
+        elif name == "str":
+            return StringType()
+        elif name == "flt":
+            return FloatType()
+        elif name == "circuit":
+            return CircuitType()
+        elif name == "var":
+            return VarType(cast(str, out_type))
+        elif name == "pair":
+            pair_type = cast(pg.PairType, out_type)
+            first = TierkreisType.from_proto(pair_type.first)
+            second = TierkreisType.from_proto(pair_type.second)
+            return PairType(first, second)
+        elif name == "array":
+            element = TierkreisType.from_proto(cast(pg.Type, out_type))
+            return ArrayType(element)
+        elif name == "struct":
+            row = cast(pg.RowType, out_type)
+            return StructType(Row.from_proto(row))
+        elif name == "map":
+            map_type = cast(pg.PairType, out_type)
+            key = TierkreisType.from_proto(map_type.first)
+            value = TierkreisType.from_proto(map_type.second)
+            return MapType(key, value)
+        else:
+            raise ValueError(f"Unknown protobuf type: {name}")
 
 
 @dataclass
@@ -160,6 +197,21 @@ class Row:
                     for field_name, field_type in python_struct_fields(type_).items()
                 }
             )
+
+    @staticmethod
+    def from_proto(row: pg.RowType) -> "Row":
+        if row.rest == "":
+            rest = None
+        else:
+            rest = row.rest
+
+        return Row(
+            content={
+                field_name: TierkreisType.from_proto(field_type)
+                for field_name, field_type in row.content.items()
+            },
+            rest=rest,
+        )
 
 
 @dataclass

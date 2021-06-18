@@ -46,7 +46,7 @@ class Namespace:
         self,
         name: Optional[str] = None,
         constraints: List[Constraint] = [],
-        type_vars: dict[Union[str, typing.TypeVar], Kind] = {},
+        type_vars: Dict[Union[str, typing.TypeVar], Kind] = {},
     ):
         def decorator(func):
             func_name = name

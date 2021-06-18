@@ -1,27 +1,32 @@
 """Utilities for building tierkreis graphs."""
-from typing import IO, Dict, List, Optional, Set, Tuple, Type, Union
 from abc import ABC, abstractmethod
-from enum import Enum
 from dataclasses import dataclass, field
-from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
-from tierkreis.core import Value, encode_value, from_python_type
-import networkx as nx  # type: ignore
-import graphviz as gv  # type: ignore
+from enum import Enum
+from typing import Any, Dict, Tuple, cast
 
-TKType = Type
+import networkx as nx  # type: ignore
+import tierkreis.core.protos.tierkreis.graph as pg
+from tierkreis.core.types import TierkreisType
+from tierkreis.core.values import TierkreisValue
+import betterproto
+
+# import graphviz as gv  # type: ignore
+
 FunctionID = str
 
-SIGNATURE: Dict[FunctionID, Tuple[Dict[str, TKType], Dict[str, TKType]]] = dict()
+SIGNATURE: Dict[
+    FunctionID, Tuple[Dict[str, TierkreisType], Dict[str, TierkreisType]]
+] = dict()
 
 
 @dataclass
 class TierkreisNode(ABC):
     @abstractmethod
-    def inputs(self) -> Dict[str, TKType]:
+    def inputs(self) -> Dict[str, TierkreisType]:
         pass
 
     @abstractmethod
-    def outputs(self) -> Dict[str, TKType]:
+    def outputs(self) -> Dict[str, TierkreisType]:
         pass
 
     @property
@@ -36,60 +41,128 @@ class TierkreisNode(ABC):
             type(self).__name__ + ".out_port", [(n, n) for n in self.outputs().keys()]
         )
 
+    @abstractmethod
+    def to_proto(self) -> pg.Node:
+        pass
+
+    @staticmethod
+    def from_proto(node: pg.Node) -> "TierkreisNode":
+        name, out_node = betterproto.which_one_of(node, "node")
+
+        if name == "const":
+            return ConstNode(cast(TierkreisValue, out_node))
+        elif name == "box":
+            return BoxNode(cast(TierkreisGraph, out_node))
+        elif name == "function":
+            return FunctionNode(cast(FunctionID, out_node))
+        elif name == "input":
+            return InputNode()
+        elif name == "output":
+            return OutputNode()
+        else:
+            raise ValueError("Unknown protobuf node type: {}", name)
+
 
 @dataclass
-class Constant(TierkreisNode):
-    value: Value
+class ConstNode(TierkreisNode):
+    value: TierkreisValue
 
-    def inputs(self) -> Dict[str, TKType]:
+    def inputs(self) -> Dict[str, TierkreisType]:
         return dict()
 
-    def outputs(self) -> Dict[str, TKType]:
-        return {"value": type(self.value)}
+    def outputs(self) -> Dict[str, TierkreisType]:
+        return {"value": self.value.get_type()}
+
+    def to_proto(self) -> pg.Node:
+        return pg.Node(const=self.value.to_proto())
 
 
 @dataclass
-class Input(TierkreisNode):
-    _inputs: Dict[str, TKType] = field(default_factory=dict)
+class InputNode(TierkreisNode):
+    _inputs: Dict[str, TierkreisType] = field(default_factory=dict)
 
-    def inputs(self) -> Dict[str, TKType]:
+    def inputs(self) -> Dict[str, TierkreisType]:
         return dict()
 
-    def outputs(self) -> Dict[str, TKType]:
+    def outputs(self) -> Dict[str, TierkreisType]:
         return self._inputs
 
+    def to_proto(self) -> pg.Node:
+        return pg.Node(input=pg.Empty())
+
 
 @dataclass
-class Output(TierkreisNode):
-    _outputs: Dict[str, TKType] = field(default_factory=dict)
+class OutputNode(TierkreisNode):
+    _outputs: Dict[str, TierkreisType] = field(default_factory=dict)
 
-    def inputs(self) -> Dict[str, TKType]:
+    def inputs(self) -> Dict[str, TierkreisType]:
         return self._outputs
 
-    def outputs(self) -> Dict[str, TKType]:
+    def outputs(self) -> Dict[str, TierkreisType]:
         return dict()
 
+    def to_proto(self) -> pg.Node:
+        return pg.Node(output=pg.Empty())
+
 
 @dataclass
-class Box(TierkreisNode):
+class BoxNode(TierkreisNode):
     graph: "TierkreisGraph"
 
-    def inputs(self) -> Dict[str, TKType]:
+    def inputs(self) -> Dict[str, TierkreisType]:
         return self.graph.inputs
 
-    def outputs(self) -> Dict[str, TKType]:
+    def outputs(self) -> Dict[str, TierkreisType]:
         return self.graph.outputs
+
+    def to_proto(self) -> pg.Node:
+        return pg.Node(box=self.graph.to_proto())
 
 
 @dataclass
-class Function(TierkreisNode):
+class FunctionNode(TierkreisNode):
     function: FunctionID
 
-    def inputs(self) -> Dict[str, TKType]:
+    def inputs(self) -> Dict[str, TierkreisType]:
         return SIGNATURE[self.function][0]
 
-    def outputs(self) -> Dict[str, TKType]:
+    def outputs(self) -> Dict[str, TierkreisType]:
         return SIGNATURE[self.function][1]
+
+    def to_proto(self) -> pg.Node:
+        return pg.Node(function=self.function)
+
+
+# @dataclass
+# class TierkreisEdge:
+#     source: NodePort
+#     target: NodePort
+#     type: Optional[TierkreisType]
+
+#     def to_proto(self) -> pg.Edge:
+#         if self.type is None:
+#             edge_type = None
+#         else:
+#             edge_type = self.type.to_proto()
+
+#         return pg.Edge(
+#             port_from=self.source.port,
+#             node_from=self.source.node,
+#             port_to=self.target.port,
+#             node_to=self.target.node,
+#             edge_type=cast(pg.Type, edge_type),
+#         )
+
+#     @staticmethod
+#     def from_proto(edge: pg.Edge) -> GraphEdge:
+#         return GraphEdge(
+#             source=NodePort(
+#                 node=edge.node_from,
+#                 port=edge.port_from,
+#             ),
+#             target=NodePort(node=edge.node_to, port=edge.port_to),
+#             type=TierkreisType.from_proto(edge.edge_type),
+#         )
 
 
 class TierkreisGraph:
@@ -97,11 +170,11 @@ class TierkreisGraph:
 
     def __init__(self) -> None:
         self._graph = nx.MultiDiGraph()
-        self._graph.add_node(self.input_node_name, node_info=Input())
-        self._graph.add_node(self.output_node_name, node_info=Output())
+        self._graph.add_node(self.input_node_name, node_info=InputNode())
+        self._graph.add_node(self.output_node_name, node_info=OutputNode())
 
-        self._input_types: Dict[str, TKType] = dict()
-        self._output_types: Dict[str, TKType] = dict()
+        self._input_types: Dict[str, TierkreisType] = dict()
+        self._output_types: Dict[str, TierkreisType] = dict()
 
     @property
     def n_nodes(self) -> int:
@@ -116,11 +189,11 @@ class TierkreisGraph:
         return "output"
 
     @property
-    def inputs(self) -> Dict[str, TKType]:
+    def inputs(self) -> Dict[str, TierkreisType]:
         return self._input_types
 
     @property
-    def outputs(self) -> Dict[str, TKType]:
+    def outputs(self) -> Dict[str, TierkreisType]:
         return self._output_types
 
     def add_node(self, name: str, node: TierkreisNode):
@@ -132,13 +205,18 @@ class TierkreisGraph:
         name: str,
         function: str,
     ) -> str:
-        return self.add_node(name, Function(function))
+        return self.add_node(name, FunctionNode(function))
 
-    def add_const(self, name: str, value: Value) -> str:
-        return self.add_node(name, Constant(value))
+    def add_const(self, name: str, value: Any) -> str:
+        tkval = (
+            value
+            if isinstance(value, TierkreisValue)
+            else TierkreisValue.from_python(value)
+        )
+        return self.add_node(name, ConstNode(tkval))
 
     def add_box(self, name: str, graph: "TierkreisGraph") -> str:
-        return self.add_node(name, Box(graph))
+        return self.add_node(name, BoxNode(graph))
 
     @property
     def nodes(self) -> Dict[str, TierkreisNode]:
@@ -215,3 +293,10 @@ class TierkreisGraph:
     #     new = cls()
     #     new._g.parse(file_pointer.read())
     #     return new
+
+    def to_proto(self) -> pg.Graph:
+        return NotImplemented
+
+    @staticmethod
+    def from_proto(graph: pg.Graph) -> "TierkreisGraph":
+        return NotImplemented

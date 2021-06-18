@@ -5,7 +5,7 @@ from typing import Generic
 import typing
 
 if typing.TYPE_CHECKING:
-    from tierkreis.core.graph import Graph
+    from tierkreis.core.tierkreis_graph import TierkreisGraph
 
 
 class RuntimeStruct(ABC):
@@ -20,4 +20,4 @@ Out = typing.TypeVar("Out", bound=RuntimeStruct)
 @dataclass
 class RuntimeGraph(Generic[In, Out]):
     "Graph with a `RuntimeStruct` annotation for inputs and outputs."
-    graph: Graph
+    graph: TierkreisGraph

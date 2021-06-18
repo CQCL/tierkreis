@@ -18,7 +18,7 @@ from tierkreis.core.types import (
 
 
 if typing.TYPE_CHECKING:
-    from tierkreis.core.graph import Graph
+    from tierkreis.core.tierkreis_graph import TierkreisGraph
 
 T = typing.TypeVar("T")
 
@@ -222,7 +222,7 @@ class CircuitValue(TierkreisValue):
 
 @dataclass(frozen=True)
 class GraphValue(TierkreisValue):
-    value: Graph
+    value: TierkreisGraph
 
     def to_proto(self) -> pg.Value:
         return pg.Value(graph=self.value.to_proto())

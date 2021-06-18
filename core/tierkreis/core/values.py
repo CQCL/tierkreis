@@ -1,21 +1,12 @@
 from __future__ import annotations
 import typing
-from typing import Dict, cast, Any, Callable, Optional
+from typing import Dict, cast, Any, Callable
 import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
 from dataclasses import dataclass
 from abc import ABC, abstractmethod
 from tierkreis.core.internal import python_struct_fields
 from pytket.circuit import Circuit  # type: ignore
-from tierkreis.core.types import (
-    Row,
-    TierkreisType,
-    PairType,
-    ArrayType,
-    StructType,
-    MapType,
-)
-
 
 if typing.TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import TierkreisGraph
@@ -133,11 +124,6 @@ class TierkreisValue(ABC):
             raise ValueError(
                 f"Could not convert python value to tierkreis value: {value}"
             )
-
-    def get_type(self) -> "TierkreisType":
-        if hasattr(self, "value"):
-            return TierkreisType.from_python(type(getattr(self, "value")))
-        return NotImplemented
 
 
 @dataclass(frozen=True)
@@ -262,9 +248,6 @@ class PairValue(TierkreisValue):
         else:
             raise TypeError()
 
-    def get_type(self) -> "TierkreisType":
-        return PairType(self.first.get_type(), self.second.get_type())
-
 
 @dataclass(frozen=True)
 class ArrayValue(TierkreisValue):
@@ -284,11 +267,6 @@ class ArrayValue(TierkreisValue):
             return cast(T, values)
         else:
             raise TypeError()
-
-    def get_type(self) -> "TierkreisType":
-        if self.values:
-            return ArrayType(self.values[0].get_type())
-        raise ValueError("Array is empty.")
 
 
 @dataclass(frozen=True)
@@ -317,12 +295,6 @@ class MapValue(TierkreisValue):
             return cast(T, values)
         else:
             raise TypeError()
-
-    def get_type(self) -> "TierkreisType":
-        if self.values:
-            first_k, first_v = next(iter(self.values.items()))
-            return MapType(first_k.get_type(), first_v.get_type())
-        raise ValueError("Map is empty.")
 
 
 @dataclass(frozen=True)
@@ -361,10 +333,3 @@ class StructValue(TierkreisValue):
 
     def to_proto_dict(self) -> dict[str, pg.Value]:
         return {name: value.to_proto() for name, value in self.values.items()}
-
-    def get_type(self) -> "TierkreisType":
-        if self.values:
-            return StructType(
-                Row({name: val.get_type() for name, val in self.values.items()})
-            )
-        raise ValueError("Struct is empty.")

@@ -71,7 +71,8 @@ class ConstNode(TierkreisNode):
         return dict()
 
     def outputs(self) -> Dict[str, TierkreisType]:
-        return {"value": self.value.get_type()}
+        # TODO return "unknown type"
+        return NotImplemented
 
     def to_proto(self) -> pg.Node:
         return pg.Node(const=self.value.to_proto())

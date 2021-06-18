@@ -1,17 +1,17 @@
 """Send requests to tierkreis server to execute a graph."""
+from typing import Dict
 import requests
 from requests.models import HTTPError
 from tierkreis.core.values import TierkreisValue, StructValue
 import tierkreis.core.protos.tierkreis.graph as pg
 
-from .proto_graph_builder import ProtoGraphBuilder
 
 URL = "http://127.0.0.1:8080"
 
 
 def run_graph(
-    graph_builder: ProtoGraphBuilder, inputs: dict[str, TierkreisValue]
-) -> dict[str, TierkreisValue]:
+    graph: pg.Graph, inputs: Dict[str, TierkreisValue]
+) -> Dict[str, TierkreisValue]:
     """Run a graph and return results
 
     :param gb: Graph to run.
@@ -24,7 +24,7 @@ def run_graph(
     """
 
     req = pg.RunRequest(
-        graph=graph_builder.graph,
+        graph=graph,
         inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
     )
     resp = requests.post(

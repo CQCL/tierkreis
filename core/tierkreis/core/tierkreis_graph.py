@@ -1,7 +1,6 @@
 """Utilities for building tierkreis graphs."""
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from enum import Enum
 from typing import (
     Any,
     Dict,
@@ -17,7 +16,7 @@ from typing import (
 
 import networkx as nx  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core.types import TierkreisType
+from tierkreis.core.types import TierkreisType, IntType
 from tierkreis.core.values import TierkreisValue
 import betterproto
 
@@ -26,9 +25,12 @@ import graphviz as gv  # type: ignore
 FunctionID = NewType("FunctionID", str)
 PortID = NewType("PortID", str)
 
+# TODO request signature from runtime server
 SIGNATURE: Dict[
     FunctionID, Tuple[Dict[str, TierkreisType], Dict[str, TierkreisType]]
-] = dict()
+] = {
+    FunctionID("python_nodes/add"): ({"a": IntType(), "b": IntType()}, {"c": IntType()})
+}
 
 
 @dataclass
@@ -60,7 +62,7 @@ class TierkreisNode(ABC):
         elif name == "output":
             return OutputNode()
         else:
-            raise ValueError("Unknown protobuf node type: {}", name)
+            raise ValueError(f"Unknown protobuf node type: {name}")
 
 
 @dataclass
@@ -192,7 +194,7 @@ class TierkreisEdge:
 
 
 class TierkreisGraph:
-    """Builder for tierkreis graphs."""
+    """TierkreisGraph."""
 
     input_node_name: str = "input"
     output_node_name: str = "output"
@@ -203,7 +205,7 @@ class TierkreisGraph:
         self._graph.add_node(self.input_node_name, node_info=InputNode())
         self._graph.add_node(self.output_node_name, node_info=OutputNode())
 
-        # self._name_counts = {name: 0 for name in ("const, box, function")}
+        self._name_counts = {name: 0 for name in ("const, box")}
 
     @property
     def n_nodes(self) -> int:
@@ -217,18 +219,31 @@ class TierkreisGraph:
     def outputs(self) -> Dict[str, TierkreisType]:
         return self[self.output_node_name].node.inputs()
 
+    def _get_fresh_name(self, name_class: str) -> str:
+        if name_class not in self._name_counts:
+            self._name_counts[name_class] = 0
+        count = self._name_counts[name_class]
+        suffix = f"_{count}" if count > 0 else ""
+
+        self._name_counts[name_class] += 1
+        return f"{name_class}{suffix}"
+
     def _add_node(self, name: str, node: TierkreisNode) -> NodeRef:
         self._graph.add_node(name, node_info=node)
         return NodeRef(name, node)
 
     def add_function_node(
         self,
-        name: str,
         function: str,
+        name: Optional[str] = None,
     ) -> NodeRef:
+        if name is None:
+            name = self._get_fresh_name(function)
         return self._add_node(name, FunctionNode(FunctionID(function)))
 
-    def add_const(self, name: str, value: Any) -> NodeRef:
+    def add_const(self, value: Any, name: Optional[str] = None) -> NodeRef:
+        if name is None:
+            name = self._get_fresh_name("const")
         tkval = (
             value
             if isinstance(value, TierkreisValue)
@@ -236,7 +251,9 @@ class TierkreisGraph:
         )
         return self._add_node(name, ConstNode(tkval))
 
-    def add_box(self, name: str, graph: "TierkreisGraph") -> NodeRef:
+    def add_box(self, graph: "TierkreisGraph", name: Optional[str] = None) -> NodeRef:
+        if name is None:
+            name = self._get_fresh_name("box")
         return self._add_node(name, BoxNode(graph))
 
     def nodes(self) -> Dict[str, TierkreisNode]:
@@ -369,9 +386,9 @@ class TierkreisGraph:
 
 def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
     """
-    Return a visual representation of the DAG as a graphviz object.
+    Return a visual representation of the TierkreisGraph as a graphviz object.
 
-    :returns:   Representation of the DAG
+    :returns:   Representation of the TierkreisGraph
     :rtype:     graphviz.DiGraph
     """
     gv_graph = gv.Digraph(
@@ -389,23 +406,22 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
     boundary_node_attr = {"fontname": "Courier", "fontsize": "8"}
     boundary_nodes = {tk_graph.input_node_name, tk_graph.output_node_name}
 
-    with gv_graph.subgraph(name="cluster_input") as c:
-        c.attr(rank="source")
-        c.node_attr.update(shape="point", color=io_color)
+    with gv_graph.subgraph(name="cluster_input") as cluster:
+        cluster.attr(rank="source")
+        cluster.node_attr.update(shape="point", color=io_color)
         for port in tk_graph.inputs:
-            c.node(
+            cluster.node(
                 name=f"({tk_graph.input_node_name}out, {port})",
                 xlabel="Input" + str(port),
                 **boundary_node_attr,
             )
 
-    with gv_graph.subgraph(name="cluster_output") as c:
-        c.attr(rank="sink")
-        c.node_attr.update(shape="point", color=io_color)
+    with gv_graph.subgraph(name="cluster_output") as cluster:
+        cluster.attr(rank="sink")
+        cluster.node_attr.update(shape="point", color=io_color)
         for port in tk_graph.outputs:
-            c.node(
+            cluster.node(
                 name=f"({tk_graph.output_node_name}in, {port})",
-                # name=str(((str(self._o) + "in").replace("::", "_"), i)),
                 xlabel="Output",
                 **boundary_node_attr,
             )
@@ -439,31 +455,25 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
     for node_name in tk_graph.nodes():
 
         if node_name not in boundary_nodes:
-            with gv_graph.subgraph(name=f"cluster_{node_name}{count}") as c:
+            with gv_graph.subgraph(name=f"cluster_{node_name}{count}") as cluster:
                 count = count + 1
-                c.attr(label=node_name, **node_cluster_attr)
+                cluster.attr(label=node_name, **node_cluster_attr)
 
                 incoming_edges = tk_graph.in_edges(node_name)
 
-                for e in incoming_edges:
-                    c.node(
-                        name=f"({node_name}in, {e.target.port})",
-                        # name=str(((str(node) + "in").replace("::", "-"), i)),
-                        xlabel=str(e.target.port),
+                for edge in incoming_edges:
+                    cluster.node(
+                        name=f"({node_name}in, {edge.target.port})",
+                        xlabel=str(edge.target.port),
                         **in_port_node_attr,
                     )
 
                 outgoing_edges = tk_graph.out_edges(node_name)
-                # if len(outgoing_edges) == 1:
-                #     c.node(
-                #         name=f"({node_name}out, 0)",
-                #         **out_port_node_attr,
-                #     )
-                # else:
-                for e in outgoing_edges:
-                    c.node(
-                        name=f"({node_name}out, {e.source.port})",
-                        xlabel=str(e.source.port),
+
+                for edge in outgoing_edges:
+                    cluster.node(
+                        name=f"({node_name}out, {edge.source.port})",
+                        xlabel=str(edge.source.port),
                         **out_port_node_attr,
                     )
 

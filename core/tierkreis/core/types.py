@@ -3,7 +3,7 @@ import typing
 from dataclasses import dataclass, field
 import tierkreis.core.protos.tierkreis.graph as pg
 from pytket.circuit import Circuit  # type: ignore
-from typing import Optional, cast
+from typing import Dict, List, Optional, cast
 from tierkreis.core.internal import python_struct_fields
 import betterproto
 
@@ -177,7 +177,7 @@ class MapType(TierkreisType):
 
 @dataclass
 class Row:
-    content: dict[str, TierkreisType] = field(default_factory=dict)
+    content: Dict[str, TierkreisType] = field(default_factory=dict)
     rest: Optional[str] = None
 
     def to_proto(self) -> pg.RowType:
@@ -262,8 +262,8 @@ class RowKind(Kind):
 
 @dataclass
 class TypeScheme:
-    variables: dict[str, Kind]
-    constraints: list[Constraint]
+    variables: Dict[str, Kind]
+    constraints: List[Constraint]
     body: TierkreisType
 
     def to_proto(self) -> pg.TypeScheme:

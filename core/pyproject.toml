@@ -20,6 +20,7 @@ pytket = "^0.11.0"
 black = "^21.5b1"
 mypy = "^0.812"
 pylint = "^2.8.3"
+pytest = "^6.2.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

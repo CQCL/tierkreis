@@ -2,81 +2,81 @@ from typing import Dict, List, Tuple, Type, Any
 from dataclasses import dataclass
 import pytest
 from pytket import Circuit  # type: ignore
-from tierkreis.frontend.proto_graph_builder import ProtoGraphBuilder
-from tierkreis.core.values import TierkreisValue, TierkreisStruct
+from tierkreis.core import TierkreisGraph
+from tierkreis.core.tierkreis_graph import NodePort, PortID
+from tierkreis.core.values import TierkreisValue
 from tierkreis.frontend.run_graph import run_graph
 
 
-def nint_adder(n: int) -> ProtoGraphBuilder:
-    gb = ProtoGraphBuilder()
+def nint_adder(n: int) -> TierkreisGraph:
+    tk_g = TierkreisGraph()
 
-    # c_node = gb.add_node("const1", "const", {"value": 67})
-    unp_node = gb.add_node("unp", "builtin/unpack_array")
-    # gb.add_edge((c_node, "out"), (add_node, "rhs"))
-    add_node0 = gb.add_node("add0", "python_nodes/add")
-    gb.add_edge((unp_node, "0"), (add_node0, "a"), int)
-    gb.add_edge((unp_node, "1"), (add_node0, "b"), int)
+    unp_node = tk_g.add_function_node("builtin/unpack_array")
+    add_node0 = tk_g.add_function_node("python_nodes/add")
+    tk_g.add_edge(NodePort(unp_node, PortID("0")), add_node0.in_port.a)
+    tk_g.add_edge(NodePort(unp_node, PortID("1")), add_node0.in_port.b)
     add_nodes = [add_node0]
 
     for i in range(1, n - 1):
-        n_nod = gb.add_node(f"add{i}", "python_nodes/add")
-        gb.add_edge((add_nodes[i - 1], "c"), (n_nod, "a"), int)
-        gb.add_edge((unp_node, f"{i+1}"), (n_nod, "b"), int)
+        n_nod = tk_g.add_function_node("python_nodes/add")
+        tk_g.add_edge(add_nodes[i - 1].out_port.c, n_nod.in_port.a)
+        tk_g.add_edge(NodePort(unp_node, PortID(f"{i+1}")), n_nod.in_port.b)
         add_nodes.append(n_nod)
 
-    gb.register_input("in", List[int], (unp_node, "array"))
-    gb.register_output("out", int, (add_nodes[-1], "c"))
+    tk_g.register_input("in", NodePort(unp_node, PortID("array")), int)
+    tk_g.register_output("out", add_nodes[-1].out_port.c)
 
-    return gb
+    return tk_g
 
 
-def add_n_graph(n: int) -> ProtoGraphBuilder:
-    gb = ProtoGraphBuilder()
-    const_node = gb.add_const("increment", n)
-    add_node = gb.add_node("add", "python_nodes/add")
-    gb.add_edge((const_node, "value"), (add_node, "a"), int)
+def add_n_graph(n: int) -> TierkreisGraph:
+    tk_g = TierkreisGraph()
+    const_node = tk_g.add_const(n)
+    add_node = tk_g.add_function_node("python_nodes/add")
+    tk_g.add_edge(const_node.out_port.value, add_node.in_port.a)
 
-    gb.register_input("in", int, (add_node, "b"))
-    gb.register_output("out", int, (add_node, "c"))
+    tk_g.register_input("in", add_node.in_port.b)
+    tk_g.register_output("out", add_node.out_port.c)
 
-    return gb
+    return tk_g
 
 
 def test_nint_adder():
     for in_list in ([1] * 5, list(range(5))):
-        gb = nint_adder(len(in_list))
+        tk_g = nint_adder(len(in_list))
         in_list_value = TierkreisValue.from_python(in_list)
-        outputs = run_graph(gb, {"in": in_list_value})
-        assert TierkreisValue.to_python(outputs["out"], int) == sum(in_list)
+        outputs = run_graph(tk_g.to_proto(), {"in": in_list_value})
+        print(outputs)
+        assert outputs["out"].to_python(int) == sum(in_list)
 
 
 def test_switch():
     add_2_g = add_n_graph(2)
     add_3_g = add_n_graph(3)
-    gb = ProtoGraphBuilder()
+    tk_g = TierkreisGraph()
 
-    true_thunk = gb.add_const("true_thunk", add_2_g.graph)
-    false_thunk = gb.add_const("false_thunk", add_3_g.graph)
+    true_thunk = tk_g.add_const(add_2_g)
+    false_thunk = tk_g.add_const(add_3_g)
 
-    switch = gb.add_node("switch", "builtin/switch")
-    gb.add_edge((true_thunk, "value"), (switch, "true"), add_2_g.get_type())
-    gb.add_edge((false_thunk, "value"), (switch, "false"), add_3_g.get_type())
+    switch = tk_g.add_function_node("builtin/switch")
+    tk_g.add_edge(true_thunk.out_port.value, NodePort(switch, PortID("true")))
+    tk_g.add_edge(false_thunk.out_port.value, NodePort(switch, PortID("false")))
 
-    eval_node = gb.add_node("eval", "builtin/eval")
-    gb.add_edge((switch, "value"), (eval_node, "thunk"), add_2_g.get_type())
+    eval_node = tk_g.add_function_node("builtin/eval")
+    tk_g.add_edge(NodePort(switch, PortID("value")), NodePort(eval_node, PortID("thunk")))
 
-    gb.register_input("in", int, (eval_node, "in"))
-    gb.register_input("flag", bool, (switch, "predicate"))
-    gb.register_output("out", int, (eval_node, "out"))
+    tk_g.register_input("in", NodePort(eval_node, PortID("thunk")), int)
+    tk_g.register_input("flag", NodePort(switch, PortID("predicate")), bool)
+    tk_g.register_output("out", NodePort(eval_node, PortID("out")), int)
 
     true_value = TierkreisValue.from_python(True)
     false_value = TierkreisValue.from_python(True)
     in_value = TierkreisValue.from_python(3)
 
-    assert run_graph(gb, {"flag": true_value, "in": in_value}) == {
+    assert run_graph(tk_g.to_proto(), {"flag": true_value, "in": in_value}) == {
         "out": TierkreisValue.from_python(5)
     }
-    assert run_graph(gb, {"flag": false_value, "in": in_value}) == {
+    assert run_graph(tk_g.to_proto(), {"flag": false_value, "in": in_value}) == {
         "out": TierkreisValue.from_python(6)
     }
 
@@ -86,47 +86,47 @@ def bell_circuit() -> Circuit:
     return Circuit(2).H(0).CX(0, 1).measure_all()
 
 
-@dataclass
-class NestedStruct(TierkreisStruct):
-    s: List[int]
-    a: Tuple[int, bool]
+# @dataclass
+# class NestedStruct(TierkreisStruct):
+#     s: List[int]
+#     a: Tuple[int, bool]
 
 
-@dataclass
-class TstStruct(TierkreisStruct):
-    x: int
-    y: bool
-    c: Circuit
-    m: Dict[int, int]
-    n: NestedStruct
+# @dataclass
+# class TstStruct(TierkreisStruct):
+#     x: int
+#     y: bool
+#     c: Circuit
+#     m: Dict[int, int]
+#     n: NestedStruct
 
 
-def idpy_graph(typ: Type) -> ProtoGraphBuilder:
-    gb = ProtoGraphBuilder()
-    id_node = gb.add_node("id_py", "python_nodes/id_py")
+def idpy_graph(typ: Type) -> TierkreisGraph:
+    tk_g = TierkreisGraph()
+    id_node = tk_g.add_function_node("python_nodes/id_py")
 
-    gb.register_input("id_in", typ, (id_node, "value"))
-    gb.register_output("id_out", typ, (id_node, "value"))
+    tk_g.register_input("id_in", id_node.in_port.value, typ)
+    tk_g.register_output("id_out",  id_node.out_port.value, typ)
 
-    return gb
+    return tk_g
 
 
 def test_idpy(bell_circuit):
     def assert_id_py(val: Any, typ: Type) -> bool:
         val_encoded = TierkreisValue.from_python(val)
-        gb = idpy_graph(typ)
-        output = run_graph(gb, {"id_in": val_encoded})
-        val_decoded = TierkreisValue.to_python(output["id_out"], typ)
+        tk_g = idpy_graph(typ)
+        output = run_graph(tk_g.to_proto(), {"id_in": val_encoded})
+        val_decoded = output["id_out"].to_python(typ)
         return val_decoded == val
 
     dic: Dict[int, bool] = {1: True, 2: False}
 
-    nestst = NestedStruct([1, 2, 3], (5, True))
-    testst = TstStruct(2, False, Circuit(1), {66: 77}, nestst)
+    # nestst = NestedStruct([1, 2, 3], (5, True))
+    # testst = TstStruct(2, False, Circuit(1), {66: 77}, nestst)
     for val, typ in [
-        (bell_circuit, Circuit),
+        # (bell_circuit, Circuit),
         (dic, Dict[int, bool]),
-        (testst, TstStruct),
+        # (testst, TstStruct),
         ("test123", str),
     ]:
         assert assert_id_py(val, typ)

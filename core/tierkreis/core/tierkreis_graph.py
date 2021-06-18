@@ -16,7 +16,7 @@ from typing import (
 
 import networkx as nx  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core.types import TierkreisType, IntType
+from tierkreis.core.types import TierkreisType, IntType, VarType
 from tierkreis.core.values import TierkreisValue
 import betterproto
 
@@ -29,7 +29,14 @@ PortID = NewType("PortID", str)
 SIGNATURE: Dict[
     FunctionID, Tuple[Dict[str, TierkreisType], Dict[str, TierkreisType]]
 ] = {
-    FunctionID("python_nodes/add"): ({"a": IntType(), "b": IntType()}, {"c": IntType()})
+    FunctionID("python_nodes/add"): (
+        {"a": IntType(), "b": IntType()},
+        {"c": IntType()},
+    ),
+    FunctionID("python_nodes/id_py"): (
+        {"value": VarType("a")},
+        {"value": VarType("a")},
+    ),
 }
 
 

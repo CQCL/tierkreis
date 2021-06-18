@@ -1,10 +1,10 @@
 import typing
-from typing import cast, Any
+from typing import cast, Any, Dict
 
 
-def python_struct_fields(type_: typing.Type) -> dict[str, typing.Type]:
+def python_struct_fields(type_: typing.Type) -> Dict[str, typing.Type]:
     def substitute(
-        type_: typing.Type, subst: dict[typing.TypeVar, typing.Type]
+        type_: typing.Type, subst: Dict[typing.TypeVar, typing.Type]
     ) -> typing.Type:
         "Substitute type variables in a type."
         if isinstance(type_, typing.TypeVar):

@@ -23,12 +23,12 @@ def nint_adder(n: int) -> TierkreisGraph:
             nod = tk_g.add_function_node("python_nodes/add")
             tk_g.add_edge(current_outputs[i], nod.in_port.a)
             tk_g.add_edge(current_outputs[i + 1], nod.in_port.b)
-            next_outputs.append(nod.out_port.c)
+            next_outputs.append(nod.out_port.value)
         if len(current_outputs) > n_even:
             nod = tk_g.add_function_node("python_nodes/add")
             tk_g.add_edge(next_outputs[-1], nod.in_port.a)
             tk_g.add_edge(current_outputs[n_even], nod.in_port.b)
-            next_outputs[-1] = nod.out_port.c
+            next_outputs[-1] = nod.out_port.value
         current_outputs = next_outputs
 
     tk_g.register_input("in", NodePort(unp_node, PortID("array")), int)
@@ -44,7 +44,7 @@ def add_n_graph(n: int) -> TierkreisGraph:
     tk_g.add_edge(const_node.out_port.value, add_node.in_port.a)
 
     tk_g.register_input("in", add_node.in_port.b)
-    tk_g.register_output("out", add_node.out_port.c)
+    tk_g.register_output("out", add_node.out_port.value)
 
     return tk_g
 
@@ -152,7 +152,7 @@ def test_compile_circuit(bell_circuit):
     compile_node = tg.add_function_node("pytket/compile_circuit")
 
     tg.register_input("in", compile_node.in_port.circuit)
-    tg.register_output("out", compile_node.out_port.circuit)
+    tg.register_output("out", compile_node.out_port.value)
     from pytket.passes import FullPeepholeOptimise  # type: ignore
 
     inp_circ = bell_circuit.copy()

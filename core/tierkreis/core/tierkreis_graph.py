@@ -31,7 +31,7 @@ SIGNATURE: Dict[
 ] = {
     FunctionID("python_nodes/add"): (
         {"a": IntType(), "b": IntType()},
-        {"c": IntType()},
+        {"value": IntType()},
     ),
     FunctionID("python_nodes/id_py"): (
         {"value": VarType("a")},
@@ -39,7 +39,7 @@ SIGNATURE: Dict[
     ),
     FunctionID("pytket/compile_circuit"): (
         {"circuit": CircuitType()},
-        {"circuit": CircuitType()},
+        {"value": CircuitType()},
     ),
 }
 

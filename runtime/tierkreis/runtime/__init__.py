@@ -19,12 +19,29 @@ from tierkreis.core.values import (
     TierkreisValue,
     StructValue,
 )
-from typing import Dict, Callable, Awaitable, Optional, List, Tuple, Any, cast, Union
+from dataclasses import make_dataclass, is_dataclass
+from tierkreis.core.tierkreis_struct import TierkreisStruct
+from typing import (
+    Dict,
+    Callable,
+    Awaitable,
+    Optional,
+    List,
+    Tuple,
+    Any,
+    Type,
+    cast,
+    Union,
+)
 import typing
 from tempfile import TemporaryDirectory
 import sys
 from dataclasses import dataclass
-from inspect import getdoc
+from inspect import getdoc, isclass
+
+
+def snake_to_pascal(name: str) -> str:
+    return name.replace("_", " ").title().replace(" ", "")
 
 
 @dataclass
@@ -56,33 +73,67 @@ class Namespace:
             # Get input and output type hints
             type_hints = typing.get_type_hints(func)
 
-            if "inputs" not in type_hints:
-                raise ValueError(
-                    "Tierkreis function must have an argument 'inputs' with a type hint."
-                )
-
             if "return" not in type_hints:
                 raise ValueError("Tierkreis function needs return type hint.")
+            return_hint = type_hints.pop("return")
 
-            hint_inputs = type_hints["inputs"]
-            hint_outputs = type_hints["return"]
+            struct_input = False
 
+            if "inputs" in type_hints:
+                tk_cls = typing.get_origin(type_hints["inputs"])
+                struct_input = (
+                    tk_cls is not None
+                    and isclass(tk_cls)
+                    and issubclass(tk_cls, TierkreisStruct)
+                )
+            if struct_input:
+                hint_inputs = type_hints["inputs"]
+            else:
+                hint_inputs = make_dataclass(
+                    f"{snake_to_pascal(func_name)}Inputs", type_hints.items()
+                )
+
+            return_cls = typing.get_origin(return_hint)
+            struct_output = False
+            if (
+                return_cls is not None
+                and isclass(return_cls)
+                and issubclass(return_cls, TierkreisStruct)
+            ):
+                hint_outputs = return_hint
+                struct_input = True
+            else:
+                hint_outputs = make_dataclass(
+                    f"{snake_to_pascal(func_name)}Outputs", [("value", return_hint)]
+                )
             # Convert type hints into tierkreis types
             type_inputs = Row.from_python(hint_inputs)
             type_outputs = Row.from_python(hint_outputs)
 
             # Wrap function with input and output conversions
             async def wrapped_func(inputs: StructValue) -> StructValue:
-                try:
-                    python_inputs = inputs.to_python(hint_inputs)
-                except Exception as error:
-                    raise DecodeInputError() from error
-                python_outputs = await func(python_inputs)
+                if struct_input:
+                    try:
+                        python_inputs = inputs.to_python(hint_inputs)
+                    except Exception as error:
+                        raise DecodeInputError() from error
+                    python_outputs = await func(python_inputs)
+                else:
+                    python_outputs = await func(
+                        **{
+                            name: val.to_python(type_hints[name])
+                            for name, val in inputs.values.items()
+                        }
+                    )
+
                 try:
                     outputs = TierkreisValue.from_python(python_outputs)
                 except Exception as error:
                     raise EncodeOutputError() from error
-                return cast(StructValue, outputs)
+                if struct_output:
+                    return cast(StructValue, outputs)
+                else:
+                    return StructValue({"value": outputs})
 
             # Convert the type vars to names
             def type_var_to_name(type_var: Union[str, typing.TypeVar]) -> str:

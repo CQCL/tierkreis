@@ -37,9 +37,9 @@ SIGNATURE: Dict[
         {"value": VarType("a")},
         {"value": VarType("a")},
     ),
-    FunctionID("python_nodes/compile_circuit"): (
+    FunctionID("pytket/compile_circuit"): (
         {"circuit": CircuitType()},
-        {"compiled_circuit": CircuitType()},
+        {"circuit": CircuitType()},
     ),
 }
 

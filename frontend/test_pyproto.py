@@ -149,10 +149,10 @@ def test_idpy(bell_circuit):
 
 def test_compile_circuit(bell_circuit):
     tg = TierkreisGraph()
-    compile_node = tg.add_function_node("python_nodes/compile_circuit")
+    compile_node = tg.add_function_node("pytket/compile_circuit")
 
     tg.register_input("in", compile_node.in_port.circuit)
-    tg.register_output("out", compile_node.out_port.compiled_circuit)
+    tg.register_output("out", compile_node.out_port.circuit)
     from pytket.passes import FullPeepholeOptimise  # type: ignore
 
     inp_circ = bell_circuit.copy()

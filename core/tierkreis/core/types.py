@@ -5,6 +5,7 @@ import tierkreis.core.protos.tierkreis.graph as pg
 from pytket.circuit import Circuit  # type: ignore
 from typing import Dict, List, Optional, cast
 from tierkreis.core.internal import python_struct_fields
+from tierkreis.core.tierkreis_struct import TierkreisStruct
 import betterproto
 
 
@@ -18,7 +19,7 @@ class TierkreisType(ABC):
     def from_python(type_: typing.Type) -> "TierkreisType":
         "Converts a python type to its corresponding tierkreis type."
 
-        from tierkreis.core.python import RuntimeGraph, RuntimeStruct
+        from tierkreis.core.python import RuntimeGraph
 
         type_origin = typing.get_origin(type_)
 
@@ -56,9 +57,9 @@ class TierkreisType(ABC):
             return GraphType(
                 inputs=Row.from_python(args[0]), outputs=Row.from_python(args[1])
             )
-        elif type_origin is None and RuntimeStruct in type_.__bases__:
+        elif type_origin is None and TierkreisStruct in type_.__bases__:
             return StructType(shape=Row.from_python(type_))
-        elif type_origin is not None and RuntimeStruct in type_origin.__bases__:
+        elif type_origin is not None and TierkreisStruct in type_origin.__bases__:
             return StructType(shape=Row.from_python(type_))
         else:
             raise ValueError(

@@ -4,17 +4,14 @@ from dataclasses import dataclass
 from typing import Generic
 import typing
 
+from tierkreis.core.tierkreis_struct import TierkreisStruct
 if typing.TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import TierkreisGraph
 
 
-class RuntimeStruct(ABC):
-    "Abstract base class for classes that should encode structs at runtime."
-    pass
 
-
-In = typing.TypeVar("In", bound=RuntimeStruct)
-Out = typing.TypeVar("Out", bound=RuntimeStruct)
+In = typing.TypeVar("In", bound=TierkreisStruct)
+Out = typing.TypeVar("Out", bound=TierkreisStruct)
 
 
 @dataclass

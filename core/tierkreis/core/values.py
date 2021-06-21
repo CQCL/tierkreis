@@ -1,12 +1,16 @@
 from __future__ import annotations
+
+import json
 import typing
-from typing import Dict, cast, Any, Callable
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any, Callable, ClassVar, Dict, List, Tuple, cast
+
 import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
-from tierkreis.core.internal import python_struct_fields
 from pytket.circuit import Circuit  # type: ignore
+from tierkreis.core.internal import python_struct_fields
+from tierkreis.core.tierkreis_struct import TierkreisStruct
 
 if typing.TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import TierkreisGraph
@@ -15,58 +19,29 @@ T = typing.TypeVar("T")
 
 
 class TierkreisValue(ABC):
+    _proto_map: Dict[str, typing.Type["TierkreisValue"]] = dict()
+    _pytype_map: Dict[typing.Type, typing.Type["TierkreisValue"]] = dict()
+
+    def __init_subclass__(cls, **kwargs) -> None:
+        super().__init_subclass__(**kwargs)
+        TierkreisValue._proto_map[getattr(cls, "_proto_name")] = cls
+        TierkreisValue._pytype_map[getattr(cls, "_pytype")] = cls
+
     @abstractmethod
     def to_proto(self) -> pg.Value:
         pass
 
-    @staticmethod
-    def from_proto(value: pg.Value) -> "TierkreisValue":
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
         """
         Parses a tierkreis type from its protobuf representation.
         """
         name, out_value = betterproto.which_one_of(value, "value")
 
-        if name == "integer":
-            return IntValue(out_value or 0)
-        elif name == "boolean":
-            return BoolValue(out_value or False)
-        elif name == "float":
-            return FloatValue(out_value or 0.0)
-        elif name == "str_":
-            return StringValue(out_value or "")
-        elif name == "circuit":
-            return CircuitValue(out_value)
-        elif name == "struct":
-            struct_value = cast(pg.StructValue, out_value)
-            return StructValue(
-                {
-                    name: TierkreisValue.from_proto(value)
-                    for name, value in struct_value.map.items()
-                }
-            )
-        elif name == "map":
-            map_value = cast(pg.MapValue, out_value)
-            entries = {}
-
-            for pair_value in map_value.pairs:
-                entry_key = TierkreisValue.from_proto(pair_value.first)
-                entry_value = TierkreisValue.from_proto(pair_value.second)
-                entries[entry_key] = entry_value
-
-            return MapValue(entries)
-        elif name == "pair":
-            pair_value = cast(pg.PairValue, out_value)
-            return PairValue(
-                TierkreisValue.from_proto(pair_value.first),
-                TierkreisValue.from_proto(pair_value.second),
-            )
-        elif name == "array":
-            array_value = cast(pg.ArrayValue, out_value)
-            return ArrayValue(
-                [TierkreisValue.from_proto(element) for element in array_value.array]
-            )
-        else:
-            raise ValueError(f"Unknown protobuf value type: {name}")
+        try:
+            return cls._proto_map[name].from_proto(out_value)
+        except KeyError as e:
+            raise ValueError(f"Unknown protobuf value type: {name}") from e
 
     @abstractmethod
     def to_python(self, type_: typing.Type[T]) -> T:
@@ -79,55 +54,64 @@ class TierkreisValue(ABC):
         """
         pass
 
-    @staticmethod
-    def from_python(value: Any) -> "TierkreisValue":
+    @classmethod
+    @abstractmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
         "Converts a python value to a tierkreis value."
+        # TODO find workaround for delayed imports
+        from tierkreis.core.python import RuntimeGraph
+        from tierkreis.core.tierkreis_graph import GraphValue
 
-        from tierkreis.core.python import RuntimeGraph, RuntimeStruct
-
-        if isinstance(value, int):
-            return IntValue(value)
-        elif isinstance(value, str):
-            return StringValue(value)
-        elif isinstance(value, float):
-            return FloatValue(value)
-        elif isinstance(value, bool):
-            return BoolValue(value)
-        elif isinstance(value, tuple):
-            return PairValue(
-                TierkreisValue.from_python(value[0]),
-                TierkreisValue.from_python(value[1]),
-            )
-        elif isinstance(value, list):
-            return ArrayValue(
-                [TierkreisValue.from_python(element) for element in value]
-            )
-        elif isinstance(value, dict):
-            return MapValue(
-                {
-                    element_name: TierkreisValue.from_python(element_value)
-                    for element_name, element_value in value.items()
-                }
-            )
-        elif isinstance(value, RuntimeStruct):
-            return StructValue(
-                {
-                    name: TierkreisValue.from_python(value)
-                    for name, value in vars(value).items()
-                }
-            )
-        elif isinstance(value, RuntimeGraph):
-            return GraphValue(value.graph)
-        elif isinstance(value, TierkreisValue):
+        if isinstance(value, TierkreisValue):
             return value
+        if isinstance(value, RuntimeGraph):
+            return GraphValue(value.graph)
+        if isinstance(value, bool):
+            find_subclass = cls._pytype_map[bool]
         else:
-            raise ValueError(
-                f"Could not convert python value to tierkreis value: {value}"
-            )
+            try:
+                find_subclass = next(
+                    cls._pytype_map[pytype]
+                    for pytype in cls._pytype_map
+                    if isinstance(value, pytype)
+                )
+            except StopIteration as e:
+                raise ValueError(
+                    f"Could not convert python value to tierkreis value: {value}"
+                ) from e
+        return find_subclass.from_python(value)
+
+
+@dataclass(frozen=True)
+class BoolValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "boolean"
+    _pytype: ClassVar[typing.Type] = bool
+
+    value: bool
+
+    def to_proto(self) -> pg.Value:
+        return pg.Value(boolean=self.value)
+
+    def to_python(self, type_: typing.Type[T]) -> T:
+        if isinstance(type_, typing.TypeVar):
+            return cast(T, self)
+        if type_ is bool:
+            return cast(T, self.value)
+        raise TypeError()
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return cls(value or False)
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        return cls(value)
 
 
 @dataclass(frozen=True)
 class StringValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "str_"
+    _pytype: ClassVar[typing.Type] = str
     value: str
 
     def to_proto(self) -> pg.Value:
@@ -138,12 +122,21 @@ class StringValue(TierkreisValue):
             return cast(T, self)
         if type_ is str:
             return cast(T, self.value)
-        else:
-            raise TypeError()
+        raise TypeError()
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return cls(value or "")
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        return cls(value)
 
 
 @dataclass(frozen=True)
 class IntValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "integer"
+    _pytype: ClassVar[typing.Type] = int
     value: int
 
     def to_proto(self) -> pg.Value:
@@ -157,9 +150,19 @@ class IntValue(TierkreisValue):
         else:
             raise TypeError()
 
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return cls(value or 0)
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        return cls(value)
+
 
 @dataclass(frozen=True)
 class FloatValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "flt"
+    _pytype: ClassVar[typing.Type] = float
     value: float
 
     def to_proto(self) -> pg.Value:
@@ -173,59 +176,45 @@ class FloatValue(TierkreisValue):
         else:
             raise TypeError()
 
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return cls(value or 0.0)
 
-@dataclass(frozen=True)
-class BoolValue(TierkreisValue):
-    value: bool
-
-    def to_proto(self) -> pg.Value:
-        return pg.Value(boolean=self.value)
-
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
-        if type_ is bool:
-            return cast(T, self.value)
-        else:
-            raise TypeError()
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        return cls(value)
 
 
 @dataclass(frozen=True)
 class CircuitValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "circuit"
+    _pytype: ClassVar[typing.Type] = Circuit
+
     value: Circuit
 
     def to_proto(self) -> pg.Value:
-        return pg.Value(circuit=self.value)
+        return pg.Value(circuit=json.dumps(self.value.to_dict()))
 
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
         if type_ is Circuit:
             return cast(T, self.value)
-        else:
-            raise TypeError()
+        raise TypeError()
 
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return cls(value)
 
-@dataclass(frozen=True)
-class GraphValue(TierkreisValue):
-    value: TierkreisGraph
-
-    def to_proto(self) -> pg.Value:
-        return pg.Value(graph=self.value.to_proto())
-
-    def to_python(self, type_: typing.Type[T]) -> T:
-        from tierkreis.core.python import RuntimeGraph
-
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
-        if typing.get_origin(type_) is RuntimeGraph:
-            return cast(T, self.value)
-        else:
-            raise TypeError()
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        return cls(Circuit.from_dict(json.loads(cast(str, value))))
 
 
 @dataclass(frozen=True)
 class PairValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "pair"
+    _pytype: ClassVar[typing.Type] = tuple
     first: TierkreisValue
     second: TierkreisValue
 
@@ -240,17 +229,34 @@ class PairValue(TierkreisValue):
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
-        elif typing.get_origin(type_) is tuple:
+        if typing.get_origin(type_) is tuple:
             type_args = typing.get_args(type_)
             first = self.first.to_python(type_args[0])
             second = self.second.to_python(type_args[1])
             return cast(T, (first, second))
-        else:
-            raise TypeError()
+        raise TypeError()
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        value = cast(Tuple[Any, Any], value)
+        return PairValue(
+            TierkreisValue.from_python(value[0]),
+            TierkreisValue.from_python(value[1]),
+        )
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        pair_value = cast(pg.PairValue, value)
+        return PairValue(
+            TierkreisValue.from_proto(pair_value.first),
+            TierkreisValue.from_proto(pair_value.second),
+        )
 
 
 @dataclass(frozen=True)
 class ArrayValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "array"
+    _pytype: ClassVar[typing.Type] = list
     values: list[TierkreisValue]
 
     def to_proto(self) -> pg.Value:
@@ -261,16 +267,30 @@ class ArrayValue(TierkreisValue):
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
-        elif typing.get_origin(type_) is list:
+        if typing.get_origin(type_) is list:
             type_args = typing.get_args(type_)
             values = [value.to_python(type_args[0]) for value in self.values]
             return cast(T, values)
-        else:
-            raise TypeError()
+        raise TypeError()
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return ArrayValue(
+            [TierkreisValue.from_python(element) for element in cast(List, value)]
+        )
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        array_value = cast(pg.ArrayValue, value)
+        return ArrayValue(
+            [TierkreisValue.from_proto(element) for element in array_value.array]
+        )
 
 
 @dataclass(frozen=True)
 class MapValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "map"
+    _pytype: ClassVar[typing.Type] = dict
     values: Dict[TierkreisValue, TierkreisValue]
 
     def to_proto(self) -> pg.Value:
@@ -286,19 +306,43 @@ class MapValue(TierkreisValue):
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
-        elif typing.get_origin(type_) is dict:
+        if typing.get_origin(type_) is dict:
             type_args = typing.get_args(type_)
             values = {
                 key.to_python(type_args[0]): value.to_python(type_args[1])
                 for key, value in self.values.items()
             }
             return cast(T, values)
-        else:
-            raise TypeError()
+        raise TypeError()
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return MapValue(
+            {
+                TierkreisValue.from_python(element_key): TierkreisValue.from_python(
+                    element_value
+                )
+                for element_key, element_value in value.items()
+            }
+        )
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        map_value = cast(pg.MapValue, value)
+        entries = {}
+
+        for pair_value in map_value.pairs:
+            entry_key = TierkreisValue.from_proto(pair_value.first)
+            entry_value = TierkreisValue.from_proto(pair_value.second)
+            entries[entry_key] = entry_value
+
+        return MapValue(entries)
 
 
 @dataclass(frozen=True)
 class StructValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "struct"
+    _pytype: ClassVar[typing.Type] = TierkreisStruct
     values: Dict[str, TierkreisValue]
 
     def to_proto(self) -> pg.Value:
@@ -310,9 +354,7 @@ class StructValue(TierkreisValue):
 
         type_origin = typing.get_origin(type_) or type_
 
-        from tierkreis.core.python import RuntimeStruct
-
-        if RuntimeStruct in type_origin.__bases__:
+        if TierkreisStruct in type_origin.__bases__:
             field_values = {}
 
             for field_name, field_type in python_struct_fields(type_).items():
@@ -322,8 +364,8 @@ class StructValue(TierkreisValue):
                 field_values[field_name] = self.values[field_name].to_python(field_type)
 
             return cast(Callable[..., T], type_origin)(**field_values)
-        else:
-            raise TypeError()
+
+        raise TypeError()
 
     @staticmethod
     def from_proto_dict(values: dict[str, pg.Value]) -> "StructValue":
@@ -333,3 +375,22 @@ class StructValue(TierkreisValue):
 
     def to_proto_dict(self) -> dict[str, pg.Value]:
         return {name: value.to_proto() for name, value in self.values.items()}
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return StructValue(
+            {
+                name: TierkreisValue.from_python(value)
+                for name, value in vars(cast(TierkreisStruct, value)).items()
+            }
+        )
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        struct_value = cast(pg.StructValue, value)
+        return StructValue(
+            {
+                name: TierkreisValue.from_proto(value)
+                for name, value in struct_value.map.items()
+            }
+        )

@@ -1,4 +1,5 @@
 """Utilities for building tierkreis graphs."""
+import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import (
@@ -6,21 +7,20 @@ from typing import (
     Dict,
     Iterator,
     List,
+    NewType,
     Optional,
     Tuple,
     Type,
     Union,
     cast,
-    NewType,
 )
 
+import betterproto
+import graphviz as gv  # type: ignore
 import networkx as nx  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core.types import TierkreisType, IntType, VarType
-from tierkreis.core.values import TierkreisValue
-import betterproto
-
-import graphviz as gv  # type: ignore
+from tierkreis.core.types import CircuitType, IntType, TierkreisType, VarType
+from tierkreis.core.values import T, TierkreisValue
 
 FunctionID = NewType("FunctionID", str)
 PortID = NewType("PortID", str)
@@ -36,6 +36,10 @@ SIGNATURE: Dict[
     FunctionID("python_nodes/id_py"): (
         {"value": VarType("a")},
         {"value": VarType("a")},
+    ),
+    FunctionID("python_nodes/compile_circuit"): (
+        {"circuit": CircuitType()},
+        {"compiled_circuit": CircuitType()},
     ),
 }
 
@@ -60,13 +64,13 @@ class TierkreisNode(ABC):
 
         if name == "const":
             return ConstNode(cast(TierkreisValue, out_node))
-        elif name == "box":
+        if name == "box":
             return BoxNode(cast(TierkreisGraph, out_node))
-        elif name == "function":
+        if name == "function":
             return FunctionNode(cast(FunctionID, out_node))
-        elif name == "input":
+        if name == "input":
             return InputNode()
-        elif name == "output":
+        if name == "output":
             return OutputNode()
         else:
             raise ValueError(f"Unknown protobuf node type: {name}")
@@ -390,6 +394,11 @@ class TierkreisGraph:
             )
         return tk_graph
 
+    def to_python(self, type_: typing.Type[T]) -> T:
+        if isinstance(type_, typing.TypeVar) or type_ is TierkreisGraph:
+            return cast(T, self)
+        raise TypeError()
+
 
 def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
     """
@@ -500,3 +509,34 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
         gv_graph.edge(src_nodename, tgt_nodename, color=wire_color, **edge_attr)
 
     return gv_graph
+
+
+# GraphValue defined after TierkreisGraph to avoid circular/delayed import
+
+
+@dataclass(frozen=True)
+class GraphValue(TierkreisValue):
+    value: TierkreisGraph
+    _proto_name: str = "graph"
+    _pytype: typing.Type = TierkreisGraph
+
+    def to_proto(self) -> pg.Value:
+        return pg.Value(graph=self.value.to_proto())
+
+    def to_python(self, type_: typing.Type[T]) -> T:
+        from tierkreis.core.python import RuntimeGraph
+
+        if isinstance(type_, typing.TypeVar):
+            return cast(T, self)
+        if typing.get_origin(type_) is RuntimeGraph:
+            return cast(T, self.value)
+        else:
+            raise TypeError()
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return cls(value)
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        return cls(TierkreisGraph.from_proto(cast(pg.Graph, value)))

@@ -428,7 +428,7 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
         for port in tk_graph.inputs:
             cluster.node(
                 name=f"({tk_graph.input_node_name}out, {port})",
-                xlabel="Input" + str(port),
+                xlabel=f"{port}",
                 **boundary_node_attr,
             )
 
@@ -438,7 +438,7 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
         for port in tk_graph.outputs:
             cluster.node(
                 name=f"({tk_graph.output_node_name}in, {port})",
-                xlabel="Output",
+                xlabel=f"{port}",
                 **boundary_node_attr,
             )
 
@@ -480,7 +480,7 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
                 for edge in incoming_edges:
                     cluster.node(
                         name=f"({node_name}in, {edge.target.port})",
-                        xlabel=str(edge.target.port),
+                        xlabel=f"{edge.target.port}",
                         **in_port_node_attr,
                     )
 
@@ -489,7 +489,7 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
                 for edge in outgoing_edges:
                     cluster.node(
                         name=f"({node_name}out, {edge.source.port})",
-                        xlabel=str(edge.source.port),
+                        xlabel=f"{edge.source.port}",
                         **out_port_node_attr,
                     )
 

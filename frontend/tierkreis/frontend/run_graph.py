@@ -4,6 +4,7 @@ import requests
 from requests.models import HTTPError
 from tierkreis.core.values import TierkreisValue, StructValue
 import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.runtime as pr
 
 
 URL = "http://127.0.0.1:8080"
@@ -23,7 +24,7 @@ def run_graph(
     :rtype: PyValMap
     """
 
-    req = pg.RunRequest(
+    req = pr.RunGraphRequest(
         graph=graph,
         inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
     )
@@ -37,6 +38,6 @@ def run_graph(
             "Run request"
             f" failed with code {resp.status_code} and message {str(resp.content)}"
         )
-    out = pg.RunResponse().parse(resp.content)
+    out = pr.RunGraphResponse().parse(resp.content)
     outputs = StructValue.from_proto_dict(out.outputs.map).values
     return outputs

@@ -101,7 +101,7 @@ class Namespace:
                 and issubclass(return_cls, TierkreisStruct)
             ):
                 hint_outputs = return_hint
-                struct_input = True
+                struct_output = True
             else:
                 hint_outputs = make_dataclass(
                     f"{snake_to_pascal(func_name)}Outputs", [("value", return_hint)]
@@ -250,14 +250,14 @@ class WorkerServerImpl(WorkerBase):
             )
 
     async def signature(self) -> "SignatureResponse":
-        entries = [
+        entries = {function_name:
             pg.SignatureEntry(
                 name=function_name,
                 type_scheme=function.type_scheme.to_proto(),
                 docs=function.docs,
             )
             for (function_name, function) in self.worker.functions.items()
-        ]
+        }
 
         return SignatureResponse(entries=entries)
 

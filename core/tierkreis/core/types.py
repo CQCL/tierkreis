@@ -74,7 +74,7 @@ class TierkreisType(ABC):
             return IntType()
         elif name == "bool":
             return BoolType()
-        elif name == "str":
+        elif name == "str_":
             return StringType()
         elif name == "flt":
             return FloatType()
@@ -98,6 +98,11 @@ class TierkreisType(ABC):
             key = TierkreisType.from_proto(map_type.first)
             value = TierkreisType.from_proto(map_type.second)
             return MapType(key, value)
+        elif name == "graph":
+            graph_type = cast(pg.GraphType, out_type)
+            inputs = Row.from_proto(graph_type.inputs)
+            outputs = Row.from_proto(graph_type.outputs)
+            return GraphType(inputs, outputs)
         else:
             raise ValueError(f"Unknown protobuf type: {name}")
 
@@ -242,11 +247,22 @@ class Constraint(ABC):
     def to_proto(self) -> pg.Constraint:
         pass
 
+    @classmethod
+    def from_proto(cls, pg_const: pg.Constraint) -> "Constraint":
+        return cls()
+
 
 class Kind(ABC):
     @abstractmethod
     def to_proto(self) -> pg.Kind:
         pass
+
+    @classmethod
+    def from_proto(cls, proto_kind: pg.Kind) -> "Kind":
+        name, _ = betterproto.which_one_of(proto_kind, "kind")
+        if "name" == "row":
+            return RowKind()
+        return StarKind()
 
 
 @dataclass
@@ -265,7 +281,7 @@ class RowKind(Kind):
 class TypeScheme:
     variables: Dict[str, Kind]
     constraints: List[Constraint]
-    body: TierkreisType
+    body: GraphType
 
     def to_proto(self) -> pg.TypeScheme:
         return pg.TypeScheme(
@@ -276,3 +292,14 @@ class TypeScheme:
             constraints=[constraint.to_proto() for constraint in self.constraints],
             body=self.body.to_proto(),
         )
+
+    @classmethod
+    def from_proto(cls, proto_tg: pg.TypeScheme) -> "TypeSchema":
+        variables = {ts_var.name: Kind.from_proto(ts_var.kind) for ts_var in proto_tg.variables}
+        constraints = [Constraint.from_proto(pg_const) for pg_const in proto_tg.constraints]
+        body = TierkreisType.from_proto(proto_tg.body)
+        # g_type = proto_tg.body.graph
+
+        # inputs = Row.from_proto(g_type.inputs)
+        # outputs = Row.from_proto(g_type.outputs)
+        return cls(variables, constraints, body)

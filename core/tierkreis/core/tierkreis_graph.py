@@ -15,37 +15,42 @@ from typing import (
     cast,
 )
 
+import types
 import betterproto
 import graphviz as gv  # type: ignore
 import networkx as nx  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core.types import CircuitType, IntType, TierkreisType, VarType
+from tierkreis.core.types import (
+    GraphType,
+    TierkreisType,
+    TypeScheme,
+    Row,
+)
 from tierkreis.core.values import T, TierkreisValue
 
-FunctionID = NewType("FunctionID", str)
+FunctionID = str
 PortID = NewType("PortID", str)
 
-# TODO request signature from runtime server
-SIGNATURE: Dict[
-    FunctionID, Tuple[Dict[str, TierkreisType], Dict[str, TierkreisType]]
-] = {
-    FunctionID("python_nodes/add"): (
-        {"a": IntType(), "b": IntType()},
-        {"value": IntType()},
-    ),
-    FunctionID("python_nodes/id_py"): (
-        {"value": VarType("a")},
-        {"value": VarType("a")},
-    ),
-    FunctionID("pytket/compile_circuit"): (
-        {"circuit": CircuitType()},
-        {"value": CircuitType()},
-    ),
-}
+
+@dataclass
+class TierkreisFunction:
+    name: str
+    type_scheme: TypeScheme
+    docs: str
+
+    @classmethod
+    def from_proto(cls, pr_entry: pg.SignatureEntry) -> "TierkreisFunction":
+        return cls(
+            pr_entry.name, TypeScheme.from_proto(pr_entry.type_scheme), pr_entry.docs
+        )
 
 
 @dataclass
 class TierkreisNode(ABC):
+    @abstractmethod
+    def type_scheme(self) -> TypeScheme:
+        pass
+
     @abstractmethod
     def inputs(self) -> Dict[str, TierkreisType]:
         pass
@@ -80,6 +85,11 @@ class TierkreisNode(ABC):
 class InputNode(TierkreisNode):
     _inputs: Dict[str, TierkreisType] = field(default_factory=dict)
 
+    def type_scheme(self) -> TypeScheme:
+        return TypeScheme(
+            {}, [], GraphType(inputs=Row(), outputs=Row(content=self._inputs))
+        )
+
     def inputs(self) -> Dict[str, TierkreisType]:
         return dict()
 
@@ -96,6 +106,11 @@ class InputNode(TierkreisNode):
 @dataclass
 class OutputNode(TierkreisNode):
     _outputs: Dict[str, TierkreisType] = field(default_factory=dict)
+
+    def type_scheme(self) -> TypeScheme:
+        return TypeScheme(
+            {}, [], GraphType(outputs=Row(), inputs=Row(content=self._outputs))
+        )
 
     def inputs(self) -> Dict[str, TierkreisType]:
         return self._outputs
@@ -114,6 +129,15 @@ class OutputNode(TierkreisNode):
 class ConstNode(TierkreisNode):
     value: TierkreisValue
 
+    def type_scheme(self) -> TypeScheme:
+        # TODO return "unknown type"
+
+        return TypeScheme(
+            {},
+            [],
+            GraphType(outputs=Row(content={"value": NotImplemented}), inputs=Row()),
+        )
+
     def inputs(self) -> Dict[str, TierkreisType]:
         return dict()
 
@@ -129,6 +153,16 @@ class ConstNode(TierkreisNode):
 class BoxNode(TierkreisNode):
     graph: "TierkreisGraph"
 
+    def type_scheme(self) -> TypeScheme:
+        return TypeScheme(
+            {},
+            [],
+            GraphType(
+                outputs=Row(content=self.graph.outputs),
+                inputs=Row(content=self.graph.inputs),
+            ),
+        )
+
     def inputs(self) -> Dict[str, TierkreisType]:
         return self.graph.inputs
 
@@ -141,16 +175,26 @@ class BoxNode(TierkreisNode):
 
 @dataclass
 class FunctionNode(TierkreisNode):
-    function: FunctionID
+    function_name: str
+    _function: Optional[TierkreisFunction] = None
+
+    def type_scheme(self) -> TypeScheme:
+        if self._function is None:
+            raise RuntimeError("Function node has no loaded type signature.")
+        return self._function.type_scheme
 
     def inputs(self) -> Dict[str, TierkreisType]:
-        return SIGNATURE[self.function][0]
+        if self._function is None:
+            raise RuntimeError("Function node has no loaded type signature.")
+        return self._function.type_scheme.body.inputs.content
 
     def outputs(self) -> Dict[str, TierkreisType]:
-        return SIGNATURE[self.function][1]
+        if self._function is None:
+            raise RuntimeError("Function node has no loaded type signature.")
+        return self._function.type_scheme.body.outputs.content
 
     def to_proto(self) -> pg.Node:
-        return pg.Node(function=self.function)
+        return pg.Node(function=self.function_name)
 
 
 @dataclass(frozen=True)
@@ -165,19 +209,26 @@ class NodeRef:
 
         _node_ref: "NodeRef"
         _ports: Dict[str, TierkreisType]
+        _check_name: bool = True
 
         def __getattribute__(self, name: str) -> "NodePort":
-            if name in super().__getattribute__("_ports"):
+            if name in super().__getattribute__(
+                "_ports"
+            ) or not super().__getattribute__("_check_name"):
                 return NodePort(super().__getattribute__("_node_ref"), PortID(name))
             raise super().__getattribute__("PortNotFound")(name)
 
     @property
     def in_port(self) -> "NodeRef.Ports":
-        return self.Ports(self, self.node.inputs())
+        scheme = self.node.type_scheme()
+        check_port = scheme.body.inputs.rest is None
+        return self.Ports(self, scheme.body.inputs.content, check_port)
 
     @property
     def out_port(self) -> "NodeRef.Ports":
-        return self.Ports(self, self.node.outputs())
+        scheme = self.node.type_scheme()
+        check_port = scheme.body.inputs.rest is None
+        return self.Ports(self, scheme.body.outputs.content, check_port)
 
 
 @dataclass(frozen=True)
@@ -218,6 +269,8 @@ class TierkreisGraph:
 
         self._name_counts = {name: 0 for name in ("const, box")}
 
+        self._functions: Dict[str, Dict[str, TierkreisFunction]] = dict()
+
     @property
     def n_nodes(self) -> int:
         return len(self._graph)
@@ -245,12 +298,37 @@ class TierkreisGraph:
 
     def add_function_node(
         self,
-        function: str,
+        function: Union[str, TierkreisFunction],
         name: Optional[str] = None,
     ) -> NodeRef:
+        f_name = function if isinstance(function, str) else function.name
         if name is None:
-            name = self._get_fresh_name(function)
-        return self._add_node(name, FunctionNode(FunctionID(function)))
+            name = self._get_fresh_name(f_name)
+        if isinstance(function, TierkreisFunction):
+            _function = function
+        else:
+            _function = self._find_sig(function)
+        return self._add_node(name, FunctionNode(f_name, _function=_function))
+
+    def _find_sig(self, name: str) -> Optional[TierkreisFunction]:
+        namespace, f_name = name.split("/", 2)
+
+        if namespace in self._functions and f_name in self._functions[namespace]:
+            return self._functions[namespace][f_name]
+        return None
+
+    def load_signature(self, signature_module: types.ModuleType) -> None:
+        def name_pairs(mod: types.ModuleType) -> Iterator[Tuple[str, Any]]:
+            return ((k, v) for k, v in vars(mod).items() if not k.startswith("__"))
+
+        self._functions = {
+            namespace: {f_name: func for f_name, func in name_pairs(mod)}
+            for namespace, mod in name_pairs(signature_module)
+        }
+
+        for node in self.nodes().values():
+            if isinstance(node, FunctionNode):
+                node._function = self._find_sig(node.function_name)
 
     def add_const(self, value: Any, name: Optional[str] = None) -> NodeRef:
         if name is None:

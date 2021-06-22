@@ -52,14 +52,6 @@ class TierkreisNode(ABC):
         pass
 
     @abstractmethod
-    def inputs(self) -> Dict[str, TierkreisType]:
-        pass
-
-    @abstractmethod
-    def outputs(self) -> Dict[str, TierkreisType]:
-        pass
-
-    @abstractmethod
     def to_proto(self) -> pg.Node:
         pass
 
@@ -90,9 +82,6 @@ class InputNode(TierkreisNode):
             {}, [], GraphType(inputs=Row(), outputs=Row(content=self._inputs))
         )
 
-    def inputs(self) -> Dict[str, TierkreisType]:
-        return dict()
-
     def outputs(self) -> Dict[str, TierkreisType]:
         return self._inputs
 
@@ -115,9 +104,6 @@ class OutputNode(TierkreisNode):
     def inputs(self) -> Dict[str, TierkreisType]:
         return self._outputs
 
-    def outputs(self) -> Dict[str, TierkreisType]:
-        return dict()
-
     def to_proto(self) -> pg.Node:
         return pg.Node(output=pg.Empty())
 
@@ -138,13 +124,6 @@ class ConstNode(TierkreisNode):
             GraphType(outputs=Row(content={"value": NotImplemented}), inputs=Row()),
         )
 
-    def inputs(self) -> Dict[str, TierkreisType]:
-        return dict()
-
-    def outputs(self) -> Dict[str, TierkreisType]:
-        # TODO return "unknown type"
-        return {"value": NotImplemented}
-
     def to_proto(self) -> pg.Node:
         return pg.Node(const=self.value.to_proto())
 
@@ -163,12 +142,6 @@ class BoxNode(TierkreisNode):
             ),
         )
 
-    def inputs(self) -> Dict[str, TierkreisType]:
-        return self.graph.inputs
-
-    def outputs(self) -> Dict[str, TierkreisType]:
-        return self.graph.outputs
-
     def to_proto(self) -> pg.Node:
         return pg.Node(box=self.graph.to_proto())
 
@@ -182,16 +155,6 @@ class FunctionNode(TierkreisNode):
         if self._function is None:
             raise RuntimeError("Function node has no loaded type signature.")
         return self._function.type_scheme
-
-    def inputs(self) -> Dict[str, TierkreisType]:
-        if self._function is None:
-            raise RuntimeError("Function node has no loaded type signature.")
-        return self._function.type_scheme.body.inputs.content
-
-    def outputs(self) -> Dict[str, TierkreisType]:
-        if self._function is None:
-            raise RuntimeError("Function node has no loaded type signature.")
-        return self._function.type_scheme.body.outputs.content
 
     def to_proto(self) -> pg.Node:
         return pg.Node(function=self.function_name)
@@ -277,11 +240,11 @@ class TierkreisGraph:
 
     @property
     def inputs(self) -> Dict[str, TierkreisType]:
-        return self[self.input_node_name].node.outputs()
+        return cast(InputNode, self[self.input_node_name].node).outputs()
 
     @property
     def outputs(self) -> Dict[str, TierkreisType]:
-        return self[self.output_node_name].node.inputs()
+        return cast(OutputNode, self[self.output_node_name].node).inputs()
 
     def _get_fresh_name(self, name_class: str) -> str:
         if name_class not in self._name_counts:
@@ -388,7 +351,9 @@ class TierkreisGraph:
     ):
         node = cast(InputNode, self[self.input_node_name].node)
         if edge_type is None:
-            tk_type = node_port.node_ref.node.inputs()[node_port.port]
+            tk_type = node_port.node_ref.node.type_scheme().body.inputs.content[
+                node_port.port
+            ]
             # TODO check if tk_type is valid or unknown (e.g. ConstNode)
         else:
             tk_type = (
@@ -408,7 +373,9 @@ class TierkreisGraph:
     ):
         node = cast(OutputNode, self[self.output_node_name].node)
         if edge_type is None:
-            tk_type = node_port.node_ref.node.outputs()[node_port.port]
+            tk_type = node_port.node_ref.node.type_scheme().body.outputs.content[
+                node_port.port
+            ]
             # TODO check if tk_type is valid or unknown (e.g. ConstNode)
         else:
             tk_type = (

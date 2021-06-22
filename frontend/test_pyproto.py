@@ -11,17 +11,18 @@ from tierkreis.core.tierkreis_graph import NodePort, PortID
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.values import CircuitValue, TierkreisValue
 
-from tierkreis.frontend.run_graph import run_graph, signature
+from tierkreis.frontend.runtime_client import RuntimeClient
 
 
 @pytest.fixture(scope="module")
-def sig() -> types.ModuleType:
-    return signature()
+def client() -> RuntimeClient:
+    return RuntimeClient()
 
 
-def nint_adder(number: int, sig) -> TierkreisGraph:
+def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
+
     tk_g = TierkreisGraph()
-
+    sig = client.signature
     unp_node = tk_g.add_function_node(sig.builtin.unpack_array)
     current_outputs = [NodePort(unp_node, PortID(f"{i}")) for i in range(number)]
 
@@ -41,23 +42,23 @@ def nint_adder(number: int, sig) -> TierkreisGraph:
             next_outputs[-1] = nod.out_port.value
         current_outputs = next_outputs
 
-    tk_g.register_input("in", NodePort(unp_node, PortID("array")), int)
+    tk_g.register_input("in", unp_node.in_port.array)
     tk_g.register_output("out", current_outputs[0])
 
     return tk_g
 
 
-def test_nint_adder(sig):
+def test_nint_adder(client: RuntimeClient):
     for in_list in ([1] * 5, list(range(5))):
-        tk_g = nint_adder(len(in_list), sig)
+        tk_g = nint_adder(len(in_list), client)
         in_list_value = TierkreisValue.from_python(in_list)
-        outputs = run_graph(tk_g.to_proto(), {"in": in_list_value})
+        outputs = RuntimeClient().run_graph(tk_g, {"in": in_list_value})
         assert outputs["out"].to_python(int) == sum(in_list)
 
 
-def add_n_graph(increment: int, sig) -> TierkreisGraph:
+def add_n_graph(increment: int, client: RuntimeClient) -> TierkreisGraph:
     tk_g = TierkreisGraph()
-    tk_g.load_signature(sig)
+    tk_g.load_signature(client.signature)
     const_node = tk_g.add_const(increment)
 
     add_node = tk_g.add_function_node("python_nodes/add")
@@ -69,11 +70,11 @@ def add_n_graph(increment: int, sig) -> TierkreisGraph:
     return tk_g
 
 
-def test_switch(sig):
-    add_2_g = add_n_graph(2, sig)
-    add_3_g = add_n_graph(3, sig)
+def test_switch(client: RuntimeClient):
+    add_2_g = add_n_graph(2, client)
+    add_3_g = add_n_graph(3, client)
     tk_g = TierkreisGraph()
-
+    sig = client.signature
     true_thunk = tk_g.add_const(add_2_g)
     false_thunk = tk_g.add_const(add_3_g)
 
@@ -92,10 +93,10 @@ def test_switch(sig):
     false_value = TierkreisValue.from_python(False)
     in_value = TierkreisValue.from_python(3)
 
-    assert run_graph(tk_g.to_proto(), {"flag": true_value, "in": in_value}) == {
+    assert client.run_graph(tk_g, {"flag": true_value, "in": in_value}) == {
         "out": TierkreisValue.from_python(5)
     }
-    assert run_graph(tk_g.to_proto(), {"flag": false_value, "in": in_value}) == {
+    assert client.run_graph(tk_g, {"flag": false_value, "in": in_value}) == {
         "out": TierkreisValue.from_python(6)
     }
 
@@ -120,9 +121,9 @@ class TstStruct(TierkreisStruct):
     n: NestedStruct
 
 
-def idpy_graph(typ: Type, sig) -> TierkreisGraph:
+def idpy_graph(typ: Type, client: RuntimeClient) -> TierkreisGraph:
     tk_g = TierkreisGraph()
-    id_node = tk_g.add_function_node(sig.python_nodes.id_py)
+    id_node = tk_g.add_function_node(client.signature.python_nodes.id_py)
 
     tk_g.register_input("id_in", id_node.in_port.value, typ)
     tk_g.register_output("id_out", id_node.out_port.value, typ)
@@ -130,11 +131,11 @@ def idpy_graph(typ: Type, sig) -> TierkreisGraph:
     return tk_g
 
 
-def test_idpy(bell_circuit, sig):
+def test_idpy(bell_circuit, client: RuntimeClient):
     def assert_id_py(val: Any, typ: Type) -> bool:
         val_encoded = TierkreisValue.from_python(val)
-        tk_g = idpy_graph(typ, sig)
-        output = run_graph(tk_g.to_proto(), {"id_in": val_encoded})
+        tk_g = idpy_graph(typ, client)
+        output = client.run_graph(tk_g, {"id_in": val_encoded})
         val_decoded = output["id_out"].to_python(typ)
         return val_decoded == val
 
@@ -156,15 +157,15 @@ def test_idpy(bell_circuit, sig):
         assert assert_id_py(val, typ)
 
 
-def test_compile_circuit(bell_circuit, sig):
+def test_compile_circuit(bell_circuit, client: RuntimeClient):
     tg = TierkreisGraph()
-    compile_node = tg.add_function_node(sig.pytket.compile_circuit)
+    compile_node = tg.add_function_node(client.signature.pytket.compile_circuit)
 
     tg.register_input("in", compile_node.in_port.circuit)
     tg.register_output("out", compile_node.out_port.value)
 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)
-    assert run_graph(tg.to_proto(), {"in": CircuitValue(inp_circ)}) == {
+    assert client.run_graph(tg, {"in": CircuitValue(inp_circ)}) == {
         "out": CircuitValue(bell_circuit)
     }

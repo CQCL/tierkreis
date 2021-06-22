@@ -5,9 +5,9 @@ from typing import Generic
 import typing
 
 from tierkreis.core.tierkreis_struct import TierkreisStruct
+
 if typing.TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import TierkreisGraph
-
 
 
 In = typing.TypeVar("In", bound=TierkreisStruct)

@@ -7,7 +7,6 @@ def test_creation() -> None:
     tg = TierkreisGraph()
     n2 = tg.add_const(3)
 
-
     add_func = TierkreisFunction(
         name="python_nodes/add",
         type_scheme=TypeScheme(

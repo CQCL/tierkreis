@@ -250,8 +250,8 @@ class WorkerServerImpl(WorkerBase):
             )
 
     async def signature(self) -> "SignatureResponse":
-        entries = {function_name:
-            pg.SignatureEntry(
+        entries = {
+            function_name: pg.SignatureEntry(
                 name=function_name,
                 type_scheme=function.type_scheme.to_proto(),
                 docs=function.docs,

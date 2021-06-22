@@ -295,11 +295,11 @@ class TypeScheme:
 
     @classmethod
     def from_proto(cls, proto_tg: pg.TypeScheme) -> "TypeSchema":
-        variables = {ts_var.name: Kind.from_proto(ts_var.kind) for ts_var in proto_tg.variables}
-        constraints = [Constraint.from_proto(pg_const) for pg_const in proto_tg.constraints]
-        body = TierkreisType.from_proto(proto_tg.body)
-        # g_type = proto_tg.body.graph
-
-        # inputs = Row.from_proto(g_type.inputs)
-        # outputs = Row.from_proto(g_type.outputs)
+        variables = {
+            ts_var.name: Kind.from_proto(ts_var.kind) for ts_var in proto_tg.variables
+        }
+        constraints = [
+            Constraint.from_proto(pg_const) for pg_const in proto_tg.constraints
+        ]
+        body = cast(GraphType, TierkreisType.from_proto(proto_tg.body))
         return cls(variables, constraints, body)

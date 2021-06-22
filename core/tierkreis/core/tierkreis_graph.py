@@ -369,14 +369,7 @@ class TierkreisGraph:
         node_port_to: NodePort,
         edge_type: Optional[Union[Type, TierkreisType]] = None,
     ) -> TierkreisEdge:
-        if edge_type is None:
-            tk_type = None
-        else:
-            tk_type = (
-                edge_type
-                if isinstance(edge_type, TierkreisType)
-                else TierkreisType.from_python(edge_type)
-            )
+        tk_type = _get_edge(edge_type)
 
         edge = TierkreisEdge(node_port_from, node_port_to, tk_type)
 
@@ -388,27 +381,41 @@ class TierkreisGraph:
         return edge
 
     def register_input(
-        self, name: str, node_port: NodePort, edge_type: Optional[Type] = None
+        self,
+        name: str,
+        node_port: NodePort,
+        edge_type: Optional[Union[Type, TierkreisType]] = None,
     ):
         node = cast(InputNode, self[self.input_node_name].node)
         if edge_type is None:
             tk_type = node_port.node_ref.node.inputs()[node_port.port]
             # TODO check if tk_type is valid or unknown (e.g. ConstNode)
         else:
-            tk_type = edge_type
+            tk_type = (
+                edge_type
+                if isinstance(edge_type, TierkreisType)
+                else TierkreisType.from_python(edge_type)
+            )
         node.set_input(name, tk_type)
 
         self.add_edge(NodePort(self[self.input_node_name], PortID(name)), node_port)
 
     def register_output(
-        self, name: str, node_port: NodePort, edge_type: Optional[Type] = None
+        self,
+        name: str,
+        node_port: NodePort,
+        edge_type: Optional[Union[Type, TierkreisType]] = None,
     ):
         node = cast(OutputNode, self[self.output_node_name].node)
         if edge_type is None:
             tk_type = node_port.node_ref.node.outputs()[node_port.port]
-            # TODO check if tk_type is valid or unknown
+            # TODO check if tk_type is valid or unknown (e.g. ConstNode)
         else:
-            tk_type = edge_type
+            tk_type = (
+                edge_type
+                if isinstance(edge_type, TierkreisType)
+                else TierkreisType.from_python(edge_type)
+            )
         node.set_output(name, tk_type)
         self.add_edge(node_port, NodePort(self[self.output_node_name], PortID(name)))
 
@@ -457,25 +464,54 @@ class TierkreisGraph:
         ]
         return pg_graph
 
-    @staticmethod
-    def from_proto(pg_graph: pg.Graph) -> "TierkreisGraph":
-        tk_graph = TierkreisGraph()
+    @classmethod
+    def from_proto(cls, pg_graph: pg.Graph) -> "TierkreisGraph":
+        tk_graph = cls()
+        # io_nodes = {tk_graph.input_node_name, tk_graph.output_node_name}
         for node_name, pg_node in pg_graph.nodes.items():
             tk_graph._add_node(node_name, TierkreisNode.from_proto(pg_node))
+
+            # hack for mainting fresh names
+            if "_" in node_name:
+                base, count = node_name.split("_", 2)
+                if base in tk_graph._name_counts:
+                    try:
+                        count = int(count)
+                        tk_graph._name_counts[base] = count + 1
+                    except ValueError:
+                        pass
+
         for pg_edge in pg_graph.edges:
             source_node = tk_graph[pg_edge.node_from]
             target_node = tk_graph[pg_edge.node_to]
             source = NodePort(source_node, PortID(pg_edge.port_from))
             target = NodePort(target_node, PortID(pg_edge.port_to))
-            tk_graph.add_edge(
-                source, target, TierkreisType.from_proto(pg_edge.edge_type)
-            )
+            edge_type = TierkreisType.from_proto(pg_edge.edge_type)
+            if source_node.name == tk_graph.input_node_name:
+                tk_graph.register_input(pg_edge.port_from, target, edge_type)
+            elif target_node.name == tk_graph.output_node_name:
+                tk_graph.register_output(pg_edge.port_to, source, edge_type)
+            else:
+                tk_graph.add_edge(source, target, edge_type)
         return tk_graph
 
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar) or type_ is TierkreisGraph:
             return cast(T, self)
         raise TypeError()
+
+
+def _get_edge(
+    edge_type: Optional[Union[Type, TierkreisType]]
+) -> Optional[TierkreisType]:
+    if edge_type is None:
+        return None
+    else:
+        return (
+            edge_type
+            if isinstance(edge_type, TierkreisType)
+            else TierkreisType.from_python(edge_type)
+        )
 
 
 def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
@@ -608,8 +644,9 @@ class GraphValue(TierkreisValue):
             return cast(T, self)
         if typing.get_origin(type_) is RuntimeGraph:
             return cast(T, self.value)
-        else:
-            raise TypeError()
+        if issubclass(type_, TierkreisGraph):
+            return cast(T, self.value)
+        raise TypeError()
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":

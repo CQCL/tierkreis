@@ -1,5 +1,4 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
-import types
 from dataclasses import dataclass
 from typing import Any, Dict, List, Tuple, Type
 
@@ -20,10 +19,10 @@ def client() -> RuntimeClient:
 
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
+    sig = client.signature
 
     tk_g = TierkreisGraph()
-    sig = client.signature
-    unp_node = tk_g.add_function_node(sig.builtin.unpack_array)
+    unp_node = tk_g.add_node(sig.builtin.unpack_array, array=tk_g.input.out.array)
     current_outputs = [NodePort(unp_node, PortID(f"{i}")) for i in range(number)]
 
     while len(current_outputs) > 1:
@@ -31,19 +30,18 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
         n_even = len(current_outputs) & ~1
 
         for i in range(0, n_even, 2):
-            nod = tk_g.add_function_node(sig.python_nodes.add)
-            tk_g.add_edge(current_outputs[i], nod.in_port.a)
-            tk_g.add_edge(current_outputs[i + 1], nod.in_port.b)
-            next_outputs.append(nod.out_port.value)
+            nod = tk_g.add_node(
+                sig.python_nodes.add, a=current_outputs[i], b=current_outputs[i + 1]
+            )
+            next_outputs.append(nod.out.value)
         if len(current_outputs) > n_even:
-            nod = tk_g.add_function_node(sig.python_nodes.add)
-            tk_g.add_edge(next_outputs[-1], nod.in_port.a)
-            tk_g.add_edge(current_outputs[n_even], nod.in_port.b)
-            next_outputs[-1] = nod.out_port.value
+            nod = tk_g.add_node(
+                sig.python_nodes.add, a=next_outputs[-1], b=current_outputs[n_even]
+            )
+            next_outputs[-1] = nod.out.value
         current_outputs = next_outputs
 
-    tk_g.register_input("in", unp_node.in_port.array)
-    tk_g.register_output("out", current_outputs[0])
+    tk_g.set_outputs(out=current_outputs[0])
 
     return tk_g
 
@@ -52,51 +50,51 @@ def test_nint_adder(client: RuntimeClient):
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list), client)
         in_list_value = TierkreisValue.from_python(in_list)
-        outputs = RuntimeClient().run_graph(tk_g, {"in": in_list_value})
+        outputs = RuntimeClient().run_graph(tk_g, {"array": in_list_value})
         assert outputs["out"].to_python(int) == sum(in_list)
 
 
-def add_n_graph(increment: int, client: RuntimeClient) -> TierkreisGraph:
+def add_n_graph(increment: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
-    tk_g.load_signature(client.signature)
     const_node = tk_g.add_const(increment)
 
-    add_node = tk_g.add_function_node("python_nodes/add")
-    tk_g.add_edge(const_node.out_port.value, add_node.in_port.a)
-
-    tk_g.register_input("input", add_node.in_port.b)
-    tk_g.register_output("output", add_node.out_port.value)
+    add_node = tk_g.add_node(
+        "python_nodes/add", a=const_node.out.value, b=tk_g.input.out.number
+    )
+    tk_g.set_outputs(output=add_node.out.value)
 
     return tk_g
 
 
 def test_switch(client: RuntimeClient):
-    add_2_g = add_n_graph(2, client)
-    add_3_g = add_n_graph(3, client)
+    add_2_g = add_n_graph(2)
+    add_3_g = add_n_graph(3)
     tk_g = TierkreisGraph()
     sig = client.signature
     true_thunk = tk_g.add_const(add_2_g)
     false_thunk = tk_g.add_const(add_3_g)
 
-    switch = tk_g.add_function_node(sig.builtin.switch)
-    tk_g.add_edge(true_thunk.out_port.value, switch.in_port.true)
-    tk_g.add_edge(false_thunk.out_port.value, switch.in_port.false)
+    switch = tk_g.add_node(
+        sig.builtin.switch,
+        true=true_thunk.out.value,
+        false=false_thunk.out.value,
+        predicate=tk_g.input.out.flag,
+    )
 
-    eval_node = tk_g.add_function_node(sig.builtin.eval)
-    tk_g.add_edge(switch.out_port.value, eval_node.in_port.thunk)
+    eval_node = tk_g.add_node(
+        sig.builtin.eval, thunk=switch.out.value, number=tk_g.input.out.number
+    )
 
-    tk_g.register_input("in", eval_node.in_port.input, int)
-    tk_g.register_input("flag", switch.in_port.predicate, bool)
-    tk_g.register_output("out", eval_node.out_port.output, int)
+    tk_g.set_outputs(out=eval_node.out.output)
 
     true_value = TierkreisValue.from_python(True)
     false_value = TierkreisValue.from_python(False)
     in_value = TierkreisValue.from_python(3)
 
-    assert client.run_graph(tk_g, {"flag": true_value, "in": in_value}) == {
+    assert client.run_graph(tk_g, {"flag": true_value, "number": in_value}) == {
         "out": TierkreisValue.from_python(5)
     }
-    assert client.run_graph(tk_g, {"flag": false_value, "in": in_value}) == {
+    assert client.run_graph(tk_g, {"flag": false_value, "number": in_value}) == {
         "out": TierkreisValue.from_python(6)
     }
 
@@ -123,10 +121,10 @@ class TstStruct(TierkreisStruct):
 
 def idpy_graph(typ: Type, client: RuntimeClient) -> TierkreisGraph:
     tk_g = TierkreisGraph()
-    id_node = tk_g.add_function_node(client.signature.python_nodes.id_py)
-
-    tk_g.register_input("id_in", id_node.in_port.value, typ)
-    tk_g.register_output("id_out", id_node.out_port.value, typ)
+    id_node = tk_g.add_node(
+        client.signature.python_nodes.id_py, value=tk_g.input.out.id_in
+    )
+    tk_g.set_outputs(id_out=id_node.out.value)
 
     return tk_g
 
@@ -159,13 +157,16 @@ def test_idpy(bell_circuit, client: RuntimeClient):
 
 def test_compile_circuit(bell_circuit, client: RuntimeClient):
     tg = TierkreisGraph()
-    compile_node = tg.add_function_node(client.signature.pytket.compile_circuit)
-
-    tg.register_input("in", compile_node.in_port.circuit)
-    tg.register_output("out", compile_node.out_port.value)
+    compile_node = tg.add_node(
+        client.signature.pytket.compile_circuit, circuit=tg.input.out.input
+    )
+    tg.set_outputs(out=compile_node.out.value)
 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)
-    assert client.run_graph(tg, {"in": CircuitValue(inp_circ)}) == {
+    assert client.run_graph(tg, {"input": CircuitValue(inp_circ)}) == {
         "out": CircuitValue(bell_circuit)
     }
+
+
+# TODO signature and typecheck tests

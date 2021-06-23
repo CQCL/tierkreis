@@ -1,5 +1,5 @@
 from tierkreis.core import TierkreisGraph
-from tierkreis.core.tierkreis_graph import TierkreisEdge, TierkreisFunction
+from tierkreis.core.tierkreis_graph import NodePort, TierkreisEdge, TierkreisFunction
 from tierkreis.core.types import IntType, TypeScheme, Row, GraphType
 
 
@@ -19,18 +19,15 @@ def test_creation() -> None:
         ),
         docs="",
     )
-    add = tg.add_function_node(add_func)
-    tg.add_edge(n2.out_port.value, add.in_port.a)
-
-    tg.register_input("in", add.in_port.b)
-    tg.register_output("out", add.out_port.value)
+    add = tg.add_node(add_func, a=n2.out.value, b=tg.input.out.input)
+    tg.set_outputs(output=add.out.value)
 
     assert len(tg.nodes()) == 4
     assert len(tg.edges()) == 3
 
-    assert tg.inputs == {"in": IntType()}
-    assert tg.outputs == {"out": IntType()}
+    assert tg.inputs() == ["input"]
+    assert tg.outputs() == ["output"]
 
     assert tg.out_edges(add)[0] == TierkreisEdge(
-        add.out_port.value, tg[tg.output_node_name].in_port.out, None
+        add.out.value, NodePort(tg.output, "output"), None
     )

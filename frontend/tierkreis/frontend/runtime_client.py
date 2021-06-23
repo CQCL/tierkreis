@@ -27,6 +27,9 @@ class RuntimeHTTPError(Exception):
 class RuntimeTypeError(Exception):
     pass
 
+NamespaceDict = Dict[str, TierkreisFunction]
+RuntimeSignature = Dict[str, NamespaceDict]
+
 
 class RuntimeClient:
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
@@ -34,10 +37,10 @@ class RuntimeClient:
         self._signature_mod = self._get_signature()
 
     @property
-    def signature(self) -> Any:
+    def signature(self) -> RuntimeSignature:
         return self._signature_mod
 
-    def _get_signature(self) -> Any:
+    def _get_signature(self) -> RuntimeSignature:
         resp = requests.get(
             self._url + "/signature",
             headers={"content-type": "application/protobuf"},
@@ -45,7 +48,7 @@ class RuntimeClient:
         if resp.status_code != 200:
             raise RuntimeHTTPError("signature", resp)
 
-        return sig_module_from_proto(pr.SignatureResponse().parse(resp.content))
+        return signature_from_proto(pr.SignatureResponse().parse(resp.content))
 
     def run_graph(
         self, graph: TierkreisGraph, inputs: Dict[str, TierkreisValue]
@@ -99,7 +102,7 @@ class RuntimeClient:
         raise RuntimeTypeError(f"type error: {message}")
 
 
-def sig_module_from_proto(pr_sig: pr.SignatureResponse) -> types.ModuleType:
+def signature_from_proto(pr_sig: pr.SignatureResponse) -> RuntimeSignature:
 
     namespaces: Dict[str, Dict[str, TierkreisFunction]] = dict()
     for name, entry in pr_sig.entries.items():
@@ -109,15 +112,4 @@ def sig_module_from_proto(pr_sig: pr.SignatureResponse) -> types.ModuleType:
             namespaces[namespace][fname] = func
         else:
             namespaces[namespace] = {fname: func}
-    module_dict: Dict[str, types.ModuleType] = dict()
-    for namespace, entries in namespaces.items():
-        namespace_mod = types.ModuleType(namespace)
-
-        namespace_mod.__dict__.update(entries)
-        module_dict[namespace] = namespace_mod
-
-    run_sig = types.ModuleType(
-        "RuntimeSignature", "Available namespaces in tierkreis runtime."
-    )
-    run_sig.__dict__.update(module_dict)
-    return run_sig
+    return namespaces

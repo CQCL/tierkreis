@@ -9,6 +9,7 @@ from typing import (
     List,
     Optional,
     Set,
+    Tuple,
     Type,
     Union,
     cast,
@@ -123,12 +124,10 @@ class NodeRef:
     def __init__(
         self,
         name: str,
-        node: TierkreisNode,
         out_ports: Set[str] = set(),
         restrict_ports: bool = False,
     ) -> None:
         self.name = name
-        self.node = node
         self.out = Ports(self, out_ports, restrict_ports)
 
 
@@ -165,10 +164,10 @@ class TierkreisGraph:
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
         self._graph = nx.MultiDiGraph()
-        self.input = NodeRef(self.input_node_name, InputNode())
-        self.output = NodeRef(self.output_node_name, OutputNode())
-        self._graph.add_node(self.input.name, node_info=self.input.node)
-        self._graph.add_node(self.output.name, node_info=self.output.node)
+        self._graph.add_node(self.input_node_name, node_info=InputNode())
+        self._graph.add_node(self.output_node_name, node_info=OutputNode())
+        self.output = NodeRef(self.output_node_name)
+        self.input = NodeRef(self.input_node_name)
 
         self._name_counts = {name: 0 for name in ("const, box")}
 
@@ -194,9 +193,10 @@ class TierkreisGraph:
     def _add_node(
         self,
         node_ref: NodeRef,
+        node: TierkreisNode,
         incoming_wires: Dict[str, Union[NodePort, NodeRef]],
     ) -> NodeRef:
-        self._graph.add_node(node_ref.name, node_info=node_ref.node)
+        self._graph.add_node(node_ref.name, node_info=node)
         for target_port_name, source in incoming_wires.items():
             target = NodePort(node_ref, target_port_name)
             source = source if isinstance(source, NodePort) else source.out.value
@@ -215,8 +215,9 @@ class TierkreisGraph:
         if _tk_node_name is None:
             _tk_node_name = self._get_fresh_name(f_name)
 
+        node = FunctionNode(f_name)
         if isinstance(_tk_function, str):
-            node_ref = NodeRef(_tk_node_name, FunctionNode(f_name))
+            node_ref = NodeRef(_tk_node_name)
         else:
             scheme_body = _tk_function.type_scheme.body
             outports = set(scheme_body.outputs.content.keys())
@@ -226,12 +227,10 @@ class TierkreisGraph:
                     if inport_name not in scheme_body.inputs.content:
                         raise PortNotFound(inport_name)
 
-            node_ref = NodeRef(
-                _tk_node_name, FunctionNode(f_name), outports, restrict_outputs
-            )
+            node_ref = NodeRef(_tk_node_name, outports, restrict_outputs)
             # TODO check type
 
-        return self._add_node(node_ref, kwargs)
+        return self._add_node(node_ref, node, kwargs)
 
     def add_const(self, value: Any, name: Optional[str] = None) -> NodeRef:
         if name is None:
@@ -242,7 +241,7 @@ class TierkreisGraph:
             else TierkreisValue.from_python(value)
         )
 
-        return self._add_node(NodeRef(name, ConstNode(tkval), {"value"}, True), {})
+        return self._add_node(NodeRef(name, {"value"}, True), ConstNode(tkval), {})
 
     def add_box(
         self,
@@ -253,7 +252,7 @@ class TierkreisGraph:
         # TODO restrict to graph i/o
         if name is None:
             name = self._get_fresh_name("box")
-        return self._add_node(NodeRef(name, BoxNode(graph), set(), False), kwargs)
+        return self._add_node(NodeRef(name, set(), False), BoxNode(graph), kwargs)
 
     def nodes(self) -> Dict[str, TierkreisNode]:
         return {
@@ -266,12 +265,8 @@ class TierkreisGraph:
             for edge_info in self._graph.edges(data="edge_info", keys=False)
         ]
 
-    def __getitem__(self, key: Union[str, NodeRef]) -> NodeRef:
-        if isinstance(key, NodeRef):
-            if not self._graph.has_node(key.name):
-                raise KeyError(f"Graph does not contain node with name {key.name}")
-            return key
-        return NodeRef(key, self._graph.nodes[key]["node_info"], set(), False)
+    def __getitem__(self, key: NodeRef) -> TierkreisNode:
+        return self._graph.nodes[key.name]["node_info"]
 
     def add_edge(
         self,
@@ -317,8 +312,10 @@ class TierkreisGraph:
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()
         pg_graph.nodes = {
-            node_name: self[node_name].node.to_proto()
-            for node_name in cast(Iterator[str], self._graph.nodes)
+            node_name: node.to_proto()
+            for node_name, node in cast(
+                Iterator[Tuple[str, TierkreisNode]], self._graph.nodes(data="node_info")
+            )
         }
         pg_graph.edges = [
             cast(TierkreisEdge, edge_info[2]).to_proto()
@@ -332,7 +329,7 @@ class TierkreisGraph:
         # io_nodes = {tk_graph.input_node_name, tk_graph.output_node_name}
         for node_name, pg_node in pg_graph.nodes.items():
             tk_graph._add_node(
-                NodeRef(node_name, TierkreisNode.from_proto(pg_node)), {}
+                NodeRef(node_name), TierkreisNode.from_proto(pg_node), {}
             )
 
             # hack for mainting fresh names
@@ -346,8 +343,8 @@ class TierkreisGraph:
                         pass
 
         for pg_edge in pg_graph.edges:
-            source_node = tk_graph[pg_edge.node_from]
-            target_node = tk_graph[pg_edge.node_to]
+            source_node = NodeRef(pg_edge.node_from)
+            target_node = NodeRef(pg_edge.node_to)
             source = NodePort(source_node, PortID(pg_edge.port_from))
             target = NodePort(target_node, PortID(pg_edge.port_to))
             edge_type = TierkreisType.from_proto(pg_edge.edge_type)

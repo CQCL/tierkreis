@@ -265,8 +265,9 @@ class TierkreisGraph:
             for edge_info in self._graph.edges(data="edge_info", keys=False)
         ]
 
-    def __getitem__(self, key: NodeRef) -> TierkreisNode:
-        return self._graph.nodes[key.name]["node_info"]
+    def __getitem__(self, key: Union[str, NodeRef]) -> TierkreisNode:
+        name = key.name if isinstance(key, NodeRef) else key
+        return self._graph.nodes[name]["node_info"]
 
     def add_edge(
         self,

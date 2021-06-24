@@ -27,6 +27,7 @@ class RuntimeHTTPError(Exception):
 class RuntimeTypeError(Exception):
     pass
 
+
 NamespaceDict = Dict[str, TierkreisFunction]
 RuntimeSignature = Dict[str, NamespaceDict]
 

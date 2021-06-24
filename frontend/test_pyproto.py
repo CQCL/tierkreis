@@ -8,7 +8,7 @@ from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import NodePort, PortID
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.values import CircuitValue, TierkreisValue
+from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
 
 from tierkreis.frontend.runtime_client import RuntimeClient
 
@@ -17,13 +17,20 @@ from tierkreis.frontend.runtime_client import RuntimeClient
 def client() -> RuntimeClient:
     return RuntimeClient()
 
+# possibly can be adapted in to a parallelisation utility
+def unpack_array(
+    graph: TierkreisGraph, array_out: NodePort, size: int
+) -> List[NodePort]:
+    unpack = graph.add_node("builtin/unpack_array", array=array_out)
+    return [NodePort(unpack, PortID(f"{i}")) for i in range(size)]
+
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
     sig = client.signature
 
     tk_g = TierkreisGraph()
-    unp_node = tk_g.add_node(sig["builtin"]["unpack_array"], array=tk_g.input.out.array)
-    current_outputs = [NodePort(unp_node, PortID(f"{i}")) for i in range(number)]
+
+    current_outputs = unpack_array(tk_g, tk_g.input.out.array, number)
 
     while len(current_outputs) > 1:
         next_outputs = []
@@ -157,14 +164,16 @@ def test_idpy(bell_circuit, client: RuntimeClient):
 def test_compile_circuit(bell_circuit, client: RuntimeClient):
     tg = TierkreisGraph()
     compile_node = tg.add_node(
-        client.signature["pytket"]["compile_circuit"], circuit=tg.input.out.input
+        client.signature["pytket"]["compile_circuits"],
+        circuits=tg.input.out.input,
+        pass_name=tg.add_const("FullPeepholeOptimise"),
     )
     tg.set_outputs(out=compile_node)
 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)
-    assert client.run_graph(tg, {"input": CircuitValue(inp_circ)}) == {
-        "out": CircuitValue(bell_circuit)
+    assert client.run_graph(tg, {"input": ArrayValue([CircuitValue(inp_circ)])}) == {
+        "out": ArrayValue([CircuitValue(bell_circuit)])
     }
 
 

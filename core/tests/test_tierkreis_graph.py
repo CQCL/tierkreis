@@ -20,7 +20,7 @@ def test_creation() -> None:
         docs="",
     )
     add = tg.add_node(add_func, a=n2.out.value, b=tg.input.out.input)
-    tg.set_outputs(output=add.out.value)
+    tg.set_outputs(output=add)
 
     assert len(tg.nodes()) == 4
     assert len(tg.edges()) == 3

@@ -63,9 +63,9 @@ def add_n_graph(increment: int) -> TierkreisGraph:
     const_node = tk_g.add_const(increment)
 
     add_node = tk_g.add_node(
-        "python_nodes/add", a=const_node.out.value, b=tk_g.input.out.number
+        "python_nodes/add", a=const_node, b=tk_g.input.out.number
     )
-    tk_g.set_outputs(output=add_node.out.value)
+    tk_g.set_outputs(output=add_node)
 
     return tk_g
 
@@ -75,18 +75,16 @@ def test_switch(client: RuntimeClient):
     add_3_g = add_n_graph(3)
     tk_g = TierkreisGraph()
     sig = client.signature
-    true_thunk = tk_g.add_const(add_2_g)
-    false_thunk = tk_g.add_const(add_3_g)
 
     switch = tk_g.add_node(
         sig["builtin"]["switch"],
-        true=true_thunk.out.value,
-        false=false_thunk.out.value,
+        true=tk_g.add_const(add_2_g),
+        false=tk_g.add_const(add_3_g),
         predicate=tk_g.input.out.flag,
     )
 
     eval_node = tk_g.add_node(
-        sig["builtin"]["eval"], thunk=switch.out.value, number=tk_g.input.out.number
+        sig["builtin"]["eval"], thunk=switch, number=tk_g.input.out.number
     )
 
     tk_g.set_outputs(out=eval_node.out.output)
@@ -128,7 +126,7 @@ def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
     id_node = tk_g.add_node(
         client.signature["python_nodes"]["id_py"], value=tk_g.input.out.id_in
     )
-    tk_g.set_outputs(id_out=id_node.out.value)
+    tk_g.set_outputs(id_out=id_node)
 
     return tk_g
 
@@ -164,7 +162,7 @@ def test_compile_circuit(bell_circuit, client: RuntimeClient):
     compile_node = tg.add_node(
         client.signature["pytket"]["compile_circuit"], circuit=tg.input.out.input
     )
-    tg.set_outputs(out=compile_node.out.value)
+    tg.set_outputs(out=compile_node)
 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)

@@ -194,11 +194,14 @@ class TierkreisGraph:
     def _add_node(
         self,
         node_ref: NodeRef,
-        incoming_wires: Dict[str, NodePort],
+        incoming_wires: Dict[str, Union[NodePort, NodeRef]],
     ) -> NodeRef:
         self._graph.add_node(node_ref.name, node_info=node_ref.node)
-        for target_port_name, source_port in incoming_wires.items():
-            self.add_edge(source_port, NodePort(node_ref, target_port_name))
+        for target_port_name, source in incoming_wires.items():
+            target = NodePort(node_ref, target_port_name)
+            source = source if isinstance(source, NodePort) else source.out.value
+            self.add_edge(source, target)
+
         return node_ref
 
     def add_node(
@@ -206,7 +209,7 @@ class TierkreisGraph:
         _tk_function: Union[str, TierkreisFunction],
         _tk_node_name: Optional[str] = None,
         /,
-        **kwargs: NodePort,
+        **kwargs: Union[NodePort, NodeRef],
     ) -> NodeRef:
         f_name = _tk_function if isinstance(_tk_function, str) else _tk_function.name
         if _tk_node_name is None:
@@ -230,9 +233,7 @@ class TierkreisGraph:
 
         return self._add_node(node_ref, kwargs)
 
-    def add_const(
-        self, value: Any, name: Optional[str] = None, **kwargs: NodePort
-    ) -> NodeRef:
+    def add_const(self, value: Any, name: Optional[str] = None) -> NodeRef:
         if name is None:
             name = self._get_fresh_name("const")
         tkval = (
@@ -241,10 +242,13 @@ class TierkreisGraph:
             else TierkreisValue.from_python(value)
         )
 
-        return self._add_node(NodeRef(name, ConstNode(tkval), {"value"}, True), kwargs)
+        return self._add_node(NodeRef(name, ConstNode(tkval), {"value"}, True), {})
 
     def add_box(
-        self, graph: "TierkreisGraph", name: Optional[str] = None, **kwargs: NodePort
+        self,
+        graph: "TierkreisGraph",
+        name: Optional[str] = None,
+        **kwargs: Union[NodePort, NodeRef],
     ) -> NodeRef:
         # TODO restrict to graph i/o
         if name is None:
@@ -286,9 +290,11 @@ class TierkreisGraph:
         )
         return edge
 
-    def set_outputs(self, **kwargs: NodePort) -> None:
+    def set_outputs(self, **kwargs: Union[NodePort, NodeRef]) -> None:
         for out_name, port in kwargs.items():
-            self.add_edge(port, NodePort(self.output, out_name))
+            target = NodePort(self.output, out_name)
+            source = port if isinstance(port, NodePort) else port.out.value
+            self.add_edge(source, target)
 
     def in_edges(self, node: Union[NodeRef, str]) -> List[TierkreisEdge]:
         node_name = node if isinstance(node, str) else node.name

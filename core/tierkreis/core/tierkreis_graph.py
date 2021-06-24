@@ -203,18 +203,19 @@ class TierkreisGraph:
 
     def add_node(
         self,
-        function: Union[str, TierkreisFunction],
-        name: Optional[str] = None,
+        _tk_function: Union[str, TierkreisFunction],
+        _tk_node_name: Optional[str] = None,
+        /,
         **kwargs: NodePort,
     ) -> NodeRef:
-        f_name = function if isinstance(function, str) else function.name
-        if name is None:
-            name = self._get_fresh_name(f_name)
+        f_name = _tk_function if isinstance(_tk_function, str) else _tk_function.name
+        if _tk_node_name is None:
+            _tk_node_name = self._get_fresh_name(f_name)
 
-        if isinstance(function, str):
-            node_ref = NodeRef(name, FunctionNode(f_name))
+        if isinstance(_tk_function, str):
+            node_ref = NodeRef(_tk_node_name, FunctionNode(f_name))
         else:
-            scheme_body = function.type_scheme.body
+            scheme_body = _tk_function.type_scheme.body
             outports = set(scheme_body.outputs.content.keys())
             restrict_outputs = scheme_body.outputs.rest is None
             if scheme_body.inputs.rest is None:
@@ -222,7 +223,9 @@ class TierkreisGraph:
                     if inport_name not in scheme_body.inputs.content:
                         raise PortNotFound(inport_name)
 
-            node_ref = NodeRef(name, FunctionNode(f_name), outports, restrict_outputs)
+            node_ref = NodeRef(
+                _tk_node_name, FunctionNode(f_name), outports, restrict_outputs
+            )
             # TODO check type
 
         return self._add_node(node_ref, kwargs)

@@ -80,7 +80,9 @@ class Namespace:
             struct_input = False
 
             if "inputs" in type_hints:
-                tk_cls = typing.get_origin(type_hints["inputs"])
+                tk_cls = type_hints["inputs"]
+                origin = typing.get_origin(tk_cls)
+                tk_cls = origin if origin is not None else tk_cls
                 struct_input = (
                     tk_cls is not None
                     and isclass(tk_cls)
@@ -93,7 +95,8 @@ class Namespace:
                     f"{snake_to_pascal(func_name)}Inputs", type_hints.items()
                 )
 
-            return_cls = typing.get_origin(return_hint)
+            origin = typing.get_origin(return_hint)
+            return_cls = origin if origin is not None else return_hint
             struct_output = False
             if (
                 return_cls is not None
@@ -106,6 +109,7 @@ class Namespace:
                 hint_outputs = make_dataclass(
                     f"{snake_to_pascal(func_name)}Outputs", [("value", return_hint)]
                 )
+
             # Convert type hints into tierkreis types
             type_inputs = Row.from_python(hint_inputs)
             type_outputs = Row.from_python(hint_outputs)

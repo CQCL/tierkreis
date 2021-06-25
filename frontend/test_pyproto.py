@@ -17,6 +17,7 @@ from tierkreis.frontend.runtime_client import RuntimeClient
 def client() -> RuntimeClient:
     return RuntimeClient()
 
+
 # possibly can be adapted in to a parallelisation utility
 def unpack_array(
     graph: TierkreisGraph, array_out: NodePort, size: int
@@ -161,7 +162,7 @@ def test_idpy(bell_circuit, client: RuntimeClient):
         assert assert_id_py(val, typ)
 
 
-def test_compile_circuit(bell_circuit, client: RuntimeClient):
+def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     compile_node = tg.add_node(
         client.signature["pytket"]["compile_circuits"],
@@ -175,6 +176,24 @@ def test_compile_circuit(bell_circuit, client: RuntimeClient):
     assert client.run_graph(tg, {"input": ArrayValue([CircuitValue(inp_circ)])}) == {
         "out": ArrayValue([CircuitValue(bell_circuit)])
     }
+
+
+def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
+    tg = TierkreisGraph()
+    execute_node = tg.add_node(
+        client.signature["pytket"]["execute"],
+        circuit_shots=tg.input.out.input,
+        backend_name=tg.add_const("AerBackend"),
+    )
+    tg.set_outputs(out=execute_node)
+
+    outputs = client.run_graph(
+        tg,
+        {"input": TierkreisValue.from_python([(bell_circuit, 10), (bell_circuit, 20)])},
+    )["out"].to_python(List[Tuple[Dict[str, float], int]])
+
+    assert outputs[0][1] == 10
+    assert outputs[1][1] == 20
 
 
 # TODO signature and typecheck tests

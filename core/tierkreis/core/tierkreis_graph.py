@@ -48,21 +48,27 @@ class TierkreisNode(ABC):
     def to_proto(self) -> pg.Node:
         pass
 
-    @staticmethod
-    def from_proto(node: pg.Node) -> "TierkreisNode":
+    @classmethod
+    def from_proto(cls, node: pg.Node) -> "TierkreisNode":
         name, out_node = betterproto.which_one_of(node, "node")
 
         if name == "const":
-            return ConstNode(cast(TierkreisValue, out_node))
-        if name == "box":
-            return BoxNode(cast(TierkreisGraph, out_node))
-        if name == "function":
-            return FunctionNode(cast(FunctionID, out_node))
-        if name == "input":
-            return InputNode()
-        if name == "output":
-            return OutputNode()
-        raise ValueError(f"Unknown protobuf node type: {name}")
+            result = ConstNode(cast(TierkreisValue, out_node))
+        elif name == "box":
+            result = BoxNode(cast(TierkreisGraph, out_node))
+        elif name == "function":
+            result = FunctionNode(cast(FunctionID, out_node))
+        elif name == "input":
+            result = InputNode()
+        elif name == "output":
+            result = OutputNode()
+        else:
+            raise ValueError(f"Unknown protobuf node type: {name}")
+
+        if not isinstance(result, cls):
+            raise TypeError()
+
+        return result
 
 
 @dataclass

@@ -16,7 +16,8 @@ from typing import (
 )
 
 import betterproto
-import graphviz as gv  # type: ignore
+import graphviz as gv
+from graphviz.dot import SubgraphContext  # type: ignore
 import networkx as nx  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.types import (
@@ -161,6 +162,10 @@ class TierkreisEdge:
         )
 
 
+# allow specifying input as a port, node with single output, or constant value
+IncomingWireType = Union[NodePort, NodeRef, Any]
+
+
 class TierkreisGraph:
     """TierkreisGraph."""
 
@@ -200,11 +205,21 @@ class TierkreisGraph:
         self,
         node_ref: NodeRef,
         node: TierkreisNode,
-        incoming_wires: Dict[str, Union[NodePort, NodeRef]],
+        incoming_wires: Dict[str, IncomingWireType],
     ) -> NodeRef:
         self._graph.add_node(node_ref.name, node_info=node)
         for target_port_name, source in incoming_wires.items():
             target = NodePort(node_ref, target_port_name)
+            if not isinstance(source, (NodePort, NodeRef)):
+                try:
+                    source = self.add_const(source)
+                except ValueError as err:
+                    raise ValueError(
+                        "Incoming wire must be a NodePort, "
+                        "a NodeRef to a node with a single output 'value', "
+                        "or a constant value to be added as a ConstNode."
+                    ) from err
+
             source = source if isinstance(source, NodePort) else source.out.value
             self.add_edge(source, target)
 
@@ -215,7 +230,7 @@ class TierkreisGraph:
         _tk_function: Union[str, TierkreisFunction],
         _tk_node_name: Optional[str] = None,
         /,
-        **kwargs: Union[NodePort, NodeRef],
+        **kwargs: IncomingWireType,
     ) -> NodeRef:
         f_name = _tk_function if isinstance(_tk_function, str) else _tk_function.name
         if _tk_node_name is None:
@@ -253,7 +268,7 @@ class TierkreisGraph:
         self,
         graph: "TierkreisGraph",
         name: Optional[str] = None,
-        **kwargs: Union[NodePort, NodeRef],
+        **kwargs: IncomingWireType,
     ) -> NodeRef:
         # TODO restrict to graph i/o
         if name is None:
@@ -400,7 +415,7 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
     boundary_node_attr = {"fontname": "Courier", "fontsize": "8"}
     boundary_nodes = {tk_graph.input_node_name, tk_graph.output_node_name}
 
-    with gv_graph.subgraph(name="cluster_input") as cluster:
+    with cast(SubgraphContext, gv_graph.subgraph(name="cluster_input")) as cluster:
         cluster.attr(rank="source")
         cluster.node_attr.update(shape="point", color=io_color)
         for port in tk_graph.inputs():
@@ -410,7 +425,7 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
                 **boundary_node_attr,
             )
 
-    with gv_graph.subgraph(name="cluster_output") as cluster:
+    with cast(SubgraphContext, gv_graph.subgraph(name="cluster_output")) as cluster:
         cluster.attr(rank="sink")
         cluster.node_attr.update(shape="point", color=io_color)
         for port in tk_graph.outputs():
@@ -449,7 +464,9 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
     for node_name in tk_graph.nodes():
 
         if node_name not in boundary_nodes:
-            with gv_graph.subgraph(name=f"cluster_{node_name}{count}") as cluster:
+            with cast(
+                SubgraphContext, gv_graph.subgraph(name=f"cluster_{node_name}{count}")
+            ) as cluster:
                 count = count + 1
                 cluster.attr(label=node_name, **node_cluster_attr)
 

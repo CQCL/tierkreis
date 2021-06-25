@@ -60,9 +60,8 @@ def test_nint_adder(client: RuntimeClient):
 
 def add_n_graph(increment: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
-    const_node = tk_g.add_const(increment)
 
-    add_node = tk_g.add_node("python_nodes/add", a=const_node, b=tk_g.input.out.number)
+    add_node = tk_g.add_node("python_nodes/add", a=increment, b=tk_g.input.out.number)
     tk_g.set_outputs(output=add_node)
 
     return tk_g

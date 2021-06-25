@@ -5,7 +5,6 @@ from tierkreis.core.types import IntType, TypeScheme, Row, GraphType
 
 def test_creation() -> None:
     tg = TierkreisGraph()
-    n2 = tg.add_const(3)
 
     add_func = TierkreisFunction(
         name="python_nodes/add",
@@ -19,7 +18,7 @@ def test_creation() -> None:
         ),
         docs="",
     )
-    add = tg.add_node(add_func, a=n2.out.value, b=tg.input.out.input)
+    add = tg.add_node(add_func, a=3, b=tg.input.out.input)
     tg.set_outputs(output=add)
 
     assert len(tg.nodes()) == 4

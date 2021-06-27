@@ -54,9 +54,9 @@ class TierkreisNode(ABC):
         name, out_node = betterproto.which_one_of(node, "node")
 
         if name == "const":
-            result = ConstNode(cast(TierkreisValue, out_node))
+            result = ConstNode(TierkreisValue.from_proto(cast(pg.Value, out_node)))
         elif name == "box":
-            result = BoxNode(cast(TierkreisGraph, out_node))
+            result = BoxNode(TierkreisGraph.from_proto(cast(pg.Graph, out_node)))
         elif name == "function":
             result = FunctionNode(cast(FunctionID, out_node))
         elif name == "input":
@@ -136,6 +136,11 @@ class NodeRef:
     ) -> None:
         self.name = name
         self.out = Ports(self, out_ports, restrict_ports)
+
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, NodeRef):
+            return False
+        return self.name == o.name
 
 
 @dataclass(frozen=True)
@@ -369,7 +374,13 @@ class TierkreisGraph:
             target_node = NodeRef(pg_edge.node_to)
             source = NodePort(source_node, PortID(pg_edge.port_from))
             target = NodePort(target_node, PortID(pg_edge.port_to))
-            edge_type = TierkreisType.from_proto(pg_edge.edge_type)
+            # TODO make all edge type conversions possible
+            edge_type = pg_edge.edge_type
+            if edge_type is not None:
+                try:
+                    edge_type = TierkreisType.from_proto(edge_type)
+                except ValueError:
+                    edge_type = None
 
             tk_graph.add_edge(source, target, edge_type)
         return tk_graph
@@ -524,7 +535,7 @@ class GraphValue(TierkreisValue):
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
         if typing.get_origin(type_) is RuntimeGraph:
-            return cast(T, self.value)
+            return cast(T, RuntimeGraph(self.value))
         if issubclass(type_, TierkreisGraph):
             return cast(T, self.value)
         raise TypeError()

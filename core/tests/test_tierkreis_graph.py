@@ -21,12 +21,22 @@ def test_creation() -> None:
     add = tg.add_node(add_func, a=3, b=tg.input.out.input)
     tg.set_outputs(output=add)
 
-    assert len(tg.nodes()) == 4
-    assert len(tg.edges()) == 3
+    id_g = TierkreisGraph()
+    id_node = id_g.add_node("builtin/id", value=id_g.input.out.value)
+    id_g.set_outputs(value=id_node.out.value)
 
-    assert tg.inputs() == ["input"]
-    assert tg.outputs() == ["output"]
+    tg.add_box(id_g)
 
-    assert tg.out_edges(add)[0] == TierkreisEdge(
-        add.out.value, NodePort(tg.output, "output"), None
-    )
+    deser_tg = TierkreisGraph.from_proto(tg.to_proto())
+
+    for graph in (tg, deser_tg):
+
+        assert len(graph.nodes()) == 5
+        assert len(graph.edges()) == 3
+
+        assert graph.inputs() == ["input"]
+        assert graph.outputs() == ["output"]
+
+        assert graph.out_edges(add)[0] == TierkreisEdge(
+            add.out.value, NodePort(graph.output, "output"), None
+        )

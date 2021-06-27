@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from typing import Generic
 import typing
 
+import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
 if typing.TYPE_CHECKING:
@@ -18,3 +19,6 @@ Out = typing.TypeVar("Out", bound=TierkreisStruct)
 class RuntimeGraph(Generic[In, Out]):
     "Graph with a `RuntimeStruct` annotation for inputs and outputs."
     graph: TierkreisGraph
+
+    def to_proto(self) -> pg.Value:
+        return pg.Value(graph=self.graph.to_proto())

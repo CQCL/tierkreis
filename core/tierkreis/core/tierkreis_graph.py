@@ -506,11 +506,9 @@ def tierkreis_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
         "headclip": "true",
         "tailclip": "true",
     }
-    print(list(gv_graph))
     for edge in tk_graph.edges():
         src_nodename = f"({edge.source.node_ref.name}out, {edge.source.port})"
         tgt_nodename = f"({edge.target.node_ref.name}in, {edge.target.port})"
-        print("edge", src_nodename, tgt_nodename)
 
         gv_graph.edge(src_nodename, tgt_nodename, color=wire_color, **edge_attr)
 

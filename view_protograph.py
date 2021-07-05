@@ -2,7 +2,8 @@
 
 import argparse
 from pathlib import Path
-from tierkreis.core.tierkreis_graph import TierkreisGraph, tierkreis_graphviz
+from tierkreis.core.tierkreis_graph import TierkreisGraph
+from tierkreis.core.graphviz import tierkreis_to_graphviz
 import tierkreis.core.protos.tierkreis.graph as pg
 
 
@@ -29,5 +30,5 @@ with open(Path(args.proto_file), "rb") as f:
 
 tk_g = TierkreisGraph.from_proto(proto)
 
-gv = tierkreis_graphviz(tk_g)
+gv = tierkreis_to_graphviz(tk_g)
 gv.render(filename=args.out + ".gv", format=args.fmt, view=True)

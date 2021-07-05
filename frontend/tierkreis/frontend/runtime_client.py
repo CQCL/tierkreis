@@ -1,12 +1,10 @@
 """Send requests to tierkreis server to execute a graph."""
-from typing import Any, Dict, cast
-import types
+from typing import Dict, cast
 import betterproto
 import requests
 from dataclasses import dataclass
-from requests.models import HTTPError, Response
-from tierkreis.core.values import TierkreisValue, StructValue
 from tierkreis.core.tierkreis_graph import TierkreisFunction, TierkreisGraph
+from tierkreis.core.values import TierkreisValue, StructValue
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 
@@ -98,7 +96,6 @@ class RuntimeClient:
         if name == "success":
             message = cast(pr.InferTypeSuccess, message)
             assert message.value.graph is not None
-            print(message.value)
             return TierkreisValue.from_proto(message.value).to_python(TierkreisGraph)
         raise RuntimeTypeError(f"type error: {message}")
 

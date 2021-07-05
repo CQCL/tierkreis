@@ -120,15 +120,18 @@ class Namespace:
                     try:
                         python_inputs = inputs.to_python(hint_inputs)
                     except Exception as error:
-                        raise DecodeInputError() from error
+                        raise DecodeInputError(str(error)) from error
                     python_outputs = await func(python_inputs)
                 else:
-                    python_outputs = await func(
-                        **{
-                            name: val.to_python(type_hints[name])
-                            for name, val in inputs.values.items()
-                        }
-                    )
+                    try:
+                        python_outputs = await func(
+                            **{
+                                name: val.to_python(type_hints[name])
+                                for name, val in inputs.values.items()
+                            }
+                        )
+                    except Exception as error:
+                        raise NodeExecutionError(str(error)) from error
 
                 try:
                     outputs = TierkreisValue.from_python(python_outputs)
@@ -220,6 +223,10 @@ class EncodeOutputError(Exception):
     pass
 
 
+class NodeExecutionError(Exception):
+    pass
+
+
 class WorkerServerImpl(WorkerBase):
     def __init__(self, worker):
         self.worker = worker
@@ -247,7 +254,7 @@ class WorkerServerImpl(WorkerBase):
                 status=StatusCode.UNIMPLEMENTED,
                 message=f"Unsupported function: {function}",
             )
-        except Exception as err:
+        except NodeExecutionError as err:
             raise GRPCError(
                 status=StatusCode.UNKNOWN,
                 message=f"Error while running operation: {err}",

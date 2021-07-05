@@ -280,6 +280,21 @@ class TierkreisGraph:
             name = self._get_fresh_name("box")
         return self._add_node(NodeRef(name, set(), False), BoxNode(graph), kwargs)
 
+    def delete(self, out_port: IncomingWireType) -> None:
+        _ = self.add_node("builtin/delete", value=out_port)
+
+    def make_pair(
+        self, first_port: IncomingWireType, second_port: IncomingWireType
+    ) -> NodePort:
+        make_n = self.add_node(
+            "builtin/make_pair", first=first_port, second=second_port
+        )
+        return make_n.out.pair
+
+    def unpack_pair(self, pair_port: NodePort) -> Tuple[NodePort, NodePort]:
+        unp_n = self.add_node("builtin/unpack_pair", pair=pair_port)
+        return unp_n.out.first, unp_n.out.second
+
     def nodes(self) -> Dict[str, TierkreisNode]:
         return {
             name: self._graph.nodes[name]["node_info"] for name in self._graph.nodes

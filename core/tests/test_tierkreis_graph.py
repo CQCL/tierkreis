@@ -1,3 +1,4 @@
+import pytest
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import NodePort, TierkreisEdge, TierkreisFunction
 from tierkreis.core.types import IntType, TypeScheme, Row, GraphType
@@ -40,3 +41,35 @@ def test_creation() -> None:
         assert graph.out_edges(add)[0] == TierkreisEdge(
             add.out.value, NodePort(graph.output, "output"), None
         )
+
+
+def test_insert_subgraph() -> None:
+    subgraph = TierkreisGraph()
+
+    pair_port = subgraph.make_pair(subgraph.input.out.one, subgraph.input.out.two)
+    first_p, second_p = subgraph.unpack_pair(pair_port)
+    subgraph.delete(second_p)
+    subgraph.set_outputs(sub_out=first_p)
+
+    main_g = TierkreisGraph()
+    subgraph_outs = main_g.insert_graph(
+        subgraph, "subgraph::", one=main_g.input.out.in1, two=3
+    )
+    assert (
+        sum(node_name.startswith("subgraph::") for node_name in main_g.nodes())
+        == len(subgraph.nodes()) - 2
+    )
+    assert list(subgraph_outs.keys()) == ["sub_out"]
+    make_p = main_g.make_pair(main_g.input.out.in2, subgraph_outs["sub_out"])
+
+    main_g.set_outputs(value=make_p)
+
+    assert len(main_g.nodes()) == 7
+    assert len(main_g.edges()) == 7
+
+    with pytest.raises(TierkreisGraph.DuplicateNodeName) as e:  # type: ignore ; pytest doesn't like custom exception
+        _ = main_g.insert_graph(
+            subgraph, "subgraph::", one=main_g.input.out.newin1, two=4
+        )
+
+    assert e.value.name == "subgraph::builtin/make_pair"

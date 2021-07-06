@@ -149,6 +149,10 @@ class TierkreisGraph:
     input_node_name: str = "input"
     output_node_name: str = "output"
 
+    @dataclass
+    class DuplicateNodeName(Exception):
+        name: str
+
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
         self._graph = nx.MultiDiGraph()
@@ -184,6 +188,9 @@ class TierkreisGraph:
         node: TierkreisNode,
         incoming_wires: Dict[str, IncomingWireType],
     ) -> NodeRef:
+        if node_ref.name in self._graph.nodes:
+            raise self.DuplicateNodeName(node_ref.name)
+
         self._graph.add_node(node_ref.name, node_info=node)
         for target_port_name, source in incoming_wires.items():
             target = NodePort(node_ref, target_port_name)
@@ -245,12 +252,91 @@ class TierkreisGraph:
         self,
         graph: "TierkreisGraph",
         name: Optional[str] = None,
+        /,
         **kwargs: IncomingWireType,
     ) -> NodeRef:
         # TODO restrict to graph i/o
         if name is None:
             name = self._get_fresh_name("box")
         return self._add_node(NodeRef(name, set(), False), BoxNode(graph), kwargs)
+
+    def insert_graph(
+        self,
+        graph: "TierkreisGraph",
+        name_prefix: str = "",
+        /,
+        **kwargs: IncomingWireType,
+    ) -> Dict[str, NodePort]:
+
+        # gather maps from I/O name to node ports
+        input_wires = {
+            e.source.port: (e.target.node_ref.name, e.target.port)
+            for e in graph.out_edges(graph.input_node_name)
+        }
+        output_wires = {
+            e.target.port: (e.source.node_ref.name, e.source.port)
+            for e in graph.in_edges(graph.output_node_name)
+        }
+
+        # return a map from subgraph outputs to inserted nodeports
+        return_outputs: Dict[str, NodePort] = dict()
+        node_refs = dict()
+        for node_name, node in graph.nodes().items():
+            if node_name in {graph.input_node_name, graph.output_node_name}:
+                continue
+
+            # find any provided incoming wires to wire to this node
+            input_ports = {
+                input_port: kwargs[graph_input]
+                for graph_input, (
+                    input_node,
+                    input_port,
+                ) in input_wires.items()
+                if input_node == node_name and graph_input in kwargs
+            }
+
+            new_node_name = name_prefix + node_name
+            if new_node_name in self._graph.nodes:
+                raise self.DuplicateNodeName(new_node_name)
+
+            # find any node ports that are graph outputs
+            output_ports = {
+                graph_output: output_port
+                for graph_output, (
+                    output_node,
+                    output_port,
+                ) in output_wires.items()
+                if output_node == node_name
+            }
+            node_ref = self._add_node(
+                NodeRef(new_node_name, set(output_ports.values())), node, input_ports
+            )
+            node_refs[new_node_name] = node_ref
+            return_outputs.update(
+                {
+                    graph_output: NodePort(node_ref, output_port)
+                    for graph_output, output_port in output_ports.items()
+                }
+            )
+
+        for edge in graph.edges():
+            source_node = edge.source.node_ref.name
+            target_node = edge.target.node_ref.name
+            if (
+                source_node == graph.input_node_name
+                or target_node == graph.output_node_name
+            ):
+                continue
+            source_node = name_prefix + source_node
+            target_node = name_prefix + target_node
+
+            self.add_edge(
+                NodePort(node_refs[source_node], edge.source.port),
+                NodePort(node_refs[target_node], edge.target.port),
+                edge.type,
+            )
+
+        return return_outputs
 
     def delete(self, out_port: NodePort) -> None:
         _ = self.add_node("builtin/delete", value=out_port)
@@ -342,6 +428,8 @@ class TierkreisGraph:
         tk_graph = cls()
         # io_nodes = {tk_graph.input_node_name, tk_graph.output_node_name}
         for node_name, pg_node in pg_graph.nodes.items():
+            if node_name in {tk_graph.input_node_name, tk_graph.output_node_name}:
+                continue
             tk_graph._add_node(
                 NodeRef(node_name), TierkreisNode.from_proto(pg_node), {}
             )

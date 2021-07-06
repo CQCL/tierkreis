@@ -8,11 +8,29 @@ import betterproto
 import networkx as nx  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.types import TierkreisType
+import tierkreis.core.protos.tierkreis.signature as ps
+from tierkreis.core.types import (
+    TierkreisType,
+    TypeScheme,
+)
 from tierkreis.core.values import T, TierkreisValue
 from tierkreis.core.function import TierkreisFunction
 
 FunctionID = str
 PortID = str
+
+
+@dataclass
+class TierkreisFunction:
+    name: str
+    type_scheme: TypeScheme
+    docs: str
+
+    @classmethod
+    def from_proto(cls, pr_entry: ps.FunctionDeclaration) -> "TierkreisFunction":
+        return cls(
+            pr_entry.name, TypeScheme.from_proto(pr_entry.type_scheme), pr_entry.docs
+        )
 
 
 @dataclass

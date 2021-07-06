@@ -5,8 +5,8 @@ from grpclib.const import Status as StatusCode
 from tierkreis.core.protos.tierkreis.worker import (
     WorkerBase,
     RunFunctionResponse,
-    SignatureResponse,
 )
+import tierkreis.core.protos.tierkreis.signature as ps
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.types import (
     Constraint,
@@ -48,7 +48,7 @@ def snake_to_pascal(name: str) -> str:
 class Function:
     run: Callable[[StructValue], Awaitable[StructValue]]
     type_scheme: TypeScheme
-    docs: Optional[str]
+    description: Optional[str]
 
 
 class Namespace:
@@ -166,7 +166,7 @@ class Namespace:
             self.functions[func_name] = Function(
                 run=wrapped_func,
                 type_scheme=type_scheme,
-                docs=getdoc(func),
+                description=getdoc(func),
             )
             return func
 
@@ -198,7 +198,7 @@ class Worker:
             socket_path = "{}/{}".format(socket_dir, "python_worker.sock")
 
             # Start the python worker gRPC server and bind to the unix domain socket.
-            server = Server([WorkerServerImpl(self)])
+            server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
             await server.start(path=socket_path)
 
             # Print the path of the unix domain socket to stdout so the runtime can
@@ -228,16 +228,18 @@ class NodeExecutionError(Exception):
 
 
 class WorkerServerImpl(WorkerBase):
-    def __init__(self, worker):
+    worker: Worker
+
+    def __init__(self, worker: Worker):
         self.worker = worker
 
     async def run_function(
-        self, function: str, inputs: Dict[str, "pg.Value"]
+        self, function: str, inputs: "pg.StructValue"
     ) -> "RunFunctionResponse":
         try:
-            inputs_struct = StructValue.from_proto_dict(inputs)
+            inputs_struct = StructValue.from_proto_dict(inputs.map)
             outputs_struct = await self.worker.run(function, inputs_struct)
-            outputs = outputs_struct.to_proto_dict()
+            outputs = pg.StructValue(outputs_struct.to_proto_dict())
             return RunFunctionResponse(outputs=outputs)
         except DecodeInputError as err:
             raise GRPCError(
@@ -260,17 +262,23 @@ class WorkerServerImpl(WorkerBase):
                 message=f"Error while running operation: {err}",
             )
 
-    async def signature(self) -> "SignatureResponse":
-        entries = {
-            function_name: pg.SignatureEntry(
+class SignatureServerImpl(ps.SignatureBase):
+    worker: Worker
+
+    def __init__(self, worker: Worker):
+        self.worker = worker
+
+    async def list_functions(self) -> "ps.ListFunctionsResponse":
+        functions = {
+            function_name: ps.FunctionDeclaration(
                 name=function_name,
                 type_scheme=function.type_scheme.to_proto(),
-                docs=function.docs,
+                description=function.description or "",
             )
             for (function_name, function) in self.worker.functions.items()
         }
 
-        return SignatureResponse(entries=entries)
+        return ps.ListFunctionsResponse(functions=functions)
 
 
 async def main():

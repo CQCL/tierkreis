@@ -1,6 +1,6 @@
 """TierkreisFunction encapsulation of available function signatures"""
 from dataclasses import dataclass
-import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.types import TypeScheme
 
 
@@ -13,7 +13,7 @@ class TierkreisFunction:
     docs: str
 
     @classmethod
-    def from_proto(cls, pr_entry: pg.SignatureEntry) -> "TierkreisFunction":
+    def from_proto(cls, pr_entry: ps.FunctionDeclaration) -> "TierkreisFunction":
         return cls(
             pr_entry.name, TypeScheme.from_proto(pr_entry.type_scheme), pr_entry.docs
         )

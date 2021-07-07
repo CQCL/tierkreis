@@ -262,6 +262,7 @@ class WorkerServerImpl(WorkerBase):
                 message=f"Error while running operation: {err}",
             )
 
+
 class SignatureServerImpl(ps.SignatureBase):
     worker: Worker
 

@@ -7,6 +7,7 @@ from tierkreis.core.tierkreis_graph import TierkreisFunction, TierkreisGraph
 from tierkreis.core.values import TierkreisValue, StructValue
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
+import tierkreis.core.protos.tierkreis.signature as ps
 
 
 @dataclass
@@ -47,7 +48,7 @@ class RuntimeClient:
         if resp.status_code != 200:
             raise RuntimeHTTPError("signature", resp)
 
-        return signature_from_proto(pr.SignatureResponse().parse(resp.content))
+        return signature_from_proto(ps.ListFunctionsResponse().parse(resp.content))
 
     def run_graph(
         self, graph: TierkreisGraph, inputs: Dict[str, TierkreisValue]
@@ -100,10 +101,10 @@ class RuntimeClient:
         raise RuntimeTypeError(f"type error: {message}")
 
 
-def signature_from_proto(pr_sig: pr.SignatureResponse) -> RuntimeSignature:
+def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
 
     namespaces: Dict[str, Dict[str, TierkreisFunction]] = dict()
-    for name, entry in pr_sig.entries.items():
+    for name, entry in pr_sig.functions.items():
         namespace, fname = name.split("/", 2)
         func = TierkreisFunction.from_proto(entry)
         if namespace in namespaces:

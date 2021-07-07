@@ -15,5 +15,7 @@ class TierkreisFunction:
     @classmethod
     def from_proto(cls, pr_entry: ps.FunctionDeclaration) -> "TierkreisFunction":
         return cls(
-            pr_entry.name, TypeScheme.from_proto(pr_entry.type_scheme), pr_entry.docs
+            pr_entry.name,
+            TypeScheme.from_proto(pr_entry.type_scheme),
+            pr_entry.description,
         )

@@ -6,7 +6,6 @@ import pytest
 from pytket import Circuit  # type: ignore
 from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis.core import TierkreisGraph
-from tierkreis.core.tierkreis_graph import NodePort, PortID
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
 
@@ -18,20 +17,12 @@ def client() -> RuntimeClient:
     return RuntimeClient()
 
 
-# possibly can be adapted in to a parallelisation utility
-def unpack_array(
-    graph: TierkreisGraph, array_out: NodePort, size: int
-) -> List[NodePort]:
-    unpack = graph.add_node("builtin/unpack_array", array=array_out)
-    return [NodePort(unpack, PortID(f"{i}")) for i in range(size)]
-
-
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
     sig = client.signature
 
     tk_g = TierkreisGraph()
 
-    current_outputs = unpack_array(tk_g, tk_g.input.out.array, number)
+    current_outputs = tk_g.array_n_elements(tk_g.input.out.array, number)
 
     while len(current_outputs) > 1:
         next_outputs = []

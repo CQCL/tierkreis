@@ -338,21 +338,6 @@ class TierkreisGraph:
 
         return return_outputs
 
-    def delete(self, out_port: NodePort) -> None:
-        _ = self.add_node("builtin/delete", value=out_port)
-
-    def make_pair(
-        self, first_port: IncomingWireType, second_port: IncomingWireType
-    ) -> NodePort:
-        make_n = self.add_node(
-            "builtin/make_pair", first=first_port, second=second_port
-        )
-        return make_n.out.pair
-
-    def unpack_pair(self, pair_port: IncomingWireType) -> Tuple[NodePort, NodePort]:
-        unp_n = self.add_node("builtin/unpack_pair", pair=pair_port)
-        return unp_n.out.first, unp_n.out.second
-
     def nodes(self) -> Dict[str, TierkreisNode]:
         return {
             name: self._graph.nodes[name]["node_info"] for name in self._graph.nodes
@@ -409,6 +394,33 @@ class TierkreisGraph:
             )
         ]
 
+    def delete(self, out_port: NodePort) -> None:
+        _ = self.add_node("builtin/delete", value=out_port)
+
+    def make_pair(
+        self, first_port: IncomingWireType, second_port: IncomingWireType
+    ) -> NodePort:
+        make_n = self.add_node(
+            "builtin/make_pair", first=first_port, second=second_port
+        )
+        return make_n.out.pair
+
+    def unpack_pair(self, pair_port: IncomingWireType) -> Tuple[NodePort, NodePort]:
+        unp_n = self.add_node("builtin/unpack_pair", pair=pair_port)
+        return unp_n.out.first, unp_n.out.second
+
+    def make_array(self, element_ports: List[NodePort]) -> NodePort:
+        make_n = self.add_node("builtin/make_array")
+
+        for i, port in enumerate(element_ports):
+            self.add_edge(port, NodePort(make_n, f"{i}"))
+
+        return make_n.out.array
+
+    def array_n_elements(self, array_port: NodePort, n_elements: int) -> List[NodePort]:
+        unpack = self.add_node("builtin/unpack_array", array=array_port)
+        return [NodePort(unpack, PortID(f"{i}")) for i in range(n_elements)]
+
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()
         pg_graph.nodes = {
@@ -426,7 +438,6 @@ class TierkreisGraph:
     @classmethod
     def from_proto(cls, pg_graph: pg.Graph) -> "TierkreisGraph":
         tk_graph = cls()
-        # io_nodes = {tk_graph.input_node_name, tk_graph.output_node_name}
         for node_name, pg_node in pg_graph.nodes.items():
             if node_name in {tk_graph.input_node_name, tk_graph.output_node_name}:
                 continue

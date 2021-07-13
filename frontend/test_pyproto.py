@@ -6,9 +6,10 @@ import pytest
 from pytket import Circuit  # type: ignore
 from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis.core import TierkreisGraph
+from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
-
+from tierkreis.core.types import IntType
 from tierkreis.frontend.runtime_client import RuntimeClient
 
 
@@ -20,7 +21,7 @@ def client() -> RuntimeClient:
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
     sig = client.signature
 
-    tk_g = TierkreisGraph()
+    tk_g = TierkreisGraph(client=client)
 
     current_outputs = tk_g.array_n_elements(tk_g.input.out.array, number)
 
@@ -53,7 +54,7 @@ def test_nint_adder(client: RuntimeClient):
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list), client)
         in_list_value = TierkreisValue.from_python(in_list)
-        outputs = RuntimeClient().run_graph(tk_g, {"array": in_list_value})
+        outputs = client.run_graph(tk_g, {"array": in_list_value})
         assert outputs["out"].to_python(int) == sum(in_list)
 
 
@@ -185,6 +186,20 @@ def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
 
     assert outputs[0][1] == 10
     assert outputs[1][1] == 20
+
+
+def test_interactive_infer(client: RuntimeClient) -> None:
+    # test when client is provided types are auto inferred
+    tg = TierkreisGraph(client=client)
+    _, val1 = tg.copy_value(3)
+    tg.set_outputs(out=val1)
+
+    assert "builtin/delete" in (
+        node.function_name
+        for node in tg.nodes().values()
+        if isinstance(node, FunctionNode)
+    )
+    assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
 
 
 # TODO signature and typecheck tests

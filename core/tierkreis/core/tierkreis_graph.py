@@ -1,8 +1,20 @@
 """Utilities for building tierkreis graphs."""
 import typing
+from itertools import dropwhile
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import betterproto
 import networkx as nx  # type: ignore
@@ -125,11 +137,10 @@ class NodePort:
 class TierkreisEdge:
     source: NodePort
     target: NodePort
-    type: Optional[TierkreisType]
+    type_: Optional[TierkreisType]
 
     def to_proto(self) -> pg.Edge:
-        edge_type = None if self.type is None else self.type.to_proto()
-
+        edge_type = None if self.type_ is None else self.type_.to_proto()
         return pg.Edge(
             port_from=self.source.port,
             node_from=self.source.node_ref.name,
@@ -137,6 +148,15 @@ class TierkreisEdge:
             node_to=self.target.node_ref.name,
             edge_type=cast(pg.Type, edge_type),
         )
+
+
+class TypeCheckClientABC(ABC):
+    class RuntimeTypeError(Exception):
+        pass
+
+    @abstractmethod
+    def type_check_graph(self, graph: "TierkreisGraph") -> "TierkreisGraph":
+        pass
 
 
 # allow specifying input as a port, node with single output, or constant value
@@ -153,8 +173,16 @@ class TierkreisGraph:
     class DuplicateNodeName(Exception):
         name: str
 
-    def __init__(self, name: Optional[str] = None) -> None:
+    @dataclass
+    class MissingEdge(Exception):
+        source: NodePort
+        target: NodePort
+
+    def __init__(
+        self, name: Optional[str] = None, client: Optional[TypeCheckClientABC] = None
+    ) -> None:
         self.name = name
+        self._client = client
         self._graph = nx.MultiDiGraph()
         self._graph.add_node(self.input_node_name, node_info=InputNode())
         self._graph.add_node(self.output_node_name, node_info=OutputNode())
@@ -174,6 +202,7 @@ class TierkreisGraph:
         return len(self._graph)
 
     def _get_fresh_name(self, name_class: str) -> str:
+        # TODO replicate rust freshname behaviour instead
         if name_class not in self._name_counts:
             self._name_counts[name_class] = 0
         count = self._name_counts[name_class]
@@ -207,7 +236,16 @@ class TierkreisGraph:
             source = source if isinstance(source, NodePort) else source.out.value
             self.add_edge(source, target)
 
+        self._update_types()
         return node_ref
+
+    def _update_types(self) -> None:
+        if self._client:
+            try:
+                self._graph = self._client.type_check_graph(self)._graph
+            except TypeCheckClientABC.RuntimeTypeError:
+                # type check likely failed due to missing edges.
+                pass
 
     def add_node(
         self,
@@ -333,7 +371,7 @@ class TierkreisGraph:
             self.add_edge(
                 NodePort(node_refs[source_node], edge.source.port),
                 NodePort(node_refs[target_node], edge.target.port),
-                edge.type,
+                edge.type_,
             )
 
         return return_outputs
@@ -362,7 +400,22 @@ class TierkreisGraph:
         tk_type = _get_edge(edge_type)
 
         edge = TierkreisEdge(node_port_from, node_port_to, tk_type)
-
+        # if port is currently connected to delete, replace that edge
+        try:
+            del_edge = next(
+                e
+                for e in self.out_edges(edge.source.node_ref)
+                if e.source.port == edge.source.port
+                and isinstance(self[e.target.node_ref], FunctionNode)
+                and cast(FunctionNode, self[e.target.node_ref]).function_name
+                == "builtin/delete"
+            )
+            self._graph.remove_edge(
+                del_edge.source.node_ref.name, del_edge.target.node_ref.name
+            )
+            self._graph.remove_node(del_edge.target.node_ref.name)
+        except StopIteration:
+            pass
         self._graph.add_edge(
             node_port_from.node_ref.name,
             node_port_to.node_ref.name,
@@ -370,11 +423,30 @@ class TierkreisGraph:
         )
         return edge
 
+    def get_edge(self, source: NodePort, target: NodePort) -> TierkreisEdge:
+        all_edges = (
+            edge_data["edge_info"]
+            for edge_data in cast(
+                Dict[int, Dict[str, TierkreisEdge]],
+                self._graph.get_edge_data(source.node_ref.name, target.node_ref.name),
+            ).values()
+        )
+        try:
+            return next(
+                dropwhile(
+                    lambda edge: not (edge.source == source and edge.target == target),
+                    all_edges,
+                )
+            )
+        except StopIteration as e:
+            raise self.MissingEdge(source, target) from e
+
     def set_outputs(self, **kwargs: Union[NodePort, NodeRef]) -> None:
         for out_name, port in kwargs.items():
             target = NodePort(self.output, out_name)
             source = port if isinstance(port, NodePort) else port.out.value
             self.add_edge(source, target)
+        self._update_types()
 
     def in_edges(self, node: Union[NodeRef, str]) -> List[TierkreisEdge]:
         node_name = node if isinstance(node, str) else node.name
@@ -420,6 +492,11 @@ class TierkreisGraph:
     def array_n_elements(self, array_port: NodePort, n_elements: int) -> List[NodePort]:
         unpack = self.add_node("builtin/unpack_array", array=array_port)
         return [NodePort(unpack, PortID(f"{i}")) for i in range(n_elements)]
+
+    def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
+        copy_n = self.add_node("builtin/copy", value=value)
+
+        return copy_n.out.value_0, copy_n.out.value_1
 
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()

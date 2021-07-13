@@ -3,7 +3,8 @@ from typing import Dict, cast
 import betterproto
 import requests
 from dataclasses import dataclass
-from tierkreis.core.tierkreis_graph import TierkreisFunction, TierkreisGraph
+from tierkreis.core.tierkreis_graph import TypeCheckClientABC, TierkreisGraph
+from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.values import TierkreisValue, StructValue
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
@@ -23,15 +24,11 @@ class RuntimeHTTPError(Exception):
         )
 
 
-class RuntimeTypeError(Exception):
-    pass
-
-
 NamespaceDict = Dict[str, TierkreisFunction]
 RuntimeSignature = Dict[str, NamespaceDict]
 
 
-class RuntimeClient:
+class RuntimeClient(TypeCheckClientABC):
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
         self._url = url
         self._signature_mod = self._get_signature()
@@ -98,7 +95,7 @@ class RuntimeClient:
             message = cast(pr.InferTypeSuccess, message)
             assert message.value.graph is not None
             return TierkreisValue.from_proto(message.value).to_python(TierkreisGraph)
-        raise RuntimeTypeError(f"type error: {message}")
+        raise self.RuntimeTypeError(f"type error: {message}")
 
 
 def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:

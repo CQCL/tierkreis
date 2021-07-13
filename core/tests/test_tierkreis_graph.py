@@ -72,4 +72,4 @@ def test_insert_subgraph() -> None:
             subgraph, "subgraph::", one=main_g.input.out.newin1, two=4
         )
 
-    assert e.value.name == "subgraph::builtin/make_pair"
+    assert e.value.name == "subgraph::NewNode(0)"

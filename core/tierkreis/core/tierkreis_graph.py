@@ -1,6 +1,6 @@
 """Utilities for building tierkreis graphs."""
 import typing
-from itertools import dropwhile
+from itertools import dropwhile, count
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import (
@@ -189,8 +189,6 @@ class TierkreisGraph:
         self.output = NodeRef(self.output_node_name)
         self.input = NodeRef(self.input_node_name)
 
-        self._name_counts = {name: 0 for name in ("const, box")}
-
     def inputs(self) -> List[str]:
         return [edge.source.port for edge in self.out_edges(self.input)]
 
@@ -202,14 +200,13 @@ class TierkreisGraph:
         return len(self._graph)
 
     def _get_fresh_name(self, name_class: str) -> str:
+        return next(
+            dropwhile(
+                lambda name: name in self._graph,
+                map(lambda i: f"NewNode({i})", count(0)),
+            )
+        )
         # TODO replicate rust freshname behaviour instead
-        if name_class not in self._name_counts:
-            self._name_counts[name_class] = 0
-        count = self._name_counts[name_class]
-        suffix = f"_{count}" if count > 0 else ""
-
-        self._name_counts[name_class] += 1
-        return f"{name_class}{suffix}"
 
     def _add_node(
         self,
@@ -521,16 +518,6 @@ class TierkreisGraph:
             tk_graph._add_node(
                 NodeRef(node_name), TierkreisNode.from_proto(pg_node), {}
             )
-
-            # hack for mainting fresh names
-            if "_" in node_name:
-                base, count = node_name.split("_", 2)
-                if base in tk_graph._name_counts:
-                    try:
-                        count = int(count)
-                        tk_graph._name_counts[base] = count + 1
-                    except ValueError:
-                        pass
 
         for pg_edge in pg_graph.edges:
             source_node = NodeRef(pg_edge.node_from)

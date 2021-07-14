@@ -122,11 +122,17 @@ class IntType(TierkreisType):
     def to_proto(self) -> pg.Type:
         return pg.Type(int=pg.Empty())
 
+    def __str__(self) -> str:
+        return "Int"
+
 
 @dataclass
 class BoolType(TierkreisType):
     def to_proto(self) -> pg.Type:
         return pg.Type(bool=pg.Empty())
+
+    def __str__(self) -> str:
+        return "Bool"
 
 
 @dataclass
@@ -140,11 +146,17 @@ class FloatType(TierkreisType):
     def to_proto(self) -> pg.Type:
         return pg.Type(flt=pg.Empty())
 
+    def __str__(self) -> str:
+        return "Float"
+
 
 @dataclass
 class CircuitType(TierkreisType):
     def to_proto(self) -> pg.Type:
         return pg.Type(circuit=pg.Empty())
+
+    def __str__(self) -> str:
+        return "Circuit"
 
 
 @dataclass
@@ -153,6 +165,9 @@ class VarType(TierkreisType):
 
     def to_proto(self) -> pg.Type:
         return pg.Type(var=self.name)
+
+    def __str__(self) -> str:
+        return "VarType"
 
 
 @dataclass
@@ -168,6 +183,9 @@ class PairType(TierkreisType):
             )
         )
 
+    def __str__(self) -> str:
+        return f"Pair[{str(self.first)}, {str(self.second)}]"
+
 
 @dataclass
 class ArrayType(TierkreisType):
@@ -175,6 +193,9 @@ class ArrayType(TierkreisType):
 
     def to_proto(self) -> pg.Type:
         return pg.Type(array=self.element.to_proto())
+
+    def __str__(self) -> str:
+        return f"Array[{str(self.element)}]"
 
 
 @dataclass
@@ -189,6 +210,9 @@ class MapType(TierkreisType):
                 second=self.value.to_proto(),
             )
         )
+
+    def __str__(self) -> str:
+        return f"Map[{str(self.key)}, {str(self.value)}]"
 
 
 @dataclass
@@ -243,6 +267,15 @@ class GraphType(TierkreisType):
             )
         )
 
+    def __str__(self) -> str:
+        inputs = ",".join(
+            (f"{key}:{str(val)}" for key, val in self.inputs.content.items())
+        )
+        outputs = ",".join(
+            (f"{key}:{str(val)}" for key, val in self.outputs.content.items())
+        )
+        return f"Graph[{inputs}, {outputs}]"
+
 
 @dataclass
 class StructType(TierkreisType):
@@ -250,6 +283,9 @@ class StructType(TierkreisType):
 
     def to_proto(self) -> pg.Type:
         return pg.Type(struct=self.shape.to_proto())
+
+    def __str__(self) -> str:
+        return f"Struct[{dict(self.shape.content)}]"
 
 
 class Constraint(ABC):

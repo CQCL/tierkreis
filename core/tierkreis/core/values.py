@@ -107,6 +107,9 @@ class BoolValue(TierkreisValue):
     def from_proto(cls, value: Any) -> "TierkreisValue":
         return cls(value)
 
+    def __str__(self) -> str:
+        return f"Bool({self.value})"
+
 
 @dataclass(frozen=True)
 class StringValue(TierkreisValue):
@@ -131,6 +134,9 @@ class StringValue(TierkreisValue):
     @classmethod
     def from_proto(cls, value: Any) -> "TierkreisValue":
         return cls(value)
+
+    def __str__(self) -> str:
+        return f'String("{self.value}")'
 
 
 @dataclass(frozen=True)
@@ -158,6 +164,9 @@ class IntValue(TierkreisValue):
     def from_proto(cls, value: Any) -> "TierkreisValue":
         return cls(value)
 
+    def __str__(self) -> str:
+        return f"Int({self.value})"
+
 
 @dataclass(frozen=True)
 class FloatValue(TierkreisValue):
@@ -184,6 +193,9 @@ class FloatValue(TierkreisValue):
     def from_proto(cls, value: Any) -> "TierkreisValue":
         return cls(value)
 
+    def __str__(self) -> str:
+        return f"Float({self.value})"
+
 
 @dataclass(frozen=True)
 class CircuitValue(TierkreisValue):
@@ -209,6 +221,9 @@ class CircuitValue(TierkreisValue):
     @classmethod
     def from_proto(cls, value: Any) -> "TierkreisValue":
         return cls(Circuit.from_dict(json.loads(cast(str, value))))
+
+    def __str__(self) -> str:
+        return f"Circuit({self.value.name or ''})"
 
 
 @dataclass(frozen=True)
@@ -252,6 +267,9 @@ class PairValue(TierkreisValue):
             TierkreisValue.from_proto(pair_value.second),
         )
 
+    def __str__(self) -> str:
+        return f"Pair({str(self.first)}, {str(self.second)})"
+
 
 @dataclass(frozen=True)
 class ArrayValue(TierkreisValue):
@@ -285,6 +303,9 @@ class ArrayValue(TierkreisValue):
         return ArrayValue(
             [TierkreisValue.from_proto(element) for element in array_value.array]
         )
+
+    def __str__(self) -> str:
+        return f"Array({','.join(map(str, self.values))})"
 
 
 @dataclass(frozen=True)
@@ -337,6 +358,9 @@ class MapValue(TierkreisValue):
             entries[entry_key] = entry_value
 
         return MapValue(entries)
+
+    def __str__(self) -> str:
+        return f"Map({', '.join(f'{key}: {val}' for key, val in self.values.items())})"
 
 
 @dataclass(frozen=True)
@@ -394,3 +418,7 @@ class StructValue(TierkreisValue):
                 for name, value in struct_value.map.items()
             }
         )
+
+    def __str__(self) -> str:
+        key_vals = (f"{key}: {str(val)}" for key, val in self.values.items())
+        return f"Struct{{{', '.join(key_vals)}}}"

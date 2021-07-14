@@ -55,6 +55,10 @@ class TierkreisNode(ABC):
 
         return result
 
+    def is_delete_node(self) -> bool:
+        """Delete nodes have some special behaviour, check for it."""
+        return getattr(self, "function_name", "") == "builtin/delete"
+
 
 @dataclass
 class InputNode(TierkreisNode):
@@ -400,12 +404,10 @@ class TierkreisGraph:
         # if port is currently connected to delete, replace that edge
         try:
             del_edge = next(
-                e
-                for e in self.out_edges(edge.source.node_ref)
-                if e.source.port == edge.source.port
-                and isinstance(self[e.target.node_ref], FunctionNode)
-                and cast(FunctionNode, self[e.target.node_ref]).function_name
-                == "builtin/delete"
+                out_edge
+                for out_edge in self.out_edges(edge.source.node_ref)
+                if out_edge.source.port == edge.source.port
+                and self[out_edge.target.node_ref].is_delete_node()
             )
             self._graph.remove_edge(
                 del_edge.source.node_ref.name, del_edge.target.node_ref.name
@@ -584,3 +586,6 @@ class GraphValue(TierkreisValue):
     @classmethod
     def from_proto(cls, value: Any) -> "TierkreisValue":
         return cls(TierkreisGraph.from_proto(cast(pg.Graph, value)))
+
+    def __str__(self) -> str:
+        return "GraphValue"

@@ -13,6 +13,8 @@ packages = [{ include="tierkreis" }]
 python = "^3.8"
 "tierkreis.core" = { path="../core/", develop=true }
 requests = "^2.25.1"
+aiohttp = "^3.7.4"
+pytest-asyncio = "^0.15.1"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b1"

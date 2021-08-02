@@ -58,11 +58,12 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
     return tk_g
 
 
-def test_nint_adder(client: RuntimeClient):
+@pytest.mark.asyncio
+async def test_nint_adder(client: RuntimeClient):
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list), client)
         in_list_value = TierkreisValue.from_python(in_list)
-        outputs = client.run_graph(tk_g, {"array": in_list_value})
+        outputs = await client.run_graph(tk_g, {"array": in_list_value})
         assert outputs["out"].to_python(int) == sum(in_list)
 
 
@@ -75,7 +76,8 @@ def add_n_graph(increment: int) -> TierkreisGraph:
     return tk_g
 
 
-def test_switch(client: RuntimeClient):
+@pytest.mark.asyncio
+async def test_switch(client: RuntimeClient):
     add_2_g = add_n_graph(2)
     add_3_g = add_n_graph(3)
     tk_g = TierkreisGraph()
@@ -98,10 +100,10 @@ def test_switch(client: RuntimeClient):
     false_value = TierkreisValue.from_python(False)
     in_value = TierkreisValue.from_python(3)
 
-    assert client.run_graph(tk_g, {"flag": true_value, "number": in_value}) == {
+    assert await client.run_graph(tk_g, {"flag": true_value, "number": in_value}) == {
         "out": TierkreisValue.from_python(5)
     }
-    assert client.run_graph(tk_g, {"flag": false_value, "number": in_value}) == {
+    assert await client.run_graph(tk_g, {"flag": false_value, "number": in_value}) == {
         "out": TierkreisValue.from_python(6)
     }
 
@@ -136,11 +138,12 @@ def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
     return tk_g
 
 
-def test_idpy(bell_circuit, client: RuntimeClient):
-    def assert_id_py(val: Any, typ: Type) -> bool:
+@pytest.mark.asyncio
+async def test_idpy(bell_circuit, client: RuntimeClient):
+    async def assert_id_py(val: Any, typ: Type) -> bool:
         val_encoded = TierkreisValue.from_python(val)
         tk_g = idpy_graph(client)
-        output = client.run_graph(tk_g, {"id_in": val_encoded})
+        output = await client.run_graph(tk_g, {"id_in": val_encoded})
         val_decoded = output["id_out"].to_python(typ)
         return val_decoded == val
 
@@ -159,10 +162,11 @@ def test_idpy(bell_circuit, client: RuntimeClient):
         ([1, 2, 3], List[int]),
         (True, bool),
     ]:
-        assert assert_id_py(val, typ)
+        assert await assert_id_py(val, typ)
 
 
-def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
+@pytest.mark.asyncio
+async def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     compile_node = tg.add_node(
         client.signature["pytket"]["compile_circuits"],
@@ -173,12 +177,13 @@ def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)
-    assert client.run_graph(tg, {"input": ArrayValue([CircuitValue(inp_circ)])}) == {
-        "out": ArrayValue([CircuitValue(bell_circuit)])
-    }
+    assert await client.run_graph(
+        tg, {"input": ArrayValue([CircuitValue(inp_circ)])}
+    ) == {"out": ArrayValue([CircuitValue(bell_circuit)])}
 
 
-def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
+@pytest.mark.asyncio
+async def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     execute_node = tg.add_node(
         client.signature["pytket"]["execute"],
@@ -187,9 +192,15 @@ def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     )
     tg.set_outputs(out=execute_node)
 
-    outputs = client.run_graph(
-        tg,
-        {"input": TierkreisValue.from_python([(bell_circuit, 10), (bell_circuit, 20)])},
+    outputs = (
+        await client.run_graph(
+            tg,
+            {
+                "input": TierkreisValue.from_python(
+                    [(bell_circuit, 10), (bell_circuit, 20)]
+                )
+            },
+        )
     )["out"].to_python(List[Tuple[Dict[str, float], int]])
 
     assert outputs[0][1] == 10

@@ -569,3 +569,17 @@ class GraphValue(TierkreisValue):
 
     def __str__(self) -> str:
         return "GraphValue"
+
+
+# allow graph displays in jupyter notebooks
+from tierkreis.core.graphviz import (  # pylint: disable=wrong-import-position
+    tierkreis_to_graphviz,
+)
+
+setattr(
+    TierkreisGraph,
+    "_repr_svg_",
+    lambda self: tierkreis_to_graphviz(  # pylint: disable=protected-access
+        self
+    )._repr_svg_(),
+)

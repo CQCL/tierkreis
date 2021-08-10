@@ -140,6 +140,9 @@ class StringType(TierkreisType):
     def to_proto(self) -> pg.Type:
         return pg.Type(str_=pg.Empty())
 
+    def __str__(self) -> str:
+        return "String"
+
 
 @dataclass
 class FloatType(TierkreisType):

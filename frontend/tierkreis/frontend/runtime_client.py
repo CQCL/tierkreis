@@ -1,9 +1,10 @@
 """Send requests to tierkreis server to execute a graph."""
-from typing import Dict, cast
+from typing import Dict, cast, Optional
 import betterproto
 import requests
+import copy
 from dataclasses import dataclass
-from tierkreis.core.tierkreis_graph import TypeCheckClientABC, TierkreisGraph
+from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.values import TierkreisValue, StructValue
 import tierkreis.core.protos.tierkreis.graph as pg
@@ -28,7 +29,45 @@ NamespaceDict = Dict[str, TierkreisFunction]
 RuntimeSignature = Dict[str, NamespaceDict]
 
 
-class RuntimeClient(TypeCheckClientABC):
+class _TypeCheckContext:
+    """Context manger for type checked graph building."""
+
+    @dataclass
+    class TypeInferenceError(Exception):
+        """Error when context exit type inference is not succesful."""
+
+        message: str
+
+        def __str__(self) -> str:
+            return (
+                f"Type inference of built graph failed with message:\n {self.message}"
+            )
+
+    def __init__(
+        self, client: "RuntimeClient", initial_graph: Optional[TierkreisGraph] = None
+    ) -> None:
+        self.client = client
+        self.graph = (
+            TierkreisGraph() if initial_graph is None else copy.deepcopy(initial_graph)
+        )
+
+    def __enter__(self) -> TierkreisGraph:
+        return self.graph
+
+    def __exit__(self, exc_type, exc_value, traceback) -> None:
+        # exeception info not currently used
+        # but leaves the option to add context to errors using runtime
+        try:
+            self.graph._graph = self.client.type_check_graph(self.graph)._graph
+        except RuntimeClient.RuntimeTypeError as err:
+            raise self.TypeInferenceError(err.message)
+
+
+class RuntimeClient:
+    @dataclass
+    class RuntimeTypeError(Exception):
+        message: str
+
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
         self._url = url
         self._signature_mod = self._get_signature()
@@ -95,7 +134,12 @@ class RuntimeClient(TypeCheckClientABC):
             message = cast(pr.InferTypeSuccess, message)
             assert message.value.graph is not None
             return TierkreisValue.from_proto(message.value).to_python(TierkreisGraph)
-        raise self.RuntimeTypeError(f"type error: {message}")
+        raise self.RuntimeTypeError(str(message))
+
+    def build_graph(
+        self, initial_graph: Optional[TierkreisGraph] = None
+    ) -> _TypeCheckContext:
+        return _TypeCheckContext(self, initial_graph)
 
 
 def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:

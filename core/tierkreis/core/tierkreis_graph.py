@@ -108,6 +108,9 @@ class Ports:
     _check_name: bool
 
     def __getattribute__(self, name: str) -> "NodePort":
+        if name.startswith("__") and name.endswith("__"):
+            return super().__getattribute__(name)
+
         if name in super().__getattribute__("_ports") or not super().__getattribute__(
             "_check_name"
         ):
@@ -154,15 +157,6 @@ class TierkreisEdge:
         )
 
 
-class TypeCheckClientABC(ABC):
-    class RuntimeTypeError(Exception):
-        pass
-
-    @abstractmethod
-    def type_check_graph(self, graph: "TierkreisGraph") -> "TierkreisGraph":
-        pass
-
-
 # allow specifying input as a port, node with single output, or constant value
 IncomingWireType = Union[NodePort, NodeRef, Any]
 
@@ -182,11 +176,8 @@ class TierkreisGraph:
         source: NodePort
         target: NodePort
 
-    def __init__(
-        self, name: Optional[str] = None, client: Optional[TypeCheckClientABC] = None
-    ) -> None:
+    def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
-        self._client = client
         self._graph = nx.MultiDiGraph()
         self._graph.add_node(self.input_node_name, node_info=InputNode())
         self._graph.add_node(self.output_node_name, node_info=OutputNode())
@@ -203,14 +194,13 @@ class TierkreisGraph:
     def n_nodes(self) -> int:
         return len(self._graph)
 
-    def _get_fresh_name(self, name_class: str) -> str:
+    def _get_fresh_name(self) -> str:
         return next(
             dropwhile(
                 lambda name: name in self._graph,
                 map(lambda i: f"NewNode({i})", count(0)),
             )
         )
-        # TODO replicate rust freshname behaviour instead
 
     def _add_node(
         self,
@@ -237,16 +227,7 @@ class TierkreisGraph:
             source = source if isinstance(source, NodePort) else source.out.value
             self.add_edge(source, target)
 
-        self._update_types()
         return node_ref
-
-    def _update_types(self) -> None:
-        if self._client:
-            try:
-                self._graph = self._client.type_check_graph(self)._graph
-            except TypeCheckClientABC.RuntimeTypeError:
-                # type check likely failed due to missing edges.
-                pass
 
     def add_node(
         self,
@@ -257,7 +238,7 @@ class TierkreisGraph:
     ) -> NodeRef:
         f_name = _tk_function if isinstance(_tk_function, str) else _tk_function.name
         if _tk_node_name is None:
-            _tk_node_name = self._get_fresh_name(f_name)
+            _tk_node_name = self._get_fresh_name()
 
         node = FunctionNode(f_name)
         if isinstance(_tk_function, str):
@@ -278,7 +259,7 @@ class TierkreisGraph:
 
     def add_const(self, value: Any, name: Optional[str] = None) -> NodeRef:
         if name is None:
-            name = self._get_fresh_name("const")
+            name = self._get_fresh_name()
         tkval = (
             value
             if isinstance(value, TierkreisValue)
@@ -296,7 +277,7 @@ class TierkreisGraph:
     ) -> NodeRef:
         # TODO restrict to graph i/o
         if name is None:
-            name = self._get_fresh_name("box")
+            name = self._get_fresh_name()
         return self._add_node(NodeRef(name, set(), False), BoxNode(graph), kwargs)
 
     def insert_graph(
@@ -445,7 +426,6 @@ class TierkreisGraph:
             target = NodePort(self.output, out_name)
             source = port if isinstance(port, NodePort) else port.out.value
             self.add_edge(source, target)
-        self._update_types()
 
     def in_edges(self, node: Union[NodeRef, str]) -> List[TierkreisEdge]:
         node_name = node if isinstance(node, str) else node.name

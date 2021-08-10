@@ -21,31 +21,30 @@ def client() -> RuntimeClient:
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
     sig = client.signature
 
-    tk_g = TierkreisGraph(client=client)
+    with client.build_graph() as tk_g:
+        current_outputs = tk_g.array_n_elements(tk_g.input.out.array, number)
 
-    current_outputs = tk_g.array_n_elements(tk_g.input.out.array, number)
+        while len(current_outputs) > 1:
+            next_outputs = []
+            n_even = len(current_outputs) & ~1
 
-    while len(current_outputs) > 1:
-        next_outputs = []
-        n_even = len(current_outputs) & ~1
+            for i in range(0, n_even, 2):
+                nod = tk_g.add_node(
+                    sig["python_nodes"]["add"],
+                    a=current_outputs[i],
+                    b=current_outputs[i + 1],
+                )
+                next_outputs.append(nod.out.value)
+            if len(current_outputs) > n_even:
+                nod = tk_g.add_node(
+                    sig["python_nodes"]["add"],
+                    a=next_outputs[-1],
+                    b=current_outputs[n_even],
+                )
+                next_outputs[-1] = nod.out.value
+            current_outputs = next_outputs
 
-        for i in range(0, n_even, 2):
-            nod = tk_g.add_node(
-                sig["python_nodes"]["add"],
-                a=current_outputs[i],
-                b=current_outputs[i + 1],
-            )
-            next_outputs.append(nod.out.value)
-        if len(current_outputs) > n_even:
-            nod = tk_g.add_node(
-                sig["python_nodes"]["add"],
-                a=next_outputs[-1],
-                b=current_outputs[n_even],
-            )
-            next_outputs[-1] = nod.out.value
-        current_outputs = next_outputs
-
-    tk_g.set_outputs(out=current_outputs[0])
+        tk_g.set_outputs(out=current_outputs[0])
 
     return tk_g
 
@@ -189,10 +188,10 @@ def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
 
 
 def test_interactive_infer(client: RuntimeClient) -> None:
-    # test when client is provided types are auto inferred
-    tg = TierkreisGraph(client=client)
-    _, val1 = tg.copy_value(3)
-    tg.set_outputs(out=val1)
+    # test when built with client types are auto inferred
+    with client.build_graph() as tg:
+        _, val1 = tg.copy_value(3)
+        tg.set_outputs(out=val1)
 
     assert any(node.is_delete_node() for node in tg.nodes().values())
 

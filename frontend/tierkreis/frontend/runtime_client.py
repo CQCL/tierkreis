@@ -1,15 +1,19 @@
 """Send requests to tierkreis server to execute a graph."""
-from typing import Dict, cast, Optional
-import betterproto
-import requests
-import copy
+from typing import Dict, IO, Iterator, List, cast, Optional
 from dataclasses import dataclass
+import copy
+from contextlib import contextmanager
+from pathlib import Path
+import subprocess
+import requests
+import betterproto
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.values import TierkreisValue, StructValue
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
+import sys
 
 
 @dataclass
@@ -153,3 +157,48 @@ def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
         else:
             namespaces[namespace] = {fname: func}
     return namespaces
+
+
+@contextmanager
+def local_runtime(
+    executable: Path,
+    workers: List[Path],
+    http_port: str = "8080",
+    grpc_port: str = "9090",
+    show_output: bool = False,
+) -> Iterator[RuntimeClient]:
+    """Provide a context for a local runtime running in a subprocess.
+
+    :param executable: Path to server binary
+    :type executable: Path
+    :param workers: Paths of worker servers
+    :type workers: List[Path]
+    :param http_port: Localhost http port, defaults to "8080"
+    :type http_port: str, optional
+    :param grpc_port: Localhost grpc port, defaults to "9090"
+    :type grpc_port: str, optional
+    :param show_output: Show server tracing/errors, defaults to False
+    :type show_output: bool, optional
+    :yield: RuntimeClient
+    :rtype: Iterator[RuntimeClient]
+    """
+    command = [executable, "--http", http_port, "--grpc", grpc_port]
+    for worker in workers:
+        command.extend(["--worker-path", worker])
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    for line in cast(IO[bytes], proc.stdout):
+        if "Starting grpc server" in str(line):
+            break
+
+    try:
+        yield RuntimeClient(f"http://127.0.0.1:{http_port}")
+    finally:
+        if show_output:
+            proc.terminate()
+            out, errs = proc.communicate()
+            if errs:
+                sys.stderr.buffer.write(errs)
+            if out:
+                sys.stdout.buffer.write(out)
+
+        proc.kill()

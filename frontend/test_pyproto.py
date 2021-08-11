@@ -1,6 +1,7 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
 from dataclasses import dataclass
-from typing import Any, Dict, List, Tuple, Type
+from pathlib import Path
+from typing import Any, Dict, Iterator, List, Tuple, Type
 
 import pytest
 from pytket import Circuit  # type: ignore
@@ -8,14 +9,22 @@ from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
 from tierkreis.core.types import IntType
-from tierkreis.frontend.runtime_client import RuntimeClient
+from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
+
+from tierkreis.frontend.runtime_client import RuntimeClient, local_runtime
 
 
 @pytest.fixture(scope="module")
-def client() -> RuntimeClient:
-    return RuntimeClient()
+def client() -> Iterator[RuntimeClient]:
+    # launch a local server for this test run and kill it at the end
+    exe = Path("../../target/debug/tierkreis-server")
+    workers = [
+        Path("../../tierkreis-runtime/worker_test.py"),
+        Path("../../tierkreis-runtime/pytket_worker.py"),
+    ]
+    with local_runtime(exe, workers) as local_client:
+        yield local_client
 
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
@@ -198,5 +207,4 @@ def test_interactive_infer(client: RuntimeClient) -> None:
     assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
 
 
-# TODO signature and typecheck tests
 # TODO test Box

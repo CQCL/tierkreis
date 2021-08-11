@@ -185,6 +185,9 @@ def local_runtime(
     command = [executable, "--http", http_port, "--grpc", grpc_port]
     for worker in workers:
         command.extend(["--worker-path", worker])
+    # server currently relies on a poetry install to use python workers
+    # TODO: remove poetry requirement?
+    command = ["poetry", "run"] + command
     proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     for line in cast(IO[bytes], proc.stdout):
         if "Starting grpc server" in str(line):

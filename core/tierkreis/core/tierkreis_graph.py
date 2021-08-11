@@ -9,7 +9,6 @@ from typing import (
     Iterator,
     List,
     Optional,
-    Set,
     Tuple,
     Type,
     Union,
@@ -96,42 +95,18 @@ class FunctionNode(TierkreisNode):
         return pg.Node(function=self.function_name)
 
 
-class PortNotFound(Exception):
-    pass
-
-
 @dataclass
-class Ports:
-
-    _node_ref: "NodeRef"
-    _ports: Set[str]
-    _check_name: bool
-
-    def __getattribute__(self, name: str) -> "NodePort":
-        if name.startswith("__") and name.endswith("__"):
-            return super().__getattribute__(name)
-
-        if name in super().__getattribute__("_ports") or not super().__getattribute__(
-            "_check_name"
-        ):
-            return NodePort(super().__getattribute__("_node_ref"), PortID(name))
-        raise PortNotFound(name)
-
-
 class NodeRef:
-    def __init__(
-        self,
-        name: str,
-        out_ports: Set[str] = set(),
-        restrict_ports: bool = False,
-    ) -> None:
-        self.name = name
-        self.out = Ports(self, out_ports, restrict_ports)
+    name: str
 
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, NodeRef):
             return False
         return self.name == o.name
+
+    def __getitem__(self, key: str) -> "NodePort":
+        # syntactic sugar for creating references to output ports from node
+        return NodePort(self, key)
 
 
 @dataclass(frozen=True)
@@ -223,8 +198,7 @@ class TierkreisGraph:
                         "a NodeRef to a node with a single output 'value', "
                         "or a constant value to be added as a ConstNode."
                     ) from err
-
-            source = source if isinstance(source, NodePort) else source.out.value
+            source = source if isinstance(source, NodePort) else source["value"]
             self.add_edge(source, target)
 
         return node_ref
@@ -236,24 +210,16 @@ class TierkreisGraph:
         /,
         **kwargs: IncomingWireType,
     ) -> NodeRef:
-        f_name = _tk_function if isinstance(_tk_function, str) else _tk_function.name
+        f_name = (
+            _tk_function.name
+            if isinstance(_tk_function, TierkreisFunction)
+            else _tk_function
+        )
         if _tk_node_name is None:
             _tk_node_name = self._get_fresh_name()
 
         node = FunctionNode(f_name)
-        if isinstance(_tk_function, str):
-            node_ref = NodeRef(_tk_node_name)
-        else:
-            scheme_body = _tk_function.type_scheme.body
-            outports = set(scheme_body.outputs.content.keys())
-            restrict_outputs = scheme_body.outputs.rest is None
-            if scheme_body.inputs.rest is None:
-                for inport_name in kwargs:
-                    if inport_name not in scheme_body.inputs.content:
-                        raise PortNotFound(inport_name)
-
-            node_ref = NodeRef(_tk_node_name, outports, restrict_outputs)
-            # TODO check type
+        node_ref = NodeRef(_tk_node_name)
 
         return self._add_node(node_ref, node, kwargs)
 
@@ -266,7 +232,7 @@ class TierkreisGraph:
             else TierkreisValue.from_python(value)
         )
 
-        return self._add_node(NodeRef(name, {"value"}, True), ConstNode(tkval), {})
+        return self._add_node(NodeRef(name), ConstNode(tkval), {})
 
     def add_box(
         self,
@@ -278,7 +244,7 @@ class TierkreisGraph:
         # TODO restrict to graph i/o
         if name is None:
             name = self._get_fresh_name()
-        return self._add_node(NodeRef(name, set(), False), BoxNode(graph), kwargs)
+        return self._add_node(NodeRef(name), BoxNode(graph), kwargs)
 
     def insert_graph(
         self,
@@ -328,9 +294,7 @@ class TierkreisGraph:
                 ) in output_wires.items()
                 if output_node == node_name
             }
-            node_ref = self._add_node(
-                NodeRef(new_node_name, set(output_ports.values())), node, input_ports
-            )
+            node_ref = self._add_node(NodeRef(new_node_name), node, input_ports)
             node_refs[new_node_name] = node_ref
             return_outputs.update(
                 {
@@ -424,7 +388,7 @@ class TierkreisGraph:
     def set_outputs(self, **kwargs: Union[NodePort, NodeRef]) -> None:
         for out_name, port in kwargs.items():
             target = NodePort(self.output, out_name)
-            source = port if isinstance(port, NodePort) else port.out.value
+            source = port if isinstance(port, NodePort) else port["value"]
             self.add_edge(source, target)
 
     def in_edges(self, node: Union[NodeRef, str]) -> List[TierkreisEdge]:
@@ -454,11 +418,11 @@ class TierkreisGraph:
         make_n = self.add_node(
             "builtin/make_pair", first=first_port, second=second_port
         )
-        return make_n.out.pair
+        return make_n["pair"]
 
     def unpack_pair(self, pair_port: IncomingWireType) -> Tuple[NodePort, NodePort]:
         unp_n = self.add_node("builtin/unpack_pair", pair=pair_port)
-        return unp_n.out.first, unp_n.out.second
+        return unp_n["first"], unp_n["second"]
 
     def make_array(self, element_ports: List[NodePort]) -> NodePort:
         make_n = self.add_node("builtin/make_array")
@@ -466,7 +430,7 @@ class TierkreisGraph:
         for i, port in enumerate(element_ports):
             self.add_edge(port, NodePort(make_n, f"{i}"))
 
-        return make_n.out.array
+        return make_n["array"]
 
     def array_n_elements(self, array_port: NodePort, n_elements: int) -> List[NodePort]:
         unpack = self.add_node("builtin/unpack_array", array=array_port)
@@ -475,7 +439,7 @@ class TierkreisGraph:
     def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
         copy_n = self.add_node("builtin/copy", value=value)
 
-        return copy_n.out.value_0, copy_n.out.value_1
+        return copy_n["value_0"], copy_n["value_1"]
 
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()

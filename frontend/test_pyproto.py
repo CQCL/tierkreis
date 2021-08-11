@@ -31,7 +31,7 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
     sig = client.signature
 
     with client.build_graph() as tk_g:
-        current_outputs = tk_g.array_n_elements(tk_g.input.out.array, number)
+        current_outputs = tk_g.array_n_elements(tk_g.input["array"], number)
 
         while len(current_outputs) > 1:
             next_outputs = []
@@ -43,14 +43,14 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
                     a=current_outputs[i],
                     b=current_outputs[i + 1],
                 )
-                next_outputs.append(nod.out.value)
+                next_outputs.append(nod["value"])
             if len(current_outputs) > n_even:
                 nod = tk_g.add_node(
                     sig["python_nodes"]["add"],
                     a=next_outputs[-1],
                     b=current_outputs[n_even],
                 )
-                next_outputs[-1] = nod.out.value
+                next_outputs[-1] = nod["value"]
             current_outputs = next_outputs
 
         tk_g.set_outputs(out=current_outputs[0])
@@ -69,7 +69,7 @@ def test_nint_adder(client: RuntimeClient):
 def add_n_graph(increment: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
-    add_node = tk_g.add_node("python_nodes/add", a=increment, b=tk_g.input.out.number)
+    add_node = tk_g.add_node("python_nodes/add", a=increment, b=tk_g.input["number"])
     tk_g.set_outputs(output=add_node)
 
     return tk_g
@@ -85,14 +85,14 @@ def test_switch(client: RuntimeClient):
         sig["builtin"]["switch"],
         true=tk_g.add_const(add_2_g),
         false=tk_g.add_const(add_3_g),
-        predicate=tk_g.input.out.flag,
+        predicate=tk_g.input["flag"],
     )
 
     eval_node = tk_g.add_node(
-        sig["builtin"]["eval"], thunk=switch, number=tk_g.input.out.number
+        sig["builtin"]["eval"], thunk=switch, number=tk_g.input["number"]
     )
 
-    tk_g.set_outputs(out=eval_node.out.output)
+    tk_g.set_outputs(out=eval_node["output"])
 
     true_value = TierkreisValue.from_python(True)
     false_value = TierkreisValue.from_python(False)
@@ -129,7 +129,7 @@ class TstStruct(TierkreisStruct):
 def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
     tk_g = TierkreisGraph()
     id_node = tk_g.add_node(
-        client.signature["python_nodes"]["id_py"], value=tk_g.input.out.id_in
+        client.signature["python_nodes"]["id_py"], value=tk_g.input["id_in"]
     )
     tk_g.set_outputs(id_out=id_node)
 
@@ -166,7 +166,7 @@ def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     compile_node = tg.add_node(
         client.signature["pytket"]["compile_circuits"],
-        circuits=tg.input.out.input,
+        circuits=tg.input["input"],
         pass_name=tg.add_const("FullPeepholeOptimise"),
     )
     tg.set_outputs(out=compile_node)
@@ -182,7 +182,7 @@ def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     execute_node = tg.add_node(
         client.signature["pytket"]["execute"],
-        circuit_shots=tg.input.out.input,
+        circuit_shots=tg.input["input"],
         backend_name=tg.add_const("AerBackend"),
     )
     tg.set_outputs(out=execute_node)

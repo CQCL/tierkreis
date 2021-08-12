@@ -159,6 +159,10 @@ def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
     return namespaces
 
 
+class RuntimeLaunchFailed(Exception):
+    pass
+
+
 @contextmanager
 def local_runtime(
     executable: Path,
@@ -185,23 +189,36 @@ def local_runtime(
     command = [executable, "--http", http_port, "--grpc", grpc_port]
     for worker in workers:
         command.extend(["--worker-path", worker])
-    # server currently relies on a poetry install to use python workers
-    # TODO: remove poetry requirement?
-    command = ["poetry", "run"] + command
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+
+    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+    lines = []
     for line in cast(IO[bytes], proc.stdout):
+        lines.append(line)
         if "Starting grpc server" in str(line):
+            # server is ready to receive requests
             break
+
+    def write_process_out(process: subprocess.Popen) -> None:
+        # get remaining output
+        out, errs = process.communicate()
+
+        if errs:
+            sys.stderr.buffer.write(errs)
+        for line in lines:
+            sys.stdout.buffer.write(line)
+        if out:
+            sys.stdout.buffer.write(out)
+
+    if proc.poll() is not None:
+        # process has terminated unexpectedly
+        write_process_out(proc)
+        raise RuntimeLaunchFailed()
 
     try:
         yield RuntimeClient(f"http://127.0.0.1:{http_port}")
     finally:
         if show_output:
             proc.terminate()
-            out, errs = proc.communicate()
-            if errs:
-                sys.stderr.buffer.write(errs)
-            if out:
-                sys.stdout.buffer.write(out)
-
+            write_process_out(proc)
         proc.kill()

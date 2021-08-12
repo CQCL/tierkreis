@@ -23,7 +23,7 @@ def client() -> Iterator[RuntimeClient]:
         Path("../../tierkreis-runtime/worker_test.py"),
         Path("../../tierkreis-runtime/pytket_worker.py"),
     ]
-    with local_runtime(exe, workers) as local_client:
+    with local_runtime(exe, workers, show_output=True) as local_client:
         yield local_client
 
 

@@ -13,7 +13,7 @@ packages = [{ include="tierkreis" }]
 python = "^3.8"
 # "qermit" = { path/../../qermit/", develop=true }
 "tierkreis.core" = { path="../core/", develop=true }
-pytket-qiskit = "^0.15.0"
+pytket-qiskit = "^0.16.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b1"

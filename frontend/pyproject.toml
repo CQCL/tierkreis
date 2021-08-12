@@ -19,6 +19,8 @@ black = "^21.5b1"
 mypy = "^0.812"
 pytest = "^6.2.4"
 pylint = "^2.8.3"
+# runtime is used to run server in same environment for tests
+"tierkreis.runtime" = { path="../runtime/", develop=true }
 
 
 [build-system]

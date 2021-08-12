@@ -14,7 +14,7 @@ packages = [{ include="tierkreis" }, { include="tierkreis/core/protos" }]
 python = "^3.8"
 betterproto = "^2.0.0b3"
 grpclib = "^0.4.1"
-pytket = "^0.12.0"
+pytket = "^0.13.0"
 
 [tool.poetry.dev-dependencies]
 black = "^21.5b1"

@@ -90,7 +90,7 @@ class _TypeCheckContext:
 
 @dataclass(frozen=True)
 class TaskHandle:
-    id: int
+    id: str
 
 
 class RuntimeClient:

@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "tierkreis.core"
+name = "tierkreis"
 version = "0.1.0"
 description = "Common definitions and functions for tierkreis."
 authors = [
@@ -16,6 +16,16 @@ betterproto = "^2.0.0b3"
 grpclib = "^0.4.1"
 pytket = "^0.13.0"
 
+# optional dependencies
+pytket-qiskit = { version = "^0.16.0", optional = true }
+requests = { version = "^2.25.1", optional = true }
+aiohttp = { version = "^3.7.4", optional = true }
+pytest-asyncio = { version = "^0.15.1", optional = true }
+
+[tool.poetry.extras]
+frontend = ["requests", "aiohttp", "pytest-asyncio"]
+runtime = ["pytket-qiskit"]
+
 [tool.poetry.dev-dependencies]
 black = "^21.5b1"
 mypy = "^0.812"
@@ -23,5 +33,5 @@ pylint = "^2.8.3"
 pytest = "^6.2.4"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
+requires = ["poetry-core>=1.1.0"]
 build-backend = "poetry.core.masonry.api"

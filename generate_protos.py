@@ -4,7 +4,7 @@ from subprocess import check_call
 
 
 def generate_proto_code():
-    proto_dir = "../../protos"
+    proto_dir = "../protos"
     output_dir = "./tierkreis/core/protos"
 
     if not os.path.exists(output_dir):

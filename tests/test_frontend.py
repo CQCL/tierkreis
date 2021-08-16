@@ -18,10 +18,10 @@ from tierkreis.frontend.runtime_client import RuntimeClient, local_runtime
 @pytest.fixture(scope="module")
 def client() -> Iterator[RuntimeClient]:
     # launch a local server for this test run and kill it at the end
-    exe = Path("../../target/debug/tierkreis-server")
+    exe = Path("../target/debug/tierkreis-server")
     workers = [
-        Path("../../tierkreis-runtime/worker_test.py"),
-        Path("../../tierkreis-runtime/pytket_worker.py"),
+        Path("../tierkreis-runtime/worker_test.py"),
+        Path("../tierkreis-runtime/pytket_worker.py"),
     ]
     with local_runtime(exe, workers, show_output=True) as local_client:
         yield local_client

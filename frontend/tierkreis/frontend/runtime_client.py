@@ -34,10 +34,13 @@ from functools import wraps
 class RuntimeHTTPError(Exception):
     endpoint: str
     code: int
+    content: str
 
     def __str__(self) -> str:
         return (
-            f"Request to endpoint '{self.endpoint}'" f" failed with code {self.code}."
+            f"Request to endpoint '{self.endpoint}'"
+            f" failed with code {self.code}"
+            f" and content '{self.content}'."
         )
 
 
@@ -112,7 +115,7 @@ class RuntimeClient:
             headers={"content-type": "application/protobuf"},
         )
         if resp.status_code != 200:
-            raise RuntimeHTTPError("signature", resp.status_code)
+            raise RuntimeHTTPError("signature", resp.status_code, str(resp.content))
 
         return signature_from_proto(ps.ListFunctionsResponse().parse(resp.content))
 
@@ -156,7 +159,8 @@ class RuntimeClient:
         )
 
         if status != 200:
-            raise RuntimeHTTPError("start_task", status)
+            content = content.decode("utf-8")
+            raise RuntimeHTTPError("start_task", status, content)
 
         decoded = pr.RunTaskResponse().parse(content)
         return TaskHandle(decoded.id)
@@ -170,7 +174,8 @@ class RuntimeClient:
         status, content = await self._get("/task")
 
         if status != 200:
-            raise RuntimeHTTPError("list_task", status)
+            content = content.decode("utf-8")
+            raise RuntimeHTTPError("list_task", status, content)
 
         decoded = pr.ListTasksResponse().parse(content)
         result = {}
@@ -181,7 +186,7 @@ class RuntimeClient:
             if status_name is None:
                 status_name = "running"
 
-            result[task.id] = status_name
+            result[TaskHandle(task.id)] = status_name
 
         return result
 
@@ -200,8 +205,11 @@ class RuntimeClient:
         status, content = await self._post(
             "/task/await", pr.AwaitTaskRequest(id=task.id)
         )
+
         if status != 200:
-            raise RuntimeHTTPError("await_task", status)
+            content = content.decode("utf-8")
+            raise RuntimeHTTPError("await_task", status, content)
+
         decoded = pr.AwaitTaskResponse().parse(content)
         status, status_value = betterproto.which_one_of(decoded.task, "status")
 
@@ -219,10 +227,13 @@ class RuntimeClient:
 
         :param task: The id of the task to delete.
         """
-        status, _ = await self._post("/task/delete", pr.DeleteTaskRequest(id=task.id))
+        status, content = await self._post(
+            "/task/delete", pr.DeleteTaskRequest(id=task.id)
+        )
 
         if status != 200:
-            return RuntimeError("delete_task", status)
+            content = content.decode("utf-8")
+            return RuntimeError("delete_task", status, content)
 
     def delete_task_blocking(self, task):
         return async_to_sync(self.delete_task)(task)
@@ -252,7 +263,8 @@ class RuntimeClient:
         status, content = await self._post("/type", ps.InferTypeRequest(value))
 
         if status != 200:
-            raise RuntimeHTTPError("type_check_graph", status)
+            content = content.decode("utf-8")
+            raise RuntimeHTTPError("type_check_graph", status, content)
 
         response = ps.InferTypeResponse().parse(content)
         name, message = betterproto.which_one_of(response, "response")
@@ -261,6 +273,7 @@ class RuntimeClient:
             message = cast(ps.InferTypeSuccess, message)
             assert message.value.graph is not None
             return TierkreisValue.from_proto(message.value).to_python(TierkreisGraph)
+
         raise self.RuntimeTypeError(str(message))
 
     def type_check_graph_blocking(self, graph: TierkreisGraph) -> TierkreisGraph:

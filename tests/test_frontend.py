@@ -7,12 +7,16 @@ import pytest
 from pytket import Circuit  # type: ignore
 from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis.core import TierkreisGraph
-from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
+from tierkreis.core.tierkreis_graph import NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType
 from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
 
-from tierkreis.frontend.runtime_client import RuntimeClient, local_runtime
+from tierkreis.frontend.runtime_client import (
+    RuntimeClient,
+    # docker_runtime,
+    local_runtime,
+)
 
 
 @pytest.fixture(scope="module")
@@ -20,11 +24,13 @@ def client() -> Iterator[RuntimeClient]:
     # launch a local server for this test run and kill it at the end
     exe = Path("../target/debug/tierkreis-server")
     workers = [
-        Path("../tierkreis-runtime/worker_test.py"),
-        Path("../tierkreis-runtime/pytket_worker.py"),
+        Path("../workers/worker_test"),
+        Path("../workers/pytket_worker"),
     ]
     with local_runtime(exe, workers, show_output=True) as local_client:
         yield local_client
+    # with docker_runtime("tierkreis/server", workers, show_output=True) as local_client:
+    #     yield local_client
 
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:

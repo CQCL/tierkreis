@@ -7,7 +7,7 @@ authors = [
     "Lukas Heidemann <lukas.heidemann@cambridgequantum.com>",
     "John Children <john.children@cambridgequantum.com>",
 ]
-packages = [{ include="tierkreis" }, { include="tierkreis/core/protos" }]
+packages = [{ include = "tierkreis" }, { include = "tierkreis/core/protos" }]
 
 
 [tool.poetry.dependencies]
@@ -21,9 +21,10 @@ pytket-qiskit = { version = "^0.16.0", optional = true }
 requests = { version = "^2.25.1", optional = true }
 aiohttp = { version = "^3.7.4", optional = true }
 pytest-asyncio = { version = "^0.15.1", optional = true }
+docker = { version = "5.0.0", optional = true }
 
 [tool.poetry.extras]
-frontend = ["requests", "aiohttp", "pytest-asyncio"]
+frontend = ["requests", "aiohttp", "pytest-asyncio", "docker"]
 runtime = ["pytket-qiskit"]
 
 [tool.poetry.dev-dependencies]

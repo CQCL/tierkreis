@@ -2,8 +2,11 @@
 from typing import (
     Dict,
     IO,
+    Iterable,
     Iterator,
     List,
+    TYPE_CHECKING,
+    Union,
     cast,
     Optional,
     Callable,
@@ -14,9 +17,11 @@ from dataclasses import dataclass
 import copy
 from contextlib import contextmanager
 from pathlib import Path
+import os
 import subprocess
 import requests
 import betterproto
+import docker
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.values import TierkreisValue, StructValue
@@ -28,6 +33,9 @@ import aiohttp
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
+
+if TYPE_CHECKING:
+    from docker.models.containers import Container
 
 
 @dataclass
@@ -326,7 +334,6 @@ def local_runtime(
     executable: Path,
     workers: List[Path],
     http_port: str = "8080",
-    grpc_port: str = "9090",
     show_output: bool = False,
 ) -> Iterator[RuntimeClient]:
     """Provide a context for a local runtime running in a subprocess.
@@ -344,16 +351,22 @@ def local_runtime(
     :yield: RuntimeClient
     :rtype: Iterator[RuntimeClient]
     """
-    command = [executable, "--http", http_port, "--grpc", grpc_port]
+    command: List[Union[str, Path]] = [executable]
     for worker in workers:
         command.extend(["--worker-path", worker])
-
-    proc = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    proc_env = os.environ.copy()
+    proc_env["TIERKREIS_HTTP_PORT"] = http_port
+    proc = subprocess.Popen(
+        command,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        env=proc_env,
+    )
 
     lines = []
     for line in cast(IO[bytes], proc.stdout):
         lines.append(line)
-        if "Starting grpc server" in str(line):
+        if "Starting http server" in str(line):
             # server is ready to receive requests
             break
 
@@ -362,11 +375,15 @@ def local_runtime(
         out, errs = process.communicate()
 
         if errs:
-            sys.stderr.buffer.write(errs)
-        for line in lines:
-            sys.stdout.buffer.write(line)
-        if out:
-            sys.stdout.buffer.write(out)
+            with os.fdopen(sys.stderr.fileno(), "wb", closefd=False) as stderr:
+                stderr.write(errs)
+        with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
+            for line in lines:
+                stdout.write(line)
+
+            if out:
+                stdout.write(out)
+            stdout.flush()
 
     if proc.poll() is not None:
         # process has terminated unexpectedly
@@ -380,3 +397,60 @@ def local_runtime(
             proc.terminate()
             write_process_out(proc)
         proc.kill()
+
+
+@contextmanager
+def docker_runtime(
+    image: str,
+    workers: List[Path],
+    http_port: str = "8080",
+    show_output: bool = False,
+) -> Iterator[RuntimeClient]:
+    """Provide a context for a local runtime running in a docker container.
+
+    :param executable: Path to server binary
+    :type executable: Path
+    :param workers: Paths of worker servers
+    :type workers: List[Path]
+    :param http_port: Localhost http port, defaults to "8080"
+    :type http_port: str, optional
+    :param grpc_port: Localhost grpc port, defaults to "9090"
+    :type grpc_port: str, optional
+    :param show_output: Show server tracing/errors, defaults to False
+    :type show_output: bool, optional
+    :yield: RuntimeClient
+    :rtype: Iterator[RuntimeClient]
+    """
+    client = docker.from_env()
+    command = sum((["--worker-path", str(worker)] for worker in workers), [])
+
+    container = cast(
+        "Container",
+        client.containers.run(image, command, detach=True, ports={"8080": http_port}),
+    )
+    succesful_start = False
+    lines = []
+    for line in container.logs(stream=True):
+        lines.append(line)
+        if "Starting http server" in str(line):
+            # server is ready to receive requests
+            succesful_start = True
+            break
+
+    def write_process_out(logs: bytes) -> None:
+        with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
+            stdout.write(logs)
+            stdout.flush()
+
+    if not succesful_start:
+        write_process_out(b"\n".join(lines))
+        # process has terminated unexpectedly
+        raise RuntimeLaunchFailed()
+
+    try:
+        yield RuntimeClient(f"http://127.0.0.1:{http_port}")
+    finally:
+        logs = container.logs()
+        container.kill()
+        if show_output:
+            write_process_out(logs)

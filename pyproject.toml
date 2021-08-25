@@ -1,14 +1,13 @@
 [tool.poetry]
 name = "tierkreis"
 version = "0.1.0"
-description = "Common definitions and functions for tierkreis."
+description = "Python client and utilities for tierkreis."
 authors = [
     "Seyon Sivarajah <seyon.sivarajah@cambridgequantum.com>",
     "Lukas Heidemann <lukas.heidemann@cambridgequantum.com>",
     "John Children <john.children@cambridgequantum.com>",
 ]
-packages = [{ include = "tierkreis" }, { include = "tierkreis/core/protos" }]
-
+include = ["tierkreis/core/protos/**/*.py"]
 
 [tool.poetry.dependencies]
 python = "^3.8"

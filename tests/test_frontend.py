@@ -21,18 +21,17 @@ from tierkreis.frontend.runtime_client import (
 
 @pytest.fixture(scope="module")
 def client(request) -> Iterator[RuntimeClient]:
-    workers = [
-        Path("../workers/worker_test"),
-        Path("../workers/pytket_worker"),
-    ]
     if request.config.getoption("--docker"):
         # launch docker container and close at end
-        with docker_runtime("cqc/tierkreis", workers, show_output=True) as local_client:
+        with docker_runtime(
+            "cqc/tierkreis",
+            show_output=True,
+        ) as local_client:
             yield local_client
     else:
         exe = Path("../target/debug/tierkreis-server")
         # launch a local server for this test run and kill it at the end
-        with local_runtime(exe, workers, show_output=True) as local_client:
+        with local_runtime(exe, show_output=True) as local_client:
             yield local_client
 
 
@@ -216,7 +215,8 @@ async def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> 
     assert outputs[1][1] == 20
 
 
-def test_interactive_infer(client: RuntimeClient) -> None:
+@pytest.mark.asyncio
+async def test_interactive_infer(client: RuntimeClient) -> None:
     # test when built with client types are auto inferred
     with client.build_graph() as tg:
         _, val1 = tg.copy_value(3)
@@ -227,4 +227,5 @@ def test_interactive_infer(client: RuntimeClient) -> None:
     assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
 
 
+# TODO signature and typecheck tests
 # TODO test Box

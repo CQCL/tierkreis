@@ -2,7 +2,6 @@
 from typing import (
     Dict,
     IO,
-    Iterable,
     Iterator,
     List,
     TYPE_CHECKING,
@@ -15,6 +14,7 @@ from typing import (
 )
 from dataclasses import dataclass
 import copy
+import socket
 from contextlib import contextmanager
 from pathlib import Path
 import os
@@ -332,7 +332,7 @@ def async_to_sync(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:
 @contextmanager
 def local_runtime(
     executable: Path,
-    workers: List[Path],
+    workers: Optional[List[Path]] = None,
     http_port: str = "8080",
     show_output: bool = False,
 ) -> Iterator[RuntimeClient]:
@@ -351,9 +351,19 @@ def local_runtime(
     :yield: RuntimeClient
     :rtype: Iterator[RuntimeClient]
     """
+
+    default_workers = [
+        Path("../workers/worker_test"),
+        Path("../workers/pytket_worker"),
+    ]
+
     command: List[Union[str, Path]] = [executable]
-    for worker in workers:
+    for worker in list(map(str, default_workers)):
         command.extend(["--worker-path", worker])
+    if workers:
+        for worker in list(map(str, workers)):
+            command.extend(["--worker-path", worker])
+
     proc_env = os.environ.copy()
     proc_env["TIERKREIS_HTTP_PORT"] = http_port
     proc = subprocess.Popen(
@@ -399,10 +409,16 @@ def local_runtime(
         proc.kill()
 
 
+def get_free_port() -> str:
+    with socket.socket() as s:
+        s.bind(("", 0))
+        return str(s.getsockname()[1])
+
+
 @contextmanager
 def docker_runtime(
     image: str,
-    workers: List[Path],
+    workers: Optional[List[Path]] = None,
     http_port: str = "8080",
     show_output: bool = False,
 ) -> Iterator[RuntimeClient]:
@@ -421,12 +437,48 @@ def docker_runtime(
     :yield: RuntimeClient
     :rtype: Iterator[RuntimeClient]
     """
-    client = docker.from_env()
-    command = sum((["--worker-path", str(worker)] for worker in workers), [])
+    default_workers = [
+        Path("../workers/worker_test"),
+        Path("../workers/pytket_worker"),
+    ]
 
+    worker_st = list(map(str, default_workers))
+
+    client = docker.from_env()
+    command = sum((["--worker-path", str(worker)] for worker in worker_st), [])
+
+    worker_procs = []
+    ports = {"8080": http_port}
+    if workers:
+        for worker in list(map(str, workers)):
+            while True:
+                free_port = get_free_port()
+                if free_port not in ports:
+                    break
+            proc = subprocess.Popen(
+                [f"{worker}/main.py", "--port", free_port],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+            )
+            worker_procs.append(proc)
+            for line in cast(IO[bytes], proc.stdout):
+                # wait for server to finish starting and announce port
+                if free_port in str(line):
+                    break
+            ports[free_port] = free_port
+
+            command.extend(
+                ["--worker-remote", f"http://host.docker.internal:{free_port}"]
+            )
     container = cast(
         "Container",
-        client.containers.run(image, command, detach=True, ports={"8080": http_port}),
+        client.containers.run(
+            image,
+            command,
+            detach=True,
+            remove=True,
+            ports=ports,
+        ),
     )
     succesful_start = False
     lines = []
@@ -452,5 +504,8 @@ def docker_runtime(
     finally:
         logs = container.logs()
         container.kill()
+        for proc in worker_procs:
+            proc.terminate()
+            _ = proc.communicate()
         if show_output:
             write_process_out(logs)

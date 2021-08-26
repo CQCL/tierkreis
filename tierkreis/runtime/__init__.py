@@ -38,6 +38,7 @@ from tempfile import TemporaryDirectory
 import sys
 from dataclasses import dataclass
 from inspect import getdoc, isclass
+import argparse
 
 
 def snake_to_pascal(name: str) -> str:
@@ -136,7 +137,7 @@ class Namespace:
                 try:
                     outputs = TierkreisValue.from_python(python_outputs)
                 except Exception as error:
-                    raise EncodeOutputError() from error
+                    raise EncodeOutputError(str(error)) from error
                 if struct_output:
                     return cast(StructValue, outputs)
                 else:
@@ -192,22 +193,29 @@ class Worker:
         # See https://github.com/python/mypy/issues/5485
         return cast(Any, f).run(inputs)
 
-    async def start(self):
-        with TemporaryDirectory() as socket_dir:
-            # Create a temporary path for a unix domain socket.
-            socket_path = "{}/{}".format(socket_dir, "python_worker.sock")
+    async def start(self, port: Optional[str] = None):
+        server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
+        if port:
+            await server.start(port=int(port))
 
-            # Start the python worker gRPC server and bind to the unix domain socket.
-            server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
-            await server.start(path=socket_path)
-
-            # Print the path of the unix domain socket to stdout so the runtime can
-            # connect to it. Without the flush the runtime did not receive the
-            # socket path and blocked indefinitely.
-            print(socket_path)
-            sys.stdout.flush()
-
+            print(f"Started worker server on port: {port}", flush=True)
             await server.wait_closed()
+
+        else:
+            with TemporaryDirectory() as socket_dir:
+                # Create a temporary path for a unix domain socket.
+                socket_path = "{}/{}".format(socket_dir, "python_worker.sock")
+
+                # Start the python worker gRPC server and bind to the unix domain socket.
+                await server.start(path=socket_path)
+
+                # Print the path of the unix domain socket to stdout so the runtime can
+                # connect to it. Without the flush the runtime did not receive the
+                # socket path and blocked indefinitely.
+                print(socket_path)
+                sys.stdout.flush()
+
+                await server.wait_closed()
 
 
 class FunctionNotFound(Exception):
@@ -280,6 +288,12 @@ class SignatureServerImpl(ps.SignatureBase):
         }
 
         return ps.ListFunctionsResponse(functions=functions)
+
+
+parser = argparse.ArgumentParser(description="Parse worker server cli.")
+parser.add_argument(
+    "--port", help="If specified listen on network port rather than UDP."
+)
 
 
 async def main():

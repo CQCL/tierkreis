@@ -33,6 +33,7 @@ import aiohttp
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from functools import wraps
+import signal
 
 if TYPE_CHECKING:
     from docker.models.containers import Container
@@ -376,7 +377,7 @@ def local_runtime(
     lines = []
     for line in cast(IO[bytes], proc.stdout):
         lines.append(line)
-        if "Starting http server" in str(line):
+        if "Server started" in str(line):
             # server is ready to receive requests
             break
 
@@ -404,7 +405,7 @@ def local_runtime(
         yield RuntimeClient(f"http://127.0.0.1:{http_port}")
     finally:
         if show_output:
-            proc.terminate()
+            proc.send_signal(signal.SIGINT)
             write_process_out(proc)
         proc.kill()
 

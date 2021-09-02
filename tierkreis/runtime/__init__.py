@@ -1,4 +1,7 @@
 import asyncio
+import grpclib
+import grpclib.server
+import grpclib.events
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
 from grpclib.const import Status as StatusCode
@@ -39,6 +42,13 @@ import sys
 from dataclasses import dataclass
 from inspect import getdoc, isclass
 import argparse
+import opentelemetry.trace
+import os
+import opentelemetry.context
+from opentelemetry.semconv.trace import SpanAttributes
+import opentelemetry.propagate
+
+tracer = opentelemetry.trace.get_tracer(__name__)
 
 
 def snake_to_pascal(name: str) -> str:
@@ -119,23 +129,38 @@ class Namespace:
             async def wrapped_func(inputs: StructValue) -> StructValue:
                 if struct_input:
                     try:
-                        python_inputs = inputs.to_python(hint_inputs)
+                        with tracer.start_as_current_span(
+                            "decoding inputs to python type"
+                        ):
+                            python_inputs = inputs.to_python(hint_inputs)
                     except Exception as error:
                         raise DecodeInputError(str(error)) from error
-                    python_outputs = await func(python_inputs)
+                    try:
+                        python_outputs = await func(python_inputs)
+                    except Exception as error:
+                        raise NodeExecutionError(str(error)) from error
                 else:
                     try:
-                        python_outputs = await func(
-                            **{
+                        with tracer.start_as_current_span(
+                            "decoding inputs to python type"
+                        ):
+                            python_inputs = {
                                 name: val.to_python(type_hints[name])
                                 for name, val in inputs.values.items()
                             }
-                        )
+                    except Exception as error:
+                        raise DecodeInputError(str(error)) from error
+
+                    try:
+                        python_outputs = await func(**python_inputs)
                     except Exception as error:
                         raise NodeExecutionError(str(error)) from error
 
                 try:
-                    outputs = TierkreisValue.from_python(python_outputs)
+                    with tracer.start_as_current_span(
+                        "encoding outputs from python type"
+                    ):
+                        outputs = TierkreisValue.from_python(python_outputs)
                 except Exception as error:
                     raise EncodeOutputError(str(error)) from error
                 if struct_output:
@@ -195,6 +220,10 @@ class Worker:
 
     async def start(self, port: Optional[str] = None):
         server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
+
+        # Attach event listener for tracing
+        grpclib.events.listen(server, grpclib.events.RecvRequest, _event_recv_request)
+
         if port:
             await server.start(port=int(port))
 
@@ -290,10 +319,62 @@ class SignatureServerImpl(ps.SignatureBase):
         return ps.ListFunctionsResponse(functions=functions)
 
 
+async def _event_recv_request(request: grpclib.events.RecvRequest):
+    method_func = request.method_func
+    context = opentelemetry.propagate.extract(request.metadata)
+
+    service, method = request.method_name.lstrip("/").split("/", 1)
+
+    attributes = {
+        SpanAttributes.RPC_SYSTEM: "grpc",
+        SpanAttributes.RPC_SERVICE: service,
+        SpanAttributes.RPC_METHOD: method,
+    }
+
+    async def wrapped(stream: grpclib.server.Stream):
+        token = opentelemetry.context.attach(context)
+        try:
+            span = tracer.start_as_current_span(
+                name=f"GRPC: {request.method_name}",
+                kind=opentelemetry.trace.SpanKind.SERVER,
+                attributes=attributes,
+            )
+            with span:
+                await method_func(stream)
+        finally:
+            opentelemetry.context.detach(token)
+
+    request.method_func = wrapped
+    pass
+
+
 parser = argparse.ArgumentParser(description="Parse worker server cli.")
 parser.add_argument(
     "--port", help="If specified listen on network port rather than UDP."
 )
+
+
+def setup_tracing(service_name: str):
+    from opentelemetry import trace
+    from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+    from opentelemetry.sdk.trace import TracerProvider
+    from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+    from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+
+    endpoint = os.environ.get("TIERKREIS_OTLP")
+
+    if endpoint is None:
+        return
+
+    tracer_provider = TracerProvider(
+        resource=Resource.create({SERVICE_NAME: service_name})
+    )
+
+    span_exporter = OTLPSpanExporter(endpoint=endpoint)
+
+    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+
+    trace.set_tracer_provider(tracer_provider)
 
 
 async def main():

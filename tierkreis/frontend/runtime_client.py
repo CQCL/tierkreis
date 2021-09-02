@@ -370,7 +370,7 @@ def local_runtime(
     proc = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
         env=proc_env,
     )
 

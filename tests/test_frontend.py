@@ -257,5 +257,16 @@ async def test_infer_errors_when_running(client: RuntimeClient) -> None:
     assert len(err.value) == 2
 
 
+@pytest.mark.asyncio
+async def test_fail_node(client: RuntimeClient) -> None:
+    tg = TierkreisGraph()
+    tg.add_node("python_nodes/fail")
+
+    with pytest.raises(RuntimeError) as err:
+        await client.run_graph(tg, {})
+
+    assert "fail node was run" in str(err.value)
+
+
 # TODO signature and typecheck tests
 # TODO test Box

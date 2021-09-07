@@ -25,6 +25,7 @@ import docker
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.values import TierkreisValue, StructValue
+from tierkreis.core.types import TierkreisTypeErrors
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
@@ -64,12 +65,10 @@ class _TypeCheckContext:
     class TypeInferenceError(Exception):
         """Error when context exit type inference is not succesful."""
 
-        message: str
+        errors: TierkreisTypeErrors
 
         def __str__(self) -> str:
-            return (
-                f"Type inference of built graph failed with message:\n {self.message}"
-            )
+            return f"Type inference of built graph failed with message:\n {self.errors}"
 
     def __init__(
         self, client: "RuntimeClient", initial_graph: Optional[TierkreisGraph] = None
@@ -85,8 +84,8 @@ class _TypeCheckContext:
     def __exit__(self, exc_type, exc_value, traceback) -> None:
         try:
             self.graph._graph = self.client.type_check_graph_blocking(self.graph)._graph
-        except RuntimeClient.RuntimeTypeError as err:
-            raise self.TypeInferenceError(err.message)
+        except TierkreisTypeErrors as err:
+            raise self.TypeInferenceError(err)
 
     async def __aenter__(self) -> TierkreisGraph:
         return self.graph
@@ -96,8 +95,8 @@ class _TypeCheckContext:
         # but leaves the option to add context to errors using runtime
         try:
             self.graph._graph = (await self.client.type_check_graph(self.graph))._graph
-        except RuntimeClient.RuntimeTypeError as err:
-            raise self.TypeInferenceError(err.message)
+        except TierkreisTypeErrors as err:
+            raise self.TypeInferenceError(err)
 
 
 @dataclass(frozen=True)
@@ -106,10 +105,6 @@ class TaskHandle:
 
 
 class RuntimeClient:
-    @dataclass
-    class RuntimeTypeError(Exception):
-        message: str
-
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
         self._url = url
         self._signature_mod = self._get_signature()
@@ -172,7 +167,12 @@ class RuntimeClient:
             raise RuntimeHTTPError("start_task", status, content)
 
         decoded = pr.RunTaskResponse().parse(content)
-        return TaskHandle(decoded.id)
+        name, _ = betterproto.which_one_of(decoded, "result")
+
+        if name == "task_id":
+            return TaskHandle(decoded.task_id)
+        else:
+            raise TierkreisTypeErrors.from_proto(decoded.type_errors)
 
     async def list_tasks(
         self,
@@ -283,7 +283,8 @@ class RuntimeClient:
             assert message.value.graph is not None
             return TierkreisValue.from_proto(message.value).to_python(TierkreisGraph)
 
-        raise self.RuntimeTypeError(str(message))
+        errors = cast(ps.TypeErrors, message)
+        raise TierkreisTypeErrors.from_proto(errors)
 
     def type_check_graph_blocking(self, graph: TierkreisGraph) -> TierkreisGraph:
         return async_to_sync(self.type_check_graph)(graph)

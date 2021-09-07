@@ -9,7 +9,7 @@ from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import IntType
+from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
 
 from tierkreis.frontend.runtime_client import (
@@ -225,6 +225,36 @@ async def test_interactive_infer(client: RuntimeClient) -> None:
     assert any(node.is_delete_node() for node in tg.nodes().values())
 
     assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
+
+
+@pytest.mark.asyncio
+async def test_infer_errors(client: RuntimeClient) -> None:
+    # build graph with two type errors
+    tg = TierkreisGraph()
+    node_0 = tg.add_const(0)
+    node_1 = tg.add_const(1)
+    tg.add_edge(node_0["value"], tg.input["illegal"])
+    tg.set_outputs(out=node_1["invalid"])
+
+    with pytest.raises(TierkreisTypeErrors) as err:
+        await client.type_check_graph(tg)
+
+    assert len(err.value) == 2
+
+
+@pytest.mark.asyncio
+async def test_infer_errors_when_running(client: RuntimeClient) -> None:
+    # build graph with two type errors
+    tg = TierkreisGraph()
+    node_0 = tg.add_const(0)
+    node_1 = tg.add_const(1)
+    tg.add_edge(node_0["value"], tg.input["illegal"])
+    tg.set_outputs(out=node_1["invalid"])
+
+    with pytest.raises(TierkreisTypeErrors) as err:
+        await client.run_graph(tg, {})
+
+    assert len(err.value) == 2
 
 
 # TODO signature and typecheck tests

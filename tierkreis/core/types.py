@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import typing
 from dataclasses import dataclass, field
 import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.signature as ps
 from pytket.circuit import Circuit  # type: ignore
 from typing import Dict, List, Optional, cast
 from tierkreis.core.internal import python_struct_fields
@@ -352,3 +353,38 @@ class TypeScheme:
         ]
         body = cast(GraphType, TierkreisType.from_proto(proto_tg.body))
         return cls(variables, constraints, body)
+
+
+@dataclass(frozen=True)
+class TierkreisTypeError:
+    message: str
+    location: List[str]
+
+    @classmethod
+    def from_proto(cls, proto: ps.TypeError) -> "TierkreisTypeError":
+        return cls(message=proto.msg, location=proto.location)
+
+    def __str__(self) -> str:
+        context = "\n".join(f" - {loc}" for loc in self.location)
+        return f"{self.message}\n\nIn context:\n\n{context}"
+
+
+@dataclass
+class TierkreisTypeErrors(Exception):
+    errors: List[TierkreisTypeError]
+
+    @classmethod
+    def from_proto(cls, proto: ps.TypeErrors) -> "TierkreisTypeErrors":
+        return cls(
+            errors=[TierkreisTypeError.from_proto(error) for error in proto.errors]
+        )
+
+    def __str__(self) -> str:
+        separator = "\n\n" + ("─" * 80) + "\n\n"
+        return separator.join(str(error) for error in self)
+
+    def __getitem__(self, index: int) -> TierkreisTypeError:
+        return self.errors[index]
+
+    def __len__(self) -> int:
+        return len(self.errors)

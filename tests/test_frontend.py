@@ -21,6 +21,7 @@ from tierkreis.frontend.runtime_client import (
 
 @pytest.fixture(scope="module")
 def client(request) -> Iterator[RuntimeClient]:
+    # yield RuntimeClient("https://cloud.cambridgequantum.com/tierkreis/v1")
     if request.config.getoption("--docker"):
         # launch docker container and close at end
         with docker_runtime(

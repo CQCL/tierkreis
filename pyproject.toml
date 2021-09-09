@@ -22,9 +22,11 @@ pytest-asyncio = { version = "^0.15.1", optional = true }
 docker = { version = "5.0.0", optional = true }
 opentelemetry-sdk = { version = "^1.5.0", optional = true }
 opentelemetry-exporter-otlp = { version = "^1.5.0", optional = true }
+keyring = { version = "23.2", optional = true }
+"keyrings.alt" = { version = "4.1", optional = true }
 
 [tool.poetry.extras]
-frontend = ["requests", "aiohttp", "pytest-asyncio", "docker"]
+frontend = ["requests", "aiohttp", "pytest-asyncio", "docker", "keyring", "keyrings.alt"]
 runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 
 [tool.poetry.dev-dependencies]

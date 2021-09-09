@@ -19,8 +19,8 @@ from contextlib import contextmanager
 from pathlib import Path
 import os
 import subprocess
-import requests
 import betterproto
+import keyring
 import docker
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
@@ -107,6 +107,16 @@ class TaskHandle:
 class RuntimeClient:
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
         self._url = url
+        keyring_service = "Myqos"
+        # TODO DON'T COMMIT ME
+        # keyring_service = "myqos-staging"
+        login = keyring.get_password(keyring_service, "login")
+        password = keyring.get_password(keyring_service, "password")
+
+        if login is None or password is None:
+            self.auth = None
+        else:
+            self.auth = aiohttp.BasicAuth(login, password)
         self._signature_mod = self._get_signature()
 
     @property
@@ -114,30 +124,31 @@ class RuntimeClient:
         return self._signature_mod
 
     def _get_signature(self) -> RuntimeSignature:
-        resp = requests.get(
-            self._url + "/signature",
-            headers={"content-type": "application/protobuf"},
-        )
-        if resp.status_code != 200:
-            raise RuntimeHTTPError("signature", resp.status_code, str(resp.content))
+        status, content = async_to_sync(self._get)("/signature")
 
-        return signature_from_proto(ps.ListFunctionsResponse().parse(resp.content))
+        if status != 200:
+            raise RuntimeHTTPError("signature", status, str(content))
+
+        return signature_from_proto(ps.ListFunctionsResponse().parse(content))
 
     async def _post(self, path, request):
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(auth=self.auth) as session:
             async with session.post(
                 f"{self._url}{path}",
                 data=bytes(request),
                 headers={"content-type": "application/protobuf"},
+                # uncomment the below for staging test
+                # ssl=False,
             ) as response:
                 content = await response.content.read()
                 return (response.status, content)
 
     async def _get(self, path):
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(auth=self.auth) as session:
             async with session.get(
                 f"{self._url}{path}",
                 headers={"content-type": "application/protobuf"},
+                # ssl=False,
             ) as response:
                 content = await response.content.read()
                 return (response.status, content)

@@ -138,7 +138,7 @@ class Namespace:
                     try:
                         python_outputs = await func(python_inputs)
                     except Exception as error:
-                        raise NodeExecutionError(str(error)) from error
+                        raise NodeExecutionError(error) from error
                 else:
                     try:
                         with tracer.start_as_current_span(
@@ -154,7 +154,7 @@ class Namespace:
                     try:
                         python_outputs = await func(**python_inputs)
                     except Exception as error:
-                        raise NodeExecutionError(str(error)) from error
+                        raise NodeExecutionError(error) from error
 
                 try:
                     with tracer.start_as_current_span(
@@ -260,7 +260,9 @@ class EncodeOutputError(Exception):
     pass
 
 
+@dataclass
 class NodeExecutionError(Exception):
+    base_exception: Exception
     pass
 
 
@@ -296,7 +298,7 @@ class WorkerServerImpl(WorkerBase):
         except NodeExecutionError as err:
             raise GRPCError(
                 status=StatusCode.UNKNOWN,
-                message=f"Error while running operation: {err}",
+                message=f"Error while running operation: {repr(err.base_exception)}",
             )
 
 

@@ -453,97 +453,105 @@ def docker_runtime(
     :rtype: Iterator[RuntimeClient]
     """
 
-    client = docker.from_env()
-    command = []
-
-    worker_procs = []
-    ports = {"8080": http_port}
-    if host_workers:
-        for worker in list(map(str, host_workers)):
-            while True:
-                free_port = get_free_port()
-                if free_port not in ports:
-                    break
-            proc = subprocess.Popen(
-                [f"{worker}/main.py", "--port", free_port],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            worker_procs.append(proc)
-            for line in cast(IO[bytes], proc.stdout):
-                # wait for server to finish starting and announce port
-                if free_port in str(line):
-                    break
-            ports[free_port] = free_port
-
-            command.extend(
-                ["--worker-remote", f"http://host.docker.internal:{free_port}"]
-            )
-    worker_containers = []
-
-    network = cast(
-        "Network", client.networks.create("tierkreis-net", driver="bridge")
-    )
-    if worker_images:
-        for worker_image in worker_images:
-            # TODO container is being given same name as image, this is probably
-            # not ideal
-            worker_cont = cast(
-                "Container",
-                client.containers.run(
-                    worker_image,
-                    name=worker_image,
-                    detach=True,
-                    remove=True,
-                    network=network.name,
-                ),
-            )
-
-            command.extend(["--worker-remote", f"http://{worker_image}:80"])
-            worker_containers.append(worker_cont)
-
-    runtime_container = cast(
-        "Container",
-        client.containers.run(
-            image,
-            command,
-            detach=True,
-            remove= True,
-            ports=ports,
-            network=network.name,
-        ),
-    )
-
-    succesful_start = False
-    lines = []
-    for line in runtime_container.logs(stream=True):
-        lines.append(line)
-        if "Server started" in str(line):
-            # server is ready to receive requests
-            succesful_start = True
-            break
-
     def write_process_out(logs: bytes) -> None:
         with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
             stdout.write(logs)
             stdout.flush()
 
-    if not succesful_start:
-        write_process_out(b"\n".join(lines))
-        # process has terminated unexpectedly
-        raise RuntimeLaunchFailed()
+    ports = {"8080": http_port}
 
+    command = []
+    worker_procs = []
+
+    # try to start subprocesses
     try:
-        yield RuntimeClient(f"http://127.0.0.1:{http_port}")
-    finally:
-        logs = runtime_container.logs()
-        runtime_container.stop()
-        for worker_container in worker_containers:
-            worker_container.stop()
-        network.remove()
+        if host_workers:
+            for worker in list(map(str, host_workers)):
+                while True:
+                    free_port = get_free_port()
+                    if free_port not in ports:
+                        break
+                proc = subprocess.Popen(
+                    [f"{worker}/main.py", "--port", free_port],
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                )
+                worker_procs.append(proc)
+                for line in cast(IO[bytes], proc.stdout):
+                    # wait for server to finish starting and announce port
+                    if free_port in str(line):
+                        break
+                ports[free_port] = free_port
 
+                command.extend(
+                    ["--worker-remote", f"http://host.docker.internal:{free_port}"]
+                )
+        # try to start containers
+        client = docker.from_env()
+        containers = []
+
+        network = cast(
+            "Network", client.networks.create("tierkreis-net", driver="bridge")
+        )
+        try:
+            if worker_images:
+                for worker_image in worker_images:
+                    # TODO container is being given same name as image, this is probably
+                    # not ideal
+                    worker_cont = cast(
+                        "Container",
+                        client.containers.run(
+                            worker_image,
+                            name=worker_image,
+                            detach=True,
+                            remove=True,
+                            network=network.name,
+                        ),
+                    )
+
+                    command.extend(["--worker-remote", f"http://{worker_image}:80"])
+                    containers.append(worker_cont)
+
+            runtime_container = cast(
+                "Container",
+                client.containers.run(
+                    image,
+                    command,
+                    detach=True,
+                    remove=True,
+                    network=network.name,
+                    ports=ports,
+                ),
+            )
+            containers.append(runtime_container)
+
+            succesful_start = False
+            lines = []
+            for line in runtime_container.logs(stream=True):
+                lines.append(line)
+                if "Server started" in str(line):
+                    # server is ready to receive requests
+                    succesful_start = True
+                    break
+
+            if not succesful_start:
+                write_process_out(b"\n".join(lines))
+                # process has terminated unexpectedly
+                raise RuntimeLaunchFailed()
+            try:
+                yield RuntimeClient(f"http://127.0.0.1:{http_port}")
+            finally:
+                logs = runtime_container.logs()
+                if show_output:
+                    write_process_out(logs)
+        finally:
+            for container in containers:
+                try:
+                    container.stop()
+                except docker.errors.NotFound as _:
+                    pass
+            network.remove()
+    finally:
         for proc in worker_procs:
             proc.terminate()
             _ = proc.communicate()
-        if show_output:
-            write_process_out(logs)

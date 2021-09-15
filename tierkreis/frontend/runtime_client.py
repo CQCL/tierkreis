@@ -38,6 +38,7 @@ import signal
 
 if TYPE_CHECKING:
     from docker.models.containers import Container
+    from docker.models.networks import Network
 
 
 @dataclass
@@ -431,7 +432,8 @@ def get_free_port() -> str:
 @contextmanager
 def docker_runtime(
     image: str,
-    workers: Optional[List[Path]] = None,
+    worker_images: Optional[List[str]] = None,
+    host_workers: Optional[List[Path]] = None,
     http_port: str = "8080",
     show_output: bool = False,
 ) -> Iterator[RuntimeClient]:
@@ -451,14 +453,13 @@ def docker_runtime(
     :rtype: Iterator[RuntimeClient]
     """
 
-
     client = docker.from_env()
     command = []
 
     worker_procs = []
     ports = {"8080": http_port}
-    if workers:
-        for worker in list(map(str, workers)):
+    if host_workers:
+        for worker in list(map(str, host_workers)):
             while True:
                 free_port = get_free_port()
                 if free_port not in ports:
@@ -478,19 +479,44 @@ def docker_runtime(
             command.extend(
                 ["--worker-remote", f"http://host.docker.internal:{free_port}"]
             )
-    container = cast(
+    worker_containers = []
+
+    network = cast(
+        "Network", client.networks.create("tierkreis-net", driver="bridge")
+    )
+    if worker_images:
+        for worker_image in worker_images:
+            # TODO container is being given same name as image, this is probably
+            # not ideal
+            worker_cont = cast(
+                "Container",
+                client.containers.run(
+                    worker_image,
+                    name=worker_image,
+                    detach=True,
+                    remove=True,
+                    network=network.name,
+                ),
+            )
+
+            command.extend(["--worker-remote", f"http://{worker_image}:80"])
+            worker_containers.append(worker_cont)
+
+    runtime_container = cast(
         "Container",
         client.containers.run(
             image,
             command,
             detach=True,
-            remove=True,
+            remove= True,
             ports=ports,
+            network=network.name,
         ),
     )
+
     succesful_start = False
     lines = []
-    for line in container.logs(stream=True):
+    for line in runtime_container.logs(stream=True):
         lines.append(line)
         if "Server started" in str(line):
             # server is ready to receive requests
@@ -510,8 +536,12 @@ def docker_runtime(
     try:
         yield RuntimeClient(f"http://127.0.0.1:{http_port}")
     finally:
-        logs = container.logs()
-        container.kill()
+        logs = runtime_container.logs()
+        runtime_container.stop()
+        for worker_container in worker_containers:
+            worker_container.stop()
+        network.remove()
+
         for proc in worker_procs:
             proc.terminate()
             _ = proc.communicate()

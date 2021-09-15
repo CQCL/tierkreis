@@ -450,15 +450,10 @@ def docker_runtime(
     :yield: RuntimeClient
     :rtype: Iterator[RuntimeClient]
     """
-    default_workers = [
-        Path("../workers/worker_test"),
-        Path("../workers/pytket_worker"),
-    ]
 
-    worker_st = list(map(str, default_workers))
 
     client = docker.from_env()
-    command = sum((["--worker-path", str(worker)] for worker in worker_st), [])
+    command = []
 
     worker_procs = []
     ports = {"8080": http_port}
@@ -497,7 +492,7 @@ def docker_runtime(
     lines = []
     for line in container.logs(stream=True):
         lines.append(line)
-        if "Starting http server" in str(line):
+        if "Server started" in str(line):
             # server is ready to receive requests
             succesful_start = True
             break

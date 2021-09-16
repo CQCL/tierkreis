@@ -173,3 +173,19 @@ def tierkreis_to_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
             **edge_attr,
         )
     return gv_graph
+
+
+def render_graph(graph: TierkreisGraph, filename: str, format_st: str) -> None:
+    """Use graphviz to render a graph visualisation to file
+
+    :param graph: Graph to render
+    :type graph: TierkreisGraph
+    :param filename: Filename root to write render to
+    :type filename: str
+    :param format_st: Format string, e.g. "png", refer to Graphviz render
+    documentation for full list.
+    :type format_st: str
+    """
+    gv_graph = tierkreis_to_graphviz(graph)
+
+    gv_graph.render(filename, format=format_st)

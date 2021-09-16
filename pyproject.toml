@@ -13,7 +13,7 @@ include = ["tierkreis/core/protos/**/*.py"]
 python = "^3.8"
 betterproto = "^2.0.0b3"
 grpclib = "^0.4.1"
-pytket = "^0.13.0"
+pytket = "^0.14.0"
 
 # optional dependencies
 requests = { version = "^2.25.1", optional = true }

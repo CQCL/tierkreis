@@ -6,17 +6,12 @@ from typing import Any, Dict, Iterator, List, Tuple, Type
 import pytest
 from pytket import Circuit  # type: ignore
 from pytket.passes import FullPeepholeOptimise  # type: ignore
-from tierkreis.core import TierkreisGraph
+from tierkreis import TierkreisGraph
+from tierkreis.frontend import RuntimeClient, local_runtime, docker_runtime
 from tierkreis.core.tierkreis_graph import NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
-
-from tierkreis.frontend.runtime_client import (
-    RuntimeClient,
-    docker_runtime,
-    local_runtime,
-)
 
 
 @pytest.fixture(scope="module")

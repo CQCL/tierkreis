@@ -1,5 +1,6 @@
 """Send requests to tierkreis server to execute a graph."""
 from typing import (
+    Any,
     Dict,
     IO,
     Iterator,
@@ -12,7 +13,7 @@ from typing import (
     Awaitable,
     TypeVar,
 )
-from dataclasses import dataclass
+from dataclasses import dataclass, make_dataclass
 import copy
 import socket
 from contextlib import contextmanager
@@ -24,7 +25,11 @@ import keyring
 import docker
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
-from tierkreis.core.values import TierkreisValue, StructValue
+from tierkreis.core.values import (
+    TierkreisValue,
+    StructValue,
+    IncompatiblePyType,
+)
 from tierkreis.core.types import TierkreisTypeErrors
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
@@ -105,6 +110,15 @@ class TaskHandle:
     id: str
 
 
+@dataclass
+class InputConversionError(Exception):
+    input_name: str
+    value: Any
+
+    def __str__(self) -> str:
+        return f"Input value with name {self.input_name} could not be converted to a TierkreisValue."
+
+
 class RuntimeClient:
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
         self._url = url
@@ -155,7 +169,7 @@ class RuntimeClient:
                 return (response.status, content)
 
     async def start_task(
-        self, graph: TierkreisGraph, inputs: Dict[str, TierkreisValue]
+        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
     ) -> TaskHandle:
         """
         Spawn a task that runs a graph and return the task's id. The id can
@@ -166,6 +180,13 @@ class RuntimeClient:
         :param inputs: The inputs to the graph as map from label to value.
         :return: The id of the running task.
         """
+        inputs = {}
+        for key, val in py_inputs.items():
+            try:
+                inputs[key] = TierkreisValue.from_python(val)
+            except IncompatiblePyType as err:
+                raise InputConversionError(key, val) from err
+
         status, content = await self._post(
             "/task",
             pr.RunTaskRequest(
@@ -212,9 +233,9 @@ class RuntimeClient:
         return result
 
     def start_task_blocking(
-        self, graph: TierkreisGraph, inputs: Dict[str, TierkreisValue]
+        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
     ) -> TaskHandle:
-        return async_to_sync(self.start_task)(graph, inputs)
+        return async_to_sync(self.start_task)(graph, py_inputs)
 
     async def await_task(self, task: TaskHandle) -> Dict[str, TierkreisValue]:
         """
@@ -260,7 +281,7 @@ class RuntimeClient:
         return async_to_sync(self.delete_task)(task)
 
     async def run_graph(
-        self, graph: TierkreisGraph, inputs: Dict[str, TierkreisValue]
+        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
     ) -> Dict[str, TierkreisValue]:
         """
         Run a graph and return results. This combines `start_task` and `await_task`.
@@ -269,14 +290,14 @@ class RuntimeClient:
         :param inputs: Inputs to graph as map from label to value.
         :return: Outputs as map from label to value.
         """
-        task = await self.start_task(graph, inputs)
+        task = await self.start_task(graph, py_inputs)
         outputs = await self.await_task(task)
         return outputs
 
     def run_graph_blocking(
-        self, graph: TierkreisGraph, inputs: Dict[str, TierkreisValue]
+        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
     ) -> Dict[str, TierkreisValue]:
-        return async_to_sync(self.run_graph)(graph, inputs)
+        return async_to_sync(self.run_graph)(graph, py_inputs)
 
     async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
         value = TierkreisValue.from_python(graph).to_proto()

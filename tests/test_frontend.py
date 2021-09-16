@@ -100,16 +100,12 @@ async def test_switch(client: RuntimeClient):
 
     tk_g.set_outputs(out=eval_node["output"])
 
-    true_value = TierkreisValue.from_python(True)
-    false_value = TierkreisValue.from_python(False)
-    in_value = TierkreisValue.from_python(3)
+    outs = await client.run_graph(tk_g, {"flag": True, "number": 3})
 
-    assert await client.run_graph(tk_g, {"flag": true_value, "number": in_value}) == {
-        "out": TierkreisValue.from_python(5)
-    }
-    assert await client.run_graph(tk_g, {"flag": false_value, "number": in_value}) == {
-        "out": TierkreisValue.from_python(6)
-    }
+    assert outs["out"].try_autopython() == 5
+    outs = await client.run_graph(tk_g, {"flag": False, "number": 3})
+
+    assert outs["out"].try_autopython() == 6
 
 
 @pytest.fixture
@@ -145,9 +141,8 @@ def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
 @pytest.mark.asyncio
 async def test_idpy(bell_circuit, client: RuntimeClient):
     async def assert_id_py(val: Any, typ: Type) -> bool:
-        val_encoded = TierkreisValue.from_python(val)
         tk_g = idpy_graph(client)
-        output = await client.run_graph(tk_g, {"id_in": val_encoded})
+        output = await client.run_graph(tk_g, {"id_in": val})
         val_decoded = output["id_out"].to_python(typ)
         return val_decoded == val
 
@@ -181,9 +176,9 @@ async def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> 
 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)
-    assert await client.run_graph(
-        tg, {"input": ArrayValue([CircuitValue(inp_circ)])}
-    ) == {"out": ArrayValue([CircuitValue(bell_circuit)])}
+    assert await client.run_graph(tg, {"input": [inp_circ]}) == {
+        "out": ArrayValue([CircuitValue(bell_circuit)])
+    }
 
 
 @pytest.mark.asyncio
@@ -199,11 +194,7 @@ async def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> 
     outputs = (
         await client.run_graph(
             tg,
-            {
-                "input": TierkreisValue.from_python(
-                    [(bell_circuit, 10), (bell_circuit, 20)]
-                )
-            },
+            {"input": [(bell_circuit, 10), (bell_circuit, 20)]},
         )
     )["out"].to_python(List[Tuple[Dict[str, float], int]])
 

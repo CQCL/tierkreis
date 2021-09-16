@@ -4,7 +4,7 @@ import json
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, Callable, ClassVar, Dict, List, Tuple, cast
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast
 
 import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
@@ -16,6 +16,22 @@ if typing.TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import TierkreisGraph
 
 T = typing.TypeVar("T")
+
+
+@dataclass
+class IncompatiblePyType(Exception):
+    value: Any
+
+    def __str__(self) -> str:
+        return f"Could not convert python value to tierkreis value: {self.value}"
+
+
+@dataclass
+class ToPythonFailure(Exception):
+    value: TierkreisValue
+
+    def __str__(self) -> str:
+        return f"Value {self.value} conversion to python type failed."
 
 
 class TierkreisValue(ABC):
@@ -76,10 +92,22 @@ class TierkreisValue(ABC):
                     if isinstance(value, pytype)
                 )
             except StopIteration as e:
-                raise ValueError(
-                    f"Could not convert python value to tierkreis value: {value}"
-                ) from e
+                raise IncompatiblePyType(value) from e
         return find_subclass.from_python(value)
+
+    def try_autopython(self) -> Optional[Any]:
+        """Try to automatically convert to a python type without specifying the
+        target types.
+        Returns None if unsuccesful. Expected to be succesful for "simple" or "leaf"
+        types, that are not made up component types.
+
+                :return: Python value if succesful, None if not.
+                :rtype: Optional[Any]
+        """
+        try:
+            return self.to_python(getattr(self, "_pytype"))
+        except ToPythonFailure as _:
+            return None
 
 
 @dataclass(frozen=True)
@@ -97,7 +125,7 @@ class BoolValue(TierkreisValue):
             return cast(T, self)
         if type_ is bool:
             return cast(T, self.value)
-        raise TypeError()
+        raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -125,7 +153,7 @@ class StringValue(TierkreisValue):
             return cast(T, self)
         if type_ is str:
             return cast(T, self.value)
-        raise TypeError()
+        raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -154,7 +182,7 @@ class IntValue(TierkreisValue):
         if type_ is int:
             return cast(T, self.value)
         else:
-            raise TypeError()
+            raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -183,7 +211,7 @@ class FloatValue(TierkreisValue):
         if type_ is float:
             return cast(T, self.value)
         else:
-            raise TypeError()
+            raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -212,7 +240,7 @@ class CircuitValue(TierkreisValue):
             return cast(T, self)
         if type_ is Circuit:
             return cast(T, self.value)
-        raise TypeError()
+        raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -249,7 +277,7 @@ class PairValue(TierkreisValue):
             first = self.first.to_python(type_args[0])
             second = self.second.to_python(type_args[1])
             return cast(T, (first, second))
-        raise TypeError()
+        raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -289,7 +317,7 @@ class ArrayValue(TierkreisValue):
             type_args = typing.get_args(type_)
             values = [value.to_python(type_args[0]) for value in self.values]
             return cast(T, values)
-        raise TypeError()
+        raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -334,7 +362,7 @@ class MapValue(TierkreisValue):
                 for key, value in self.values.items()
             }
             return cast(T, values)
-        raise TypeError()
+        raise ToPythonFailure(self)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -389,7 +417,7 @@ class StructValue(TierkreisValue):
 
             return cast(Callable[..., T], type_origin)(**field_values)
 
-        raise TypeError()
+        raise ToPythonFailure(self)
 
     @staticmethod
     def from_proto_dict(values: dict[str, pg.Value]) -> "StructValue":

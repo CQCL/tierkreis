@@ -1,7 +1,9 @@
 import pytest
+from pytket import Circuit  # Type: ignore
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import NodePort, TierkreisEdge, TierkreisFunction
 from tierkreis.core.types import IntType, TypeScheme, Row, GraphType
+from tierkreis.core.values import TierkreisValue
 
 
 def test_creation() -> None:
@@ -73,3 +75,14 @@ def test_insert_subgraph() -> None:
         )
 
     assert e.value.name == "subgraph::NewNode(0)"
+
+
+def test_value_topython():
+    convertible_vals = (1, "two", False, 2.3, Circuit(1))
+
+    for val in convertible_vals:
+        assert TierkreisValue.from_python(val).try_autopython() == val
+
+    fail_vals = ([1, 2], ("a", 4), {"asf": 3, "fsd": 4})
+    for val in fail_vals:
+        assert TierkreisValue.from_python(val).try_autopython() is None

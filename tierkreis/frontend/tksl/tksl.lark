@@ -1,5 +1,8 @@
-start: function+
- 
+start: declaration+
+
+declaration:
+    | function -> func
+
 function: "def" CNAME "(" f_param_list ")" "->" "(" f_param_list ")" code_block
 code_block: "{" instruction+ "}"
 
@@ -10,6 +13,7 @@ type:
     | TYPE_FLOAT
     | TYPE_PAIR "<" type "," type ">"
     | TYPE_ARRAY "<" type ">"
+    | TYPE_STRUCT "<" f_param_list ">"
 
 f_param: CNAME ":" type
 // f_param_list : cs_list{f_param}
@@ -19,6 +23,8 @@ instruction:
     | node_inputs "->" CNAME "\n" -> node
     | "output" "(" arglist ")" -> output
     | "const" CNAME "=" const "\n" -> const_decl
+    | "if" "(" outport ";" named_map ")" code_block "else" code_block  "->" CNAME "\n" -> if_block
+    | "while" "(" named_map ")" code_block "do" code_block  "->" CNAME "\n" -> loop
 
 
 node_inputs:
@@ -41,6 +47,12 @@ const:
     | SIGNED_INT -> int
     | SIGNED_FLOAT -> float
     | STRING -> str
+    | struct_id "{" const_assign ("," const_assign)* "}" -> struct
+
+const_assign: CNAME ":" const
+struct_id:
+    | "struct" -> anon
+    | CNAME -> named
 
 BOOL: ("True" | "False")
 
@@ -64,6 +76,7 @@ TYPE_FLOAT: "float"
 TYPE_STR: "str"
 TYPE_PAIR: "pair"
 TYPE_ARRAY: "array"
+TYPE_STRUCT: "struct"
 
 // %import common.CNAME
 %import common.SIGNED_INT

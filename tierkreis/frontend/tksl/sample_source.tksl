@@ -2,22 +2,49 @@ def add2(x: int) -> (y: int) {
     output(y: python_nodes::add(x, 2))
 }
 
-def add5(x: int) -> (y: int) {
+def add5(x: int) -> (y: int, z: int) {
     output(y: python_nodes::add(x, 5))
+}
+
+
+def struc_id(in_st: struct<p1: float, p2: int>) -> (out_st: struct<p1: float, p2: int>) {
+    output(out_st: in_st)
 }
 
 def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
     unpack_pair(v2) -> unp
+    
+    # declare constants
     const three = 3
     python_nodes::add(a:unp.first, b:three) -> sum
     make_pair(unp.second, "asdf") -> pair
     # python_nodes::add(unp) -> sum
+
+    # positional multiple outputs
     python_nodes::add(copy(v1)) -> total
 
-    switch(predicate: True, true: add2, false: add5) -> sw
+    # equivalent1: if else block
+    if (True; x: total.value)  {
+        output(y: add2(x))
+    } else {
+        output(y: add5(x))
+    } -> total # shadowing output variables
+    
 
-    # eval(thunk: sw, x: total.value) -> eval_out
-    sw.value(x:total.value) -> eval_out
-    add5(sum) -> sum
-    output(o1:eval_out.y, o2: sum.y)
+    # equivalent2: lambda evaluation
+    # switch(predicate: True, true: add2, false: add5) -> sw
+    # sw.value(x:total.value) -> total
+
+    # loop with condition
+    while (x: sum.value) {
+        output(pred: python_nodes::less_than(x, 100))
+    } do {
+        output(x: add5(x))
+    } -> sum
+
+
+    const stuc = struct{p1: 0.43, p2: 3}
+
+    struc_id(stuc) -> disc
+    output(o1:total.y, o2: sum.x)
 }

@@ -2,6 +2,7 @@ start: declaration+
 
 declaration:
     | function -> func
+    | "type" CNAME "=" type "\n" -> type_alias
 
 function: "def" CNAME "(" f_param_list ")" "->" "(" f_param_list ")" code_block
 code_block: "{" instruction+ "}"
@@ -14,6 +15,7 @@ type:
     | TYPE_PAIR "<" type "," type ">"
     | TYPE_ARRAY "<" type ">"
     | TYPE_STRUCT "<" f_param_list ">"
+    | CNAME
 
 f_param: CNAME ":" type
 // f_param_list : cs_list{f_param}

@@ -6,8 +6,10 @@ def add5(x: int) -> (y: int, z: int) {
     output(y: python_nodes::add(x, 5))
 }
 
+# type aliases
+type Point = struct<p1: float, p2: int>
 
-def struc_id(in_st: struct<p1: float, p2: int>) -> (out_st: struct<p1: float, p2: int>) {
+def struc_id(in_st: Point) -> (out_st: Point) {
     output(out_st: in_st)
 }
 
@@ -16,9 +18,9 @@ def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
     
     # declare constants
     const three = 3
-    python_nodes::add(a:unp.first, b:three) -> sum
+    python_nodes::add(a:unp.first, b:three) -> other_total
     make_pair(unp.second, "asdf") -> pair
-    # python_nodes::add(unp) -> sum
+    # python_nodes::add(unp) -> other_total
 
     # positional multiple outputs
     python_nodes::add(copy(v1)) -> total
@@ -36,15 +38,16 @@ def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
     # sw.value(x:total.value) -> total
 
     # loop with condition
-    while (x: sum.value) {
+    while (x: other_total.value) {
         output(pred: python_nodes::less_than(x, 100))
     } do {
         output(x: add5(x))
-    } -> sum
+    } -> other_total
 
 
-    const stuc = struct{p1: 0.43, p2: 3}
+    const stuc = Point{p1: 0.43, p2: 3}
 
     struc_id(stuc) -> disc
-    output(o1:total.y, o2: sum.x)
+
+    output(o1:total.y, o2: other_total.x)
 }

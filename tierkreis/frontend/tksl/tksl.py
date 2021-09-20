@@ -45,6 +45,8 @@ class Context:
     inputs: Dict[str, TierkreisType] = field(default_factory=dict)
     outputs: Dict[str, TierkreisType] = field(default_factory=dict)
 
+    aliases: Dict[str, TierkreisType] = field(default_factory=dict)
+
     def copy(self) -> "Context":
         return copy.deepcopy(self)
 
@@ -78,20 +80,19 @@ def get_const(token) -> Any:
         return str(token.children[0].value[1:-1])
     if token.data == "struct":
         struct_id = token.children[0]
-        if struct_id.data == "anon":
-            pass
-        else:
-            raise RuntimeError # TODO aliases
+        # if struct_id.data == "anon":
+        #     pass
+        # else:
+        #     raise RuntimeError # TODO aliases
         
         field_names = [const_assign.children[0].value for const_assign in token.children[1:]]
         values = [get_const(const_assign.children[1]) for const_assign in token.children[1:]]
-        print(values)
         cl = make_dataclass("anon_struct", fields=field_names, bases=(TierkreisStruct,))
 
         return cl(**dict(zip(field_names, values)))
 
 
-def get_type(token) -> TierkreisType:
+def get_type(token, aliases: Dict[str, TierkreisType] = {}) -> TierkreisType:
     type_name = token.children[0].type
     if type_name == "TYPE_INT":
         return IntType()
@@ -102,24 +103,26 @@ def get_type(token) -> TierkreisType:
     if type_name == "TYPE_FLOAT":
         return FloatType()
     if type_name == "TYPE_PAIR":
-        return PairType(get_type(token.children[1]), get_type(token.children[2]))
+        return PairType(get_type(token.children[1], aliases), get_type(token.children[2], aliases))
     if type_name == "TYPE_ARRAY":
-        return ArrayType(get_type(token.children[1]))
+        return ArrayType(get_type(token.children[1], aliases))
     if type_name == "TYPE_STRUCT":
         args = token.children[1].children
-        return StructType(Row({arg.children[0].value: get_type(arg.children[1]) for arg in args}))
+        return StructType(Row({arg.children[0].value: get_type(arg.children[1], aliases) for arg in args}))
+    if type_name == "CNAME":
+        return aliases[token.children[0].value]
     return VarType("unkown")
 
 
-def get_annotations(f_param_list) -> Dict[str, TierkreisType]:
+def get_annotations(f_param_list, aliases: Dict[str, TierkreisType] = {}) -> Dict[str, TierkreisType]:
     return {
-        param.children[0].value: get_type(param.children[1])
+        param.children[0].value: get_type(param.children[1], aliases)
         for param in f_param_list.children
     }
 
 
-def get_inp_out(f_tree) -> Tuple[Dict[str, TierkreisType], Dict[str, TierkreisType]]:
-    return get_annotations(f_tree.children[1]), get_annotations(f_tree.children[2])
+def get_inp_out(f_tree, aliases: Dict[str, TierkreisType] = {}) -> Tuple[Dict[str, TierkreisType], Dict[str, TierkreisType]]:
+    return get_annotations(f_tree.children[1], aliases), get_annotations(f_tree.children[2], aliases)
 
 
 def gen_tkfunc(
@@ -132,8 +135,8 @@ def gen_tkfunc(
     )
 
 
-def get_tkfunc_def(f_tree) -> TierkreisFunction:
-    inputs, outputs = get_inp_out(f_tree)
+def get_tkfunc_def(f_tree, aliases: Dict[str, TierkreisType] = {}) -> TierkreisFunction:
+    inputs, outputs = get_inp_out(f_tree, aliases)
     return gen_tkfunc(f_tree.children[0].value, inputs, outputs)
 
 
@@ -150,7 +153,7 @@ def ports_from_tkfunc(func: TierkreisFunction, outputs: bool = True) -> List[str
 def get_graph(f_tree, context: Context) -> TierkreisGraph:
     tg = TierkreisGraph()
     code_block = f_tree.children[-1]
-    inputs, outputs = get_inp_out(f_tree)
+    inputs, outputs = get_inp_out(f_tree, context.aliases)
     context.inputs = inputs
     context.outputs = outputs
     append_code_block(code_block, context, tg)
@@ -353,8 +356,15 @@ if __name__ == "__main__":
     context = Context()
 
     funcs = [child.children[0] for child in parse_tree.children if child.data == "func"]
+    typ_decs = [child for child in parse_tree.children if child.data == "type_alias"]
+    for typ_dec in typ_decs:
+        alias = typ_dec.children[0].value
+
+        context.aliases[alias] = get_type(typ_dec.children[1], context.aliases)
+    
+
     context.functions = {
-        child.children[0].value: (TierkreisGraph(), get_tkfunc_def(child))
+        child.children[0].value: (TierkreisGraph(), get_tkfunc_def(child, context.aliases))
         for child in funcs
     }
 

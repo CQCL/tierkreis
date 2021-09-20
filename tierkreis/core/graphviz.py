@@ -86,6 +86,8 @@ def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
             node_label += "\n<BR/>"
         node_label += f_name
     elif isinstance(node, ConstNode):
+        if node_label:
+            node_label += "\n<BR/>"
         fillcolor = _COLOURS["const"]
         node_label += str(node.value)
     elif isinstance(node, BoxNode):

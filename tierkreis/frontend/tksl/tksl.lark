@@ -1,0 +1,72 @@
+start: function+
+ 
+function: "def" CNAME "(" f_param_list ")" "->" "(" f_param_list ")" code_block
+code_block: "{" instruction+ "}"
+
+type:
+    | TYPE_INT
+    | TYPE_BOOL
+    | TYPE_STR
+    | TYPE_FLOAT
+    | TYPE_PAIR "<" type "," type ">"
+    | TYPE_ARRAY "<" type ">"
+
+f_param: CNAME ":" type
+// f_param_list : cs_list{f_param}
+f_param_list :  f_param ("," f_param)*
+
+instruction: 
+    | node_inputs "->" CNAME "\n" -> node
+    | "output" "(" arglist ")" -> output
+    | "const" CNAME "=" const "\n" -> const_decl
+
+
+node_inputs: f_name "(" arglist ")"
+
+arglist:
+    | port_map ("," port_map)* -> named_map
+    | outport ("," outport)* -> positional
+
+port_map: INPORT ":" outport
+
+f_name:
+    | CNAME
+    | CNAME "::" CNAME
+
+const:
+    | TRUE | FALSE -> bool
+    | SIGNED_INT -> int
+    | SIGNED_FLOAT -> float
+    | STRING -> str
+
+// BOOL: ("True" | "False")
+
+TRUE: "true"
+FALSE: "false"
+
+INPORT: CNAME
+outport: 
+    | CNAME "." CNAME -> node_output
+    | node_inputs -> nested
+    | const -> const_port
+    | CNAME -> name
+
+COMMENT: SH_COMMENT
+
+
+TYPE_INT: "int"
+TYPE_BOOL: "bool"
+TYPE_FLOAT: "float"
+TYPE_STR: "str"
+TYPE_PAIR: "pair"
+TYPE_ARRAY: "array"
+
+%import common.CNAME
+%import common.SIGNED_INT
+%import common.SIGNED_FLOAT
+%import common.WS
+%import python.STRING
+%import common.SH_COMMENT
+
+%ignore COMMENT
+%ignore WS

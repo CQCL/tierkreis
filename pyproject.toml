@@ -22,9 +22,10 @@ opentelemetry-sdk = { version = "^1.5.0", optional = true }
 opentelemetry-exporter-otlp = { version = "^1.5.0", optional = true }
 keyring = { version = "23.2", optional = true }
 "keyrings.alt" = { version = "4.1", optional = true }
+lark = {version = "^0.11.3", optional = true }
 
 [tool.poetry.extras]
-frontend = ["docker", "keyring", "keyrings.alt"]
+frontend = ["docker", "keyring", "keyrings.alt", "lark"]
 runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 
 [tool.poetry.dev-dependencies]

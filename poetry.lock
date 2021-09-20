@@ -366,6 +366,19 @@ docs = ["sphinx", "jaraco.packaging (>=8.2)", "rst.linker (>=1.9)"]
 testing = ["pytest (>=4.6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-cov", "pytest-enabler (>=1.0.1)", "backports.unittest-mock", "keyring (>=20)", "fs (>=0.5,<3)", "pycryptodomex", "pytest-black (>=0.3.7)", "pytest-mypy", "gdata", "python-keyczar"]
 
 [[package]]
+name = "lark"
+version = "0.11.3"
+description = "a modern parsing library"
+category = "main"
+optional = true
+python-versions = "*"
+
+[package.extras]
+atomic_cache = ["atomicwrites"]
+nearley = ["js2py"]
+regex = ["regex"]
+
+[[package]]
 name = "lark-parser"
 version = "0.12.0"
 description = "a modern parsing library"
@@ -1127,6 +1140,9 @@ keyring = [
 "keyrings.alt" = [
     {file = "keyrings.alt-4.1.0-py3-none-any.whl", hash = "sha256:7b051f13ffeb216ea9940995f91ea3eece7795d199631ea25a625fbf614d74b4"},
     {file = "keyrings.alt-4.1.0.tar.gz", hash = "sha256:52ccb61d6f16c10f32f30d38cceef7811ed48e086d73e3bae86f0854352c4ab2"},
+]
+lark = [
+    {file = "lark-0.11.3.tar.gz", hash = "sha256:3100d9749b5a85735ec428b83100876a5da664804579e729c23a36341f961e7e"},
 ]
 lark-parser = [
     {file = "lark-parser-0.12.0.tar.gz", hash = "sha256:15967db1f1214013dca65b1180745047b9be457d73da224fcda3d9dd4e96a138"},

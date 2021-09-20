@@ -1,22 +1,23 @@
-# def add2(x: int) -> (y: int) {
-#     output(y: python_nodes::add(x, 2))
-# }
+def add2(x: int) -> (y: int) {
+    output(y: python_nodes::add(x, 2))
+}
 
-# def add5(x: int) -> (y: int) {
-#     output(y: python_nodes::add(x, 5))
-# }
+def add5(x: int) -> (y: int) {
+    output(y: python_nodes::add(x, 5))
+}
 
 def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
-    # unpack_pair(v2) -> unp
-    # const three = 3
-    # python_nodes::add(a:unp.first, b:three) -> sum
-    # make_pair(unp.second, "asdf") -> pair
-    # # python_nodes::add(unp) -> sum
-    # python_nodes::add(copy(v1)) -> total
+    unpack_pair(v2) -> unp
+    const three = 3
+    python_nodes::add(a:unp.first, b:three) -> sum
+    make_pair(unp.second, "asdf") -> pair
+    # python_nodes::add(unp) -> sum
+    python_nodes::add(copy(v1)) -> total
 
-    switch(predicate: true) -> sw
-    # switch(predicate: True, true: add2, false: add5) -> sw
-#     eval(thunk: add2, x: total.value) -> eval_out
-#     add5(sum) -> sum
-#     output(o1:eval_out.y, o2: sum.y)
+    switch(predicate: True, true: add2, false: add5) -> sw
+
+    # eval(thunk: sw, x: total.value) -> eval_out
+    sw.value(x:total.value) -> eval_out
+    add5(sum) -> sum
+    output(o1:eval_out.y, o2: sum.y)
 }

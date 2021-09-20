@@ -17,6 +17,7 @@ from tierkreis.core.types import (
     TierkreisType,
     TypeScheme,
     ArrayType,
+    VarType,
 )
 from tierkreis.frontend import local_runtime, RuntimeClient
 from tierkreis.core.graphviz import tierkreis_to_graphviz
@@ -25,7 +26,7 @@ FuncDefs = Dict[str, Tuple[TierkreisGraph, TierkreisFunction]]
 
 
 def get_client() -> Iterator[RuntimeClient]:
-    exe = Path("../target/debug/tierkreis-server")
+    exe = Path("../../../../target/debug/tierkreis-server")
     # launch a local server for this test run and kill it at the end
     with local_runtime(exe, show_output=True) as local_client:
         yield local_client
@@ -48,7 +49,7 @@ def get_const(token) -> Any:
     if token.data == "float":
         return float(token.children[0].value)
     if token.data == "bool":
-        return token.children[0].value == "true"
+        return token.children[0].value == "True"
     if token.data == "str":
         return str(token.children[0].value[1:-1])
 
@@ -67,7 +68,7 @@ def get_type(token) -> TierkreisType:
         return PairType(get_type(token.children[1]), get_type(token.children[2]))
     if type_name == "TYPE_ARRAY":
         return ArrayType(get_type(token.children[1]))
-    return "unknown"
+    return VarType("unkown")
 
 
 def get_annotations(f_param_list) -> Dict[str, TierkreisType]:
@@ -131,18 +132,24 @@ def get_graph(f_tree, func_defs: FuncDefs) -> TierkreisGraph:
             return [node_ref["value"]]
         raise RuntimeError
 
+    def get_positional_args(token, expected_ports: List[str]) -> Dict[str, NodePort]:
+        all_outports = []
+        for provided in token.children:
+            all_outports.extend(get_outport(provided))
+
+        return dict(zip(expected_ports, all_outports))
+
+    def get_named_map_args(token) ->  Dict[str, NodePort]:
+        return {
+            t.children[0].value: get_outport(t.children[1])[0]
+            for t in token.children
+        }
+
     def get_arglist(token, expected_ports: List[str]) -> Dict[str, NodePort]:
         if token.data == "named_map":
-            return {
-                t.children[0].value: get_outport(t.children[1])[0]
-                for t in token.children
-            }
+            return get_named_map_args(token.children[0])
         if token.data == "positional":
-            all_outports = []
-            for provided in token.children:
-                all_outports.extend(get_outport(provided))
-
-            return dict(zip(expected_ports, all_outports))
+            return get_positional_args(token, expected_ports)
         raise RuntimeError
 
     def add_const_node(
@@ -155,25 +162,32 @@ def get_graph(f_tree, func_defs: FuncDefs) -> TierkreisGraph:
     def add_node(
         token, name: Optional[str] = None
     ) -> Tuple[NodeRef, Optional[TierkreisFunction]]:
-        nmspace, fname = get_func_name(token.children[0])
-        primitive = True
-        try:
-            tk_func = sig[nmspace][fname]
-        except KeyError as err:
-            if fname in func_defs:
-                tk_func = func_defs[fname][1]
-                primitive = False
-            else:
-                raise RuntimeError(f"Function name not found: {fname}") from err
-        # FIXME canonical ordering
-        input_ports = list(tk_func.type_scheme.body.inputs.content.keys())
-
-        arglist = get_arglist(token.children[1], input_ports)
-        if primitive:
-            noderef = tg.add_node(tk_func.name, name, **arglist)
+        if token.data == "thunk":
+            outport = token.children[0]
+            thunk_port = get_outport(outport)[0]
+            arglist = get_named_map_args(token.children[1])
+            eval_n = tg.add_node("builtin/eval", thunk=thunk_port, **arglist)
+            return (eval_n, sig["builtin"]["eval"])
         else:
-            noderef = tg.add_box(func_defs[fname][0], fname, **arglist)
-        return (noderef, tk_func)
+            nmspace, fname = get_func_name(token.children[0])
+            primitive = True
+            try:
+                tk_func = sig[nmspace][fname]
+            except KeyError as err:
+                if fname in func_defs:
+                    tk_func = func_defs[fname][1]
+                    primitive = False
+                else:
+                    raise RuntimeError(f"Function name not found: {fname}") from err
+            # FIXME canonical ordering
+            input_ports = list(tk_func.type_scheme.body.inputs.content.keys())
+
+            arglist = get_arglist(token.children[1], input_ports)
+            if primitive:
+                noderef = tg.add_node(tk_func.name, name, **arglist)
+            else:
+                noderef = tg.add_box(func_defs[fname][0], fname, **arglist)
+            return (noderef, tk_func)
 
     for inst in code_block.children:
         if inst.data == "comment":
@@ -223,7 +237,6 @@ if __name__ == "__main__":
     with open(sys.argv[1]) as source:
         parse_tree = parser.parse(source.read())
 
-    print(parse_tree.children[0].pretty())
     func_defs: FuncDefs = {
         child.children[0].value: (TierkreisGraph(), get_tkfunc_def(child))
         for child in parse_tree.children
@@ -238,7 +251,7 @@ if __name__ == "__main__":
     tg = func_defs["main"][0]
 
 
-    with local_runtime("../target/debug/tierkreis-server", show_output=True) as client:
+    with local_runtime("../../../../target/debug/tierkreis-server", show_output=True) as client:
 
         tg = client.type_check_graph_blocking(tg)
 

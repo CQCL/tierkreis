@@ -2,8 +2,12 @@ def add2(x: int) -> (y: int) {
     output(y: python_nodes::add(x, 2))
 }
 
-def add5(x: int) -> (y: int, z: int) {
+def add5(x: int) -> (y: int) {
     output(y: python_nodes::add(x, 5))
+}
+
+def double(x: int) -> (x2: int) {
+    output(python_nodes::add(copy(x)))
 }
 
 # type aliases
@@ -19,14 +23,14 @@ def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
     # declare constants
     const three = 3
     python_nodes::add(a:unp.first, b:three) -> other_total
-    make_pair(unp.second, "asdf") -> pair
+    make_pair(True, "asdf") -> pair
     # python_nodes::add(unp) -> other_total
 
     # positional multiple outputs
-    python_nodes::add(copy(v1)) -> total
+    double(v1) -> total
 
     # equivalent1: if else block
-    if (True; x: total.value)  {
+    if (unp.second; x: total)  {
         output(y: add2(x))
     } else {
         output(y: add5(x))
@@ -39,15 +43,15 @@ def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
 
     # loop with condition
     while (x: other_total.value) {
-        output(pred: python_nodes::less_than(x, 100))
+        output(pred: python_nodes::less_than(x:x, y:100))
     } do {
         output(x: add5(x))
-    } -> other_total
+    } -> looped_total
 
 
     const stuc = Point{p1: 0.43, p2: 3}
 
     struc_id(stuc) -> disc
 
-    output(o1:total.y, o2: other_total.x)
+    output(o1:total.y, o2: looped_total.x)
 }

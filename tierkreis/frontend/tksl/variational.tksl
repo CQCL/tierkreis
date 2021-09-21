@@ -1,0 +1,10 @@
+def main(circ: circuit, params: array<float>) -> (value: float) {
+
+    pytket::substitute_symbols(circ: circ, symbs: ["a"], params: params) -> subs
+    make_array("0": make_pair(first: subs, second: 1000)) -> arr
+    pytket::execute(circuit_shots:arr, backend_name: "AerBackend") -> res
+    unpack_array(res) -> res
+    pytket::z_expectation(dist:res."0") -> z_exp
+    output(value: z_exp.value)
+
+}

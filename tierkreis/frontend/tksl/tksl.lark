@@ -12,10 +12,11 @@ type:
     | TYPE_BOOL
     | TYPE_STR
     | TYPE_FLOAT
+    | TYPE_CIRCUIT
     | TYPE_PAIR "<" type "," type ">"
     | TYPE_ARRAY "<" type ">"
     | TYPE_STRUCT "<" f_param_list ">"
-    | CNAME
+    | CNAME -> alias
 
 f_param: CNAME ":" type
 // f_param_list : cs_list{f_param}
@@ -50,6 +51,7 @@ const:
     | SIGNED_FLOAT -> float
     | STRING -> str
     | struct_id "{" const_assign ("," const_assign)* "}" -> struct
+    | "[" const ("," const)*  "]" -> array
 
 const_assign: CNAME ":" const
 struct_id:
@@ -62,8 +64,10 @@ BOOL: ("True" | "False")
 // FALSE: "false"
 
 INPORT: CNAME
+    | STRING
 outport: 
     | CNAME "." CNAME -> node_output
+    | CNAME "." STRING -> node_output_str
     | node_inputs -> nested
     | const -> const_port
     | CNAME -> name
@@ -79,6 +83,7 @@ TYPE_STR: "str"
 TYPE_PAIR: "pair"
 TYPE_ARRAY: "array"
 TYPE_STRUCT: "struct"
+TYPE_CIRCUIT: "circuit"
 
 // %import common.CNAME
 %import common.SIGNED_INT

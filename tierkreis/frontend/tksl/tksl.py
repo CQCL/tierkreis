@@ -4,15 +4,15 @@ from pathlib import Path
 import copy
 import sys
 from typing import Any, Iterable, Iterator, Dict, List, Optional, Set, Tuple, cast
-from lark import Lark
+from lark import Lark, Visitor, Transformer
 from lark.lexer import Token
 from lark.tree import Tree
-from networkx import convert
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import NodePort, NodeRef
 from tierkreis.core.types import (
     BoolType,
+    CircuitType,
     FloatType,
     GraphType,
     IntType,
@@ -90,7 +90,9 @@ def get_const(token) -> Any:
         cl = make_dataclass("anon_struct", fields=field_names, bases=(TierkreisStruct,))
 
         return cl(**dict(zip(field_names, values)))
-
+    
+    if token.data == "array":
+        return [get_const(tok) for tok in token.children]
 
 def get_type(token, aliases: Dict[str, TierkreisType] = {}) -> TierkreisType:
     type_name = token.children[0].type
@@ -109,7 +111,9 @@ def get_type(token, aliases: Dict[str, TierkreisType] = {}) -> TierkreisType:
     if type_name == "TYPE_STRUCT":
         args = token.children[1].children
         return StructType(Row({arg.children[0].value: get_type(arg.children[1], aliases) for arg in args}))
-    if type_name == "CNAME":
+    if type_name == "TYPE_CIRCUIT":
+        return CircuitType()
+    if token.data == "alias":
         return aliases[token.children[0].value]
     return VarType("unkown")
 
@@ -188,6 +192,10 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
             return [
                 context.output_vars[token.children[0].value][0][token.children[1].value]
             ]
+        if token.data == "node_output_str":
+            return [
+                context.output_vars[token.children[0].value][0][token.children[1].replace('"', '')]
+            ]
         if token.data == "nested":
             node_ref, fun = add_node(token.children[0])
             return make_outports(
@@ -210,7 +218,7 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
 
     def get_named_map_args(token) -> Dict[str, NodePort]:
         return {
-            t.children[0].value: get_outport(t.children[1])[0] for t in token.children
+            t.children[0].value.replace('"', ''): get_outport(t.children[1])[0] for t in token.children
         }
 
     def get_arglist(token, expected_ports: List[str]) -> Dict[str, NodePort]:
@@ -344,6 +352,18 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
         else:
             pass
 
+class ProgramVisitor(Visitor):
+    def __init__(self) -> None:
+        self.context = Context()
+        super().__init__()
+    def func(self, tree: Tree):
+        print("func")
+
+
+    def type_alias(self, tree: Tree):
+        alias = tree.children[0].value
+        print("alias")
+
 
 if __name__ == "__main__":
     with open("tksl.lark") as f:
@@ -382,6 +402,6 @@ if __name__ == "__main__":
 
         tg = client.type_check_graph_blocking(tg)
 
-        # outs = client.run_graph_blocking(tg, {"v1": 67, "v2": (45, True)})
+        # outs = client.run_graph_blocking(tg, {"v1": 67, "v2": (45, False)})
         # print(outs)
     tierkreis_to_graphviz(tg).render("dump", "png")

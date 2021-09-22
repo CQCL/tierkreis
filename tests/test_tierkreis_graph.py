@@ -19,6 +19,8 @@ def test_creation() -> None:
                 outputs=Row(content={"value": IntType()}, rest=None),
             ),
         ),
+        input_order=["a", "b"],
+        output_order=["value"],
         docs="",
     )
     add = tg.add_node(add_func, a=3, b=tg.input["input"])

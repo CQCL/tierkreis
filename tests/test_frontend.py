@@ -89,9 +89,9 @@ async def test_switch(client: RuntimeClient):
 
     switch = tk_g.add_node(
         sig["builtin"]["switch"],
-        true=tk_g.add_const(add_2_g),
-        false=tk_g.add_const(add_3_g),
-        predicate=tk_g.input["flag"],
+        if_true=tk_g.add_const(add_2_g),
+        if_false=tk_g.add_const(add_3_g),
+        pred=tk_g.input["flag"],
     )
 
     eval_node = tk_g.add_node(

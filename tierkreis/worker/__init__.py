@@ -1,4 +1,5 @@
 import asyncio
+import dataclasses
 import grpclib
 import grpclib.server
 import grpclib.events
@@ -11,6 +12,7 @@ from tierkreis.core.protos.tierkreis.worker import (
 )
 import tierkreis.core.protos.tierkreis.signature as ps
 import tierkreis.core.protos.tierkreis.graph as pg
+from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.types import (
     Constraint,
     Kind,
@@ -58,8 +60,12 @@ def snake_to_pascal(name: str) -> str:
 @dataclass
 class Function:
     run: Callable[[StructValue], Awaitable[StructValue]]
-    type_scheme: TypeScheme
-    description: Optional[str]
+    declaration: TierkreisFunction
+
+
+def get_base_tkstruct(cl: Type) -> Type:
+    origin = typing.get_origin(cl)
+    return origin if origin is not None else cl
 
 
 class Namespace:
@@ -189,10 +195,19 @@ class Namespace:
                 ),
             )
 
+            def get_ordered_names(struct) -> List[str]:
+                tk_cls = get_base_tkstruct(struct)
+                return [field.name for field in dataclasses.fields(tk_cls)]
+
             self.functions[func_name] = Function(
                 run=wrapped_func,
-                type_scheme=type_scheme,
-                description=getdoc(func),
+                declaration=TierkreisFunction(
+                    func_name,
+                    type_scheme=type_scheme,
+                    docs=getdoc(func) or "",
+                    input_order=get_ordered_names(hint_inputs),
+                    output_order=get_ordered_names(hint_outputs),
+                ),
             )
             return func
 
@@ -207,7 +222,9 @@ class Worker:
 
     def add_namespace(self, namespace: "Namespace"):
         for (name, function) in namespace.functions.items():
-            self.functions[f"{namespace.name}/{name}"] = function
+            newname = f"{namespace.name}/{name}"
+            function.declaration.name = newname
+            self.functions[newname] = function
 
     def run(self, function: str, inputs: StructValue) -> Awaitable[StructValue]:
         if function not in self.functions:
@@ -310,11 +327,7 @@ class SignatureServerImpl(ps.SignatureBase):
 
     async def list_functions(self) -> "ps.ListFunctionsResponse":
         functions = {
-            function_name: ps.FunctionDeclaration(
-                name=function_name,
-                type_scheme=function.type_scheme.to_proto(),
-                description=function.description or "",
-            )
+            function_name: function.declaration.to_proto()
             for (function_name, function) in self.worker.functions.items()
         }
 

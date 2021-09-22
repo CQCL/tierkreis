@@ -386,10 +386,11 @@ def local_runtime(
     :yield: RuntimeClient
     :rtype: Iterator[RuntimeClient]
     """
+    parent_dir = Path(__file__).parent
 
     default_workers = [
-        Path("../workers/worker_test"),
-        Path("../workers/pytket_worker"),
+        parent_dir / "../../../workers/worker_test",
+        parent_dir / "../../../workers/pytket_worker",
     ]
 
     command: List[Union[str, Path]] = [executable]

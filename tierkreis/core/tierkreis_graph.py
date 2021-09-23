@@ -54,9 +54,9 @@ class TierkreisNode(ABC):
 
         return result
 
-    def is_delete_node(self) -> bool:
+    def is_discard_node(self) -> bool:
         """Delete nodes have some special behaviour, check for it."""
-        return getattr(self, "function_name", "") == "builtin/delete"
+        return getattr(self, "function_name", "") == "builtin/discard"
 
 
 @dataclass
@@ -346,13 +346,13 @@ class TierkreisGraph:
         tk_type = _get_edge(edge_type)
 
         edge = TierkreisEdge(node_port_from, node_port_to, tk_type)
-        # if port is currently connected to delete, replace that edge
+        # if port is currently connected to discard, replace that edge
         try:
             del_edge = next(
                 out_edge
                 for out_edge in self.out_edges(edge.source.node_ref)
                 if out_edge.source.port == edge.source.port
-                and self[out_edge.target.node_ref].is_delete_node()
+                and self[out_edge.target.node_ref].is_discard_node()
             )
             self._graph.remove_edge(
                 del_edge.source.node_ref.name, del_edge.target.node_ref.name
@@ -409,8 +409,8 @@ class TierkreisGraph:
             )
         ]
 
-    def delete(self, out_port: NodePort) -> None:
-        _ = self.add_node("builtin/delete", value=out_port)
+    def discard(self, out_port: NodePort) -> None:
+        _ = self.add_node("builtin/discard", value=out_port)
 
     def make_pair(
         self, first_port: IncomingWireType, second_port: IncomingWireType

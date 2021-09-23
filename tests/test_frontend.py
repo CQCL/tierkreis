@@ -209,7 +209,7 @@ async def test_interactive_infer(client: RuntimeClient) -> None:
         _, val1 = tg.copy_value(3)
         tg.set_outputs(out=val1)
 
-    assert any(node.is_delete_node() for node in tg.nodes().values())
+    assert any(node.is_discard_node() for node in tg.nodes().values())
 
     assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
 

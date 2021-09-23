@@ -18,7 +18,7 @@ _COLOURS = {
     "edge": "#FFC107",
     "dark": "#343A40",
     "const": "#392656",
-    "delete": "#B3525B",
+    "discard": "#B3525B",
 }
 
 
@@ -119,12 +119,12 @@ def tierkreis_to_graphviz(tk_graph: TierkreisGraph) -> gv.Digraph:
     )
 
     for node_name, node in tk_graph.nodes().items():
-        if node.is_delete_node():
+        if node.is_discard_node():
             gv_graph.node(
                 node_name,
                 label="",
                 shape="point",
-                color=_COLOURS["delete"],
+                color=_COLOURS["discard"],
                 width="0.15",
             )
             continue

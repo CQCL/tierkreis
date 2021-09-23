@@ -52,7 +52,7 @@ def test_insert_subgraph() -> None:
 
     pair_port = subgraph.make_pair(subgraph.input["one"], subgraph.input["two"])
     first_p, second_p = subgraph.unpack_pair(pair_port)
-    subgraph.delete(second_p)
+    subgraph.discard(second_p)
     subgraph.set_outputs(sub_out=first_p)
 
     main_g = TierkreisGraph()

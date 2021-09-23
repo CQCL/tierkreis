@@ -3,8 +3,9 @@ from dataclasses import dataclass, field, make_dataclass
 from pathlib import Path
 import copy
 import sys
-from typing import Any, Iterable, Iterator, Dict, List, Optional, Set, Tuple, cast
-from lark import Lark, Visitor, Transformer
+from collections import OrderedDict
+from typing import Any, Iterable, Iterator, Dict, List, Optional, Tuple, cast
+from lark import Lark, Visitor
 from lark.lexer import Token
 from lark.tree import Tree
 from tierkreis import TierkreisGraph
@@ -14,14 +15,12 @@ from tierkreis.core.types import (
     BoolType,
     CircuitType,
     FloatType,
-    GraphType,
     IntType,
     PairType,
     Row,
     StringType,
     StructType,
     TierkreisType,
-    TypeScheme,
     ArrayType,
     VarType,
 )
@@ -29,23 +28,30 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.frontend import local_runtime, RuntimeClient
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 
-FuncDefs = Dict[str, Tuple[TierkreisGraph, TierkreisFunction]]
+
+@dataclass
+class FunctionDefinition:
+    inputs: list[str]
+    outputs: list[str]
+
+
+FuncDefs = Dict[str, Tuple[TierkreisGraph, FunctionDefinition]]
+PortMap = OrderedDict[str, Optional[TierkreisType]]
+Aliases = Dict[str, TierkreisType]
 
 
 @dataclass
 class Context:
-    functions: Dict[str, Tuple[TierkreisGraph, TierkreisFunction]] = field(
-        default_factory=dict
-    )
-    output_vars: Dict[str, Tuple[NodeRef, TierkreisFunction]] = field(
+    functions: FuncDefs = field(default_factory=dict)
+    output_vars: Dict[str, Tuple[NodeRef, FunctionDefinition]] = field(
         default_factory=dict
     )
     constants: Dict[str, NodeRef] = field(default_factory=dict)
 
-    inputs: Dict[str, TierkreisType] = field(default_factory=dict)
-    outputs: Dict[str, TierkreisType] = field(default_factory=dict)
+    inputs: PortMap = field(default_factory=OrderedDict)
+    outputs: PortMap = field(default_factory=OrderedDict)
 
-    aliases: Dict[str, TierkreisType] = field(default_factory=dict)
+    aliases: Aliases = field(default_factory=dict)
 
     def copy(self) -> "Context":
         return copy.deepcopy(self)
@@ -63,7 +69,7 @@ client = next(get_client())
 sig = client.signature
 
 
-def get_func_name(token) -> Tuple[str, str]:
+def get_func_name(token) -> tuple[str, str]:
     if len(token.children) == 1:
         return "builtin", token.children[0]
     return token.children[0], token.children[1]
@@ -84,17 +90,22 @@ def get_const(token) -> Any:
         #     pass
         # else:
         #     raise RuntimeError # TODO aliases
-        
-        field_names = [const_assign.children[0].value for const_assign in token.children[1:]]
-        values = [get_const(const_assign.children[1]) for const_assign in token.children[1:]]
+
+        field_names = [
+            const_assign.children[0].value for const_assign in token.children[1:]
+        ]
+        values = [
+            get_const(const_assign.children[1]) for const_assign in token.children[1:]
+        ]
         cl = make_dataclass("anon_struct", fields=field_names, bases=(TierkreisStruct,))
 
         return cl(**dict(zip(field_names, values)))
-    
+
     if token.data == "array":
         return [get_const(tok) for tok in token.children]
 
-def get_type(token, aliases: Dict[str, TierkreisType] = {}) -> TierkreisType:
+
+def get_type(token, aliases: Aliases = {}) -> TierkreisType:
     type_name = token.children[0].type
     if type_name == "TYPE_INT":
         return IntType()
@@ -105,12 +116,21 @@ def get_type(token, aliases: Dict[str, TierkreisType] = {}) -> TierkreisType:
     if type_name == "TYPE_FLOAT":
         return FloatType()
     if type_name == "TYPE_PAIR":
-        return PairType(get_type(token.children[1], aliases), get_type(token.children[2], aliases))
+        return PairType(
+            get_type(token.children[1], aliases), get_type(token.children[2], aliases)
+        )
     if type_name == "TYPE_ARRAY":
         return ArrayType(get_type(token.children[1], aliases))
     if type_name == "TYPE_STRUCT":
         args = token.children[1].children
-        return StructType(Row({arg.children[0].value: get_type(arg.children[1], aliases) for arg in args}))
+        return StructType(
+            Row(
+                {
+                    arg.children[0].value: get_type(arg.children[1], aliases)
+                    for arg in args
+                }
+            )
+        )
     if type_name == "TYPE_CIRCUIT":
         return CircuitType()
     if token.data == "alias":
@@ -118,40 +138,37 @@ def get_type(token, aliases: Dict[str, TierkreisType] = {}) -> TierkreisType:
     return VarType("unkown")
 
 
-def get_annotations(f_param_list, aliases: Dict[str, TierkreisType] = {}) -> Dict[str, TierkreisType]:
-    return {
-        param.children[0].value: get_type(param.children[1], aliases)
-        for param in f_param_list.children
-    }
-
-
-def get_inp_out(f_tree, aliases: Dict[str, TierkreisType] = {}) -> Tuple[Dict[str, TierkreisType], Dict[str, TierkreisType]]:
-    return get_annotations(f_tree.children[1], aliases), get_annotations(f_tree.children[2], aliases)
-
-
-def gen_tkfunc(
-    name: str, inputs: Dict[str, TierkreisType], outputs: Dict[str, TierkreisType]
-) -> TierkreisFunction:
-    return TierkreisFunction(
-        name,
-        TypeScheme({}, [], GraphType(Row(content=inputs), Row(content=outputs))),
-        "",
+def get_annotations(f_param_list, aliases: Aliases = {}) -> PortMap:
+    return OrderedDict(
+        {
+            param.children[0].value: get_type(param.children[1], aliases)
+            for param in f_param_list.children
+        }
     )
 
 
-def get_tkfunc_def(f_tree, aliases: Dict[str, TierkreisType] = {}) -> TierkreisFunction:
-    inputs, outputs = get_inp_out(f_tree, aliases)
-    return gen_tkfunc(f_tree.children[0].value, inputs, outputs)
+def get_inp_out(f_tree, aliases: Aliases = {}) -> Tuple[PortMap, PortMap]:
+    return get_annotations(f_tree.children[1], aliases), get_annotations(
+        f_tree.children[2], aliases
+    )
+
+
+def get_func_def(f_tree, aliases: Aliases = {}) -> FunctionDefinition:
+    i_map, o_map = get_inp_out(f_tree, aliases)
+    inputs = list(i_map)
+    outputs = list(o_map)
+    return FunctionDefinition(inputs, outputs)
 
 
 def make_outports(node_ref: NodeRef, ports: Iterable[str]) -> List[NodePort]:
     return [node_ref[outport] for outport in ports]
 
 
-def ports_from_tkfunc(func: TierkreisFunction, outputs: bool = True) -> List[str]:
-    # FIXME canonical ordering
-    row = func.type_scheme.body.outputs if outputs else func.type_scheme.body.inputs
-    return list(row.content.keys())
+def def_from_tkfunc(func: TierkreisFunction) -> FunctionDefinition:
+    return FunctionDefinition(
+        func.input_order,
+        func.output_order,
+    )
 
 
 def get_graph(f_tree, context: Context) -> TierkreisGraph:
@@ -171,8 +188,7 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
 
     def get_func_outputs(node_name: str) -> List[NodePort]:
         node_ref, func = context.output_vars[node_name]
-        outs = ports_from_tkfunc(func)
-        return make_outports(node_ref, outs)
+        return make_outports(node_ref, func.outputs)
 
     def get_outport(token) -> List[NodePort]:
         if token.data == "name":
@@ -194,15 +210,15 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
             ]
         if token.data == "node_output_str":
             return [
-                context.output_vars[token.children[0].value][0][token.children[1].replace('"', '')]
+                context.output_vars[token.children[0].value][0][
+                    token.children[1].replace('"', "")
+                ]
             ]
         if token.data == "nested":
             node_ref, fun = add_node(token.children[0])
             return make_outports(
                 node_ref,
-                ports_from_tkfunc(
-                    fun,
-                ),
+                fun.outputs,
             )
         if token.data == "const_port":
             node_ref = add_const_node(token.children[0])
@@ -218,7 +234,8 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
 
     def get_named_map_args(token) -> Dict[str, NodePort]:
         return {
-            t.children[0].value.replace('"', ''): get_outport(t.children[1])[0] for t in token.children
+            t.children[0].value.replace('"', ""): get_outport(t.children[1])[0]
+            for t in token.children
         }
 
     def get_arglist(token, expected_ports: List[str]) -> Dict[str, NodePort]:
@@ -235,39 +252,37 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
 
     def add_node(
         token, name: Optional[str] = None
-    ) -> Tuple[NodeRef, TierkreisFunction]:
+    ) -> Tuple[NodeRef, FunctionDefinition]:
         if token.data == "thunk":
             outport = token.children[0]
             thunk_port = get_outport(outport)[0]
             arglist = get_named_map_args(token.children[1])
             eval_n = tg.add_node("builtin/eval", thunk=thunk_port, **arglist)
-            return (eval_n, sig["builtin"]["eval"])
+            return (eval_n, def_from_tkfunc(sig["builtin"]["eval"]))
         else:
             nmspace, fname = get_func_name(token.children[0])
             primitive = True
             try:
-                tk_func = sig[nmspace][fname]
+                tkfunc = sig[nmspace][fname]
+                fname = tkfunc.name
+                func_def = def_from_tkfunc(tkfunc)
             except KeyError as err:
                 if fname in context.functions:
-                    tk_func = context.functions[fname][1]
+                    func_def = context.functions[fname][1]
                     primitive = False
                 else:
                     raise RuntimeError(f"Function name not found: {fname}") from err
-            # FIXME canonical ordering
-            input_ports = list(tk_func.type_scheme.body.inputs.content.keys())
 
-            arglist = get_arglist(token.children[1], input_ports)
+            arglist = get_arglist(token.children[1], func_def.inputs)
             if primitive:
-                noderef = tg.add_node(tk_func.name, name, **arglist)
+                noderef = tg.add_node(fname, name, **arglist)
             else:
                 noderef = tg.add_box(context.functions[fname][0], fname, **arglist)
-            return (noderef, tk_func)
+            return (noderef, func_def)
 
     for inst in code_block.children:
         inst = cast(Tree, inst)
-        if inst.data == "comment":
-            pass
-        elif inst.data == "output":
+        if inst.data == "output":
             tg.set_outputs(
                 **get_arglist(inst.children[0], list(context.outputs.keys()))
             )
@@ -286,32 +301,32 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
 
             port_map = cast(Tree, inst.children[1])
             inps = get_named_map_args(port_map)
-            loopcontext = Context()
-            loopcontext.functions = context.functions
-            loopcontext.inputs = {inp: VarType("unknown_if") for inp in inps}
+            ifcontext = Context()
+            ifcontext.functions = context.functions
+            ifcontext.inputs = OrderedDict({inp: None for inp in inps})
 
             # outputs from if-else block have to be named map (not positional)
 
             if_block = cast(Tree, inst.children[2])
             if_g = TierkreisGraph()
-            append_code_block(if_block, loopcontext, if_g)
+            append_code_block(if_block, ifcontext, if_g)
 
             else_block = cast(Tree, inst.children[3])
             else_g = TierkreisGraph()
-            append_code_block(else_block, loopcontext, else_g)
+            append_code_block(else_block, ifcontext, else_g)
 
             output_var = cast(str, inst.children[4])
 
             sw_nod = tg.add_node(
-                "builtin/switch", predicate=pred, true=if_g, false=else_g
+                "builtin/switch", pred=pred, if_true=if_g, if_false=else_g
             )
             eval_n = tg.add_node("builtin/eval", thunk=sw_nod["value"], **inps)
 
             output_names = set(if_g.outputs()).union(else_g.outputs())
-            loopcontext.outputs = {outp: VarType("unknown_if") for outp in output_names}
+            ifcontext.outputs = OrderedDict({outp: None for outp in output_names})
 
-            fake_func = gen_tkfunc(
-                f"eval_{eval_n.name}", loopcontext.inputs, loopcontext.outputs
+            fake_func = FunctionDefinition(
+                list(ifcontext.inputs), list(ifcontext.outputs)
             )
             context.output_vars[output_var] = (eval_n, fake_func)
             # raise RuntimeError
@@ -321,17 +336,17 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
             inps = get_named_map_args(port_map)
             loopcontext = Context()
             loopcontext.functions = context.functions
-            loopcontext.inputs = {inp: VarType("unknown_loop") for inp in inps}
+            loopcontext.inputs = OrderedDict({inp: None for inp in inps})
 
             # outputs from if-else block have to be named map (not positional)
 
             condition_block = cast(Tree, inst.children[1])
             condition_g = TierkreisGraph()
-            append_code_block(condition_block, loopcontext, condition_g)
+            append_code_block(condition_block, ifcontext, condition_g)
 
             body_block = cast(Tree, inst.children[2])
             body_g = TierkreisGraph()
-            append_code_block(body_block, loopcontext, body_g)
+            append_code_block(body_block, ifcontext, body_g)
 
             output_var = cast(str, inst.children[3])
 
@@ -339,12 +354,10 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
                 "builtin/loop", condition=condition_g, body=body_g, **inps
             )
 
-            loopcontext.outputs = {
-                outp: VarType("unknown_if") for outp in body_g.outputs()
-            }
+            loopcontext.outputs = OrderedDict({outp: None for outp in body_g.outputs()})
 
-            fake_func = gen_tkfunc(
-                f"loop_{loop_nod.name}", loopcontext.inputs, loopcontext.outputs
+            fake_func = FunctionDefinition(
+                list(loopcontext.inputs), list(loopcontext.outputs)
             )
             context.output_vars[output_var] = (loop_nod, fake_func)
             # raise RuntimeError
@@ -352,13 +365,14 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
         else:
             pass
 
+
 class ProgramVisitor(Visitor):
     def __init__(self) -> None:
         self.context = Context()
         super().__init__()
+
     def func(self, tree: Tree):
         print("func")
-
 
     def type_alias(self, tree: Tree):
         alias = tree.children[0].value
@@ -379,12 +393,13 @@ if __name__ == "__main__":
     typ_decs = [child for child in parse_tree.children if child.data == "type_alias"]
     for typ_dec in typ_decs:
         alias = typ_dec.children[0].value
-
         context.aliases[alias] = get_type(typ_dec.children[1], context.aliases)
-    
 
     context.functions = {
-        child.children[0].value: (TierkreisGraph(), get_tkfunc_def(child, context.aliases))
+        child.children[0].value: (
+            TierkreisGraph(),
+            get_func_def(child, context.aliases),
+        )
         for child in funcs
     }
 
@@ -402,6 +417,6 @@ if __name__ == "__main__":
 
         tg = client.type_check_graph_blocking(tg)
 
-        # outs = client.run_graph_blocking(tg, {"v1": 67, "v2": (45, False)})
-        # print(outs)
+        outs = client.run_graph_blocking(tg, {"v1": 67, "v2": (45, False)})
+        print(outs)
     tierkreis_to_graphviz(tg).render("dump", "png")

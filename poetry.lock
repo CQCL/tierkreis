@@ -920,7 +920,7 @@ runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "b28e7b92a5474549b4f961fc6fd01bedb0755c1cb5d58100e730317542b5206b"
+content-hash = "d727f80732b7e4d8366ce8c2411e35b16469ee89c0617309cbbaa0eda5f0eb48"
 
 [metadata.files]
 astroid = [

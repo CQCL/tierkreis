@@ -38,12 +38,12 @@ def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
     
 
     # equivalent2: lambda evaluation
-    # switch(predicate: True, true: add2, false: add5) -> sw
+    # switch(pred: True, if_true: add2, if_false: add5) -> sw
     # sw.value(x:total.value) -> total
 
     # loop with condition
     while (x: other_total.value) {
-        output(pred: python_nodes::less_than(x:x, y:100))
+        output(pred: python_nodes::less_than(x, 100))
     } do {
         output(x: add5(x))
     } -> looped_total

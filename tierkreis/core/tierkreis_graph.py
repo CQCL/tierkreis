@@ -424,17 +424,22 @@ class TierkreisGraph:
         unp_n = self.add_node("builtin/unpack_pair", pair=pair_port)
         return unp_n["first"], unp_n["second"]
 
-    def make_array(self, element_ports: List[NodePort]) -> NodePort:
-        make_n = self.add_node("builtin/make_array")
+    def make_vec(self, element_ports: List[IncomingWireType]) -> NodePort:
+        vec_port = self.add_const(list())["value"]
 
-        for i, port in enumerate(element_ports):
-            self.add_edge(port, NodePort(make_n, f"{i}"))
+        for port in element_ports:
+            vec_port = self.add_node("builtin/push", vec=vec_port, item=port)["vec"]
 
-        return make_n["array"]
+        return vec_port
 
-    def array_n_elements(self, array_port: NodePort, n_elements: int) -> List[NodePort]:
-        unpack = self.add_node("builtin/unpack_array", array=array_port)
-        return [NodePort(unpack, PortID(f"{i}")) for i in range(n_elements)]
+    def vec_last_n_elems(self, vec_port: NodePort, n_elements: int) -> List[NodePort]:
+        curr_arr = vec_port
+        outports = []
+        for _ in range(n_elements):
+            pop = self.add_node("builtin/pop", vec=curr_arr)
+            curr_arr = pop["vec"]
+            outports.insert(0, pop["item"])
+        return outports
 
     def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
         copy_n = self.add_node("builtin/copy", value=value)

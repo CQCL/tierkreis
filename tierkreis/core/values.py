@@ -300,14 +300,14 @@ class PairValue(TierkreisValue):
 
 
 @dataclass(frozen=True)
-class ArrayValue(TierkreisValue):
-    _proto_name: ClassVar[str] = "array"
+class VecValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "vec"
     _pytype: ClassVar[typing.Type] = list
     values: list[TierkreisValue]
 
     def to_proto(self) -> pg.Value:
         return pg.Value(
-            array=pg.ArrayValue(array=[value.to_proto() for value in self.values])
+            vec=pg.VecValue(vec=[value.to_proto() for value in self.values])
         )
 
     def to_python(self, type_: typing.Type[T]) -> T:
@@ -321,19 +321,19 @@ class ArrayValue(TierkreisValue):
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
-        return ArrayValue(
+        return VecValue(
             [TierkreisValue.from_python(element) for element in cast(List, value)]
         )
 
     @classmethod
     def from_proto(cls, value: Any) -> "TierkreisValue":
-        array_value = cast(pg.ArrayValue, value)
-        return ArrayValue(
-            [TierkreisValue.from_proto(element) for element in array_value.array]
+        vec_value = cast(pg.VecValue, value)
+        return VecValue(
+            [TierkreisValue.from_proto(element) for element in vec_value.vec]
         )
 
     def __str__(self) -> str:
-        return f"Array({','.join(map(str, self.values))})"
+        return f"Vec({','.join(map(str, self.values))})"
 
 
 @dataclass(frozen=True)

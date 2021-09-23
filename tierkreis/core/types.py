@@ -36,7 +36,7 @@ class TierkreisType(ABC):
             result = FloatType()
         elif type_origin is list:
             args = typing.get_args(type_)
-            result = ArrayType(element=TierkreisType.from_python(args[0]))
+            result = VecType(element=TierkreisType.from_python(args[0]))
         elif type_origin is tuple:
             args = typing.get_args(type_)
             result = PairType(
@@ -93,9 +93,9 @@ class TierkreisType(ABC):
             first = TierkreisType.from_proto(pair_type.first)
             second = TierkreisType.from_proto(pair_type.second)
             result = PairType(first, second)
-        elif name == "array":
+        elif name == "vec":
             element = TierkreisType.from_proto(cast(pg.Type, out_type))
-            result = ArrayType(element)
+            result = VecType(element)
         elif name == "struct":
             row = cast(pg.RowType, out_type)
             result = StructType(Row.from_proto(row))
@@ -192,14 +192,14 @@ class PairType(TierkreisType):
 
 
 @dataclass
-class ArrayType(TierkreisType):
+class VecType(TierkreisType):
     element: TierkreisType
 
     def to_proto(self) -> pg.Type:
-        return pg.Type(array=self.element.to_proto())
+        return pg.Type(vec=self.element.to_proto())
 
     def __str__(self) -> str:
-        return f"Array[{str(self.element)}]"
+        return f"Vec[{str(self.element)}]"
 
 
 @dataclass

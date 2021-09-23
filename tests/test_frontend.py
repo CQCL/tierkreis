@@ -11,7 +11,7 @@ from tierkreis.frontend import RuntimeClient, local_runtime, docker_runtime
 from tierkreis.core.tierkreis_graph import NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
-from tierkreis.core.values import ArrayValue, CircuitValue, TierkreisValue
+from tierkreis.core.values import VecValue, CircuitValue, TierkreisValue
 
 
 @pytest.fixture(scope="module")
@@ -35,7 +35,7 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
     sig = client.signature
 
     with client.build_graph() as tk_g:
-        current_outputs = tk_g.array_n_elements(tk_g.input["array"], number)
+        current_outputs = tk_g.vec_last_n_elems(tk_g.input["array"], number)
 
         while len(current_outputs) > 1:
             next_outputs = []
@@ -177,7 +177,7 @@ async def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> 
     inp_circ = bell_circuit.copy()
     FullPeepholeOptimise().apply(bell_circuit)
     assert await client.run_graph(tg, {"input": [inp_circ]}) == {
-        "out": ArrayValue([CircuitValue(bell_circuit)])
+        "out": VecValue([CircuitValue(bell_circuit)])
     }
 
 

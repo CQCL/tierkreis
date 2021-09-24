@@ -21,7 +21,7 @@ from tierkreis.core.types import (
     StringType,
     StructType,
     TierkreisType,
-    ArrayType,
+    VecType,
     VarType,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
@@ -101,7 +101,10 @@ def get_const(token) -> Any:
 
         return cl(**dict(zip(field_names, values)))
 
-    if token.data == "array":
+    if token.data == "vec":
+        # bit hacky, find out how to deal with "maybe" tokens properly
+        if len(token.children) == 1 and token.children[0].data == "const":
+            return []
         return [get_const(tok) for tok in token.children]
 
 
@@ -119,8 +122,8 @@ def get_type(token, aliases: Aliases = {}) -> TierkreisType:
         return PairType(
             get_type(token.children[1], aliases), get_type(token.children[2], aliases)
         )
-    if type_name == "TYPE_ARRAY":
-        return ArrayType(get_type(token.children[1], aliases))
+    if type_name == "TYPE_VEC":
+        return VecType(get_type(token.children[1], aliases))
     if type_name == "TYPE_STRUCT":
         args = token.children[1].children
         return StructType(
@@ -416,7 +419,8 @@ if __name__ == "__main__":
     ) as client:
 
         tg = client.type_check_graph_blocking(tg)
-
-        outs = client.run_graph_blocking(tg, {"v1": 67, "v2": (45, False)})
+        # inps = {"v1": 67, "v2": (45, False)}
+        inps = {}
+        outs = client.run_graph_blocking(tg, inps)
         print(outs)
     tierkreis_to_graphviz(tg).render("dump", "png")

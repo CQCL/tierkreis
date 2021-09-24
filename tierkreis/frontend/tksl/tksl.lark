@@ -14,24 +14,24 @@ type:
     | TYPE_FLOAT
     | TYPE_CIRCUIT
     | TYPE_PAIR "<" type "," type ">"
-    | TYPE_ARRAY "<" type ">"
+    | TYPE_VEC "<" type ">"
     | TYPE_STRUCT "<" f_param_list ">"
     | CNAME -> alias
 
 f_param: CNAME ":" type
 // f_param_list : cs_list{f_param}
-f_param_list :  f_param ("," f_param)*
+f_param_list :  (f_param ("," f_param)*)?
 
-instruction: 
+instruction:
     | node_inputs "->" CNAME "\n" -> node
     | "output" "(" arglist ")" -> output
     | "const" CNAME "=" const "\n" -> const_decl
-    | "if" "(" outport ";" named_map ")" code_block "else" code_block  "->" CNAME "\n" -> if_block
-    | "while" "(" named_map ")" code_block "do" code_block  "->" CNAME "\n" -> loop
+    | "if" "(" outport ";" named_map? ")" code_block "else" code_block  "->" CNAME "\n" -> if_block
+    | "while" "(" named_map? ")" code_block "do" code_block  "->" CNAME "\n" -> loop
 
 
 node_inputs:
-    | f_name "(" arglist ")" -> func_call
+    | f_name "(" arglist? ")" -> func_call
     | outport "(" named_map ")" -> thunk
 
 arglist:
@@ -51,7 +51,7 @@ const:
     | SIGNED_FLOAT -> float
     | STRING -> str
     | struct_id "{" const_assign ("," const_assign)* "}" -> struct
-    | "[" const ("," const)*  "]" -> array
+    | "[" (const ("," const)*)?  "]" -> vec
 
 const_assign: CNAME ":" const
 struct_id:
@@ -65,7 +65,7 @@ BOOL: ("True" | "False")
 
 INPORT: CNAME
     | STRING
-outport: 
+outport:
     | CNAME "." CNAME -> node_output
     | CNAME "." STRING -> node_output_str
     | node_inputs -> nested
@@ -81,7 +81,7 @@ TYPE_BOOL: "bool"
 TYPE_FLOAT: "float"
 TYPE_STR: "str"
 TYPE_PAIR: "pair"
-TYPE_ARRAY: "array"
+TYPE_VEC: "vec"
 TYPE_STRUCT: "struct"
 TYPE_CIRCUIT: "circuit"
 

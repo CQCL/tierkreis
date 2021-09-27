@@ -1,7 +1,12 @@
 import pytest
 from pytket import Circuit  # Type: ignore
 from tierkreis.core import TierkreisGraph
-from tierkreis.core.tierkreis_graph import NodePort, TierkreisEdge, TierkreisFunction
+from tierkreis.core.tierkreis_graph import (
+    FunctionNode,
+    NodePort,
+    TierkreisEdge,
+    TierkreisFunction,
+)
 from tierkreis.core.types import IntType, TypeScheme, Row, GraphType
 from tierkreis.core.values import TierkreisValue
 
@@ -88,3 +93,30 @@ def test_value_topython():
     fail_vals = ([1, 2], ("a", 4), {"asf": 3, "fsd": 4})
     for val in fail_vals:
         assert TierkreisValue.from_python(val).try_autopython() is None
+
+
+def test_inline_boxes():
+    tg_box = TierkreisGraph()
+
+    pair = tg_box.make_pair(tg_box.input["inp"], 3)
+    tg_box.set_outputs(out=pair)
+
+    def check_inlined(graph: TierkreisGraph) -> bool:
+        return any(
+            isinstance(node, FunctionNode) and node.function_name == "builtin/make_pair"
+            for _, node in graph.nodes().items()
+        )
+
+    tg = TierkreisGraph()
+    box = tg.add_box(tg_box, inp="word")
+    tg.set_outputs(tg_out=box["out"])
+
+    assert check_inlined(tg.inline_boxes())
+
+    nested = TierkreisGraph()
+    box2 = nested.add_box(tg)
+    nested.set_outputs(nested_out=box2["tg_out"])
+
+    assert not check_inlined(nested.inline_boxes())
+
+    assert check_inlined(nested.inline_boxes(True))

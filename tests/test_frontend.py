@@ -7,8 +7,9 @@ import pytest
 from pytket import Circuit  # type: ignore
 from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis import TierkreisGraph
+from tierkreis.core.function import TierkreisFunction
 from tierkreis.frontend import RuntimeClient, local_runtime, docker_runtime
-from tierkreis.core.tierkreis_graph import NodePort
+from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import VecValue, CircuitValue, TierkreisValue
@@ -255,5 +256,36 @@ async def test_fail_node(client: RuntimeClient) -> None:
     assert "fail node was run" in str(err.value)
 
 
-# TODO signature and typecheck tests
-# TODO test Box
+def graph_from_func(func: TierkreisFunction) -> TierkreisGraph:
+    # build a graph with a single function node, with the same interface as that
+    # function
+    tg = TierkreisGraph()
+    node = tg.add_node(func.name, **{port: tg.input[port] for port in func.input_order})
+    tg.set_outputs(**{port: node[port] for port in func.output_order})
+    return tg
+
+
+@pytest.mark.asyncio
+async def test_vec_sequence(client: RuntimeClient) -> None:
+    pop_g = graph_from_func(client.signature["builtin"]["pop"])
+    push_g = graph_from_func(client.signature["builtin"]["push"])
+
+    seq_g = graph_from_func(client.signature["builtin"]["sequence"])
+
+    outputs = await client.run_graph(seq_g, {"first": pop_g, "second": push_g})
+
+    sequenced_g = outputs["sequenced"].to_python(TierkreisGraph).inline_boxes()
+
+    # check composition is succesful
+    functions = {
+        node.function_name
+        for node in sequenced_g.nodes().values()
+        if isinstance(node, FunctionNode)
+    }
+    assert {"builtin/push", "builtin/pop"}.issubset(functions)
+
+    # check composition evaluates
+    vec_in = ["foo", "bar", "bang"]
+    out = await client.run_graph(sequenced_g, {"vec": vec_in})
+    vec_out = out["vec"].to_python(List[str])
+    assert vec_in == vec_out

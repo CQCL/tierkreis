@@ -1,4 +1,5 @@
 """Utilities for building tierkreis graphs."""
+import copy
 import typing
 from itertools import dropwhile, count
 from abc import ABC, abstractmethod
@@ -16,7 +17,8 @@ from typing import (
 )
 
 import betterproto
-import networkx as nx  # type: ignore
+import networkx as nx
+from networkx.classes.reportviews import InMultiEdgeDataView, OutMultiEdgeDataView
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue
@@ -321,6 +323,64 @@ class TierkreisGraph:
             )
 
         return return_outputs
+
+    def _inline_box(self, box_node_name: str, recursive: bool) -> None:
+        """Replace a box node with the graph it contains, inplace. Optionally
+        use the recursive flag to inline all boxes inside the box
+        recursively."""
+
+        node = self[box_node_name]
+        assert isinstance(node, BoxNode)
+        boxed_g = node.graph
+        if recursive:
+            boxed_g = boxed_g.inline_boxes(recursive)
+
+        curr_inputs = cast(
+            InMultiEdgeDataView,
+            self._graph.in_edges(box_node_name, data="edge_info", keys=True),
+        )
+
+        incoming_ports = {
+            edge.target.port: edge.source for (_, _, _, edge) in curr_inputs
+        }
+
+        inserted_outputs = self.insert_graph(boxed_g, box_node_name, **incoming_ports)
+        curr_outputs = cast(
+            OutMultiEdgeDataView,
+            self._graph.out_edges(box_node_name, data="edge_info", keys=True),
+        )
+        edge_bin = []
+        for (source, target, key, edge) in curr_outputs:
+            edge = cast(TierkreisEdge, edge)
+            edge_bin.append((source, target, key))
+            self.add_edge(inserted_outputs[edge.source.port], edge.target, edge.type_)
+
+        for edge in edge_bin:
+            self._graph.remove_edge(*edge)
+
+    def inline_boxes(self, recursive=False) -> "TierkreisGraph":
+        """Inline boxes by inserting the graphs they contain in to the parent
+        graph. Optionally do this recursively.
+
+        :return: Inlined graph
+        :rtype: TierkreisGraph
+        """
+
+        graph = copy.deepcopy(self)
+        node_bin = set()
+        for node_name, node in graph.nodes().items():
+
+            if not isinstance(node, BoxNode):
+                continue
+
+            graph._inline_box(node_name, recursive)
+
+            node_bin.add(node_name)
+
+        for node in node_bin:
+            graph._graph.remove_node(node)
+
+        return graph
 
     def nodes(self) -> Dict[str, TierkreisNode]:
         return {

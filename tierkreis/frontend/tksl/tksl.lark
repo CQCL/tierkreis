@@ -14,6 +14,7 @@ type:
     | TYPE_FLOAT
     | TYPE_CIRCUIT
     | TYPE_PAIR "<" type "," type ">"
+    | TYPE_MAP "<" type "," type ">"
     | TYPE_VEC "<" type ">"
     | TYPE_STRUCT "<" f_param_list ">"
     | CNAME -> alias
@@ -80,6 +81,7 @@ TYPE_BOOL: "bool"
 TYPE_FLOAT: "float"
 TYPE_STR: "str"
 TYPE_PAIR: "pair"
+TYPE_MAP: "map"
 TYPE_VEC: "vec"
 TYPE_STRUCT: "struct"
 TYPE_CIRCUIT: "circuit"

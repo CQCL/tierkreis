@@ -16,6 +16,7 @@ from tierkreis.core.types import (
     CircuitType,
     FloatType,
     IntType,
+    MapType,
     PairType,
     Row,
     StringType,
@@ -120,6 +121,10 @@ def get_type(token, aliases: Aliases = {}) -> TierkreisType:
         return FloatType()
     if type_name == "TYPE_PAIR":
         return PairType(
+            get_type(token.children[1], aliases), get_type(token.children[2], aliases)
+        )
+    if type_name == "TYPE_MAP":
+        return MapType(
             get_type(token.children[1], aliases), get_type(token.children[2], aliases)
         )
     if type_name == "TYPE_VEC":
@@ -413,7 +418,8 @@ if __name__ == "__main__":
 
         tg = client.type_check_graph_blocking(tg)
         # inps = {"v1": 67, "v2": (45, False)}
-        inps = {}
+        # inps = {}
+        inps = {"mp": {3: "foo"}}
         outs = client.run_graph_blocking(tg, inps)
         print(outs)
     tierkreis_to_graphviz(tg).render("dump", "png")

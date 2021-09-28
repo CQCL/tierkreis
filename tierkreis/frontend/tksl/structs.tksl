@@ -1,6 +1,11 @@
-def main() -> (age: int) {
+def stuc() -> (age: int) {
     make_struct(name: "hello", age: 23, height: 12.3) -> sturct
     unpack_struct(sturct) -> sturct
 
     output(age: sturct.age)
+}
+
+def main(mp: map<int, str>) -> (mp: map<int, str>, vl: str) {
+    remove_key(mp, 3) -> mp_val
+    output(insert_key(mp_val.map, 5, "bar"), mp_val.val)
 }

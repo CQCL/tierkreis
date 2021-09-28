@@ -211,12 +211,6 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
             return [
                 context.output_vars[token.children[0].value][0][token.children[1].value]
             ]
-        if token.data == "node_output_str":
-            return [
-                context.output_vars[token.children[0].value][0][
-                    token.children[1].replace('"', "")
-                ]
-            ]
         if token.data == "nested":
             node_ref, fun = add_node(token.children[0])
             return make_outports(
@@ -237,8 +231,7 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
 
     def get_named_map_args(token) -> Dict[str, NodePort]:
         return {
-            t.children[0].value.replace('"', ""): get_outport(t.children[1])[0]
-            for t in token.children
+            t.children[0].value: get_outport(t.children[1])[0] for t in token.children
         }
 
     def get_arglist(token, expected_ports: List[str]) -> Dict[str, NodePort]:
@@ -345,11 +338,11 @@ def append_code_block(code_block: Tree, context: Context, tg: TierkreisGraph) ->
 
             condition_block = cast(Tree, inst.children[1])
             condition_g = TierkreisGraph()
-            append_code_block(condition_block, ifcontext, condition_g)
+            append_code_block(condition_block, loopcontext, condition_g)
 
             body_block = cast(Tree, inst.children[2])
             body_g = TierkreisGraph()
-            append_code_block(body_block, ifcontext, body_g)
+            append_code_block(body_block, loopcontext, body_g)
 
             output_var = cast(str, inst.children[3])
 
@@ -419,8 +412,8 @@ if __name__ == "__main__":
     ) as client:
 
         tg = client.type_check_graph_blocking(tg)
-        # inps = {"v1": 67, "v2": (45, False)}
-        inps = {}
+        inps = {"v1": 67, "v2": (45, False)}
+        # inps = {}
         outs = client.run_graph_blocking(tg, inps)
         print(outs)
     tierkreis_to_graphviz(tg).render("dump", "png")

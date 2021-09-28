@@ -1,3 +1,5 @@
+
+
 def add2(x: int) -> (y: int) {
     output(y: python_nodes::add(x, 2))
 }
@@ -6,7 +8,7 @@ def add5(x: int) -> (y: int) {
     output(y: python_nodes::add(x, 5))
 }
 
-def double(x: int) -> (x2: int) {
+def double(x: int) -> (x: int) {
     output(python_nodes::add(copy(x)))
 }
 
@@ -19,7 +21,7 @@ def struc_id(in_st: Point) -> (out_st: Point) {
 
 def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
     unpack_pair(v2) -> unp
-    
+
     # declare constants
     const three = 3
     python_nodes::add(a:unp.first, b:three) -> other_total
@@ -28,18 +30,21 @@ def main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
 
     # positional multiple outputs
     double(v1) -> total
+    sequence(double, double) -> quadruple
+
+    quadruple.composed(x:total.x) -> total
 
     # equivalent1: if else block
-    if (unp.second; x: total)  {
+    if (unp.second; x: total.x)  {
         output(y: add2(x))
     } else {
         output(y: add5(x))
     } -> total # shadowing output variables
-    
+
 
     # equivalent2: lambda evaluation
     # switch(pred: True, if_true: add2, if_false: add5) -> sw
-    # sw.value(x:total.value) -> total
+    # sw.value(x:total.x) -> total
 
     # loop with condition
     while (x: other_total.value) {

@@ -64,10 +64,9 @@ BOOL: ("True" | "False")
 // FALSE: "false"
 
 INPORT: CNAME
-    | STRING
+
 outport:
     | CNAME "." CNAME -> node_output
-    | CNAME "." STRING -> node_output_str
     | node_inputs -> nested
     | const -> const_port
     | CNAME -> name

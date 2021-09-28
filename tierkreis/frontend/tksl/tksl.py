@@ -412,8 +412,8 @@ if __name__ == "__main__":
     ) as client:
 
         tg = client.type_check_graph_blocking(tg)
-        inps = {"v1": 67, "v2": (45, False)}
-        # inps = {}
+        # inps = {"v1": 67, "v2": (45, False)}
+        inps = {}
         outs = client.run_graph_blocking(tg, inps)
         print(outs)
     tierkreis_to_graphviz(tg).render("dump", "png")

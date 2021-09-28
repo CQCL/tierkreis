@@ -1,0 +1,6 @@
+def main() -> (age: int) {
+    make_struct(name: "hello", age: 23, height: 12.3) -> sturct
+    unpack_struct(sturct) -> sturct
+
+    output(age: sturct.age)
+}

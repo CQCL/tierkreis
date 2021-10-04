@@ -1,34 +1,27 @@
+# pylint: disable=wrong-import-position, wrong-import-order
 """Utilities for building tierkreis graphs."""
 import copy
 import typing
-from itertools import dropwhile, count
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Dict,
-    Iterator,
-    List,
-    Optional,
-    Tuple,
-    Type,
-    Union,
-    cast,
-)
+from itertools import count, dropwhile
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Type, Union, cast
 
 import betterproto
-import networkx as nx
-from networkx.classes.reportviews import InMultiEdgeDataView, OutMultiEdgeDataView
+import networkx as nx  # type: ignore
+from networkx.classes.reportviews import (  # type: ignore
+    InMultiEdgeDataView,
+    OutMultiEdgeDataView,
+)
 import tierkreis.core.protos.tierkreis.graph as pg
+from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue
-from tierkreis.core.function import TierkreisFunction
 
 FunctionID = str
 PortID = str
 
 
-@dataclass
 class TierkreisNode(ABC):
     @abstractmethod
     def to_proto(self) -> pg.Node:
@@ -38,6 +31,7 @@ class TierkreisNode(ABC):
     def from_proto(cls, node: pg.Node) -> "TierkreisNode":
         name, out_node = betterproto.which_one_of(node, "node")
 
+        result: TierkreisNode
         if name == "const":
             result = ConstNode(TierkreisValue.from_proto(cast(pg.Value, out_node)))
         elif name == "box":
@@ -367,7 +361,7 @@ class TierkreisGraph:
         """
 
         graph = copy.deepcopy(self)
-        node_bin = set()
+        node_bin: Set[str] = set()
         for node_name, node in graph.nodes().items():
 
             if not isinstance(node, BoxNode):
@@ -377,8 +371,8 @@ class TierkreisGraph:
 
             node_bin.add(node_name)
 
-        for node in node_bin:
-            graph._graph.remove_node(node)
+        for node_name in node_bin:
+            graph._graph.remove_node(node_name)
 
         return graph
 
@@ -494,7 +488,7 @@ class TierkreisGraph:
 
     def vec_last_n_elems(self, vec_port: NodePort, n_elements: int) -> List[NodePort]:
         curr_arr = vec_port
-        outports = []
+        outports: List[NodePort] = []
         for _ in range(n_elements):
             pop = self.add_node("builtin/pop", vec=curr_arr)
             curr_arr = pop["vec"]
@@ -537,13 +531,14 @@ class TierkreisGraph:
             target = NodePort(target_node, PortID(pg_edge.port_to))
             # TODO make all edge type conversions possible
             edge_type = pg_edge.edge_type
+            tk_edge_type: Optional[TierkreisType] = None
             if edge_type is not None:
                 try:
-                    edge_type = TierkreisType.from_proto(edge_type)
+                    tk_edge_type = TierkreisType.from_proto(edge_type)
                 except ValueError:
-                    edge_type = None
+                    tk_edge_type = None
 
-            tk_graph.add_edge(source, target, edge_type)
+            tk_graph.add_edge(source, target, tk_edge_type)
         return tk_graph
 
     def to_python(self, type_: typing.Type[T]) -> T:
@@ -601,9 +596,8 @@ class GraphValue(TierkreisValue):
 
 
 # allow graph displays in jupyter notebooks
-from tierkreis.core.graphviz import (  # pylint: disable=wrong-import-position
-    tierkreis_to_graphviz,
-)
+from tierkreis.core.graphviz import tierkreis_to_graphviz
+
 
 setattr(
     TierkreisGraph,

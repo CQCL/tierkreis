@@ -1,20 +1,21 @@
-from abc import ABC, abstractmethod
 import typing
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional, cast
+
+import betterproto
+from pytket.circuit import Circuit  # type: ignore
+
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
-from pytket.circuit import Circuit  # type: ignore
-from typing import Dict, List, Optional, cast
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-import betterproto
 
 
 class TierkreisType(ABC):
     @abstractmethod
     def to_proto(self) -> pg.Type:
         "Converts a tierkreis type to its protobuf representation."
-        pass
 
     @classmethod
     def from_python(cls, type_: typing.Type) -> "TierkreisType":
@@ -23,7 +24,7 @@ class TierkreisType(ABC):
         from tierkreis.core.python import RuntimeGraph
 
         type_origin = typing.get_origin(type_)
-
+        result: TierkreisType
         # TODO: Graph types
 
         if type_ is int:
@@ -75,6 +76,8 @@ class TierkreisType(ABC):
     @classmethod
     def from_proto(cls, type_: pg.Type) -> "TierkreisType":
         name, out_type = betterproto.which_one_of(type_, "type")
+
+        result: TierkreisType
 
         if name == "int":
             result = IntType()
@@ -310,7 +313,7 @@ class Kind(ABC):
     @classmethod
     def from_proto(cls, proto_kind: pg.Kind) -> "Kind":
         name, _ = betterproto.which_one_of(proto_kind, "kind")
-        if "name" == "row":
+        if name == "row":
             return RowKind()
         return StarKind()
 
@@ -361,7 +364,7 @@ class TierkreisTypeError:
     location: List[str]
 
     @classmethod
-    def from_proto(cls, proto: ps.TypeError) -> "TierkreisTypeError":
+    def from_proto(cls, proto: ps.TierkreisTypeError) -> "TierkreisTypeError":
         return cls(message=proto.msg, location=proto.location)
 
     def __str__(self) -> str:
@@ -381,7 +384,7 @@ class TierkreisTypeErrors(Exception):
 
     def __str__(self) -> str:
         separator = "\n\n" + ("─" * 80) + "\n\n"
-        return separator.join(str(error) for error in self)
+        return separator.join(str(error) for error in self.errors)
 
     def __getitem__(self, index: int) -> TierkreisTypeError:
         return self.errors[index]

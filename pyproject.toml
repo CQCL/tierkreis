@@ -32,7 +32,7 @@ runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 [tool.poetry.dev-dependencies]
 black = "^21.5b1"
 mypy = "^0.812"
-pylint = "^2.8.3"
+pylint = "2.9"
 pytest = "^6.2.4"
 
 [build-system]

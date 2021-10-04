@@ -1,6 +1,6 @@
 """Visualise TierkreisGraph using graphviz."""
 from typing import Iterable, Tuple
-import graphviz as gv
+import graphviz as gv  # type: ignore
 
 from tierkreis.core.tierkreis_graph import (
     BoxNode,

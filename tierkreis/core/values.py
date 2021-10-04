@@ -7,13 +7,11 @@ from dataclasses import dataclass
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast
 
 import betterproto
-import tierkreis.core.protos.tierkreis.graph as pg
 from pytket.circuit import Circuit  # type: ignore
+import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
-if typing.TYPE_CHECKING:
-    from tierkreis.core.tierkreis_graph import TierkreisGraph
 
 T = typing.TypeVar("T")
 
@@ -39,7 +37,7 @@ class TierkreisValue(ABC):
     _pytype_map: Dict[typing.Type, typing.Type["TierkreisValue"]] = dict()
 
     def __init_subclass__(cls, **kwargs) -> None:
-        super().__init_subclass__(**kwargs)
+        super().__init_subclass__()
         TierkreisValue._proto_map[getattr(cls, "_proto_name")] = cls
         TierkreisValue._pytype_map[getattr(cls, "_pytype")] = cls
 
@@ -68,7 +66,6 @@ class TierkreisValue(ABC):
         `TierkreisValue` is returned unchanged. This allows us to write generic
         functions in which values of unknown type are passed on as they are.
         """
-        pass
 
     @classmethod
     @abstractmethod

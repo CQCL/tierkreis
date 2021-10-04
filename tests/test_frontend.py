@@ -8,7 +8,7 @@ from pytket import Circuit  # type: ignore
 from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
-from tierkreis.frontend import RuntimeClient, local_runtime, docker_runtime
+from tierkreis.frontend import RuntimeClient, local_runtime, DockerRuntime
 from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
@@ -20,7 +20,7 @@ def client(request) -> Iterator[RuntimeClient]:
     # yield RuntimeClient("https://cloud.cambridgequantum.com/tierkreis/v1")
     if request.config.getoption("--docker"):
         # launch docker container and close at end
-        with docker_runtime(
+        with DockerRuntime(
             "cqc/tierkreis",
             show_output=True,
         ) as local_client:

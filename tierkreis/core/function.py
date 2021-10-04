@@ -1,6 +1,7 @@
 """TierkreisFunction encapsulation of available function signatures"""
 from dataclasses import dataclass
 from typing import List
+
 import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.types import TypeScheme
 

@@ -1,53 +1,27 @@
 """Send requests to tierkreis server to execute a graph."""
-from typing import (
-    Any,
-    Dict,
-    IO,
-    Iterator,
-    List,
-    TYPE_CHECKING,
-    Union,
-    cast,
-    Optional,
-    Callable,
-    Awaitable,
-    TypeVar,
-)
-from dataclasses import dataclass, make_dataclass
+import asyncio
 import copy
-import socket
-from contextlib import contextmanager
-from pathlib import Path
-import os
-import subprocess
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from functools import wraps
+from typing import Any, Awaitable, Callable, Dict, Optional, TypeVar, cast
+
+import aiohttp
 import betterproto
 import keyring
-import docker
-from tierkreis.core.tierkreis_graph import TierkreisGraph
-from tierkreis.core.function import TierkreisFunction
-from tierkreis.core.values import (
-    TierkreisValue,
-    StructValue,
-    IncompatiblePyType,
-)
-from tierkreis.core.types import TierkreisTypeErrors
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
-import sys
-import aiohttp
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
-from functools import wraps
-import signal
-
-if TYPE_CHECKING:
-    from docker.models.containers import Container
-    from docker.models.networks import Network
+from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.tierkreis_graph import TierkreisGraph
+from tierkreis.core.types import TierkreisTypeErrors
+from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
 
 
 @dataclass
 class RuntimeHTTPError(Exception):
+    """Error while communicating with tierkreis server."""
+
     endpoint: str
     code: int
     content: str
@@ -107,7 +81,9 @@ class _TypeCheckContext:
 
 @dataclass(frozen=True)
 class TaskHandle:
-    id: str
+    """Handle for server task"""
+
+    task_id: str
 
 
 @dataclass
@@ -116,10 +92,15 @@ class InputConversionError(Exception):
     value: Any
 
     def __str__(self) -> str:
-        return f"Input value with name {self.input_name} could not be converted to a TierkreisValue."
+        return (
+            f"Input value with name {self.input_name} cannot be"
+            "converted to a TierkreisValue."
+        )
 
 
 class RuntimeClient:
+    """Client for tierkreis server."""
+
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
         self._url = url
         keyring_service = "Myqos"
@@ -204,8 +185,7 @@ class RuntimeClient:
 
         if name == "task_id":
             return TaskHandle(decoded.task_id)
-        else:
-            raise TierkreisTypeErrors.from_proto(decoded.type_errors)
+        raise TierkreisTypeErrors.from_proto(decoded.type_errors)
 
     async def list_tasks(
         self,
@@ -245,7 +225,7 @@ class RuntimeClient:
         :return: The result of the task.
         """
         status, content = await self._post(
-            "/task/await", pr.AwaitTaskRequest(id=task.id)
+            "/task/await", pr.AwaitTaskRequest(id=task.task_id)
         )
 
         if status != 200:
@@ -257,7 +237,7 @@ class RuntimeClient:
 
         if status != "success":
             raise RuntimeError(f"Task execution failed with message:\n{status_value}")
-
+        assert status_value is not None
         return StructValue.from_proto_dict(status_value.map).values
 
     def await_task_blocking(self, task: TaskHandle) -> Dict[str, TierkreisValue]:
@@ -270,7 +250,7 @@ class RuntimeClient:
         :param task: The id of the task to delete.
         """
         status, content = await self._post(
-            "/task/delete", pr.DeleteTaskRequest(id=task.id)
+            "/task/delete", pr.DeleteTaskRequest(id=task.task_id)
         )
 
         if status != 200:
@@ -343,237 +323,24 @@ def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
 
 
 class RuntimeLaunchFailed(Exception):
-    pass
+    """Starting server locally failed."""
 
 
-T = TypeVar("T")
+CallableReturn = TypeVar("CallableReturn")
 
 
-def async_to_sync(f: Callable[..., Awaitable[T]]) -> Callable[..., T]:
+def async_to_sync(
+    func: Callable[..., Awaitable[CallableReturn]]
+) -> Callable[..., CallableReturn]:
     """
     Converts an asynchronous function into a synchronous one by running it
     on a new async event loop in a newly created thread.
     """
 
-    @wraps(f)
+    @wraps(func)
     def sync(*args, **kwargs):
         with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(lambda: asyncio.run(f(*args, **kwargs)))
+            future = executor.submit(lambda: asyncio.run(func(*args, **kwargs)))
             return future.result()
 
     return sync
-
-
-@contextmanager
-def local_runtime(
-    executable: Path,
-    workers: Optional[List[Path]] = None,
-    http_port: str = "8080",
-    show_output: bool = False,
-) -> Iterator[RuntimeClient]:
-    """Provide a context for a local runtime running in a subprocess.
-
-    :param executable: Path to server binary
-    :type executable: Path
-    :param workers: Paths of worker servers
-    :type workers: List[Path]
-    :param http_port: Localhost http port, defaults to "8080"
-    :type http_port: str, optional
-    :param grpc_port: Localhost grpc port, defaults to "9090"
-    :type grpc_port: str, optional
-    :param show_output: Show server tracing/errors, defaults to False
-    :type show_output: bool, optional
-    :yield: RuntimeClient
-    :rtype: Iterator[RuntimeClient]
-    """
-    parent_dir = Path(__file__).parent
-
-    default_workers = [
-        parent_dir / "../../../workers/worker_test",
-        parent_dir / "../../../workers/pytket_worker",
-    ]
-
-    command: List[Union[str, Path]] = [executable]
-    for worker in list(map(str, default_workers)):
-        command.extend(["--worker-path", worker])
-    if workers:
-        for worker in list(map(str, workers)):
-            command.extend(["--worker-path", worker])
-
-    proc_env = os.environ.copy()
-    proc_env["TIERKREIS_HTTP_PORT"] = http_port
-    proc = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        env=proc_env,
-    )
-
-    lines = []
-    for line in cast(IO[bytes], proc.stdout):
-        lines.append(line)
-        if "Server started" in str(line):
-            # server is ready to receive requests
-            break
-
-    def write_process_out(process: subprocess.Popen) -> None:
-        # get remaining output
-        out, errs = process.communicate()
-
-        if errs:
-            with os.fdopen(sys.stderr.fileno(), "wb", closefd=False) as stderr:
-                stderr.write(errs)
-        with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
-            for line in lines:
-                stdout.write(line)
-
-            if out:
-                stdout.write(out)
-            stdout.flush()
-
-    if proc.poll() is not None:
-        # process has terminated unexpectedly
-        write_process_out(proc)
-        raise RuntimeLaunchFailed()
-
-    try:
-        yield RuntimeClient(f"http://127.0.0.1:{http_port}")
-    finally:
-        if show_output:
-            proc.send_signal(signal.SIGINT)
-            write_process_out(proc)
-        proc.kill()
-
-
-def get_free_port() -> str:
-    with socket.socket() as s:
-        s.bind(("", 0))
-        return str(s.getsockname()[1])
-
-
-@contextmanager
-def docker_runtime(
-    image: str,
-    worker_images: Optional[List[str]] = None,
-    host_workers: Optional[List[Path]] = None,
-    http_port: str = "8080",
-    show_output: bool = False,
-) -> Iterator[RuntimeClient]:
-    """Provide a context for a local runtime running in a docker container.
-
-    :param executable: Path to server binary
-    :type executable: Path
-    :param workers: Paths of worker servers
-    :type workers: List[Path]
-    :param http_port: Localhost http port, defaults to "8080"
-    :type http_port: str, optional
-    :param grpc_port: Localhost grpc port, defaults to "9090"
-    :type grpc_port: str, optional
-    :param show_output: Show server tracing/errors, defaults to False
-    :type show_output: bool, optional
-    :yield: RuntimeClient
-    :rtype: Iterator[RuntimeClient]
-    """
-
-    def write_process_out(logs: bytes) -> None:
-        with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
-            stdout.write(logs)
-            stdout.flush()
-
-    ports = {"8080": http_port}
-
-    command = []
-    worker_procs = []
-
-    # try to start subprocesses
-    try:
-        if host_workers:
-            for worker in list(map(str, host_workers)):
-                while True:
-                    free_port = get_free_port()
-                    if free_port not in ports:
-                        break
-                proc = subprocess.Popen(
-                    [f"{worker}/main.py", "--port", free_port],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )
-                worker_procs.append(proc)
-                for line in cast(IO[bytes], proc.stdout):
-                    # wait for server to finish starting and announce port
-                    if free_port in str(line):
-                        break
-                ports[free_port] = free_port
-
-                command.extend(
-                    ["--worker-remote", f"http://host.docker.internal:{free_port}"]
-                )
-        # try to start containers
-        client = docker.from_env()
-        containers = []
-
-        network = cast(
-            "Network", client.networks.create("tierkreis-net", driver="bridge")
-        )
-        try:
-            if worker_images:
-                for worker_image in worker_images:
-                    # TODO container is being given same name as image, this is probably
-                    # not ideal
-                    worker_cont = cast(
-                        "Container",
-                        client.containers.run(
-                            worker_image,
-                            name=worker_image,
-                            detach=True,
-                            remove=True,
-                            network=network.name,
-                        ),
-                    )
-
-                    command.extend(["--worker-remote", f"http://{worker_image}:80"])
-                    containers.append(worker_cont)
-
-            runtime_container = cast(
-                "Container",
-                client.containers.run(
-                    image,
-                    command,
-                    detach=True,
-                    remove=True,
-                    network=network.name,
-                    ports=ports,
-                ),
-            )
-            containers.append(runtime_container)
-
-            succesful_start = False
-            lines = []
-            for line in runtime_container.logs(stream=True):
-                lines.append(line)
-                if "Server started" in str(line):
-                    # server is ready to receive requests
-                    succesful_start = True
-                    break
-
-            if not succesful_start:
-                write_process_out(b"\n".join(lines))
-                # process has terminated unexpectedly
-                raise RuntimeLaunchFailed()
-            try:
-                yield RuntimeClient(f"http://127.0.0.1:{http_port}")
-            finally:
-                logs = runtime_container.logs()
-                if show_output:
-                    write_process_out(logs)
-        finally:
-            for container in containers:
-                try:
-                    container.stop()
-                except docker.errors.NotFound as _:
-                    pass
-            network.remove()
-    finally:
-        for proc in worker_procs:
-            proc.terminate()
-            _ = proc.communicate()

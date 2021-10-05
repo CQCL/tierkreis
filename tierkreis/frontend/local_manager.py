@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import IO, Iterator, List, Optional, Union, cast
 
-from .runtime_client import RuntimeClient, RuntimeLaunchFailed
+from .runtime_client import RuntimeClient, RuntimeLaunchFailed, _get_myqos_creds
 
 
 @contextmanager
@@ -16,7 +16,9 @@ def local_runtime(
     executable: Path,
     workers: Optional[List[Path]] = None,
     http_port: str = "8080",
+    grpc_port: Optional[str] = None,
     show_output: bool = False,
+    myqos_worker: Optional[str] = None,
 ) -> Iterator[RuntimeClient]:
     """Provide a context for a local runtime running in a subprocess.
 
@@ -35,20 +37,31 @@ def local_runtime(
     """
     parent_dir = Path(__file__).parent
 
-    default_workers = [
+    workers = workers or [
         parent_dir / "../../../workers/worker_test",
         parent_dir / "../../../workers/pytket_worker",
     ]
 
     command: List[Union[str, Path]] = [executable]
-    for worker in list(map(str, default_workers)):
+    for worker in workers:
         command.extend(["--worker-path", worker])
-    if workers:
-        for worker in list(map(str, workers)):
-            command.extend(["--worker-path", worker])
 
     proc_env = os.environ.copy()
     proc_env["TIERKREIS_HTTP_PORT"] = http_port
+
+    if myqos_worker:
+        # place mushroom authentication in environment if present
+        log, pwd = _get_myqos_creds()
+        if log:
+            proc_env["TIERKREIS_MYQOS_TOKEN"] = log
+        if pwd:
+            proc_env["TIERKREIS_MYQOS_KEY"] = pwd
+
+        command.extend(["--worker-remote", myqos_worker])
+
+    if grpc_port:
+        proc_env["TIERKREIS_GRPC_PORT"] = grpc_port
+
     with subprocess.Popen(
         command,
         stdout=subprocess.PIPE,

@@ -7,6 +7,7 @@ import os
 import sys
 import typing
 from dataclasses import dataclass, make_dataclass
+from functools import wraps
 from inspect import getdoc, isclass
 from tempfile import TemporaryDirectory
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Type, Union, cast
@@ -122,6 +123,7 @@ class Namespace:
             type_outputs = Row.from_python(hint_outputs)
 
             # Wrap function with input and output conversions
+            @wraps(func)
             async def wrapped_func(inputs: StructValue) -> StructValue:
                 try:
                     with tracer.start_as_current_span("decoding inputs to python type"):

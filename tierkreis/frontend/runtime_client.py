@@ -4,7 +4,7 @@ import copy
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
-from typing import Any, Awaitable, Callable, Dict, Optional, TypeVar, cast
+from typing import Any, Awaitable, Callable, Dict, Optional, Tuple, TypeVar, cast
 
 import aiohttp
 import betterproto
@@ -98,17 +98,22 @@ class InputConversionError(Exception):
         )
 
 
+def _get_myqos_creds() -> Tuple[Optional[str], Optional[str]]:
+    keyring_service = "Myqos"
+    # TODO DON'T COMMIT ME
+    # keyring_service = "myqos-staging"
+    login = keyring.get_password(keyring_service, "login")
+    password = keyring.get_password(keyring_service, "password")
+    return login, password
+
+
 class RuntimeClient:
     """Client for tierkreis server."""
 
     def __init__(self, url: str = "http://127.0.0.1:8080") -> None:
         self._url = url
-        keyring_service = "Myqos"
-        # TODO DON'T COMMIT ME
-        # keyring_service = "myqos-staging"
-        login = keyring.get_password(keyring_service, "login")
-        password = keyring.get_password(keyring_service, "password")
 
+        login, password = _get_myqos_creds()
         if login is None or password is None:
             self.auth = None
         else:

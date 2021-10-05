@@ -14,6 +14,8 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import VecValue, CircuitValue, TierkreisValue
 
+LOCAL_SERVER_PATH = Path("../target/debug/tierkreis-server")
+
 
 @pytest.fixture(scope="module")
 def client(request) -> Iterator[RuntimeClient]:
@@ -26,9 +28,8 @@ def client(request) -> Iterator[RuntimeClient]:
         ) as local_client:
             yield local_client
     else:
-        exe = Path("../target/debug/tierkreis-server")
         # launch a local server for this test run and kill it at the end
-        with local_runtime(exe, show_output=True) as local_client:
+        with local_runtime(LOCAL_SERVER_PATH, show_output=True) as local_client:
             yield local_client
 
 
@@ -67,9 +68,8 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
 async def test_nint_adder(client: RuntimeClient):
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list), client)
-        in_list_value = TierkreisValue.from_python(in_list)
-        outputs = await client.run_graph(tk_g, {"array": in_list_value})
-        assert outputs["out"].to_python(int) == sum(in_list)
+        outputs = await client.run_graph(tk_g, {"array": in_list})
+        assert outputs["out"].try_autopython() == sum(in_list)
 
 
 def add_n_graph(increment: int) -> TierkreisGraph:
@@ -289,3 +289,17 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
     out = await client.run_graph(sequenced_g, {"vec": vec_in})
     vec_out = out["vec"].to_python(List[str])
     assert vec_in == vec_out
+
+
+@pytest.mark.asyncio
+async def test_runtime_worker() -> None:
+    with local_runtime(
+        LOCAL_SERVER_PATH, show_output=True, http_port="9080", grpc_port="9090"
+    ) as _:
+        with local_runtime(
+            LOCAL_SERVER_PATH,
+            show_output=True,
+            myqos_worker="http://localhost:9090",
+            workers=[Path("../workers/pytket_worker")],
+        ) as runtime_server:
+            await test_nint_adder(runtime_server)

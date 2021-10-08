@@ -5,22 +5,18 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
 from typing import (
+    TYPE_CHECKING,
     Any,
     Awaitable,
     Callable,
     Dict,
     Optional,
-    Tuple,
     Type,
     TypeVar,
     cast,
-    Coroutine,
 )
-from betterproto.grpc.grpclib_client import ServiceStub
-from grpclib.events import SendRequest, listen
-from grpclib.client import Channel
+
 import betterproto
-import keyring
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
@@ -28,6 +24,10 @@ from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
+
+if TYPE_CHECKING:
+    from betterproto.grpc.grpclib_client import ServiceStub
+    from grpclib.client import Channel
 
 
 @dataclass
@@ -101,35 +101,15 @@ class InputConversionError(Exception):
         )
 
 
-StubType = TypeVar("StubType", bound=ServiceStub)
-
-
-def _get_myqos_creds() -> Tuple[Optional[str], Optional[str]]:
-    keyring_service = "Myqos"
-    # TODO DON'T COMMIT ME
-    # keyring_service = "myqos-staging"
-    login = keyring.get_password(keyring_service, "login")
-    password = keyring.get_password(keyring_service, "password")
-    return login, password
-
-
-def _gen_auth_injector(login: str, pwd: str) -> Callable[[SendRequest], Coroutine]:
-    async def _inject_auth(event: SendRequest) -> None:
-        event.metadata["token"] = login
-        event.metadata["key"] = pwd
-
-    return _inject_auth
+StubType = TypeVar("StubType", bound="ServiceStub")
 
 
 class RuntimeClient:
     """Client for tierkreis server."""
 
-    def __init__(self, channel: Channel) -> None:
+    def __init__(self, channel: "Channel") -> None:
         self._channel = channel
         self._stubs: dict[str, ServiceStub] = {}
-        login, password = _get_myqos_creds()
-        if not (login is None or password is None):
-            listen(channel, SendRequest, _gen_auth_injector(login, password))
 
     def _stub_gen(self, key: str, stub_t: Type[StubType]) -> StubType:
         if key not in self._stubs:

@@ -11,7 +11,8 @@ from typing import IO, List, Optional, Union, cast, AsyncIterator
 
 from grpclib.client import Channel
 
-from .runtime_client import RuntimeClient, RuntimeLaunchFailed, _get_myqos_creds
+from .runtime_client import RuntimeClient, RuntimeLaunchFailed
+from .myqos_client import _get_myqos_creds
 
 
 def _wait_for_print(proc: subprocess.Popen, content: str):

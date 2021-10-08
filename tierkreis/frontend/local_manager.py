@@ -3,23 +3,31 @@
 import os
 import signal
 import subprocess
+import asyncio
 import sys
-from contextlib import contextmanager
+from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import IO, Iterator, List, Optional, Union, cast
+from typing import IO, List, Optional, Union, cast, AsyncIterator
+
+from grpclib.client import Channel
 
 from .runtime_client import RuntimeClient, RuntimeLaunchFailed, _get_myqos_creds
 
 
-@contextmanager
-def local_runtime(
+def _wait_for_print(proc: subprocess.Popen, content: str):
+    for line in cast(IO[bytes], proc.stdout):
+        if content in str(line):
+            break
+
+
+@asynccontextmanager
+async def local_runtime(
     executable: Path,
     workers: Optional[List[Path]] = None,
-    http_port: str = "8080",
-    grpc_port: Optional[str] = None,
+    grpc_port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
-) -> Iterator[RuntimeClient]:
+) -> AsyncIterator[RuntimeClient]:
     """Provide a context for a local runtime running in a subprocess.
 
     :param executable: Path to server binary
@@ -47,7 +55,6 @@ def local_runtime(
         command.extend(["--worker-path", worker])
 
     proc_env = os.environ.copy()
-    proc_env["TIERKREIS_HTTP_PORT"] = http_port
 
     if myqos_worker:
         # place mushroom authentication in environment if present
@@ -60,45 +67,49 @@ def local_runtime(
         command.extend(["--worker-remote", myqos_worker])
 
     if grpc_port:
-        proc_env["TIERKREIS_GRPC_PORT"] = grpc_port
+        proc_env["TIERKREIS_GRPC_PORT"] = str(grpc_port)
 
-    with subprocess.Popen(
+    proc = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
+        stderr=subprocess.PIPE,
         env=proc_env,
-    ) as proc:
+    )
 
-        lines = []
-        for line in cast(IO[bytes], proc.stdout):
-            lines.append(line)
-            if "Server started" in str(line):
-                # server is ready to receive requests
-                break
+    _wait_for_print(proc, "Server started")
 
-        def write_process_out(process: subprocess.Popen) -> None:
-            # get remaining output
-            out, errs = process.communicate()
+    def write_process_out(process: subprocess.Popen) -> None:
+        # get remaining output
+        out, errs = proc.communicate()
+        if errs:
+            with os.fdopen(sys.stderr.fileno(), "wb", closefd=False) as stderr:
+                stderr.write(errs)
+        with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
+            if out:
+                stdout.write(out)
+            stdout.flush()
 
-            if errs:
-                with os.fdopen(sys.stderr.fileno(), "wb", closefd=False) as stderr:
-                    stderr.write(errs)
-            with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
-                for line in lines:
-                    stdout.write(line)
+    if proc.poll() is not None:
+        # process has terminated unexpectedly
+        write_process_out(proc)
+        raise RuntimeLaunchFailed()
 
-                if out:
-                    stdout.write(out)
-                stdout.flush()
+    try:
+        async with Channel("127.0.0.1", grpc_port) as channel:
+            yield RuntimeClient(channel)
 
-        if proc.poll() is not None:
-            # process has terminated unexpectedly
+    finally:
+        proc.send_signal(signal.SIGINT)
+        _wait_for_print(proc, "shutdown complete")
+
+        # proc.terminate()
+        await asyncio.sleep(1)  # FIXME deadlocks without this line
+        proc.kill()
+        if show_output:
             write_process_out(proc)
-            raise RuntimeLaunchFailed()
-
-        try:
-            yield RuntimeClient(f"http://127.0.0.1:{http_port}")
-        finally:
-            if show_output:
-                proc.send_signal(signal.SIGINT)
-                write_process_out(proc)
+        # try:
+        #     async with Channel("127.0.0.1", int(grpc_port)) as channel:
+        #         yield RuntimeClient(channel, f"http://127.0.0.1", int(http_port))
+        # finally:
+        #     if show_output:
+        #         proc.send_signal(signal.SIGINT)

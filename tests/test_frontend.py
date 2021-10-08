@@ -1,10 +1,12 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Tuple, Type
+from typing import Any, AsyncIterator, Dict, List, Tuple, Type
 
+import asyncio
 import pytest
-from pytket import Circuit  # type: ignore
+from pytket import Circuit
+import pytket  # type: ignore
 from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
@@ -14,13 +16,25 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import VecValue, CircuitValue, TierkreisValue
 
-LOCAL_SERVER_PATH = Path("../target/debug/tierkreis-server")
+LOCAL_SERVER_PATH = Path(__file__).parent / "../../target/debug/tierkreis-server"
 
 
 @pytest.fixture(scope="module")
-def client(request) -> Iterator[RuntimeClient]:
+def event_loop(request):
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+
+@pytest.fixture(scope="module")
+async def client(request) -> AsyncIterator[RuntimeClient]:
     # yield RuntimeClient("https://cloud.cambridgequantum.com/tierkreis/v1")
-    if request.config.getoption("--docker"):
+    isdocker = False
+    try:
+        isdocker = request.config.getoption("--docker") not in (None, False)
+    except Exception as _:
+        pass
+    if isdocker:
         # launch docker container and close at end
         with DockerRuntime(
             "cqc/tierkreis",
@@ -29,37 +43,37 @@ def client(request) -> Iterator[RuntimeClient]:
             yield local_client
     else:
         # launch a local server for this test run and kill it at the end
-        with local_runtime(LOCAL_SERVER_PATH, show_output=True) as local_client:
+        async with local_runtime(
+            LOCAL_SERVER_PATH, show_output=True, grpc_port=8080
+        ) as local_client:
             yield local_client
 
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
-    sig = client.signature
+    tk_g = TierkreisGraph()
+    current_outputs = tk_g.vec_last_n_elems(tk_g.input["array"], number)
 
-    with client.build_graph() as tk_g:
-        current_outputs = tk_g.vec_last_n_elems(tk_g.input["array"], number)
+    while len(current_outputs) > 1:
+        next_outputs = []
+        n_even = len(current_outputs) & ~1
 
-        while len(current_outputs) > 1:
-            next_outputs = []
-            n_even = len(current_outputs) & ~1
+        for i in range(0, n_even, 2):
+            nod = tk_g.add_node(
+                "python_nodes/add",
+                a=current_outputs[i],
+                b=current_outputs[i + 1],
+            )
+            next_outputs.append(nod["value"])
+        if len(current_outputs) > n_even:
+            nod = tk_g.add_node(
+                "python_nodes/add",
+                a=next_outputs[-1],
+                b=current_outputs[n_even],
+            )
+            next_outputs[-1] = nod["value"]
+        current_outputs = next_outputs
 
-            for i in range(0, n_even, 2):
-                nod = tk_g.add_node(
-                    sig["python_nodes"]["add"],
-                    a=current_outputs[i],
-                    b=current_outputs[i + 1],
-                )
-                next_outputs.append(nod["value"])
-            if len(current_outputs) > n_even:
-                nod = tk_g.add_node(
-                    sig["python_nodes"]["add"],
-                    a=next_outputs[-1],
-                    b=current_outputs[n_even],
-                )
-                next_outputs[-1] = nod["value"]
-            current_outputs = next_outputs
-
-        tk_g.set_outputs(out=current_outputs[0])
+    tk_g.set_outputs(out=current_outputs[0])
 
     return tk_g
 
@@ -86,7 +100,7 @@ async def test_switch(client: RuntimeClient):
     add_2_g = add_n_graph(2)
     add_3_g = add_n_graph(3)
     tk_g = TierkreisGraph()
-    sig = client.signature
+    sig = await client.get_signature()
 
     switch = tk_g.add_node(
         sig["builtin"]["switch"],
@@ -131,9 +145,8 @@ class TstStruct(TierkreisStruct):
 
 def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
     tk_g = TierkreisGraph()
-    id_node = tk_g.add_node(
-        client.signature["python_nodes"]["id_py"], value=tk_g.input["id_in"]
-    )
+
+    id_node = tk_g.add_node("python_nodes/id_py", value=tk_g.input["id_in"])
     tk_g.set_outputs(id_out=id_node)
 
     return tk_g
@@ -169,7 +182,7 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
 async def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     compile_node = tg.add_node(
-        client.signature["pytket"]["compile_circuits"],
+        "pytket/compile_circuits",
         circuits=tg.input["input"],
         pass_name=tg.add_const("FullPeepholeOptimise"),
     )
@@ -186,7 +199,7 @@ async def test_compile_circuit(bell_circuit: Circuit, client: RuntimeClient) -> 
 async def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     execute_node = tg.add_node(
-        client.signature["pytket"]["execute"],
+        "pytket/execute",
         circuit_shots=tg.input["input"],
         backend_name=tg.add_const("AerBackend"),
     )
@@ -204,12 +217,12 @@ async def test_execute_circuit(bell_circuit: Circuit, client: RuntimeClient) -> 
 
 
 @pytest.mark.asyncio
-async def test_interactive_infer(client: RuntimeClient) -> None:
+async def test_infer(client: RuntimeClient) -> None:
     # test when built with client types are auto inferred
-    with client.build_graph() as tg:
-        _, val1 = tg.copy_value(3)
-        tg.set_outputs(out=val1)
-
+    tg = TierkreisGraph()
+    _, val1 = tg.copy_value(3)
+    tg.set_outputs(out=val1)
+    tg = await client.type_check_graph(tg)
     assert any(node.is_discard_node() for node in tg.nodes().values())
 
     assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
@@ -267,10 +280,11 @@ def graph_from_func(func: TierkreisFunction) -> TierkreisGraph:
 
 @pytest.mark.asyncio
 async def test_vec_sequence(client: RuntimeClient) -> None:
-    pop_g = graph_from_func(client.signature["builtin"]["pop"])
-    push_g = graph_from_func(client.signature["builtin"]["push"])
+    sig = await client.get_signature()
+    pop_g = graph_from_func(sig["builtin"]["pop"])
+    push_g = graph_from_func(sig["builtin"]["push"])
 
-    seq_g = graph_from_func(client.signature["builtin"]["sequence"])
+    seq_g = graph_from_func(sig["builtin"]["sequence"])
 
     outputs = await client.run_graph(seq_g, {"first": pop_g, "second": push_g})
 
@@ -292,14 +306,14 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_runtime_worker() -> None:
-    with local_runtime(
-        LOCAL_SERVER_PATH, show_output=True, http_port="9080", grpc_port="9090"
-    ) as _:
-        with local_runtime(
-            LOCAL_SERVER_PATH,
-            show_output=True,
-            myqos_worker="http://localhost:9090",
-            workers=[Path("../workers/pytket_worker")],
-        ) as runtime_server:
-            await test_nint_adder(runtime_server)
+@pytest.mark.skip(reason="Test hangs if run with others.")
+async def test_runtime_worker(client: RuntimeClient) -> None:
+    async with local_runtime(
+        LOCAL_SERVER_PATH,
+        show_output=True,
+        grpc_port=9090,
+        myqos_worker="http://localhost:8080",
+        # make sure it has to talk to the other server for the test worker functions
+        workers=[Path("../workers/pytket_worker")],
+    ) as runtime_server:
+        await test_nint_adder(runtime_server)

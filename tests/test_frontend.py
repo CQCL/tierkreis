@@ -36,7 +36,7 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
         pass
     if isdocker:
         # launch docker container and close at end
-        with DockerRuntime(
+        async with DockerRuntime(
             "cqc/tierkreis",
             show_output=True,
         ) as local_client:

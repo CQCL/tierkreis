@@ -104,14 +104,7 @@ async def local_runtime(
         proc.send_signal(signal.SIGINT)
         _wait_for_print(proc, "shutdown complete")
 
-        # proc.terminate()
         await asyncio.sleep(1)  # FIXME deadlocks without this line
         proc.kill()
         if show_output:
             write_process_out(proc)
-        # try:
-        #     async with Channel("127.0.0.1", int(grpc_port)) as channel:
-        #         yield RuntimeClient(channel, f"http://127.0.0.1", int(http_port))
-        # finally:
-        #     if show_output:
-        #         proc.send_signal(signal.SIGINT)

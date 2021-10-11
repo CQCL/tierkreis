@@ -4,7 +4,7 @@ import os
 import socket
 import subprocess
 import sys
-from contextlib import AbstractContextManager, ExitStack, contextmanager
+from contextlib import AbstractAsyncContextManager, ExitStack, contextmanager
 from pathlib import Path
 from types import TracebackType
 from typing import (
@@ -19,9 +19,12 @@ from typing import (
     cast,
 )
 
+from grpclib.client import Channel
+
 from docker import DockerClient  # type: ignore
 
 from .runtime_client import RuntimeClient, RuntimeLaunchFailed
+from .myqos_client import _get_myqos_creds
 
 if TYPE_CHECKING:
     from docker.models.containers import Container  # type: ignore
@@ -71,7 +74,7 @@ class ManagedClient(DockerClient):
             network.remove()
 
 
-class DockerRuntime(AbstractContextManager):
+class DockerRuntime(AbstractAsyncContextManager):
     """Context manager for setting up a containerised runtime + workers and
     return a connected client."""
 
@@ -80,18 +83,20 @@ class DockerRuntime(AbstractContextManager):
         image: str,
         worker_images: Optional[List[str]] = None,
         host_workers: Optional[List[Path]] = None,
-        http_port: str = "8080",
+        myqos_worker: Optional[str] = None,
+        grpc_port: int = 8080,
         show_output: bool = False,
     ):
-        self.http_port = http_port
+        self.grpc_port = grpc_port
         self.image = image
         self.worker_images = worker_images or []
         self.host_workers = host_workers or []
         self.show_output = show_output
-        self.ports = {"8080": self.http_port}
+        self.myqos_worker = myqos_worker
+        self.ports = {"8080": str(self.grpc_port)}
         self._exit: Optional[Callable] = None
 
-    def __enter__(self) -> RuntimeClient:
+    async def __aenter__(self) -> RuntimeClient:
         client = ManagedClient.from_env()
 
         # ExitStack will hold the exits for all the contexts used
@@ -116,9 +121,25 @@ class DockerRuntime(AbstractContextManager):
                 )
                 command.extend(["--worker-remote", f"http://{container_name}:80"])
 
+            proc_env = {}
+
+            if self.myqos_worker:
+                # place mushroom authentication in environment if present
+                log, pwd = _get_myqos_creds()
+                if log:
+                    proc_env["TIERKREIS_MYQOS_TOKEN"] = log
+                if pwd:
+                    proc_env["TIERKREIS_MYQOS_KEY"] = pwd
+
+                command.extend(["--worker-remote", self.myqos_worker])
+
             runtime_container = stack.enter_context(
                 client._run_container(
-                    self.image, network_name, command=command, ports=self.ports
+                    self.image,
+                    network_name,
+                    command=command,
+                    ports=self.ports,
+                    environment=proc_env,
                 )
             )
 
@@ -149,9 +170,10 @@ class DockerRuntime(AbstractContextManager):
 
             self._exit = _exit
 
-        return RuntimeClient(f"http://127.0.0.1:{self.http_port}")
+        async with Channel("127.0.0.1", self.grpc_port) as channel:
+            return RuntimeClient(channel)
 
-    def __exit__(
+    async def __aexit__(
         self,
         __exc_type: Union[Type[BaseException], None],
         __exc_value: Union[BaseException, None],

@@ -35,12 +35,13 @@ async def local_runtime(
     :type executable: Path
     :param workers: Paths of worker servers
     :type workers: List[Path]
-    :param http_port: Localhost http port, defaults to "8080"
-    :type http_port: str, optional
-    :param grpc_port: Localhost grpc port, defaults to "9090"
+    :param grpc_port: Localhost grpc port, defaults to "8080"
     :type grpc_port: str, optional
     :param show_output: Show server tracing/errors, defaults to False
     :type show_output: bool, optional
+    :param myqos_worker: URL of Myqos-hosted runtime,
+     to be used as worker, defaults to None
+    :type myqos_worker: str, optional
     :yield: RuntimeClient
     :rtype: Iterator[RuntimeClient]
     """

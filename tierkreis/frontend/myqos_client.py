@@ -9,10 +9,8 @@ if TYPE_CHECKING:
     from grpclib.client import Channel
 
 
-def _get_myqos_creds() -> Tuple[Optional[str], Optional[str]]:
-    keyring_service = "Myqos"
-    # TODO DON'T COMMIT ME
-    # keyring_service = "myqos-staging"
+def _get_myqos_creds(staging: bool = False) -> Tuple[Optional[str], Optional[str]]:
+    keyring_service = "myqos-staging" if staging else "Myqos"
     login = keyring.get_password(keyring_service, "login")
     password = keyring.get_password(keyring_service, "password")
     return login, password

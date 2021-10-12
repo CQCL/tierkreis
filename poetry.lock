@@ -1,4 +1,12 @@
 [[package]]
+name = "antlr4-python3-runtime"
+version = "4.9.2"
+description = "ANTLR 4.9.2 runtime for Python 3.7"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "astroid"
 version = "2.8.2"
 description = "An abstract syntax tree for Python with inference support."
@@ -920,9 +928,12 @@ runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "fdea5d990fba1e257b73c14242986d1f09c53bdc7c512c8e06a68d9e08403fce"
+content-hash = "f628b441e5dc7b45e1dbb49059faa91e1f1e1ce241bfec15a59b2a1f534d0af0"
 
 [metadata.files]
+antlr4-python3-runtime = [
+    {file = "antlr4-python3-runtime-4.9.2.tar.gz", hash = "sha256:31f5abdc7faf16a1a6e9bf2eb31565d004359b821b09944436a34361929ae85a"},
+]
 astroid = [
     {file = "astroid-2.8.2-py3-none-any.whl", hash = "sha256:9eaeaf92b3e21b70bec1a262e7eb118d2e96294892a5de595c92a12adc80dfc2"},
     {file = "astroid-2.8.2.tar.gz", hash = "sha256:304e99c129794f2cfda584a12b71fde85205da950e2f330f4be09150525ae949"},

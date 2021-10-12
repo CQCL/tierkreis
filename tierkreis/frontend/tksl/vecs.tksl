@@ -1,3 +1,4 @@
-def main() -> (vector: vec<int>) {
-    output(vector: [2, 4])
+// comment
+graph main() -> (vec: vector<int>) {
+    output(vec: [2, 4]);
 }

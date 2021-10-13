@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, AsyncIterator, Dict, List, Tuple, Type
+import os
 
 import asyncio
 import pytest
@@ -17,6 +18,8 @@ from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import VecValue, CircuitValue, TierkreisValue
 
 LOCAL_SERVER_PATH = Path(__file__).parent / "../../target/debug/tierkreis-server"
+release_tests: bool = os.getenv("TIERKREIS_RELEASE_TESTS") is not None
+REASON = "TIERKREIS_RELEASE_TESTS not set."
 
 
 @pytest.fixture(scope="module")
@@ -311,12 +314,13 @@ def mock_myqos_creds(monkeypatch):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(release_tests, reason=REASON)
 async def test_runtime_worker(client: RuntimeClient, mock_myqos_creds) -> None:
     async with local_runtime(
         LOCAL_SERVER_PATH,
         grpc_port=9090,
         myqos_worker="http://localhost:8080",
-        show_output=True,
+        show_output=False,
         # make sure it has to talk to the other server for the test worker functions
         workers=[Path("../workers/pytket_worker")],
     ) as runtime_server:

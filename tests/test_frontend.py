@@ -332,7 +332,7 @@ async def test_runtime_worker(
         local_server_path,
         grpc_port=9090,
         myqos_worker="http://localhost:8080",
-        show_output=False,
+        show_output=True,
         # make sure it has to talk to the other server for the test worker functions
         workers=[Path("../workers/pytket_worker")],
     ) as runtime_server:

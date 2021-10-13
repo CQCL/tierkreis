@@ -74,7 +74,7 @@ async def local_runtime(
     proc = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        stderr=subprocess.PIPE if show_output else subprocess.DEVNULL,
         env=proc_env,
     )
 

@@ -38,14 +38,11 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
         # launch docker container and close at end
         async with DockerRuntime(
             "cqc/tierkreis",
-            show_output=True,
         ) as local_client:
             yield local_client
     else:
         # launch a local server for this test run and kill it at the end
-        async with local_runtime(
-            LOCAL_SERVER_PATH, show_output=True, grpc_port=8080
-        ) as local_client:
+        async with local_runtime(LOCAL_SERVER_PATH) as local_client:
             yield local_client
 
 
@@ -306,11 +303,9 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.skip(reason="Test hangs if run with others.")
 async def test_runtime_worker(client: RuntimeClient) -> None:
     async with local_runtime(
         LOCAL_SERVER_PATH,
-        show_output=True,
         grpc_port=9090,
         myqos_worker="http://localhost:8080",
         # make sure it has to talk to the other server for the test worker functions

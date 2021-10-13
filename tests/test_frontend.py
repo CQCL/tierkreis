@@ -14,20 +14,9 @@ from tierkreis.frontend import RuntimeClient, local_runtime, DockerRuntime
 from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
-from tierkreis.core.values import VecValue, CircuitValue
+from tierkreis.core.values import VecValue, CircuitValue, TierkreisValue
 
-
-def _get_local_server_path() -> Path:
-    parent = Path(__file__).parent
-    debug = parent / "../../target/debug/tierkreis-server"
-    if debug.exists():
-        return debug
-    return parent / "../../target/release/tierkreis-server"
-
-
-@pytest.fixture(scope="module")
-def local_server_path():
-    return _get_local_server_path()
+LOCAL_SERVER_PATH = Path(__file__).parent / "../../target/debug/tierkreis-server"
 
 
 @pytest.fixture(scope="module")
@@ -38,7 +27,7 @@ def event_loop(request):
 
 
 @pytest.fixture(scope="module")
-async def client(request, local_server_path) -> AsyncIterator[RuntimeClient]:
+async def client(request) -> AsyncIterator[RuntimeClient]:
     # yield RuntimeClient("https://cloud.cambridgequantum.com/tierkreis/v1")
     isdocker = False
     try:
@@ -53,7 +42,7 @@ async def client(request, local_server_path) -> AsyncIterator[RuntimeClient]:
             yield local_client
     else:
         # launch a local server for this test run and kill it at the end
-        async with local_runtime(local_server_path) as local_client:
+        async with local_runtime(LOCAL_SERVER_PATH) as local_client:
             yield local_client
 
 
@@ -322,14 +311,9 @@ def mock_myqos_creds(monkeypatch):
 
 
 @pytest.mark.asyncio
-@pytest.mark.skipif(
-    not _get_local_server_path().exists(), reason="this test requires a local build"
-)
-async def test_runtime_worker(
-    client: RuntimeClient, local_server_path: Path, mock_myqos_creds
-) -> None:
+async def test_runtime_worker(client: RuntimeClient, mock_myqos_creds) -> None:
     async with local_runtime(
-        local_server_path,
+        LOCAL_SERVER_PATH,
         grpc_port=9090,
         myqos_worker="http://localhost:8080",
         show_output=True,

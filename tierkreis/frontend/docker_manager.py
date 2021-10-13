@@ -131,7 +131,7 @@ class DockerRuntime(AbstractAsyncContextManager):
                 if pwd:
                     proc_env["TIERKREIS_MYQOS_KEY"] = pwd
 
-                command.extend(["--worker-remote", self.myqos_worker])
+                command.extend(["--myqos-worker", self.myqos_worker])
 
             runtime_container = stack.enter_context(
                 client._run_container(

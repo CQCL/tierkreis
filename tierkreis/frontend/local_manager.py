@@ -66,8 +66,7 @@ async def local_runtime(
         if pwd:
             proc_env["TIERKREIS_MYQOS_KEY"] = pwd
 
-        command.extend(["--worker-remote", myqos_worker])
-
+        command.extend(["--myqos-worker", myqos_worker])
     if grpc_port:
         proc_env["TIERKREIS_GRPC_PORT"] = str(grpc_port)
 

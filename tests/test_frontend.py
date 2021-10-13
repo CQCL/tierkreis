@@ -302,12 +302,21 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
     assert vec_in == vec_out
 
 
+@pytest.fixture
+def mock_myqos_creds(monkeypatch):
+    """Inject mock credentials, as the worker server is not set to authenticate,
+    these will not actually be checked."""
+    monkeypatch.setenv("TIERKREIS_MYQOS_TOKEN", "TestToken")
+    monkeypatch.setenv("TIERKREIS_MYQOS_KEY", "TestKey")
+
+
 @pytest.mark.asyncio
-async def test_runtime_worker(client: RuntimeClient) -> None:
+async def test_runtime_worker(client: RuntimeClient, mock_myqos_creds) -> None:
     async with local_runtime(
         LOCAL_SERVER_PATH,
         grpc_port=9090,
         myqos_worker="http://localhost:8080",
+        show_output=False,
         # make sure it has to talk to the other server for the test worker functions
         workers=[Path("../workers/pytket_worker")],
     ) as runtime_server:

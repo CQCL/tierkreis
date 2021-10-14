@@ -1,63 +1,66 @@
 
 
 graph add2(x: int) -> (y: int) {
-    output(y: python_nodes::add(x, 2));
+    output (y: python_nodes::add(x, 2));
 }
 
 graph add5(x: int) -> (y: int) {
-    output(y: python_nodes::add(x, 5));
+    output (y: python_nodes::add(x, 5));
 }
 
 graph dbl(x: int) -> (x: int) {
-    output(python_nodes::add(copy(x)));
+    // positional multiple outputs
+    output (python_nodes::add(copy(x)));
 }
 
 // type aliases
 type Point = struct<p1: float, p2: int>;
 
 graph struc_id(in_st: Point) -> (out_st: Point) {
-    output(out_st: in_st);
+    output (out_st: in_st);
 }
 
 graph main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
-    unpack_pair(v2) -> unp;
+    unp <- unpack_pair(v2);
 
     // declare constants
     const three = 3;
-    python_nodes::add(a:unp.first) -> other_total;
-    three.value->other_total.b; // add edge later
-    make_pair(true, "asdf")->pair_out;
+    other_total <- python_nodes::add(a:unp.first, b:three);
+
+
+    pair_out <- make_pair(true, "asdf");
     // python_nodes::add(unp) -> other_total;
 
-    // positional multiple outputs
-    dbl(v1) -> total;
-    sequence(dbl, dbl) -> quadruple;
+    total <- dbl(v1);
+    quadruple <- sequence(dbl, dbl);
 
-    quadruple.composed(x:total.x) -> total;
+    total4 <- quadruple.sequenced();
+
+    total.x -> total4.x;
 
     // equivalent1: if else block
-    if (unp.second; x: total.x)  {
-        output(y: add2(x));
+    total4 <- if (unp.second; x: total4.x)  {
+        output (y: add2(x));
     } else {
-        output(y: add5(x));
-    } -> total; // shadowing output variables
+        output (y: add5(x));
+    }; // shadowing output variables
 
 
     // equivalent2: lambda evaluation
-    // switch(pred: True, if_true: add2, if_false: add5) -> sw;
-    // sw.value(x:total.x) -> total;
+    // sw <- switch(pred: True, if_true: add2, if_false: add5);
+    // total4 <- sw.value(x:total4.x);
 
     // loop with condition
-    while (x: other_total.value) {
-        output(pred: python_nodes::less_than(x, 100));
+    looped_total <- while (x: other_total.value) {
+        output (pred: python_nodes::less_than(x, 100));
     } do {
-        output(x: add5(x));
-    } -> looped_total;
+        output (x: add5(x));
+    };
 
 
-    const stuc = Point{p1: 4.3e-1, p2: 3};
+    const stuc = Point{p1: 4.3e1, p2: 3};
 
-    struc_id(stuc) -> disc;
+    disc <- struc_id(stuc);
 
-    output(o1:total.y, o2: looped_total.x);
+    output(o1:total4.y, o2: looped_total.x);
 }

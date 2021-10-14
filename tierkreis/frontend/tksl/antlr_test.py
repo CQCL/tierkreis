@@ -1,13 +1,12 @@
 from dataclasses import dataclass, field, make_dataclass
 from pathlib import Path
 import copy
-import sys
 import asyncio
 from collections import OrderedDict
-from typing import Any, Iterable, Iterator, Dict, List, Optional, Tuple, cast
+from typing import Any, Iterable, Dict, List, Optional, Tuple
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
-from tierkreis.core.tierkreis_graph import NodePort, NodeRef
+from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge
 from tierkreis.core.types import (
     BoolType,
     CircuitType,
@@ -24,21 +23,21 @@ from tierkreis.core.types import (
     VarType,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.frontend import local_runtime, RuntimeClient
+from tierkreis.frontend import local_runtime
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 
 
 from antlr4 import InputStream, CommonTokenStream
-import io
-from antlr.TkslParser import TkslParser
-from antlr.TkslLexer import TkslLexer
-from antlr.TkslVisitor import TkslVisitor
+from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
+from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
+from tierkreis.frontend.tksl.antlr.TkslVisitor import TkslVisitor  # type: ignore
 
 
 @dataclass
 class FunctionDefinition:
     inputs: list[str]
     outputs: list[str]
+    graph_type: Optional[GraphType] = None
 
 
 FuncDefs = Dict[str, Tuple[TierkreisGraph, FunctionDefinition]]
@@ -79,7 +78,7 @@ def make_outports(node_ref: NodeRef, ports: Iterable[str]) -> List[NodePort]:
 class TkslTopVisitor(TkslVisitor):
     def __init__(self, signature: RuntimeSignature, context: Context):
         self.sig = signature
-        self.context = context
+        self.context = context.copy()
         self.graph = TierkreisGraph()
 
     def visitBool_token(self, ctx: TkslParser.Bool_tokenContext) -> bool:
@@ -94,7 +93,6 @@ class TkslTopVisitor(TkslVisitor):
         var_name = str(ctx.ID(0))
         port_name = str(ctx.ID(1))
         noderef, _ = self.context.output_vars[var_name]
-        return self.visitChildren(ctx)
         return NodePort(noderef, port_name)
 
     def visitF_name(
@@ -134,10 +132,6 @@ class TkslTopVisitor(TkslVisitor):
             raise RuntimeError(f"Name not found in scope: {name}.")
         raise RuntimeError()
 
-    def add_const_node(self, val: Any, name: Optional[str] = None) -> NodeRef:
-        const_node = self.graph.add_const(val, name)
-        return const_node
-
     def visitOutport(self, ctx: TkslParser.OutportContext) -> List[NodePort]:
         if ctx.thunkable_port():
             return self.visitThunkable_port(ctx.thunkable_port())
@@ -147,7 +141,7 @@ class TkslTopVisitor(TkslVisitor):
             )  # relies on correct output here
             return make_outports(node_ref, fun.outputs)
         if ctx.const_():
-            node_ref = self.add_const_node(self.vist(ctx.const_()))
+            node_ref = self.graph.add_const(self.visitConst_(ctx.const_()))
             return [node_ref["value"]]
         raise RuntimeError()
 
@@ -163,7 +157,145 @@ class TkslTopVisitor(TkslVisitor):
     def visitNamed_map(self, ctx: TkslParser.Named_mapContext) -> Dict[str, NodePort]:
         return dict(map(self.visitPort_map, ctx.port_l))
 
-    # def visit
+    def visitArglist(self, ctx: TkslParser.ArglistContext) -> Dict[str, NodePort]:
+        if ctx.named_map():
+            return self.visitNamed_map(ctx.named_map())
+        if ctx.positional_args():
+            assert hasattr(ctx, "expected_ports")
+            return dict(
+                zip(
+                    ctx.expected_ports, self.visitPositional_args(ctx.positional_args())
+                )
+            )
+        raise RuntimeError()
+
+    def visitFuncCall(
+        self, ctx: TkslParser.FuncCallContext
+    ) -> Tuple[NodeRef, FunctionDefinition]:
+        f_name, f_def = self.visitF_name(ctx.f_name())
+        arglist = {}
+        if hasattr(ctx, "arglist"):
+            argctx = ctx.arglist()
+            argctx.expected_ports = f_def.inputs
+            arglist = self.visitArglist(argctx)
+
+        if f_name in self.context.functions:
+            noderef = self.graph.add_box(
+                self.context.functions[f_name][0], f_name, **arglist
+            )
+        else:
+            noderef = self.graph.add_node(f_name, **arglist)
+
+        return noderef, f_def
+
+    def visitThunk(
+        self, ctx: TkslParser.ThunkContext
+    ) -> Tuple[NodeRef, FunctionDefinition]:
+        outport = self.visitThunkable_port(ctx.thunkable_port())[0]
+        arglist = self.visitNamed_map(ctx.named_map()) if ctx.named_map() else {}
+        eval_n = self.graph.add_node("builtin/eval", thunk=outport, **arglist)
+        return eval_n, def_from_tkfunc(self.sig["builtin"]["eval"])
+
+    def visitCallMap(self, ctx: TkslParser.CallMapContext) -> None:
+        target = ctx.target.text
+        self.context.output_vars[target] = self.visit(ctx.call)
+
+    def visitOutputCall(self, ctx: TkslParser.OutputCallContext) -> None:
+        argctx = ctx.arglist()
+        argctx.expected_ports = list(self.context.outputs)
+        self.graph.set_outputs(**self.visitArglist(argctx))
+
+    def visitConstDecl(self, ctx: TkslParser.ConstDeclContext) -> None:
+        target = ctx.const_name.text
+        const_val = self.visitConst_(ctx.const_())
+        self.context.constants[target] = self.graph.add_const(const_val)
+
+    def visitIfBlock(self, ctx: TkslParser.IfBlockContext):
+        target = ctx.target.text
+        condition = self.visitOutport(ctx.condition)[0]
+        inputs = self.visitNamed_map(ctx.inputs) if ctx.inputs else {}
+
+        ifcontext = Context()
+        ifcontext.functions = self.context.functions.copy()
+        ifcontext.inputs = OrderedDict({inp: None for inp in inputs})
+        # outputs from if-else block have to be named map (not positional)
+
+        ifvisit = TkslTopVisitor(self.sig, ifcontext)
+        if_g = ifvisit.visitCode_block(ctx.if_block)
+
+        elsevisit = TkslTopVisitor(self.sig, ifcontext)
+        else_g = elsevisit.visitCode_block(ctx.else_block)
+
+        sw_nod = self.graph.add_node(
+            "builtin/switch", pred=condition, if_true=if_g, if_false=else_g
+        )
+        eval_n = self.graph.add_node("builtin/eval", thunk=sw_nod["value"], **inputs)
+
+        output_names = set(if_g.outputs()).union(else_g.outputs())
+        ifcontext.outputs = OrderedDict({outp: None for outp in output_names})
+
+        fake_func = FunctionDefinition(list(ifcontext.inputs), list(ifcontext.outputs))
+        self.context.output_vars[target] = (eval_n, fake_func)
+
+    def visitLoop(self, ctx: TkslParser.LoopContext):
+        target = ctx.target.text
+        inputs = self.visitNamed_map(ctx.inputs) if ctx.inputs else {}
+
+        loopcontext = Context()
+        loopcontext.functions = self.context.functions.copy()
+        loopcontext.inputs = OrderedDict({inp: None for inp in inputs})
+        # outputs from if-else block have to be named map (not positional)
+
+        bodyvisit = TkslTopVisitor(self.sig, loopcontext)
+        body_g = bodyvisit.visitCode_block(ctx.body)
+
+        conditionvisit = TkslTopVisitor(self.sig, loopcontext)
+        condition_g = conditionvisit.visitCode_block(ctx.condition)
+
+        loop_nod = self.graph.add_node(
+            "builtin/loop", condition=condition_g, body=body_g, **inputs
+        )
+
+        loopcontext.outputs = OrderedDict({outp: None for outp in body_g.outputs()})
+
+        fake_func = FunctionDefinition(
+            list(loopcontext.inputs), list(loopcontext.outputs)
+        )
+        self.context.output_vars[target] = (loop_nod, fake_func)
+
+    def visitEdge(self, ctx: TkslParser.EdgeContext) -> TierkreisEdge:
+        return self.graph.add_edge(
+            self.visitPort_label(ctx.source), self.visitPort_label(ctx.target)
+        )
+
+    def visitCode_block(self, ctx: TkslParser.Code_blockContext) -> TierkreisGraph:
+        _ = list(map(self.visit, ctx.inst_list))
+        return self.graph
+
+    def visitFuncDef(self, ctx: TkslParser.FuncDefContext):
+        name = str(ctx.ID())
+        f_def = self.visitGraph_type(ctx.graph_type())
+        context = self.context.copy()
+        context.inputs = OrderedDict(
+            (key, f_def.graph_type.inputs.content[key]) for key in f_def.inputs
+        )
+        context.outputs = OrderedDict(
+            (key, f_def.graph_type.outputs.content[key]) for key in f_def.outputs
+        )
+
+        def_visit = TkslTopVisitor(self.sig, context)
+        graph = def_visit.visitCode_block(ctx.code_block())
+
+        self.context.functions[name] = (graph, f_def)
+
+    def visitTypeAlias(self, ctx: TkslParser.TypeAliasContext):
+        self.context.aliases[str(ctx.ID())] = self.visitType_(ctx.type_())
+
+    def visitStart(self, ctx: TkslParser.StartContext) -> TierkreisGraph:
+        _ = list(map(self.visit, ctx.decs))
+
+        return self.context.functions["main"][0]
+
     def visitStruct_id(self, ctx: TkslParser.Struct_idContext) -> Optional[str]:
         if ctx.TYPE_STRUCT():
             return None
@@ -199,8 +331,17 @@ class TkslTopVisitor(TkslVisitor):
 
     def visitF_param_list(
         self, ctx: TkslParser.F_param_listContext
-    ) -> Dict[str, TierkreisType]:
-        return dict(map(self.visitF_param, ctx.par_list))
+    ) -> OrderedDict[str, TierkreisType]:
+        return OrderedDict(map(self.visitF_param, ctx.par_list))
+
+    def visitGraph_type(self, ctx: TkslParser.Graph_typeContext) -> FunctionDefinition:
+        inputs = self.visitF_param_list(ctx.inputs)
+        outputs = self.visitF_param_list(ctx.outputs)
+        g_type = GraphType(
+            inputs=Row(inputs),
+            outputs=Row(outputs),
+        )
+        return FunctionDefinition(list(inputs), list(outputs), g_type)
 
     def visitType_(self, ctx: TkslParser.Type_Context) -> TierkreisType:
         if ctx.TYPE_INT():
@@ -221,11 +362,9 @@ class TkslTopVisitor(TkslVisitor):
         if ctx.TYPE_STRUCT():
             return StructType(Row(self.visit(ctx.fields)))
         if ctx.graph_type():
-            gt_ctx = ctx.graph_type()
-            return GraphType(
-                inputs=Row(self.visit(gt_ctx.inputs)),
-                outputs=Row(self.visit(gt_ctx.outputs)),
-            )
+            g_type = self.visitGraph_type(ctx.graph_type()).graph_type
+            assert g_type is not None
+            return g_type
         if ctx.ID():
             return self.context.aliases[str(ctx.ID())]
             # if type_name == "TYPE_MAP":
@@ -269,24 +408,29 @@ async def main():
     stream = CommonTokenStream(lexer)
     parser = TkslParser(stream)
 
-    output = io.StringIO()
-    error = io.StringIO()
     # parser.removeErrorListeners()
     # errorListener = ChatErrorListener(self.error)
 
     tree = parser.start()
     exe = Path("../../../../target/debug/tierkreis-server")
-    async with local_runtime(exe) as local_client:
-        sig = await local_client.get_signature()
-    # context = ssl.create_default_context()
-    # context.check_hostname = False
-    # context.verify_mode = ssl.CERT_NONE
-    # async with Channel("cqtrr595bx-staging-pr.uksouth.cloudapp.azure.com/tierkreis/", ssl=context) as channel:
-    #     print(await channel.__connect__())
+    # ssl._create_default_https_context = ssl._create_unverified_context
+    # context = ssl._create_unverified_context()
+    # context.check_hostname = True
+    # context.verify_mode = ssl.CERT_OPTIONAL
+    # context.verify_flags = ssl.VERIFY_CRL_CHECK_LEAF
+
+    # async with Channel('tierkreistrr595bx-staging-pr.uksouth.cloudapp.azure.com',443, ssl=True) as channel:
+    # client = MyqosClient(channel)
+    async with local_runtime(exe) as client:
+        sig = await client.get_signature()
+        out = TkslTopVisitor(sig, Context()).visitStart(tree)
+        out = await client.type_check_graph(out)
+        # print(await client.run_graph(out, {"v1": 67, "v2": (45, False)}))
+    #     # print(await channel.__connect__())
     #     client = MyqosClient(channel)
     #     sig = await client.get_signature()
-    out = TkslTopVisitor(sig, Context()).visit(tree)
-    print(out)
+
+    tierkreis_to_graphviz(out).render("dump", "png")
 
 
 asyncio.run(main())

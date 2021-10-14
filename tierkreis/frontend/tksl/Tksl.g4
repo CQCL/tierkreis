@@ -2,12 +2,11 @@ grammar Tksl;
 /*
  Parser rules
  */
-start: declaration+;
+start: decs += declaration+;
 declaration:
-    function
-    | TYPE alias = ID '=' type_def = type_ ';';
-function: GRAPH function_name = ID graph_type code_block;
-code_block: '{' (instruction ';')+ '}';
+    GRAPH ID graph_type code_block # FuncDef
+    | TYPE ID '=' type_ ';'        # TypeAlias;
+code_block: '{' (inst_list += instruction ';')+ '}';
 type_:
     | TYPE_INT
     | TYPE_BOOL
@@ -26,17 +25,18 @@ f_param_list: (par_list += f_param (',' par_list += f_param)*)?;
 f_param: label = ID ':' annotation = type_;
 
 instruction:
-    call = node_inputs '->' target = ID                                                            # CallMap
-    | OUTPUT '(' arglist ')'                                                                       # OutputCall
-    | CONST const_name = ID '=' const_val = const_                                                 # ConstDecl
-    | IF '(' outport ';' named_map? ')' if_block = code_block ELSE else_block = code_block '->' ID #
-        IfBlock
-    | WHILE '(' named_map? ')' condition = code_block DO body = code_block '->' target = ID # Loop
-    | port_label '->' port_label                                                            # Edge;
+    target = ID '<-' call = node_inputs            # CallMap
+    | OUTPUT '(' arglist ')'                       # OutputCall
+    | CONST const_name = ID '=' const_val = const_ # ConstDecl
+    | target = ID '<-' IF '(' condition = outport ';' inputs = named_map? ')' if_block = code_block
+        ELSE else_block = code_block                                                                 # IfBlock
+    | target = ID '<-' WHILE '(' inputs = named_map? ')' condition = code_block DO body = code_block
+        # Loop
+    | source = port_label '->' target = port_label # Edge;
 
 node_inputs:
-    f_name '(' arglist? ')'            # FuncCall
-    | thunkable_port '(' named_map ')' # Thunk;
+    f_name '(' arglist? ')'             # FuncCall
+    | thunkable_port '(' named_map? ')' # Thunk;
 
 arglist: named_map | positional_args;
 named_map: port_l += port_map (',' port_l += port_map)*;

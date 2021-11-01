@@ -17,36 +17,7 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import VecValue, CircuitValue, TierkreisValue
 
-LOCAL_SERVER_PATH = Path(__file__).parent / "../../target/debug/tierkreis-server"
-release_tests: bool = os.getenv("TIERKREIS_RELEASE_TESTS") is not None
-REASON = "TIERKREIS_RELEASE_TESTS not set."
-
-
-@pytest.fixture(scope="module")
-def event_loop(request):
-    loop = asyncio.get_event_loop_policy().new_event_loop()
-    yield loop
-    loop.close()
-
-
-@pytest.fixture(scope="module")
-async def client(request) -> AsyncIterator[RuntimeClient]:
-    # yield RuntimeClient("https://cloud.cambridgequantum.com/tierkreis/v1")
-    isdocker = False
-    try:
-        isdocker = request.config.getoption("--docker") not in (None, False)
-    except Exception as _:
-        pass
-    if isdocker:
-        # launch docker container and close at end
-        async with DockerRuntime(
-            "cqc/tierkreis",
-        ) as local_client:
-            yield local_client
-    else:
-        # launch a local server for this test run and kill it at the end
-        async with local_runtime(LOCAL_SERVER_PATH) as local_client:
-            yield local_client
+from . import LOCAL_SERVER_PATH, release_tests, REASON
 
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:

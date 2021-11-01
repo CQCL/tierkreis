@@ -1,7 +1,5 @@
 from dataclasses import dataclass, field, make_dataclass
-from pathlib import Path
 import copy
-import asyncio
 from collections import OrderedDict
 from typing import Any, Iterable, Dict, List, Optional, Tuple
 from tierkreis import TierkreisGraph
@@ -23,8 +21,6 @@ from tierkreis.core.types import (
     VarType,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.frontend import local_runtime
-from tierkreis.core.graphviz import tierkreis_to_graphviz
 
 
 from antlr4 import InputStream, CommonTokenStream
@@ -75,16 +71,14 @@ def make_outports(node_ref: NodeRef, ports: Iterable[str]) -> List[NodePort]:
     return [node_ref[outport] for outport in ports]
 
 
-class TkslTopVisitor(TkslVisitor):
+class TkslFileVisitor(TkslVisitor):
     def __init__(self, signature: RuntimeSignature, context: Context):
         self.sig = signature
         self.context = context.copy()
         self.graph = TierkreisGraph()
 
     def visitBool_token(self, ctx: TkslParser.Bool_tokenContext) -> bool:
-        if ctx.TRUE():
-            return True
-        return False
+        return True if ctx.TRUE() else False
 
     def visitInport(self, ctx: TkslParser.InportContext) -> str:
         return str(ctx.ID())
@@ -220,10 +214,10 @@ class TkslTopVisitor(TkslVisitor):
         ifcontext.inputs = OrderedDict({inp: None for inp in inputs})
         # outputs from if-else block have to be named map (not positional)
 
-        ifvisit = TkslTopVisitor(self.sig, ifcontext)
+        ifvisit = TkslFileVisitor(self.sig, ifcontext)
         if_g = ifvisit.visitCode_block(ctx.if_block)
 
-        elsevisit = TkslTopVisitor(self.sig, ifcontext)
+        elsevisit = TkslFileVisitor(self.sig, ifcontext)
         else_g = elsevisit.visitCode_block(ctx.else_block)
 
         sw_nod = self.graph.add_node(
@@ -246,10 +240,10 @@ class TkslTopVisitor(TkslVisitor):
         loopcontext.inputs = OrderedDict({inp: None for inp in inputs})
         # outputs from if-else block have to be named map (not positional)
 
-        bodyvisit = TkslTopVisitor(self.sig, loopcontext)
+        bodyvisit = TkslFileVisitor(self.sig, loopcontext)
         body_g = bodyvisit.visitCode_block(ctx.body)
 
-        conditionvisit = TkslTopVisitor(self.sig, loopcontext)
+        conditionvisit = TkslFileVisitor(self.sig, loopcontext)
         condition_g = conditionvisit.visitCode_block(ctx.condition)
 
         loop_nod = self.graph.add_node(
@@ -283,7 +277,7 @@ class TkslTopVisitor(TkslVisitor):
             (key, f_def.graph_type.outputs.content[key]) for key in f_def.outputs
         )
 
-        def_visit = TkslTopVisitor(self.sig, context)
+        def_visit = TkslFileVisitor(self.sig, context)
         graph = def_visit.visitCode_block(ctx.code_block())
 
         self.context.functions[name] = (graph, f_def)
@@ -352,6 +346,8 @@ class TkslTopVisitor(TkslVisitor):
             return StringType()
         if ctx.TYPE_FLOAT():
             return FloatType()
+        if ctx.TYPE_CIRCUIT():
+            return CircuitType()
         if ctx.TYPE_PAIR():
             pair_type = PairType(self.visit(ctx.first), self.visit(ctx.second))
             return pair_type
@@ -367,26 +363,6 @@ class TkslTopVisitor(TkslVisitor):
             return g_type
         if ctx.ID():
             return self.context.aliases[str(ctx.ID())]
-            # if type_name == "TYPE_MAP":
-            #     return MapType(
-            #         get_type(token.children[1], aliases), get_type(token.children[2], aliases)
-            #     )
-            # if type_name == "TYPE_VEC":
-            #     return VecType(get_type(token.children[1], aliases))
-            # if type_name == "TYPE_STRUCT":
-            #     args = token.children[1].children
-            #     return StructType(
-            #         Row(
-            #             {
-            #                 arg.children[0].value: get_type(arg.children[1], aliases)
-            #                 for arg in args
-            #             }
-            #         )
-            #     )
-            # if type_name == "TYPE_CIRCUIT":
-            #     return CircuitType()
-            # if token.data == "alias":
-            # return aliases[token.children[0].value]
         return VarType("unkown")
 
     def visitDeclaration(self, ctx: TkslParser.DeclarationContext) -> None:
@@ -396,41 +372,22 @@ class TkslTopVisitor(TkslVisitor):
         return self.visitChildren(ctx)
 
 
-from grpclib.client import Channel
-from tierkreis.frontend.myqos_client import MyqosClient
-import ssl
+def parse_tksl(
+    source: str, signature: Optional[RuntimeSignature] = None
+) -> TierkreisGraph:
+    """Parse a tksl source file and return the "main" graph.
 
-
-async def main():
-    with open("antlr_sample.tksl") as f:
-        text = f.read()
-    lexer = TkslLexer(InputStream(text))
+    :param source: Source file as string
+    :type source: str
+    :param signature: Runtime signature if available, defaults to None
+    :type signature: Optional[RuntimeSignature], optional
+    :return: Graph defined as "main" in source
+    :rtype: TierkreisGraph
+    """
+    signature = signature or {}
+    lexer = TkslLexer(InputStream(source))
     stream = CommonTokenStream(lexer)
     parser = TkslParser(stream)
 
-    # parser.removeErrorListeners()
-    # errorListener = ChatErrorListener(self.error)
-
     tree = parser.start()
-    exe = Path("../../../../target/debug/tierkreis-server")
-    # ssl._create_default_https_context = ssl._create_unverified_context
-    # context = ssl._create_unverified_context()
-    # context.check_hostname = True
-    # context.verify_mode = ssl.CERT_OPTIONAL
-    # context.verify_flags = ssl.VERIFY_CRL_CHECK_LEAF
-
-    # async with Channel('tierkreistrr595bx-staging-pr.uksouth.cloudapp.azure.com',443, ssl=True) as channel:
-    # client = MyqosClient(channel)
-    async with local_runtime(exe) as client:
-        sig = await client.get_signature()
-        out = TkslTopVisitor(sig, Context()).visitStart(tree)
-        out = await client.type_check_graph(out)
-        # print(await client.run_graph(out, {"v1": 67, "v2": (45, False)}))
-    #     # print(await channel.__connect__())
-    #     client = MyqosClient(channel)
-    #     sig = await client.get_signature()
-
-    tierkreis_to_graphviz(out).render("dump", "png")
-
-
-asyncio.run(main())
+    return TkslFileVisitor(signature, Context()).visitStart(tree)

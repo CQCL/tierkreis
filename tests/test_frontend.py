@@ -52,9 +52,7 @@ async def test_nint_adder(client: RuntimeClient):
     with open(Path(__file__).parent / "tksl_samples/nint_adder.tksl") as f:
         tksl_source = f.read()
     tksl_g = parse_tksl(tksl_source, await client.get_signature())
-    # tierkreis_to_graphviz(tksl_g).render("dump/nint", view=True)
-    with open("nint_proto.bin", "wb") as f:
-        f.write(bytes(tksl_g.to_proto()))
+
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list), client)
         outputs = await client.run_graph(tk_g, {"array": in_list})

@@ -1,4 +1,4 @@
 // comment
 Graph main() -> (vec: Vector<Int>) {
-    output(vec: [2, 4]);
+    output (vec: [2, 4]);
 }

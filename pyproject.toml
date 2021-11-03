@@ -9,11 +9,16 @@ authors = [
 ]
 include = ["tierkreis/core/protos/**/*.py"]
 
+[tool.poetry.scripts]
+tksl = 'tierkreis.frontend.tksl.cli:cli'
+
+
 [tool.poetry.dependencies]
 python = "^3.9"
 betterproto = "^2.0.0b3"
 grpclib = "^0.4.2"
 pytket = "^0.15.0"
+click = "^8.0.3"
 
 
 # optional dependencies
@@ -35,7 +40,6 @@ mypy = "^0.812"
 pylint = "^2.11"
 pytest = "^6.2.4"
 pytest-asyncio = "^0.15.1"
-click = "^8.0.3"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]

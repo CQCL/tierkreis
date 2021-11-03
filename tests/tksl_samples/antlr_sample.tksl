@@ -62,5 +62,5 @@ Graph main(v1: Int, v2: Pair<Int, Bool>) -> (o1: Int, o2:Int) {
 
     disc <- struc_id(stuc);
 
-    output(o1:total4.y, o2: looped_total.x);
+    output (o1:total4.y, o2: looped_total.x);
 }

@@ -89,7 +89,7 @@ SHORT_STRING:
     | '"' ( STRING_ESCAPE_SEQ | ~[\\\r\n\f"])* '"';
 
 TYPE: 'type';
-GRAPH: 'graph';
+GRAPH: 'Graph';
 TRUE: 'true';
 FALSE: 'false';
 IF: 'if';
@@ -99,15 +99,15 @@ DO: 'do';
 CONST: 'const';
 OUTPUT: 'output';
 
-TYPE_INT: 'int';
-TYPE_BOOL: 'bool';
-TYPE_FLOAT: 'float';
-TYPE_STR: 'str';
-TYPE_PAIR: 'pair';
-TYPE_MAP: 'map';
-TYPE_VEC: 'vector';
-TYPE_STRUCT: 'struct';
-TYPE_CIRCUIT: 'circuit';
+TYPE_INT: 'Int';
+TYPE_BOOL: 'Bool';
+TYPE_FLOAT: 'Float';
+TYPE_STR: 'Str';
+TYPE_PAIR: 'Pair';
+TYPE_MAP: 'Map';
+TYPE_VEC: 'Vector';
+TYPE_STRUCT: 'Struct';
+TYPE_CIRCUIT: 'Circuit';
 
 NEWLINE:
     '\r'? '\n' -> skip; // return newlines to parser (is end-statement signal)

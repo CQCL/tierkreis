@@ -928,7 +928,7 @@ runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "f628b441e5dc7b45e1dbb49059faa91e1f1e1ce241bfec15a59b2a1f534d0af0"
+content-hash = "77aa10ef90088a241106a611ecf424ea8679758f5c5ec61ce2bda0321b2a66c1"
 
 [metadata.files]
 antlr4-python3-runtime = [

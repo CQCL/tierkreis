@@ -35,6 +35,7 @@ mypy = "^0.812"
 pylint = "^2.11"
 pytest = "^6.2.4"
 pytest-asyncio = "^0.15.1"
+click = "^8.0.3"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]

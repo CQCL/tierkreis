@@ -1,0 +1,5 @@
+
+Graph main(mp: Map<Int, Str>) -> (mp: Map<Int, Str>, vl: Str) {
+    mp_val <- remove_key(mp, 3);
+    output(insert_key(mp_val.map, 5, "bar"), mp_val.val);
+}

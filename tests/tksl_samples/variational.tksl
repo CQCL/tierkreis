@@ -1,10 +1,10 @@
-def main(circ: circuit, params: vector<float>) -> (value: float) {
+graph main(circ: circuit, params: vector<float>) -> (value: float) {
 
-    pytket::substitute_symbols(circ: circ, symbs: ["a"], params: params) -> subs;
-    push(item: make_pair(first: subs, second: 1000), vec:[]) -> arr;
-    pytket::execute(circuit_shots:arr, backend_name: "AerBackend") -> res;
-    pop(res) -> res;
-    pytket::z_expectation(dist:res.item) -> z_exp;
+    subs <- pytket::substitute_symbols(circ: circ, symbs: ["a"], params: params);
+    arr <- push(item: make_pair(first: subs, second: 1000), vec:[]);
+    res <- pytket::execute(circuit_shots:arr, backend_name: "AerBackend");
+    res <- pop(res);
+    z_exp <- pytket::z_expectation(dist:res.item);
     output(value: z_exp.value);
 
 }

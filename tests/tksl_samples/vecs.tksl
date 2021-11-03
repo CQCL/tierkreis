@@ -1,4 +1,4 @@
 // comment
-graph main() -> (vec: vector<int>) {
+Graph main() -> (vec: Vector<Int>) {
     output(vec: [2, 4]);
 }

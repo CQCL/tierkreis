@@ -1,0 +1,10 @@
+Graph main(array: Vector<Int>, len: Int) -> (out: Int) {
+    total <- while (ar: array, sum: 0, counter: len) {
+        output (pred: python_nodes::less_than(0, counter));
+    } do {
+        popped <- pop(ar);
+        output (sum: python_nodes::add(sum, popped.item), ar: popped.vec, counter: python_nodes::add(counter, -1));
+    };
+
+    output (out: total.sum);
+}

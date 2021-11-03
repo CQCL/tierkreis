@@ -1,26 +1,26 @@
 
 
-graph add2(x: int) -> (y: int) {
+Graph add2(x: Int) -> (y: Int) {
     output (y: python_nodes::add(x, 2));
 }
 
-graph add5(x: int) -> (y: int) {
+Graph add5(x: Int) -> (y: Int) {
     output (y: python_nodes::add(x, 5));
 }
 
-graph dbl(x: int) -> (x: int) {
+Graph dbl(x: Int) -> (x: Int) {
     // positional multiple outputs
     output (python_nodes::add(copy(x)));
 }
 
 // type aliases
-type Point = struct<p1: float, p2: int>;
+type Point = Struct<p1: Float, p2: Int>;
 
-graph struc_id(in_st: Point) -> (out_st: Point) {
+Graph struc_id(in_st: Point) -> (out_st: Point) {
     output (out_st: in_st);
 }
 
-graph main(v1: int, v2: pair<int, bool>) -> (o1: int, o2:int) {
+Graph main(v1: Int, v2: Pair<Int, Bool>) -> (o1: Int, o2:Int) {
     unp <- unpack_pair(v2);
 
     // declare constants

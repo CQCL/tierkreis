@@ -53,6 +53,7 @@ struct_const:
     sid = struct_id '{' fields += const_assign (
         ',' fields += const_assign
     )* '}';
+circuit_const: QINCLUDE '(' SHORT_STRING ')';
 vec_const: '[' (elems += const_ (',' elems += const_)*)? ']';
 const_:
     | bool_token
@@ -60,6 +61,7 @@ const_:
     | SIGNED_FLOAT
     | SHORT_STRING
     | struct_const
+    | circuit_const
     | vec_const;
 
 f_name: func_name = ID | namespace = ID '::' func_name = ID;
@@ -98,6 +100,7 @@ WHILE: 'while';
 DO: 'do';
 CONST: 'const';
 OUTPUT: 'output';
+QINCLUDE: 'qinclude!';
 
 TYPE_INT: 'Int';
 TYPE_BOOL: 'Bool';

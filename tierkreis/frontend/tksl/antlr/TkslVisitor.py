@@ -107,6 +107,10 @@ class TkslVisitor(ParseTreeVisitor):
     def visitStruct_const(self, ctx: TkslParser.Struct_constContext):
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by TkslParser#circuit_const.
+    def visitCircuit_const(self, ctx: TkslParser.Circuit_constContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by TkslParser#vec_const.
     def visitVec_const(self, ctx: TkslParser.Vec_constContext):
         return self.visitChildren(ctx)

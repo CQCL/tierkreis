@@ -1,0 +1,23 @@
+// comment
+Graph zip(l1: Vector<Circuit>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Circuit,Int>>) {
+    looped <- while (outp: [], first: l1, second: l2, counter: N) {
+        output (pred: python_nodes::less_than(0, counter));
+    } do {
+        pop1 <- pop(first);
+        pop2 <- pop(second);
+        pushed <- push(outp, make_pair(pop1.item, pop2.item));
+        output (outp: pushed.vec, first: pop1.vec, second: pop2.vec, counter: python_nodes::add(counter, -1));
+    };
+
+    output (zipped: looped.outp);
+
+}
+
+type SampledDist = Pair<Map<Str, Float>, Int>;
+
+Graph main() -> (res: SampledDist) {
+    const c1 = qinclude!("simple_qasm.qasm");
+    subs <- pytket::substitute_symbols(c1, ["a_1"], [0.1]);
+    comped <- pytket::compile_circuits(push([], subs), "RebaseTket");
+    output (res: pytket::execute(zip(comped, [10], 1), "AerBackend"));
+}

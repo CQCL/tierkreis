@@ -6,6 +6,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from antlr4 import CommonTokenStream, InputStream  # type: ignore
 from antlr4.error.ErrorListener import ErrorListener  # type: ignore
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
+from pytket.qasm import circuit_from_qasm
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge
@@ -331,7 +332,11 @@ class TkslFileVisitor(TkslVisitor):
         if ctx.SHORT_STRING():
             return str(ctx.SHORT_STRING())[1:-1]
         if ctx.vec_const():
-            return list(map(self.visitConst_, ctx.vec_const().elems))
+            vec_ctx = ctx.vec_const()
+            if len(vec_ctx.elems) == 1:
+                if self.visitConst_(vec_ctx.elems[0]) is None:
+                    return []
+            return list(map(self.visitConst_, vec_ctx.elems))
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
             _struct_id = str(struct_ctx.sid)
@@ -340,6 +345,10 @@ class TkslFileVisitor(TkslVisitor):
                 "anon_struct", fields=fields.keys(), bases=(TierkreisStruct,)
             )
             return cl(**fields)
+        if ctx.circuit_const():
+            circ_ctx = ctx.circuit_const()
+            file_path = str(circ_ctx.SHORT_STRING())[1:-1]
+            return circuit_from_qasm(file_path)
 
     def visitF_param(self, ctx: TkslParser.F_paramContext) -> Tuple[str, TierkreisType]:
         return ctx.label.text, self.visitType_(ctx.annotation)

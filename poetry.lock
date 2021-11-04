@@ -946,7 +946,7 @@ tksl = ["antlr4-python3-runtime", "click", "yachalk"]
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.9"
-content-hash = "9574a86647bed0102a718a4f1469700e4c72ef629e2186846cd33cfbb9d3594e"
+content-hash = "5a07c064d895f949dc7600ab8248fad40bb2a01a62d26ea589959cf2561e72e7"
 
 [metadata.files]
 antlr4-python3-runtime = [

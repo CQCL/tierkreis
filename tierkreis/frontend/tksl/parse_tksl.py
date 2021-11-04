@@ -44,6 +44,10 @@ NamespaceDict = Dict[str, TierkreisFunction]
 RuntimeSignature = Dict[str, NamespaceDict]
 
 
+class TkslCompileException(Exception):
+    pass
+
+
 @dataclass
 class Context:
     functions: FuncDefs = field(default_factory=dict)
@@ -103,7 +107,9 @@ class TkslFileVisitor(TkslVisitor):
             if func_name in self.context.functions:
                 return func_name, self.context.functions[func_name][1]
             else:
-                raise RuntimeError(f"Function name not found: {func_name}") from err
+                raise TkslCompileException(
+                    f"Function name not found: {func_name}"
+                ) from err
 
     def visitThunkable_port(
         self, ctx: TkslParser.Thunkable_portContext
@@ -123,8 +129,8 @@ class TkslFileVisitor(TkslVisitor):
                 return [const_node["value"]]
             if name in self.context.constants:
                 return [self.context.constants[name]["value"]]
-            raise RuntimeError(f"Name not found in scope: {name}.")
-        raise RuntimeError()
+            raise TkslCompileException(f"Name not found in scope: {name}.")
+        raise TkslCompileException()
 
     def visitOutport(self, ctx: TkslParser.OutportContext) -> List[NodePort]:
         if ctx.thunkable_port():
@@ -137,7 +143,7 @@ class TkslFileVisitor(TkslVisitor):
         if ctx.const_():
             node_ref = self.graph.add_const(self.visitConst_(ctx.const_()))
             return [node_ref["value"]]
-        raise RuntimeError()
+        raise TkslCompileException()
 
     def visitPort_map(self, ctx: TkslParser.Port_mapContext) -> Tuple[str, NodePort]:
         # only one outport in portmap
@@ -161,7 +167,7 @@ class TkslFileVisitor(TkslVisitor):
                     ctx.expected_ports, self.visitPositional_args(ctx.positional_args())
                 )
             )
-        raise RuntimeError()
+        raise TkslCompileException()
 
     def visitFuncCall(
         self, ctx: TkslParser.FuncCallContext
@@ -310,7 +316,7 @@ class TkslFileVisitor(TkslVisitor):
             return None
         if ctx.ID():
             return str(ctx.ID())
-        raise RuntimeError()
+        raise TkslCompileException()
 
     def visitConst_assign(self, ctx: TkslParser.Const_assignContext) -> Tuple[str, Any]:
         return str(ctx.ID()), self.visitConst_(ctx.const_())

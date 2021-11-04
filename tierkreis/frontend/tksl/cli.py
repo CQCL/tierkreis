@@ -2,11 +2,13 @@ import asyncio
 import pprint
 import traceback
 from functools import wraps
+import sys
 from pathlib import Path
 from typing import AsyncContextManager, Optional, TextIO
 import tempfile
 
 import click
+from yachalk import chalk
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
@@ -30,14 +32,29 @@ async def _parse(source: TextIO, client: RuntimeClient) -> TierkreisGraph:
     try:
         return parse_tksl(source.read(), await client.get_signature())
     except ParseCancellationException as _parse_err:
-        traceback.print_exc(0)
+        print(chalk.red(f"Parse error: {str(_parse_err)}"), file=sys.stderr)
         exit()
+
+
+async def _check_graph(
+    source_path: Path, client_manager: AsyncContextManager[RuntimeClient]
+) -> TierkreisGraph:
+    async with client_manager as client:
+        with open(source_path, "r") as f:
+            tkg = await _parse(f, client)
+        try:
+            tkg = await client.type_check_graph(tkg)
+        except TierkreisTypeErrors as _errs:
+            print(chalk.red(traceback.format_exc(0)), file=sys.stderr)
+            exit()
+        return tkg
 
 
 @click.group()
 @click.pass_context
 @click.option(
     "--runtime",
+    "-R",
     type=click.Choice(["docker", "local", "myqos"], case_sensitive=True),
     default="local",
 )
@@ -58,20 +75,6 @@ async def cli(ctx: click.Context, runtime: str):
     ctx.obj["client_manager"] = client_manager
 
 
-async def _check_graph(
-    source_path: Path, client_manager: AsyncContextManager[RuntimeClient]
-) -> TierkreisGraph:
-    async with client_manager as client:
-        with open(source_path, "r") as f:
-            tkg = await _parse(f, client)
-        try:
-            tkg = await client.type_check_graph(tkg)
-        except TierkreisTypeErrors as _errs:
-            traceback.print_exc(0)
-            exit()
-        return tkg
-
-
 @cli.command()
 @click.argument("source", type=click.Path(exists=True))
 @click.option(
@@ -89,14 +92,6 @@ async def build(ctx: click.Context, source: str, target: Optional[str]):
         assert source_path.suffix == ".tksl"
         target_path = source_path.with_suffix(".bin")
     tkg = await _check_graph(source_path, ctx.obj["client_manager"])
-    # async with ctx.obj["client_manager"] as client:
-    #     with open(source_path, "r") as f:
-    #         tkg = await _parse(f, client)
-    #     try:
-    #         tkg = await client.type_check_graph(tkg)
-    #     except TierkreisTypeErrors as _errs:
-    #         traceback.print_exc(0)
-    #         return
 
     with open(target_path, "wb") as f:
         f.write(bytes(tkg.to_proto()))
@@ -109,14 +104,8 @@ async def build(ctx: click.Context, source: str, target: Optional[str]):
 @coro
 async def check(ctx: click.Context, source: str, view: bool) -> TierkreisGraph:
     source_path = Path(source)
-    async with ctx.obj["client_manager"] as client:
-        with open(source_path, "r") as f:
-            tkg = await _parse(f, client)
-        try:
-            tkg = await client.type_check_graph(tkg)
-        except TierkreisTypeErrors as _errs:
-            traceback.print_exc(0)
-            exit()
+    tkg = await _check_graph(source_path, ctx.obj["client_manager"])
+    print(chalk.bold.green("Success: graph type check complete."))
     if view:
         tkg.name = source_path.stem
         tierkreis_to_graphviz(tkg).view(tempfile.mktemp(".gv"))
@@ -134,4 +123,4 @@ async def run(ctx: click.Context, source: TextIO):
         try:
             pprint.pprint(await client.run_graph(tkg, {}))
         except TierkreisTypeErrors as _errs:
-            traceback.print_exc(0)
+            print(chalk.red(traceback.format_exc(0)), file=sys.stderr)

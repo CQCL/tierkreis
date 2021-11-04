@@ -24,6 +24,9 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 
 
 from antlr4 import InputStream, CommonTokenStream
+from antlr4.error.ErrorListener import ErrorListener
+from antlr4.error.Errors import ParseCancellationException
+
 from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslVisitor import TkslVisitor  # type: ignore
@@ -246,6 +249,19 @@ class TkslFileVisitor(TkslVisitor):
         conditionvisit = TkslFileVisitor(self.sig, loopcontext)
         condition_g = conditionvisit.visitCode_block(ctx.condition)
 
+        # ignore unused inputs
+        body_g.set_outputs(
+            **{
+                inp: body_g.input[inp]
+                for inp in loopcontext.inputs
+                if inp not in body_g.inputs()
+            }
+        )
+
+        for inp in loopcontext.inputs:
+            if inp not in condition_g.inputs():
+                condition_g.discard(condition_g.input[inp])
+
         loop_nod = self.graph.add_node(
             "builtin/loop", condition=condition_g, body=body_g, **inputs
         )
@@ -372,6 +388,14 @@ class TkslFileVisitor(TkslVisitor):
         return self.visitChildren(ctx)
 
 
+class ThrowingErrorListener(ErrorListener):
+    def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
+        ex = ParseCancellationException(f"line {line}: {column} {msg}")
+        ex.line = line
+        ex.column = column
+        raise ex
+
+
 def parse_tksl(
     source: str, signature: Optional[RuntimeSignature] = None
 ) -> TierkreisGraph:
@@ -386,8 +410,13 @@ def parse_tksl(
     """
     signature = signature or {}
     lexer = TkslLexer(InputStream(source))
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(ThrowingErrorListener())
+
     stream = CommonTokenStream(lexer)
     parser = TkslParser(stream)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ThrowingErrorListener())
 
     tree = parser.start()
     return TkslFileVisitor(signature, Context()).visitStart(tree)

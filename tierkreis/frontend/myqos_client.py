@@ -1,12 +1,13 @@
-from typing import Coroutine, Callable, TYPE_CHECKING, Tuple, Optional
+from typing import Coroutine, Callable, Tuple, Optional
+from contextlib import asynccontextmanager
+
 import keyring
+
 from grpclib.events import listen
 from grpclib.events import SendRequest
+from grpclib.client import Channel
 
 from .runtime_client import RuntimeClient
-
-if TYPE_CHECKING:
-    from grpclib.client import Channel
 
 
 def _get_myqos_creds(staging: bool = False) -> Tuple[Optional[str], Optional[str]]:
@@ -33,3 +34,9 @@ class MyqosClient(RuntimeClient):
         if not (login is None or password is None):
             listen(channel, SendRequest, _gen_auth_injector(login, password))
         super().__init__(channel)
+
+
+@asynccontextmanager
+async def myqos_runtime(host: str, port: int = 443):
+    async with Channel(host, port, ssl=True) as channel:
+        yield MyqosClient(channel)

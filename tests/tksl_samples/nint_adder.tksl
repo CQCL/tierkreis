@@ -1,9 +1,16 @@
+// use python_nodes::*;
+
+// use python_nodes::less_than;
+// use python_nodes::add;
+
+use python_nodes::{less_than, add};
+
 Graph main(array: Vector<Int>, len: Int) -> (out: Int) {
     total <- while (ar: array, sum: 0, counter: len) {
-        output (pred: python_nodes::less_than(0, counter));
+        output (pred: less_than(0, counter));
     } do {
         popped <- pop(ar);
-        output (sum: python_nodes::add(sum, popped.item), ar: popped.vec, counter: python_nodes::add(counter, -1));
+        output (sum: add(sum, popped.item), ar: popped.vec, counter: add(counter, -1));
     };
 
     output (out: total.sum);

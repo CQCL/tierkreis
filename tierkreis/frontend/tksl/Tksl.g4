@@ -4,8 +4,13 @@ grammar Tksl;
  */
 start: decs += declaration+;
 declaration:
-    GRAPH ID graph_type code_block # FuncDef
-    | TYPE ID '=' type_ ';'        # TypeAlias;
+    GRAPH ID graph_type code_block        # FuncDef
+    | USE namespace = ID '::' use_ids ';' # UseDef
+    | TYPE ID '=' type_ ';'               # TypeAlias;
+use_ids:
+    names += ID
+    | '{' names += ID (',' names += ID)* '}'
+    | '*';
 code_block: '{' (inst_list += instruction ';')+ '}';
 type_:
     | TYPE_INT
@@ -101,6 +106,7 @@ DO: 'do';
 CONST: 'const';
 OUTPUT: 'output';
 QINCLUDE: 'qinclude!';
+USE: 'use';
 
 TYPE_INT: 'Int';
 TYPE_BOOL: 'Bool';

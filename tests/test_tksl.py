@@ -109,3 +109,15 @@ async def test_parse_bigexample(client: RuntimeClient) -> None:
 
         pyouts = {key: val.try_autopython() for key, val in outputs.items()}
         assert pyouts == {"o2": 103, "o1": 536 + (2 if flag else 5)}
+
+
+@pytest.mark.asyncio
+async def test_parse_runcircuit(client: RuntimeClient) -> None:
+    sig = await client.get_signature()
+
+    tg = parse_tksl(
+        _get_source(Path(__file__).parent / "tksl_samples/run_circuit.tksl"), sig
+    )
+
+    tg = await client.type_check_graph(tg)
+    assert len(tg.nodes()) == 15

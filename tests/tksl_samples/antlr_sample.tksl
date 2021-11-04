@@ -1,4 +1,4 @@
-
+use python_nodes::{less_than, add};
 
 Graph add2(x: Int) -> (y: Int) {
     output (y: python_nodes::add(x, 2));
@@ -10,7 +10,7 @@ Graph add5(x: Int) -> (y: Int) {
 
 Graph dbl(x: Int) -> (x: Int) {
     // positional multiple outputs
-    output (python_nodes::add(copy(x)));
+    output (add(copy(x)));
 }
 
 // type aliases
@@ -25,7 +25,7 @@ Graph main(v1: Int, v2: Pair<Int, Bool>) -> (o1: Int, o2:Int) {
 
     // declare constants
     const three = 3;
-    other_total <- python_nodes::add(a:unp.first, b:three);
+    other_total <- add(a:unp.first, b:three);
 
 
     pair_out <- make_pair(true, "asdf");
@@ -52,7 +52,7 @@ Graph main(v1: Int, v2: Pair<Int, Bool>) -> (o1: Int, o2:Int) {
 
     // loop with condition
     looped_total <- while (x: other_total.value) {
-        output (pred: python_nodes::less_than(x, 100));
+        output (pred: less_than(x, 100));
     } do {
         output (x: add5(x));
     };

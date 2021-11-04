@@ -19,8 +19,16 @@ class TkslVisitor(ParseTreeVisitor):
     def visitFuncDef(self, ctx: TkslParser.FuncDefContext):
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by TkslParser#UseDef.
+    def visitUseDef(self, ctx: TkslParser.UseDefContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by TkslParser#TypeAlias.
     def visitTypeAlias(self, ctx: TkslParser.TypeAliasContext):
+        return self.visitChildren(ctx)
+
+    # Visit a parse tree produced by TkslParser#use_ids.
+    def visitUse_ids(self, ctx: TkslParser.Use_idsContext):
         return self.visitChildren(ctx)
 
     # Visit a parse tree produced by TkslParser#code_block.

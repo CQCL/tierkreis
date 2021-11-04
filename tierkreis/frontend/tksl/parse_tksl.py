@@ -62,6 +62,8 @@ class Context:
 
     aliases: Aliases = field(default_factory=dict)
 
+    use_defs: Dict[str, str] = field(default_factory=dict)
+
     def copy(self) -> "Context":
         return copy.deepcopy(self)
 
@@ -99,7 +101,12 @@ class TkslFileVisitor(TkslVisitor):
         self, ctx: TkslParser.F_nameContext
     ) -> Tuple[str, FunctionDefinition]:
         func_name = ctx.func_name.text
-        namespace = ctx.namespace.text if ctx.ID(1) else "builtin"
+        if ctx.ID(1):
+            namespace = ctx.namespace.text
+        elif func_name in self.context.use_defs:
+            namespace = self.context.use_defs[func_name]
+        else:
+            namespace = "builtin"
         try:
             tkfunc = self.sig[namespace][func_name]
             func_name = tkfunc.name
@@ -218,6 +225,7 @@ class TkslFileVisitor(TkslVisitor):
 
         ifcontext = Context()
         ifcontext.functions = self.context.functions.copy()
+        ifcontext.use_defs = self.context.use_defs.copy()
         ifcontext.inputs = OrderedDict({inp: None for inp in inputs})
         # outputs from if-else block have to be named map (not positional)
 
@@ -244,6 +252,7 @@ class TkslFileVisitor(TkslVisitor):
 
         loopcontext = Context()
         loopcontext.functions = self.context.functions.copy()
+        loopcontext.use_defs = self.context.use_defs.copy()
         loopcontext.inputs = OrderedDict({inp: None for inp in inputs})
         # outputs from if-else block have to be named map (not positional)
 
@@ -298,7 +307,6 @@ class TkslFileVisitor(TkslVisitor):
         context.outputs = OrderedDict(
             (key, g_type.outputs.content[key]) for key in f_def.outputs
         )
-
         def_visit = TkslFileVisitor(self.sig, context)
         graph = def_visit.visitCode_block(ctx.code_block())
 
@@ -306,6 +314,18 @@ class TkslFileVisitor(TkslVisitor):
 
     def visitTypeAlias(self, ctx: TkslParser.TypeAliasContext):
         self.context.aliases[str(ctx.ID())] = self.visitType_(ctx.type_())
+
+    def visitUseDef(self, ctx: TkslParser.UseDefContext):
+        namespace = ctx.namespace.text
+        names = self.visitUse_ids(ctx.use_ids())
+        if names is None:
+            names = list(self.sig[namespace].keys())
+        self.context.use_defs.update({name: namespace for name in names})
+
+    def visitUse_ids(self, ctx: TkslParser.Use_idsContext) -> Optional[List[str]]:
+        if ctx.names:
+            return [name.text for name in ctx.names]
+        return None
 
     def visitStart(self, ctx: TkslParser.StartContext) -> TierkreisGraph:
         _ = list(map(self.visit, ctx.decs))

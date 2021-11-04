@@ -1,6 +1,6 @@
 [MASTER]
 
-ignore-paths=^tierkreis/core/protos/.*$
+ignore-paths=^tierkreis/core/protos/.*$,^tierkreis/frontend/tksl/antlr/.*$
 
 max-line-length=88
 output-format=colorized

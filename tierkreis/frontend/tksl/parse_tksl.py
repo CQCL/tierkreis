@@ -1,10 +1,15 @@
-from dataclasses import dataclass, field, make_dataclass
 import copy
 from collections import OrderedDict
-from typing import Any, Iterable, Dict, List, Optional, Tuple
+from dataclasses import dataclass, field, make_dataclass
+from typing import Any, Dict, Iterable, List, Optional, Tuple
+
+from antlr4 import CommonTokenStream, InputStream  # type: ignore
+from antlr4.error.ErrorListener import ErrorListener  # type: ignore
+from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge
+from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
     BoolType,
     CircuitType,
@@ -17,18 +22,11 @@ from tierkreis.core.types import (
     StringType,
     StructType,
     TierkreisType,
-    VecType,
     VarType,
+    VecType,
 )
-from tierkreis.core.tierkreis_struct import TierkreisStruct
-
-
-from antlr4 import InputStream, CommonTokenStream
-from antlr4.error.ErrorListener import ErrorListener
-from antlr4.error.Errors import ParseCancellationException
-
-from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
+from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslVisitor import TkslVisitor  # type: ignore
 
 
@@ -104,7 +102,6 @@ class TkslFileVisitor(TkslVisitor):
         except KeyError as err:
             if func_name in self.context.functions:
                 return func_name, self.context.functions[func_name][1]
-                primitive = False
             else:
                 raise RuntimeError(f"Function name not found: {func_name}") from err
 
@@ -285,12 +282,14 @@ class TkslFileVisitor(TkslVisitor):
     def visitFuncDef(self, ctx: TkslParser.FuncDefContext):
         name = str(ctx.ID())
         f_def = self.visitGraph_type(ctx.graph_type())
+        g_type = f_def.graph_type
+        assert g_type is not None
         context = self.context.copy()
         context.inputs = OrderedDict(
-            (key, f_def.graph_type.inputs.content[key]) for key in f_def.inputs
+            (key, g_type.inputs.content[key]) for key in f_def.inputs
         )
         context.outputs = OrderedDict(
-            (key, f_def.graph_type.outputs.content[key]) for key in f_def.outputs
+            (key, g_type.outputs.content[key]) for key in f_def.outputs
         )
 
         def_visit = TkslFileVisitor(self.sig, context)

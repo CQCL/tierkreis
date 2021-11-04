@@ -3,7 +3,8 @@ from dataclasses import astuple
 from pathlib import Path
 import pytest
 
-from tierkreis.frontend import RuntimeClient, parse_tksl
+from tierkreis.frontend import RuntimeClient
+from tierkreis.frontend.tksl import parse_tksl
 from tierkreis import TierkreisGraph
 from tierkreis.core.protos.tierkreis.graph import Graph
 

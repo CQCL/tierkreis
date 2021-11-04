@@ -28,15 +28,11 @@ keyring = { version = "23.2", optional = true }
 "keyrings.alt" = { version = "4.1", optional = true }
 antlr4-python3-runtime = { version = "^4.9.2", optional = true }
 click = { version = "^8.0.3", optional = true }
+yachalk = { version = "^0.1.4", optional = true }
 
 [tool.poetry.extras]
-frontend = [
-    "docker",
-    "keyring",
-    "keyrings.alt",
-    "antlr4-python3-runtime",
-    "click",
-]
+frontend = ["docker", "keyring", "keyrings.alt"]
+tksl = ["antlr4-python3-runtime", "click", "yachalk"]
 runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 
 [tool.poetry.dev-dependencies]

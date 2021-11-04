@@ -8,8 +8,8 @@ from pytket import Circuit
 from pytket.passes import FullPeepholeOptimise  # type: ignore
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
-from tierkreis.frontend import RuntimeClient, local_runtime, parse_tksl
-from tierkreis.core.graphviz import tierkreis_to_graphviz
+from tierkreis.frontend import RuntimeClient, local_runtime
+from tierkreis.frontend.tksl import parse_tksl
 from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors

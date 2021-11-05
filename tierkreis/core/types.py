@@ -145,7 +145,7 @@ class StringType(TierkreisType):
         return pg.Type(str_=pg.Empty())
 
     def __str__(self) -> str:
-        return "String"
+        return "Str"
 
 
 @dataclass
@@ -174,7 +174,7 @@ class VarType(TierkreisType):
         return pg.Type(var=self.name)
 
     def __str__(self) -> str:
-        return "VarType"
+        return f"VarType({self.name})"
 
 
 @dataclass
@@ -191,7 +191,7 @@ class PairType(TierkreisType):
         )
 
     def __str__(self) -> str:
-        return f"Pair[{str(self.first)}, {str(self.second)}]"
+        return f"Pair<{str(self.first)}, {str(self.second)}>"
 
 
 @dataclass
@@ -202,7 +202,7 @@ class VecType(TierkreisType):
         return pg.Type(vec=self.element.to_proto())
 
     def __str__(self) -> str:
-        return f"Vec[{str(self.element)}]"
+        return f"Vector<{str(self.element)}>"
 
 
 @dataclass
@@ -219,7 +219,7 @@ class MapType(TierkreisType):
         )
 
     def __str__(self) -> str:
-        return f"Map[{str(self.key)}, {str(self.value)}]"
+        return f"Map<{str(self.key)}, {str(self.value)}>"
 
 
 @dataclass
@@ -260,6 +260,14 @@ class Row:
             rest=rest,
         )
 
+    def to_tksl(self) -> str:
+        contentstr = ", ".join(
+            (f"{key}: {str(val)}" for key, val in self.content.items())
+        )
+        reststr = f", #: {self.rest}" if self.rest else ""
+
+        return f"{contentstr}{reststr}"
+
 
 @dataclass
 class GraphType(TierkreisType):
@@ -275,13 +283,7 @@ class GraphType(TierkreisType):
         )
 
     def __str__(self) -> str:
-        inputs = ",".join(
-            (f"{key}:{str(val)}" for key, val in self.inputs.content.items())
-        )
-        outputs = ",".join(
-            (f"{key}:{str(val)}" for key, val in self.outputs.content.items())
-        )
-        return f"Graph[{inputs}, {outputs}]"
+        return f"Graph ({self.inputs.to_tksl()}) -> ({self.outputs.to_tksl()})"
 
 
 @dataclass
@@ -292,7 +294,7 @@ class StructType(TierkreisType):
         return pg.Type(struct=self.shape.to_proto())
 
     def __str__(self) -> str:
-        return f"Struct[{dict(self.shape.content)}]"
+        return f"Struct<{self.shape.to_tksl()}>"
 
 
 class Constraint(ABC):

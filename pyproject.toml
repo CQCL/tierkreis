@@ -14,10 +14,10 @@ tksl = 'tierkreis.frontend.tksl.cli:cli'
 
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.9,<3.11"
 betterproto = "^2.0.0b3"
 grpclib = "^0.4.2"
-pytket = "^0.15.0"
+pytket = "^0.16.0"
 
 
 # optional dependencies

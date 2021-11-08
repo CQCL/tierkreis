@@ -1,5 +1,4 @@
 import pytest
-from pytket import Circuit  # type: ignore
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import (
     FunctionNode,
@@ -85,7 +84,7 @@ def test_insert_subgraph() -> None:
 
 
 def test_value_topython():
-    convertible_vals = (1, "two", False, 2.3, Circuit(1))
+    convertible_vals = (1, "two", False, 2.3)
 
     for val in convertible_vals:
         assert TierkreisValue.from_python(val).try_autopython() == val

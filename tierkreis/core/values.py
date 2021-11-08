@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast
 
 import betterproto
-from pytket.circuit import Circuit  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
@@ -243,35 +242,6 @@ class FloatValue(TierkreisValue):
 
     def __str__(self) -> str:
         return f"Float({self.value})"
-
-
-@dataclass(frozen=True)
-class CircuitValue(TierkreisValue):
-    _proto_name: ClassVar[str] = "circuit"
-    _pytype: ClassVar[typing.Type] = Circuit
-
-    value: Circuit
-
-    def to_proto(self) -> pg.Value:
-        return pg.Value(circuit=json.dumps(self.value.to_dict()))
-
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
-        if type_ is Circuit:
-            return cast(T, self.value)
-        raise ToPythonFailure(self)
-
-    @classmethod
-    def from_python(cls, value: Any) -> "TierkreisValue":
-        return cls(value)
-
-    @classmethod
-    def from_proto(cls, value: Any) -> "TierkreisValue":
-        return cls(Circuit.from_dict(json.loads(cast(str, value))))
-
-    def __str__(self) -> str:
-        return f"Circuit({self.value.name or ''})"
 
 
 @dataclass(frozen=True)

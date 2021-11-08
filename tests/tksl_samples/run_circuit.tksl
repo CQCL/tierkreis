@@ -1,8 +1,8 @@
 
-use pytket::{compile_circuits, substitute_symbols, execute};
+use pytket::{compile_circuits, substitute_symbols, execute, load_qasm};
 
-// comment
-Graph zip(l1: Vector<Circuit>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Circuit,Int>>) {
+// not needed anymore
+Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,Int>>) {
     looped <- while (outp: [], first: l1, second: l2, counter: N) {
         output (pred: python_nodes::less_than(0, counter));
     } do {
@@ -22,8 +22,8 @@ Graph zip(l1: Vector<Circuit>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<C
 type SampledDist = Pair<Map<Str, Float>, Int>;
 
 Graph main() -> (res: SampledDist) {
-    const c1 = qinclude!("tests/tksl_samples/simple_qasm.qasm");
-    subs <- substitute_symbols(c1, ["a_1"], [0.1]);
+    const qasm_str = read_file!("tests/tksl_samples/simple_qasm.qasm");
+    subs <- substitute_symbols(load_qasm(qasm_str), ["a_1"], [0.1]);
     comped <- compile_circuits(push([], subs), "RebaseTket");
-    output (res: execute(zip(comped, [10], 1), "AerBackend"));
+    output (res: execute(comped, [10], "AerBackend"));
 }

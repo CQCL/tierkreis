@@ -38,5 +38,5 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
             yield local_client
     else:
         # launch a local server for this test run and kill it at the end
-        async with local_runtime(LOCAL_SERVER_PATH) as local_client:
+        async with local_runtime(LOCAL_SERVER_PATH, show_output=False) as local_client:
             yield local_client

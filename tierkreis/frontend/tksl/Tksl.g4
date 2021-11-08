@@ -17,7 +17,6 @@ type_:
     | TYPE_BOOL
     | TYPE_STR
     | TYPE_FLOAT
-    | TYPE_CIRCUIT
     | TYPE_PAIR '<' first = type_ ',' second = type_ '>'
     | TYPE_MAP '<' key = type_ ',' val = type_ '>'
     | TYPE_VEC '<' element = type_ '>'
@@ -59,7 +58,10 @@ struct_const:
     sid = struct_id '{' fields += const_assign (
         ',' fields += const_assign
     )* '}';
-circuit_const: QINCLUDE '(' SHORT_STRING ')';
+
+macro_const:
+    ID '!' '(' cargs += const_ (',' cargs += const_)* ')';
+
 vec_const: '[' (elems += const_ (',' elems += const_)*)? ']';
 const_:
     | bool_token
@@ -67,7 +69,7 @@ const_:
     | SIGNED_FLOAT
     | SHORT_STRING
     | struct_const
-    | circuit_const
+    | macro_const
     | TYPE_UNIT
     | vec_const;
 
@@ -107,7 +109,6 @@ WHILE: 'while';
 DO: 'do';
 CONST: 'const';
 OUTPUT: 'output';
-QINCLUDE: 'qinclude!';
 USE: 'use';
 
 TYPE_INT: 'Int';
@@ -119,7 +120,6 @@ TYPE_PAIR: 'Pair';
 TYPE_MAP: 'Map';
 TYPE_VEC: 'Vector';
 TYPE_STRUCT: 'Struct';
-TYPE_CIRCUIT: 'Circuit';
 
 NEWLINE:
     '\r'? '\n' -> skip; // return newlines to parser (is end-statement signal)

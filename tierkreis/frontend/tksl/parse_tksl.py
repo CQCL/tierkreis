@@ -1,19 +1,19 @@
 import copy
 from collections import OrderedDict
 from dataclasses import dataclass, field, make_dataclass
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from antlr4 import CommonTokenStream, InputStream  # type: ignore
 from antlr4.error.ErrorListener import ErrorListener  # type: ignore
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
-from pytket.qasm import circuit_from_qasm
+
+# from pytket.qasm import circuit_from_qasm
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
     BoolType,
-    CircuitType,
     FloatType,
     GraphType,
     IntType,
@@ -27,7 +27,6 @@ from tierkreis.core.types import (
     UnitType,
 )
 from tierkreis.core.values import (
-    CircuitValue,
     FloatValue,
     TierkreisValue,
     IntValue,
@@ -40,6 +39,22 @@ from tierkreis.core.values import (
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslVisitor import TkslVisitor  # type: ignore
+
+
+def _circuit_json(file_path: StringValue) -> StructValue:
+    with open(file_path.value) as f:
+        return StructValue({"json": StringValue(f.read())})
+
+
+def _read_file(file_path: StringValue) -> StringValue:
+    with open(file_path.value) as f:
+        return StringValue(f.read())
+
+
+MACRODEFS: Dict[str, Callable[..., TierkreisValue]] = {
+    "circuit_json": _circuit_json,
+    "read_file": _read_file,
+}
 
 
 @dataclass
@@ -370,7 +385,7 @@ class TkslFileVisitor(TkslVisitor):
         if ctx.vec_const():
             vec_ctx = ctx.vec_const()
             if len(vec_ctx.elems) == 1:
-                if self.visitConst_(vec_ctx.elems[0]) is None:
+                if vec_ctx.elems[0].getText() == "":
                     return VecValue([])
             return VecValue(list(map(self.visitConst_, vec_ctx.elems)))
         if ctx.struct_const():
@@ -381,12 +396,19 @@ class TkslFileVisitor(TkslVisitor):
                 "anon_struct", fields=fields.keys(), bases=(TierkreisStruct,)
             )
             return StructValue.from_python(cl(**fields))
-        if ctx.circuit_const():
-            circ_ctx = ctx.circuit_const()
-            file_path = str(circ_ctx.SHORT_STRING())[1:-1]
-            return CircuitValue(circuit_from_qasm(file_path))
+        if ctx.macro_const():
+            macro_ctx = ctx.macro_const()
+            macro_name = str(macro_ctx.ID())
+            args = tuple(map(self.visitConst_, macro_ctx.cargs))
+            try:
+                macrofunc = MACRODEFS[macro_name]
+            except KeyError as e:
+                raise TkslCompileException(
+                    f"No constant macro found with name {macro_name}"
+                ) from e
+            return macrofunc(*args)
 
-        raise TkslCompileException(f"Unrecognised constant {ctx.getText()}")
+        raise TkslCompileException(f"Unrecognised constant: {ctx.getText()}")
 
     def visitF_param(self, ctx: TkslParser.F_paramContext) -> Tuple[str, TierkreisType]:
         return ctx.label.text, self.visitType_(ctx.annotation)
@@ -414,8 +436,6 @@ class TkslFileVisitor(TkslVisitor):
             return StringType()
         if ctx.TYPE_FLOAT():
             return FloatType()
-        if ctx.TYPE_CIRCUIT():
-            return CircuitType()
         if ctx.TYPE_UNIT():
             return UnitType()
         if ctx.TYPE_PAIR():

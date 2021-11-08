@@ -4,7 +4,6 @@ from dataclasses import dataclass, field
 from typing import Dict, List, Optional, cast
 
 import betterproto
-from pytket.circuit import Circuit  # type: ignore
 
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
@@ -55,8 +54,7 @@ class TierkreisType(ABC):
                 key=TierkreisType.from_python(args[0]),
                 value=TierkreisType.from_python(args[1]),
             )
-        elif type_ is Circuit:
-            result = CircuitType()
+
         elif isinstance(type_, typing.TypeVar):
             result = VarType(name=type_.__name__)
         elif type_origin is RuntimeGraph:
@@ -92,8 +90,6 @@ class TierkreisType(ABC):
             result = StringType()
         elif name == "flt":
             result = FloatType()
-        elif name == "circuit":
-            result = CircuitType()
         elif name == "unit":
             result = UnitType()
         elif name == "var":
@@ -171,15 +167,6 @@ class FloatType(TierkreisType):
 
     def __str__(self) -> str:
         return "Float"
-
-
-@dataclass
-class CircuitType(TierkreisType):
-    def to_proto(self) -> pg.Type:
-        return pg.Type(circuit=pg.Empty())
-
-    def __str__(self) -> str:
-        return "Circuit"
 
 
 @dataclass

@@ -2,6 +2,7 @@ from typing import Optional, Union, Callable
 from dataclasses import astuple
 from pathlib import Path
 import pytest
+import asyncio
 
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import parse_tksl
@@ -120,4 +121,4 @@ async def test_parse_runcircuit(client: RuntimeClient) -> None:
     )
 
     tg = await client.type_check_graph(tg)
-    assert len(tg.nodes()) == 15
+    assert len(tg.nodes()) == 14

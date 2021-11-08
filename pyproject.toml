@@ -12,12 +12,21 @@ include = ["tierkreis/core/protos/**/*.py"]
 [tool.poetry.scripts]
 tksl = 'tierkreis.frontend.tksl.cli:cli'
 
+[[tool.poetry.source]]
+name = "cqcpython"
+url = "https://cqcpythonrepository.azurewebsites.net/simple/"
+secondary = true
+
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"
-betterproto = "^2.0.0b3"
+# betterproto = "^2.0.0b3"
+betterproto = {git = "https://github.com/danielgtaylor/python-betterproto", rev="c424b6f", extras = ["compiler"]}
 grpclib = "^0.4.2"
-pytket = "^0.16.0"
+networkx = "^2.6.3"
+graphviz = "^0.18"
+# pytket = "^0.16.0"
+# mushroom-dataclasses = { version = "^0.35.0", source = "cqcpython" }
 
 
 # optional dependencies
@@ -28,7 +37,7 @@ keyring = { version = "23.2", optional = true }
 "keyrings.alt" = { version = "4.1", optional = true }
 antlr4-python3-runtime = { version = "^4.9.2", optional = true }
 click = { version = "^8.0.3", optional = true }
-yachalk = { version = "^0.1.4", optional = true}
+yachalk = { version = "^0.1.4", optional = true }
 
 [tool.poetry.extras]
 frontend = ["docker", "keyring", "keyrings.alt"]

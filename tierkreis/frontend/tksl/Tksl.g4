@@ -23,6 +23,7 @@ type_:
     | TYPE_VEC '<' element = type_ '>'
     | TYPE_STRUCT '<' fields = f_param_list '>'
     | graph_type
+    | TYPE_UNIT
     | ID;
 graph_type:
     '(' inputs = f_param_list ')' '->' '(' outputs = f_param_list ')';
@@ -67,6 +68,7 @@ const_:
     | SHORT_STRING
     | struct_const
     | circuit_const
+    | TYPE_UNIT
     | vec_const;
 
 f_name: func_name = ID | namespace = ID '::' func_name = ID;
@@ -112,6 +114,7 @@ TYPE_INT: 'Int';
 TYPE_BOOL: 'Bool';
 TYPE_FLOAT: 'Float';
 TYPE_STR: 'Str';
+TYPE_UNIT: 'Unit';
 TYPE_PAIR: 'Pair';
 TYPE_MAP: 'Map';
 TYPE_VEC: 'Vector';

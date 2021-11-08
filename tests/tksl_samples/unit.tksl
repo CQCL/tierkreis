@@ -1,0 +1,8 @@
+Graph id_unit(un: Unit) -> (un: Unit) {
+    _ <- discard(un);
+    output(Unit);
+}
+
+Graph main() -> (res: Unit) {
+    output(id_unit(Unit));
+}

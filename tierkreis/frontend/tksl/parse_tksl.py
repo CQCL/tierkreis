@@ -24,6 +24,18 @@ from tierkreis.core.types import (
     StructType,
     TierkreisType,
     VecType,
+    UnitType,
+)
+from tierkreis.core.values import (
+    CircuitValue,
+    FloatValue,
+    TierkreisValue,
+    IntValue,
+    BoolValue,
+    StringValue,
+    UnitValue,
+    VecValue,
+    StructValue,
 )
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
@@ -344,21 +356,23 @@ class TkslFileVisitor(TkslVisitor):
     def visitConst_assign(self, ctx: TkslParser.Const_assignContext) -> Tuple[str, Any]:
         return str(ctx.ID()), self.visitConst_(ctx.const_())
 
-    def visitConst_(self, ctx: TkslParser.Const_Context) -> Any:
+    def visitConst_(self, ctx: TkslParser.Const_Context) -> TierkreisValue:
         if ctx.SIGNED_INT():
-            return int(str(ctx.SIGNED_INT()))
+            return IntValue(int(str(ctx.SIGNED_INT())))
         if ctx.bool_token():
-            return self.visitBool_token(ctx.bool_token())
+            return BoolValue(self.visitBool_token(ctx.bool_token()))
         if ctx.SIGNED_FLOAT():
-            return float(str(ctx.SIGNED_FLOAT()))
+            return FloatValue(float(str(ctx.SIGNED_FLOAT())))
+        if ctx.TYPE_UNIT():
+            return UnitValue()
         if ctx.SHORT_STRING():
-            return str(ctx.SHORT_STRING())[1:-1]
+            return StringValue(str(ctx.SHORT_STRING())[1:-1])
         if ctx.vec_const():
             vec_ctx = ctx.vec_const()
             if len(vec_ctx.elems) == 1:
                 if self.visitConst_(vec_ctx.elems[0]) is None:
                     return []
-            return list(map(self.visitConst_, vec_ctx.elems))
+            return VecValue(list(map(self.visitConst_, vec_ctx.elems)))
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
             _struct_id = str(struct_ctx.sid)
@@ -366,11 +380,11 @@ class TkslFileVisitor(TkslVisitor):
             cl = make_dataclass(
                 "anon_struct", fields=fields.keys(), bases=(TierkreisStruct,)
             )
-            return cl(**fields)
+            return StructValue.from_python(cl(**fields))
         if ctx.circuit_const():
             circ_ctx = ctx.circuit_const()
             file_path = str(circ_ctx.SHORT_STRING())[1:-1]
-            return circuit_from_qasm(file_path)
+            return CircuitValue(circuit_from_qasm(file_path))
 
     def visitF_param(self, ctx: TkslParser.F_paramContext) -> Tuple[str, TierkreisType]:
         return ctx.label.text, self.visitType_(ctx.annotation)
@@ -400,6 +414,8 @@ class TkslFileVisitor(TkslVisitor):
             return FloatType()
         if ctx.TYPE_CIRCUIT():
             return CircuitType()
+        if ctx.TYPE_UNIT():
+            return UnitType()
         if ctx.TYPE_PAIR():
             pair_type = PairType(self.visit(ctx.first), self.visit(ctx.second))
             return pair_type

@@ -11,6 +11,9 @@ import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
+# import from types when updating to python 3.10
+NoneType = type(None)
+
 
 class TierkreisType(ABC):
     @abstractmethod
@@ -35,6 +38,8 @@ class TierkreisType(ABC):
             result = StringType()
         elif type_ is float:
             result = FloatType()
+        elif type_ is NoneType:
+            result = UnitType()
         elif type_origin is list:
             args = typing.get_args(type_)
             result = VecType(element=TierkreisType.from_python(args[0]))
@@ -89,6 +94,8 @@ class TierkreisType(ABC):
             result = FloatType()
         elif name == "circuit":
             result = CircuitType()
+        elif name == "unit":
+            result = UnitType()
         elif name == "var":
             result = VarType(cast(str, out_type))
         elif name == "pair":
@@ -119,6 +126,15 @@ class TierkreisType(ABC):
             raise TypeError()
 
         return result
+
+
+@dataclass
+class UnitType(TierkreisType):
+    def to_proto(self) -> pg.Type:
+        return pg.Type(unit=pg.Empty())
+
+    def __str__(self) -> str:
+        return "Unit"
 
 
 @dataclass

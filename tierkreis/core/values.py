@@ -11,7 +11,7 @@ from pytket.circuit import Circuit  # type: ignore
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-
+from tierkreis.core.types import NoneType
 
 T = typing.TypeVar("T")
 
@@ -105,6 +105,33 @@ class TierkreisValue(ABC):
             return self.to_python(getattr(self, "_pytype"))
         except ToPythonFailure as _:
             return None
+
+
+@dataclass(frozen=True)
+class UnitValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "unit"
+    _pytype: ClassVar[typing.Type] = NoneType
+
+    def to_proto(self) -> pg.Value:
+        return pg.Value(unit=pg.Empty())
+
+    def to_python(self, type_: typing.Type[T]) -> T:
+        if isinstance(type_, typing.TypeVar):
+            return cast(T, self)
+        if type_ is NoneType:
+            return cast(T, None)
+        raise ToPythonFailure(self)
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        return cls()
+
+    @classmethod
+    def from_proto(cls, value: Any) -> "TierkreisValue":
+        return cls()
+
+    def __str__(self) -> str:
+        return f"Unit"
 
 
 @dataclass(frozen=True)

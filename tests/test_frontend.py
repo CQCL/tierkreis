@@ -12,7 +12,7 @@ from tierkreis.frontend import RuntimeClient, local_runtime
 from tierkreis.frontend.tksl import parse_tksl
 from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import IntType, TierkreisTypeErrors
+from tierkreis.core.types import IntType, NoneType, TierkreisTypeErrors
 from tierkreis.core.values import VecValue, CircuitValue
 
 from . import LOCAL_SERVER_PATH, release_tests, REASON
@@ -152,6 +152,7 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
         ((2, "a"), Tuple[int, str]),
         ([1, 2, 3], List[int]),
         (True, bool),
+        (None, NoneType),
     ]:
         assert await assert_id_py(val, typ)
 

@@ -371,7 +371,7 @@ class TkslFileVisitor(TkslVisitor):
             vec_ctx = ctx.vec_const()
             if len(vec_ctx.elems) == 1:
                 if self.visitConst_(vec_ctx.elems[0]) is None:
-                    return []
+                    return VecValue([])
             return VecValue(list(map(self.visitConst_, vec_ctx.elems)))
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
@@ -385,6 +385,8 @@ class TkslFileVisitor(TkslVisitor):
             circ_ctx = ctx.circuit_const()
             file_path = str(circ_ctx.SHORT_STRING())[1:-1]
             return CircuitValue(circuit_from_qasm(file_path))
+
+        raise TkslCompileException(f"Unrecognised constant {ctx.getText()}")
 
     def visitF_param(self, ctx: TkslParser.F_paramContext) -> Tuple[str, TierkreisType]:
         return ctx.label.text, self.visitType_(ctx.annotation)

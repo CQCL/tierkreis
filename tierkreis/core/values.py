@@ -110,17 +110,13 @@ class TierkreisValue(ABC):
 @dataclass(frozen=True)
 class UnitValue(TierkreisValue):
     _proto_name: ClassVar[str] = "unit"
-    _pytype: ClassVar[typing.Type] = NoneType
+    _pytype: ClassVar[typing.Type] = NoneType  # type: ignore
 
     def to_proto(self) -> pg.Value:
         return pg.Value(unit=pg.Empty())
 
     def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
-        if type_ is NoneType:
-            return cast(T, None)
-        raise ToPythonFailure(self)
+        return cast(T, None)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":

@@ -1,21 +1,21 @@
 import asyncio
 import pprint
+import sys
 import traceback
 from functools import wraps
-import sys
 from pathlib import Path
 from typing import AsyncContextManager, Dict, Optional, TextIO, cast
 
 import click
-from tierkreis.frontend.runtime_client import RuntimeSignature
-from yachalk import chalk
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
+from yachalk import chalk
 from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
-from tierkreis.core.types import TierkreisType, TierkreisTypeErrors, TypeScheme
-from tierkreis.frontend import RuntimeClient, DockerRuntime, local_runtime
-from tierkreis.frontend.tksl import parse_tksl
+from tierkreis.core.types import TierkreisType, TierkreisTypeErrors
+from tierkreis.frontend import DockerRuntime, RuntimeClient, local_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
+from tierkreis.frontend.runtime_client import RuntimeSignature
+from tierkreis.frontend.tksl import parse_tksl
 
 LOCAL_SERVER_PATH = Path(__file__).parent / "../../../../target/debug/tierkreis-server"
 RUNTIME_LABELS = ["docker", "local", "myqos"]

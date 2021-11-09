@@ -594,6 +594,9 @@ class GraphValue(TierkreisValue):
     def __str__(self) -> str:
         return "GraphValue"
 
+    def to_tksl(self) -> str:
+        return "Graph"
+
 
 # allow graph displays in jupyter notebooks
 from tierkreis.core.graphviz import tierkreis_to_graphviz

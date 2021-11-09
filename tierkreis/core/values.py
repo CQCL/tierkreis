@@ -50,6 +50,10 @@ class TierkreisValue(ABC):
     def to_proto(self) -> pg.Value:
         pass
 
+    @abstractmethod
+    def to_tksl(self) -> str:
+        pass
+
     @classmethod
     def from_proto(cls, value: Any) -> "TierkreisValue":
         """
@@ -164,6 +168,9 @@ class OptionValue(TierkreisValue):
     def __str__(self) -> str:
         return f"Option({str(self.inner)})"
 
+    def to_tksl(self) -> str:
+        return f"Some({self.inner.to_tksl()})" if self.inner else "None"
+
 
 @dataclass(frozen=True)
 class BoolValue(TierkreisValue):
@@ -193,6 +200,9 @@ class BoolValue(TierkreisValue):
     def __str__(self) -> str:
         return f"Bool({self.value})"
 
+    def to_tksl(self) -> str:
+        return "true" if self.value else "false"
+
 
 @dataclass(frozen=True)
 class StringValue(TierkreisValue):
@@ -219,7 +229,10 @@ class StringValue(TierkreisValue):
         return cls(value)
 
     def __str__(self) -> str:
-        return f'String("{self.value}")'
+        return f"String({repr(self.value)})"
+
+    def to_tksl(self) -> str:
+        return f'"{self.value}"'
 
 
 @dataclass(frozen=True)
@@ -250,6 +263,9 @@ class IntValue(TierkreisValue):
     def __str__(self) -> str:
         return f"Int({self.value})"
 
+    def to_tksl(self) -> str:
+        return str(self.value)
+
 
 @dataclass(frozen=True)
 class FloatValue(TierkreisValue):
@@ -278,6 +294,9 @@ class FloatValue(TierkreisValue):
 
     def __str__(self) -> str:
         return f"Float({self.value})"
+
+    def to_tksl(self) -> str:
+        return str(self.value)
 
 
 @dataclass(frozen=True)
@@ -324,6 +343,9 @@ class PairValue(TierkreisValue):
     def __str__(self) -> str:
         return f"Pair({str(self.first)}, {str(self.second)})"
 
+    def to_tksl(self) -> str:
+        return f"Pair({self.first.to_tksl()}, {self.second.to_tksl()})"
+
 
 @dataclass(frozen=True)
 class VecValue(TierkreisValue):
@@ -360,6 +382,9 @@ class VecValue(TierkreisValue):
 
     def __str__(self) -> str:
         return f"Vec({','.join(map(str, self.values))})"
+
+    def to_tksl(self) -> str:
+        return f"[{', '.join(val.to_tksl() for val in self.values)}]"
 
 
 @dataclass(frozen=True)
@@ -415,6 +440,12 @@ class MapValue(TierkreisValue):
 
     def __str__(self) -> str:
         return f"Map({', '.join(f'{key}: {val}' for key, val in self.values.items())})"
+
+    def to_tksl(self) -> str:
+        entries = (
+            f"{key.to_tksl()}: {val.to_tksl()}" for key, val in self.values.items()
+        )
+        return f"{{{', '.join(entries)})}}"
 
 
 @dataclass(frozen=True)
@@ -480,4 +511,9 @@ class StructValue(TierkreisValue):
 
     def __str__(self) -> str:
         key_vals = (f"{key}: {str(val)}" for key, val in self.values.items())
+        return f"Struct{{{', '.join(key_vals)}}}"
+
+    def to_tksl(self) -> str:
+        key_vals = (f"{key}: {val.to_tksl()}" for key, val in self.values.items())
+
         return f"Struct{{{', '.join(key_vals)}}}"

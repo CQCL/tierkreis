@@ -14,6 +14,11 @@ def pytest_addoption(parser):
         action="store_true",
         help="Whether to use docker container for server rather than local binary",
     )
+    parser.addoption(
+        "--server-logs",
+        action="store_true",
+        help="Whether to attempt to print server logs (for debugging).",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -26,8 +31,10 @@ def event_loop(request):
 @pytest.fixture(scope="session")
 async def client(request) -> AsyncIterator[RuntimeClient]:
     isdocker = False
+    logs = False
     try:
         isdocker = request.config.getoption("--docker") not in (None, False)
+        logs = request.config.getoption("--server-logs") not in (None, False)
     except Exception as _:
         pass
     if isdocker:
@@ -38,5 +45,5 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
             yield local_client
     else:
         # launch a local server for this test run and kill it at the end
-        async with local_runtime(LOCAL_SERVER_PATH, show_output=False) as local_client:
+        async with local_runtime(LOCAL_SERVER_PATH, show_output=logs) as local_client:
             yield local_client

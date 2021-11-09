@@ -27,7 +27,7 @@ import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import Constraint, GraphType, Kind, Row, TypeScheme
+from tierkreis.core.types import Constraint, GraphType, Kind, Row, StarKind, TypeScheme
 from tierkreis.core.values import StructValue, TierkreisValue
 
 tracer = opentelemetry.trace.get_tracer(__name__)
@@ -160,6 +160,13 @@ class Namespace:
                 {_type_var_to_name(var): kind for var, kind in type_vars.items()}
                 if type_vars
                 else {}
+            )
+
+            type_vars_by_name.update(
+                {name: StarKind() for name in type_inputs.contained_vartypes()}
+            )
+            type_vars_by_name.update(
+                {name: StarKind() for name in type_outputs.contained_vartypes()}
             )
 
             # Construct the type schema of the function

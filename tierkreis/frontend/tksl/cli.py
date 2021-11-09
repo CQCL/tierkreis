@@ -1,5 +1,4 @@
 import asyncio
-import pprint
 import sys
 import traceback
 from functools import wraps
@@ -146,11 +145,15 @@ async def view(
 @coro
 async def run(ctx: click.Context, source: TextIO):
     async with ctx.obj["client_manager"] as client:
+        client = cast(RuntimeClient, client)
         tkg = await _parse(source, client)
         try:
             outputs = await client.run_graph(tkg, {})
-            pprint.pprint(
-                {key: val.to_proto().to_json() for key, val in outputs.items()}
+            print(
+                "\n".join(
+                    f"{chalk.bold.yellow(key)}: {val.to_tksl()}"
+                    for key, val in outputs.items()
+                )
             )
         except TierkreisTypeErrors as _errs:
             print(chalk.red(traceback.format_exc(0)), file=sys.stderr)

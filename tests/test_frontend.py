@@ -1,12 +1,13 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type, cast
 
 import pytest
 
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.values import StructValue, VecValue
 from tierkreis.frontend import RuntimeClient, local_runtime
 from tierkreis.frontend.tksl import parse_tksl
 from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
@@ -99,14 +100,9 @@ async def test_switch(client: RuntimeClient):
     assert outs["out"].try_autopython() == 6
 
 
-@dataclass
-class CircStruct(TierkreisStruct):
-    json: str
-
-
 @pytest.fixture
-def bell_circuit() -> CircStruct:
-    return CircStruct(
+def bell_circuit() -> str:
+    return (
         r'{"bits": [["c", [0]], ["c", [1]]], "commands": [{"args": [["q", [0]]], "op": '
         r'{"type": "H"}}, {"args": [["q", [0]], ["q", [1]]], "op": {"type": "CX"}}, '
         r'{"args": [["q", [0]], ["c", [0]]], "op": {"type": "Measure"}}, {"args": '
@@ -128,7 +124,6 @@ class NestedStruct(TierkreisStruct):
 class TstStruct(TierkreisStruct):
     x: int
     y: bool
-    c: CircStruct
     m: Dict[int, int]
     n: NestedStruct
 
@@ -153,7 +148,7 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
     dic: Dict[int, bool] = {1: True, 2: False}
 
     nestst = NestedStruct([1, 2, 3], (5, True), "asdf", None)
-    testst = TstStruct(2, False, CircStruct("null"), {66: 77}, nestst)
+    testst = TstStruct(2, False, {66: 77}, nestst)
     pairs: list[tuple[Any, Type]] = [
         (dic, dict[int, bool]),
         (testst, TstStruct),
@@ -169,34 +164,30 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
 
 
 @pytest.mark.asyncio
-async def test_compile_circuit(bell_circuit: CircStruct, client: RuntimeClient) -> None:
+async def test_compile_circuit(bell_circuit: str, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
+    load_node = tg.add_node("pytket/load_circuit_json", json_str=tg.input["input"])
     compile_node = tg.add_node(
         "pytket/compile_circuits",
-        circuits=tg.input["input"],
+        circuits=tg.make_vec([load_node["value"]]),
         pass_name=tg.add_const("FullPeepholeOptimise"),
     )
     tg.set_outputs(out=compile_node)
 
-    compiled_circuit = CircStruct(
-        r'{"bits": [["c", [0]], ["c", [1]]], "commands": [{"args": [["q", [0]]], "op": '
-        r'{"params": ["1/2", "0.5", "0.5"], "type": "tk1"}}, {"args": [["q", [0]], '
-        r'["q", [1]]], "op": {"type": "CX"}}, {"args": [["q", [0]], ["c", [0]]], "op": '
-        r'{"type": "Measure"}}, {"args": [["q", [1]], ["c", [1]]], "op": {"type": '
-        r'"Measure"}}], "implicit_permutation": [[["q", [0]], ["q", [0]]], [["q", '
-        r'[1]], ["q", [1]]]], "phase": "0.5", "qubits": [["q", [0]], ["q", [1]]]}'
-    )
-    outs = await client.run_graph(tg, {"input": [bell_circuit]})
+    outs = await client.run_graph(tg, {"input": bell_circuit})
 
-    assert outs["out"].to_python(list[CircStruct]) == [compiled_circuit]
+    assert isinstance(cast(VecValue, outs["out"]).values[0], StructValue)
 
 
 @pytest.mark.asyncio
-async def test_execute_circuit(bell_circuit: CircStruct, client: RuntimeClient) -> None:
+async def test_execute_circuit(bell_circuit: str, client: RuntimeClient) -> None:
     tg = TierkreisGraph()
+    vec_elems = tg.vec_last_n_elems(tg.input["circuits"], 2)
+    load_node1 = tg.add_node("pytket/load_circuit_json", json_str=vec_elems[0])
+    load_node2 = tg.add_node("pytket/load_circuit_json", json_str=vec_elems[1])
     execute_node = tg.add_node(
         "pytket/execute",
-        circuits=tg.input["circuits"],
+        circuits=tg.make_vec([load_node1, load_node2]),
         shots=tg.input["shots"],
         backend_name=tg.add_const("AerBackend"),
     )

@@ -122,7 +122,7 @@ async def test_parse_runcircuit(client: RuntimeClient) -> None:
     )
 
     tg = await client.type_check_graph(tg)
-    assert len(tg.nodes()) == 14
+    assert len(tg.nodes()) == 13
 
 
 @pytest.mark.asyncio

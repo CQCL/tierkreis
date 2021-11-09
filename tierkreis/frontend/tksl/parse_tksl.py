@@ -341,7 +341,8 @@ class TkslFileVisitor(TkslVisitor):
         alias_name = str(ctx.ID())
         if alias_name in self.context.aliases:
             raise TkslCompileException(f"Type alias {alias_name} already exists.")
-        self.context.aliases[alias_name] = self.visitType_(ctx.type_())
+        type_ = self.visitType_(ctx.type_())
+        self.context.aliases[alias_name] = type_
 
     def visitUseDef(self, ctx: TkslParser.UseDefContext):
         namespace = ctx.namespace.text
@@ -396,7 +397,6 @@ class TkslFileVisitor(TkslVisitor):
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
             fields = dict(map(self.visitConst_assign, struct_ctx.fields))
-
             return StructValue(fields)
         if ctx.opt_const():
             return self.visit(ctx.opt_const())

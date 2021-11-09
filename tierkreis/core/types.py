@@ -1,8 +1,9 @@
 import typing
+from typing import cast
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass, is_dataclass
-from typing import Dict, List, Optional, Union, cast
 from uuid import UUID
+from functools import reduce
 import betterproto
 
 import tierkreis.core.protos.tierkreis.graph as pg
@@ -17,30 +18,42 @@ except ImportError as _:
     NoneType = type(None)  # type: ignore
 
 
-def _get_optional_type(type_: typing.Type) -> Optional[typing.Type]:
-    """Check if type is of form Optional[T]"""
+def _get_optional_type(type_: typing.Type) -> typing.Optional[typing.Type]:
     args = typing.get_args(type_)
-    if typing.get_origin(type_) is Union and NoneType in args:
-        # Optional[T] = Union[T, NoneType]
+    if typing.get_origin(type_) is typing.Union and NoneType in args:
         return args[0]
     return None
 
 
 class TierkreisType(ABC):
-    ROWCACHE = {}
-
     @abstractmethod
     def to_proto(self) -> pg.Type:
         "Converts a tierkreis type to its protobuf representation."
 
     @classmethod
-    def from_python(cls, type_: typing.Type) -> "TierkreisType":
+    def from_python(
+        cls,
+        type_: typing.Type,
+        visited_types: typing.Optional[dict[typing.Type, "TierkreisType"]] = None,
+    ) -> "TierkreisType":
         "Converts a python type to its corresponding tierkreis type."
 
         from tierkreis.core.python import RuntimeGraph
 
+        visited_types = visited_types or {}
+
+        if type_ in visited_types:
+            seen = visited_types[type_]
+            return seen
+
+        try:
+            visited_types[type_] = VarType(name=type_.__name__)
+        except AttributeError as _e:
+            visited_types[type_] = VarType(name=str(type_))
+
         type_origin = typing.get_origin(type_)
         result: TierkreisType
+
         # TODO: Graph types
         if type_ is int:
             result = IntType()
@@ -51,21 +64,21 @@ class TierkreisType(ABC):
         elif type_ is float:
             result = FloatType()
         elif inner_type := _get_optional_type(type_):
-            result = OptionType(TierkreisType.from_python(inner_type))
+            result = OptionType(TierkreisType.from_python(inner_type, visited_types))
         elif type_origin is list:
             args = typing.get_args(type_)
-            result = VecType(element=TierkreisType.from_python(args[0]))
+            result = VecType(element=TierkreisType.from_python(args[0], visited_types))
         elif type_origin is tuple:
             args = typing.get_args(type_)
             result = PairType(
-                first=TierkreisType.from_python(args[0]),
-                second=TierkreisType.from_python(args[1]),
+                first=TierkreisType.from_python(args[0], visited_types),
+                second=TierkreisType.from_python(args[1], visited_types),
             )
         elif type_origin is dict:
             args = typing.get_args(type_)
             result = MapType(
-                key=TierkreisType.from_python(args[0]),
-                value=TierkreisType.from_python(args[1]),
+                key=TierkreisType.from_python(args[0], visited_types),
+                value=TierkreisType.from_python(args[1], visited_types),
             )
 
         elif isinstance(type_, typing.TypeVar):
@@ -73,27 +86,26 @@ class TierkreisType(ABC):
         elif type_origin is RuntimeGraph:
             args = typing.get_args(type_)
             result = GraphType(
-                inputs=Row.from_python(args[0]), outputs=Row.from_python(args[1])
+                inputs=Row.from_python(args[0], visited_types),
+                outputs=Row.from_python(args[1], visited_types),
             )
         elif type_origin is None and (
             (TierkreisStruct in type_.__bases__) or is_dataclass(type_)
         ):
-            if type_ in cls.ROWCACHE:
-                print("hit", type_)
-                result = ROWCACHE[type_]
-            else:
-                cls.ROWCACHE[type_] = 1
-                result = StructType(shape=Row.from_python(type_))
+            result = StructType(shape=Row.from_python(type_, visited_types))
+
         elif type_origin is not None and (
             (TierkreisStruct in type_origin.__bases__) or is_dataclass(type_origin)
         ):
-            result = StructType(shape=Row.from_python(type_))
+            result = StructType(shape=Row.from_python(type_, visited_types))
         elif type_ is UUID:
             result = StringType()
         else:
             raise ValueError(
                 f"Could not convert python type to tierkreis type: {type_}"
             )
+
+        visited_types[type_] = result
 
         if not isinstance(result, cls):
             raise TypeError()
@@ -129,7 +141,7 @@ class TierkreisType(ABC):
             result = VecType(element)
         elif name == "struct":
             row = cast(pg.RowType, out_type)
-            result = StructType(Row.from_proto(row))
+            result = StructType(Row.from_proto_rowtype(row))
         elif name == "map":
             map_type = cast(pg.PairType, out_type)
             key = TierkreisType.from_proto(map_type.first)
@@ -137,8 +149,8 @@ class TierkreisType(ABC):
             result = MapType(key, value)
         elif name == "graph":
             graph_type = cast(pg.GraphType, out_type)
-            inputs = Row.from_proto(graph_type.inputs)
-            outputs = Row.from_proto(graph_type.outputs)
+            inputs = Row.from_proto_rowtype(graph_type.inputs)
+            outputs = Row.from_proto_rowtype(graph_type.outputs)
             result = GraphType(inputs, outputs)
         else:
             raise ValueError(f"Unknown protobuf type: {name}")
@@ -147,6 +159,16 @@ class TierkreisType(ABC):
             raise TypeError()
 
         return result
+
+    def children(self) -> list["TierkreisType"]:
+        return []
+
+    def contained_vartypes(self) -> set[str]:
+        return reduce(
+            lambda x, y: x.union(y),
+            (child.contained_vartypes() for child in self.children()),
+            set(),
+        )
 
 
 @dataclass
@@ -158,6 +180,9 @@ class OptionType(TierkreisType):
 
     def __str__(self) -> str:
         return f"Option<{str(self.inner)}>"
+
+    def children(self) -> list["TierkreisType"]:
+        return [self.inner]
 
 
 @dataclass
@@ -206,6 +231,9 @@ class VarType(TierkreisType):
     def __str__(self) -> str:
         return f"VarType({self.name})"
 
+    def contained_vartypes(self) -> set[str]:
+        return {self.name}
+
 
 @dataclass
 class PairType(TierkreisType):
@@ -223,6 +251,9 @@ class PairType(TierkreisType):
     def __str__(self) -> str:
         return f"Pair<{str(self.first)}, {str(self.second)}>"
 
+    def children(self) -> list["TierkreisType"]:
+        return [self.first, self.second]
+
 
 @dataclass
 class VecType(TierkreisType):
@@ -233,6 +264,9 @@ class VecType(TierkreisType):
 
     def __str__(self) -> str:
         return f"Vector<{str(self.element)}>"
+
+    def children(self) -> list["TierkreisType"]:
+        return [self.element]
 
 
 @dataclass
@@ -251,36 +285,47 @@ class MapType(TierkreisType):
     def __str__(self) -> str:
         return f"Map<{str(self.key)}, {str(self.value)}>"
 
-
-ROWCACHE = {}
+    def children(self) -> list["TierkreisType"]:
+        return [self.key, self.value]
 
 
 @dataclass
-class Row:
-    content: Dict[str, TierkreisType] = field(default_factory=dict)
-    rest: Optional[str] = None
+class Row(TierkreisType):
+    content: dict[str, TierkreisType] = field(default_factory=dict)
+    rest: typing.Optional[str] = None
 
-    def to_proto(self) -> pg.RowType:
-        return pg.RowType(
-            content={label: type_.to_proto() for label, type_ in self.content.items()},
-            rest=self.rest or "",
+    def to_proto(self) -> pg.Type:
+        return pg.Type(
+            row=pg.RowType(
+                content={
+                    label: type_.to_proto() for label, type_ in self.content.items()
+                },
+                rest=self.rest or "",
+            )
         )
 
     @staticmethod
-    def from_python(type_: typing.Type) -> "Row":
+    def from_python(
+        type_: typing.Type,
+        visited_types: typing.Optional[dict[typing.Type, "TierkreisType"]] = None,
+    ) -> "Row":
         if isinstance(type_, typing.TypeVar):
             return Row(rest=type_.__name__)
         else:
 
             return Row(
                 content={
-                    field_name: TierkreisType.from_python(field_type)
+                    field_name: TierkreisType.from_python(field_type, visited_types)
                     for field_name, field_type in python_struct_fields(type_).items()
                 }
             )
 
     @staticmethod
-    def from_proto(row: pg.RowType) -> "Row":
+    def from_proto(row_type: pg.Type) -> "Row":
+        return Row.from_proto_rowtype(row_type.row)
+
+    @staticmethod
+    def from_proto_rowtype(row: pg.RowType) -> "Row":
         if row.rest == "":
             rest = None
         else:
@@ -302,6 +347,9 @@ class Row:
 
         return f"{contentstr}{reststr}"
 
+    def children(self) -> list["TierkreisType"]:
+        return list(self.content.values())
+
 
 @dataclass
 class GraphType(TierkreisType):
@@ -311,13 +359,16 @@ class GraphType(TierkreisType):
     def to_proto(self) -> pg.Type:
         return pg.Type(
             graph=pg.GraphType(
-                inputs=self.inputs.to_proto(),
-                outputs=self.outputs.to_proto(),
+                inputs=self.inputs.to_proto().row,
+                outputs=self.outputs.to_proto().row,
             )
         )
 
     def __str__(self) -> str:
         return f"Graph ({self.inputs.to_tksl()}) -> ({self.outputs.to_tksl()})"
+
+    def children(self) -> list["TierkreisType"]:
+        return self.inputs.children() + self.outputs.children()
 
 
 @dataclass
@@ -325,10 +376,13 @@ class StructType(TierkreisType):
     shape: Row
 
     def to_proto(self) -> pg.Type:
-        return pg.Type(struct=self.shape.to_proto())
+        return pg.Type(struct=self.shape.to_proto().row)
 
     def __str__(self) -> str:
         return f"Struct<{self.shape.to_tksl()}>"
+
+    def children(self) -> list["TierkreisType"]:
+        return self.shape.children()
 
 
 class Constraint(ABC):
@@ -368,8 +422,8 @@ class RowKind(Kind):
 
 @dataclass
 class TypeScheme:
-    variables: Dict[str, Kind]
-    constraints: List[Constraint]
+    variables: dict[str, Kind]
+    constraints: list[Constraint]
     body: GraphType
 
     def to_proto(self) -> pg.TypeScheme:
@@ -397,7 +451,7 @@ class TypeScheme:
 @dataclass(frozen=True)
 class TierkreisTypeError:
     message: str
-    location: List[str]
+    location: list[str]
 
     @classmethod
     def from_proto(cls, proto: ps.TierkreisTypeError) -> "TierkreisTypeError":
@@ -410,7 +464,7 @@ class TierkreisTypeError:
 
 @dataclass
 class TierkreisTypeErrors(Exception):
-    errors: List[TierkreisTypeError]
+    errors: list[TierkreisTypeError]
 
     @classmethod
     def from_proto(cls, proto: ps.TypeErrors) -> "TierkreisTypeErrors":

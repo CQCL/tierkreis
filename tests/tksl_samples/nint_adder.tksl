@@ -1,8 +1,3 @@
-// use python_nodes::*;
-
-// use python_nodes::less_than;
-// use python_nodes::add;
-
 use python_nodes::{less_than, add};
 
 Graph main(array: Vector<Int>, len: Int) -> (out: Int) {

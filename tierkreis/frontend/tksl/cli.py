@@ -34,7 +34,7 @@ async def _parse(source: TextIO, client: RuntimeClient) -> TierkreisGraph:
         return parse_tksl(source.read(), await client.get_signature())
     except ParseCancellationException as _parse_err:
         print(chalk.red(f"Parse error: {str(_parse_err)}"), file=sys.stderr)
-        exit()
+        sys.exit(1)
 
 
 async def _check_graph(
@@ -47,7 +47,7 @@ async def _check_graph(
             tkg = await client.type_check_graph(tkg)
         except TierkreisTypeErrors as _errs:
             print(chalk.red(traceback.format_exc(0)), file=sys.stderr)
-            exit()
+            sys.exit(1)
         return tkg
 
 

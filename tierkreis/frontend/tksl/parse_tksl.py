@@ -23,7 +23,6 @@ from tierkreis.core.types import (
     StringType,
     StructType,
     TierkreisType,
-    VarType,
     VecType,
 )
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
@@ -313,7 +312,10 @@ class TkslFileVisitor(TkslVisitor):
         self.context.functions[name] = (graph, f_def)
 
     def visitTypeAlias(self, ctx: TkslParser.TypeAliasContext):
-        self.context.aliases[str(ctx.ID())] = self.visitType_(ctx.type_())
+        alias_name = str(ctx.ID())
+        if alias_name in self.context.aliases:
+            raise TkslCompileException(f"Type alias {alias_name} already exists.")
+        self.context.aliases[alias_name] = self.visitType_(ctx.type_())
 
     def visitUseDef(self, ctx: TkslParser.UseDefContext):
         namespace = ctx.namespace.text
@@ -413,7 +415,7 @@ class TkslFileVisitor(TkslVisitor):
             return g_type
         if ctx.ID():
             return self.context.aliases[str(ctx.ID())]
-        return VarType("unkown")
+        raise TkslCompileException(f"Unknown type: {ctx.getText()}")
 
     def visitDeclaration(self, ctx: TkslParser.DeclarationContext) -> None:
 

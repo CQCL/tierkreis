@@ -20,13 +20,12 @@ secondary = true
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"
-# betterproto = "^2.0.0b3"
-betterproto = {git = "https://github.com/danielgtaylor/python-betterproto", rev="c424b6f", extras = ["compiler"]}
+betterproto = { git = "https://github.com/danielgtaylor/python-betterproto", rev = "c424b6f", extras = [
+    "compiler",
+] }
 grpclib = "^0.4.2"
 networkx = "^2.6.3"
 graphviz = "^0.18"
-# pytket = "^0.16.0"
-# mushroom-dataclasses = { version = "^0.35.0", source = "cqcpython" }
 
 
 # optional dependencies
@@ -41,15 +40,30 @@ yachalk = { version = "^0.1.4", optional = true }
 
 [tool.poetry.extras]
 frontend = ["docker", "keyring", "keyrings.alt"]
-tksl = ["antlr4-python3-runtime", "click", "yachalk", "frontend"]
+tksl = [
+    "antlr4-python3-runtime",
+    "click",
+    "yachalk",
+    "docker",
+    "keyring",
+    "keyrings.alt",
+]
 runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
 
-[tool.poetry.dev-dependencies]
-black = "^21.5b1"
-mypy = "^0.812"
+[tool.poetry.group.lint]
+optional = true
+
+[tool.poetry.group.lint.dependencies]
+black = "^21.10b0"
+mypy = "^0.910"
 pylint = "^2.11"
-pytest = "^6.2.4"
-pytest-asyncio = "^0.15.1"
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+pytest = "^6.2"
+pytest-asyncio = "^0.16"
 
 [build-system]
 requires = ["poetry-core>=1.1.0"]

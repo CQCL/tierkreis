@@ -1,8 +1,8 @@
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, is_dataclass, is_dataclass
 from typing import Dict, List, Optional, Union, cast
-
+from uuid import UUID
 import betterproto
 
 import tierkreis.core.protos.tierkreis.graph as pg
@@ -27,6 +27,8 @@ def _get_optional_type(type_: typing.Type) -> Optional[typing.Type]:
 
 
 class TierkreisType(ABC):
+    ROWCACHE = {}
+
     @abstractmethod
     def to_proto(self) -> pg.Type:
         "Converts a tierkreis type to its protobuf representation."
@@ -73,10 +75,21 @@ class TierkreisType(ABC):
             result = GraphType(
                 inputs=Row.from_python(args[0]), outputs=Row.from_python(args[1])
             )
-        elif type_origin is None and TierkreisStruct in type_.__bases__:
+        elif type_origin is None and (
+            (TierkreisStruct in type_.__bases__) or is_dataclass(type_)
+        ):
+            if type_ in cls.ROWCACHE:
+                print("hit", type_)
+                result = ROWCACHE[type_]
+            else:
+                cls.ROWCACHE[type_] = 1
+                result = StructType(shape=Row.from_python(type_))
+        elif type_origin is not None and (
+            (TierkreisStruct in type_origin.__bases__) or is_dataclass(type_origin)
+        ):
             result = StructType(shape=Row.from_python(type_))
-        elif type_origin is not None and TierkreisStruct in type_origin.__bases__:
-            result = StructType(shape=Row.from_python(type_))
+        elif type_ is UUID:
+            result = StringType()
         else:
             raise ValueError(
                 f"Could not convert python type to tierkreis type: {type_}"
@@ -239,6 +252,9 @@ class MapType(TierkreisType):
         return f"Map<{str(self.key)}, {str(self.value)}>"
 
 
+ROWCACHE = {}
+
+
 @dataclass
 class Row:
     content: Dict[str, TierkreisType] = field(default_factory=dict)
@@ -255,6 +271,7 @@ class Row:
         if isinstance(type_, typing.TypeVar):
             return Row(rest=type_.__name__)
         else:
+
             return Row(
                 content={
                     field_name: TierkreisType.from_python(field_type)

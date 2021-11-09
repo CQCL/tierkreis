@@ -860,7 +860,7 @@ tksl = ["antlr4-python3-runtime", "click", "yachalk", "docker", "keyring", "keyr
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "cf9c4e97af8bd6e058e776293cfde44c6b67b746ec346cc867c0927016243718"
+content-hash = "04267943ce64c0165408d2de95fee2adc06dd5443159a304041245e7106ba009"
 
 [metadata.files]
 antlr4-python3-runtime = [

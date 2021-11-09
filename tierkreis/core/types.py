@@ -11,7 +11,10 @@ from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
 # import from types when updating to python 3.10
-NoneType = type(None)
+try:
+    from types import NoneType
+except ImportError as _:
+    NoneType = type(None)  # type: ignore
 
 
 class TierkreisType(ABC):

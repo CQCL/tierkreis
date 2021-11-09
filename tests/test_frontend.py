@@ -152,17 +152,18 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
 
     nestst = NestedStruct([1, 2, 3], (5, True))
     testst = TstStruct(2, False, CircStruct("null"), {66: 77}, nestst)
-    for val, typ in [
-        (dic, Dict[int, bool]),
+    pairs: list[tuple[Any, Type]] = [
+        (dic, dict[int, bool]),
         (testst, TstStruct),
         ("test123", str),
         (2, int),
         (132.3, float),
-        ((2, "a"), Tuple[int, str]),
-        ([1, 2, 3], List[int]),
+        ((2, "a"), tuple[int, str]),
+        ([1, 2, 3], list[int]),
         (True, bool),
         (None, NoneType),
-    ]:
+    ]
+    for val, typ in pairs:
         assert await assert_id_py(val, typ)
 
 

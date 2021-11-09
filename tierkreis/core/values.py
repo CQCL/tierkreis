@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass

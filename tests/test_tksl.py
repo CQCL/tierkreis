@@ -3,6 +3,7 @@ from dataclasses import astuple
 from pathlib import Path
 import pytest
 import asyncio
+from tierkreis.core.values import IntValue, OptionValue
 
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import parse_tksl
@@ -122,3 +123,15 @@ async def test_parse_runcircuit(client: RuntimeClient) -> None:
 
     tg = await client.type_check_graph(tg)
     assert len(tg.nodes()) == 14
+
+
+@pytest.mark.asyncio
+async def test_parse_option(client: RuntimeClient) -> None:
+    sig = await client.get_signature()
+
+    tg = parse_tksl(
+        _get_source(Path(__file__).parent / "tksl_samples/option.tksl"), sig
+    )
+
+    outputs = await client.run_graph(tg, {})
+    assert outputs == {"some": IntValue(30), "none": IntValue(-1)}

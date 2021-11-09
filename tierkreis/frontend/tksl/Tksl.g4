@@ -63,6 +63,7 @@ macro_const:
     ID '!' '(' cargs += const_ (',' cargs += const_)* ')';
 
 vec_const: '[' (elems += const_ (',' elems += const_)*)? ']';
+opt_const: TYPE_OPTION '(' const_ ')';
 const_:
     | bool_token
     | SIGNED_INT
@@ -71,6 +72,7 @@ const_:
     | struct_const
     | macro_const
     | TYPE_UNIT
+    | opt_const
     | vec_const;
 
 f_name: func_name = ID | namespace = ID '::' func_name = ID;
@@ -116,6 +118,7 @@ TYPE_BOOL: 'Bool';
 TYPE_FLOAT: 'Float';
 TYPE_STR: 'Str';
 TYPE_UNIT: 'Unit';
+TYPE_OPTION: 'Option';
 TYPE_PAIR: 'Pair';
 TYPE_MAP: 'Map';
 TYPE_VEC: 'Vector';

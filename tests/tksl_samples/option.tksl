@@ -1,0 +1,7 @@
+use python_nodes::test_option;
+
+
+Graph main() -> (out: Int) {
+
+    output (none: test_option(Option(Unit)), some: test_option(Option(30)));
+}

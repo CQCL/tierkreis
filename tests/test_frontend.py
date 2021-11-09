@@ -1,7 +1,7 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pytest
 
@@ -120,6 +120,8 @@ def bell_circuit() -> CircStruct:
 class NestedStruct(TierkreisStruct):
     s: List[int]
     a: Tuple[int, bool]
+    b: Optional[str]
+    d: Optional[float]
 
 
 @dataclass
@@ -150,7 +152,7 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
 
     dic: Dict[int, bool] = {1: True, 2: False}
 
-    nestst = NestedStruct([1, 2, 3], (5, True))
+    nestst = NestedStruct([1, 2, 3], (5, True), "asdf", None)
     testst = TstStruct(2, False, CircStruct("null"), {66: 77}, nestst)
     pairs: list[tuple[Any, Type]] = [
         (dic, dict[int, bool]),

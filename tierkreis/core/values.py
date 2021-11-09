@@ -2,14 +2,14 @@ from __future__ import annotations
 
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, is_dataclass
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast
 
 import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import NoneType
+from tierkreis.core.types import NoneType, _get_optional_type
 
 T = typing.TypeVar("T")
 
@@ -84,10 +84,15 @@ class TierkreisValue(ABC):
                 find_subclass = next(
                     cls._pytype_map[pytype]
                     for pytype in cls._pytype_map
-                    if isinstance(value, pytype)
+                    if pytype is not Optional and isinstance(value, pytype)  # type: ignore
                 )
             except StopIteration as e:
-                raise IncompatiblePyType(value) from e
+                if is_dataclass(value):
+                    # dataclass that is not an instance of TierkreisStruct
+                    # might still be convertible to Struct depending on field types
+                    find_subclass = StructValue
+                else:
+                    raise IncompatiblePyType(value) from e
         return find_subclass.from_python(value)
 
     def try_autopython(self) -> Optional[Any]:
@@ -126,6 +131,49 @@ class UnitValue(TierkreisValue):
 
     def __str__(self) -> str:
         return f"Unit"
+
+
+@dataclass(frozen=True)
+class OptionValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "option"
+    _pytype: ClassVar[typing.Type] = Optional  # type: ignore
+    inner: Optional[TierkreisValue]
+
+    def to_proto(self) -> pg.Value:
+        optval = (
+            pg.OptionValue(value=self.inner.to_proto())
+            if self.inner
+            else pg.OptionValue()
+        )
+        return pg.Value(option=optval)
+
+    def to_python(self, type_: typing.Type[T]) -> T:
+        if isinstance(type_, typing.TypeVar):
+            return cast(T, self)
+        if self.inner is None:
+            return cast(T, None)
+        if inner_type := _get_optional_type(type_):
+            return cast(T, self.inner.to_python(inner_type))
+        raise ToPythonFailure(self)
+
+    @classmethod
+    def from_python(cls, value: Any) -> "TierkreisValue":
+        value = cast(Optional[Any], value)
+        optval = None if value is None else TierkreisValue.from_python(value)
+        return OptionValue(optval)
+
+    @classmethod
+    def from_proto(cls, value: pg.OptionValue) -> "TierkreisValue":
+        name, val = betterproto.which_one_of(value, "inner")
+        if name == "value":
+            return OptionValue(
+                TierkreisValue.from_proto(val),
+            )
+        else:
+            return OptionValue(None)
+
+    def __str__(self) -> str:
+        return f"Option({str(self.inner)})"
 
 
 @dataclass(frozen=True)
@@ -395,13 +443,12 @@ class StructValue(TierkreisValue):
 
         type_origin = typing.get_origin(type_) or type_
 
-        if TierkreisStruct in type_origin.__bases__:
+        if TierkreisStruct in type_origin.__bases__ or is_dataclass(type_origin):
             field_values = {}
 
             for field_name, field_type in python_struct_fields(type_).items():
                 if field_name not in self.values:
                     raise ValueError(f"Missing field {field_name} in struct.")
-
                 field_values[field_name] = self.values[field_name].to_python(field_type)
 
             return cast(Callable[..., T], type_origin)(**field_values)
@@ -419,10 +466,16 @@ class StructValue(TierkreisValue):
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
+        assert is_dataclass(value)
+        vals = vars(cast(TierkreisStruct, value))
+        types = python_struct_fields(type(value))
+
         return StructValue(
             {
-                name: TierkreisValue.from_python(value)
-                for name, value in vars(cast(TierkreisStruct, value)).items()
+                name: OptionValue.from_python(value)
+                if _get_optional_type(types[name])
+                else TierkreisValue.from_python(value)
+                for name, value in vals.items()
             }
         )
 

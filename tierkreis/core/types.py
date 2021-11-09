@@ -1,7 +1,7 @@
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional, cast
+from typing import Dict, List, Optional, Union, cast
 
 import betterproto
 
@@ -12,9 +12,16 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 
 # import from types when updating to python 3.10
 try:
-    from types import NoneType
+    from types import NoneType  # type: ignore
 except ImportError as _:
     NoneType = type(None)  # type: ignore
+
+
+def _get_optional_type(type_: typing.Type) -> Optional[typing.Type]:
+    args = typing.get_args(type_)
+    if typing.get_origin(type_) is Union and NoneType in args:
+        return args[0]
+    return None
 
 
 class TierkreisType(ABC):
@@ -31,7 +38,6 @@ class TierkreisType(ABC):
         type_origin = typing.get_origin(type_)
         result: TierkreisType
         # TODO: Graph types
-
         if type_ is int:
             result = IntType()
         elif type_ is bool:
@@ -42,6 +48,8 @@ class TierkreisType(ABC):
             result = FloatType()
         elif type_ is NoneType:
             result = UnitType()
+        elif inner_type := _get_optional_type(type_):
+            result = OptionType(TierkreisType.from_python(inner_type))
         elif type_origin is list:
             args = typing.get_args(type_)
             result = VecType(element=TierkreisType.from_python(args[0]))
@@ -95,6 +103,9 @@ class TierkreisType(ABC):
             result = FloatType()
         elif name == "unit":
             result = UnitType()
+        elif name == "option":
+            inner = TierkreisType.from_proto(cast(pg.Type, out_type))
+            result = OptionType(inner)
         elif name == "var":
             result = VarType(cast(str, out_type))
         elif name == "pair":
@@ -134,6 +145,17 @@ class UnitType(TierkreisType):
 
     def __str__(self) -> str:
         return "Unit"
+
+
+@dataclass
+class OptionType(TierkreisType):
+    inner: TierkreisType
+
+    def to_proto(self) -> pg.Type:
+        return pg.Type(option=self.inner.to_proto())
+
+    def __str__(self) -> str:
+        return f"Option<{str(self.inner)}>"
 
 
 @dataclass

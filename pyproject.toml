@@ -12,12 +12,6 @@ include = ["tierkreis/core/protos/**/*.py"]
 [tool.poetry.scripts]
 tksl = 'tierkreis.frontend.tksl.cli:cli'
 
-[[tool.poetry.source]]
-name = "cqcpython"
-url = "https://cqcpythonrepository.azurewebsites.net/simple/"
-secondary = true
-
-
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"
 betterproto = { git = "https://github.com/danielgtaylor/python-betterproto", rev = "c424b6f", extras = [
@@ -66,5 +60,5 @@ pytest = "^6.2"
 pytest-asyncio = "^0.16"
 
 [build-system]
-requires = ["poetry-core>=1.1.0"]
+requires = ["poetry-core>=1.2.0"]
 build-backend = "poetry.core.masonry.api"

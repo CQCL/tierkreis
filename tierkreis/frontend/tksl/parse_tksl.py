@@ -1,7 +1,7 @@
 import copy
 from collections import OrderedDict
-from dataclasses import dataclass, field, make_dataclass
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 from antlr4 import CommonTokenStream, InputStream  # type: ignore
 from antlr4.error.ErrorListener import ErrorListener  # type: ignore
@@ -11,7 +11,6 @@ from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge
-from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
     BoolType,
     FloatType,
@@ -35,6 +34,7 @@ from tierkreis.core.values import (
     UnitValue,
     VecValue,
     StructValue,
+    OptionValue,
 )
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
@@ -368,7 +368,9 @@ class TkslFileVisitor(TkslVisitor):
             return str(ctx.ID())
         raise TkslCompileException()
 
-    def visitConst_assign(self, ctx: TkslParser.Const_assignContext) -> Tuple[str, Any]:
+    def visitConst_assign(
+        self, ctx: TkslParser.Const_assignContext
+    ) -> Tuple[str, TierkreisValue]:
         return str(ctx.ID()), self.visitConst_(ctx.const_())
 
     def visitConst_(self, ctx: TkslParser.Const_Context) -> TierkreisValue:
@@ -390,12 +392,14 @@ class TkslFileVisitor(TkslVisitor):
             return VecValue(list(map(self.visitConst_, vec_ctx.elems)))
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
-            _struct_id = str(struct_ctx.sid)
             fields = dict(map(self.visitConst_assign, struct_ctx.fields))
-            cl = make_dataclass(
-                "anon_struct", fields=fields.keys(), bases=(TierkreisStruct,)
-            )
-            return StructValue.from_python(cl(**fields))
+
+            return StructValue(fields)
+        if ctx.opt_const():
+            inner: Optional[TierkreisValue] = self.visitConst_(ctx.opt_const().const_())
+            if isinstance(inner, UnitValue):
+                inner = None
+            return OptionValue(inner)
         if ctx.macro_const():
             macro_ctx = ctx.macro_const()
             macro_name = str(macro_ctx.ID())

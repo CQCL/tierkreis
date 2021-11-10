@@ -160,7 +160,7 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
         ("test123", str),
         (2, int),
         (132.3, float),
-        ((2, "a"), tuple[int, str]),
+        ((2, "a"), tuple[int, str]),  # type: ignore
         ([1, 2, 3], list[int]),
         (True, bool),
         (None, NoneType),

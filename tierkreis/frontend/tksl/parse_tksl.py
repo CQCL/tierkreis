@@ -17,13 +17,13 @@ from tierkreis.core.types import (
     GraphType,
     IntType,
     MapType,
+    OptionType,
     PairType,
     Row,
     StringType,
     StructType,
     TierkreisType,
     VecType,
-    UnitType,
 )
 from tierkreis.core.values import (
     FloatValue,
@@ -31,7 +31,6 @@ from tierkreis.core.values import (
     IntValue,
     BoolValue,
     StringValue,
-    UnitValue,
     VecValue,
     StructValue,
     OptionValue,
@@ -373,6 +372,12 @@ class TkslFileVisitor(TkslVisitor):
     ) -> Tuple[str, TierkreisValue]:
         return str(ctx.ID()), self.visitConst_(ctx.const_())
 
+    def visitSome(self, ctx: TkslParser.SomeContext) -> OptionValue:
+        return OptionValue(self.visitConst_(ctx.const_()))
+
+    def visitNone(self, ctx: TkslParser.NoneContext) -> OptionValue:
+        return OptionValue(None)
+
     def visitConst_(self, ctx: TkslParser.Const_Context) -> TierkreisValue:
         if ctx.SIGNED_INT():
             return IntValue(int(str(ctx.SIGNED_INT())))
@@ -380,8 +385,6 @@ class TkslFileVisitor(TkslVisitor):
             return BoolValue(self.visitBool_token(ctx.bool_token()))
         if ctx.SIGNED_FLOAT():
             return FloatValue(float(str(ctx.SIGNED_FLOAT())))
-        if ctx.TYPE_UNIT():
-            return UnitValue()
         if ctx.SHORT_STRING():
             return StringValue(str(ctx.SHORT_STRING())[1:-1])
         if ctx.vec_const():
@@ -396,10 +399,7 @@ class TkslFileVisitor(TkslVisitor):
 
             return StructValue(fields)
         if ctx.opt_const():
-            inner: Optional[TierkreisValue] = self.visitConst_(ctx.opt_const().const_())
-            if isinstance(inner, UnitValue):
-                inner = None
-            return OptionValue(inner)
+            return self.visit(ctx.opt_const())
         if ctx.macro_const():
             macro_ctx = ctx.macro_const()
             macro_name = str(macro_ctx.ID())
@@ -440,8 +440,6 @@ class TkslFileVisitor(TkslVisitor):
             return StringType()
         if ctx.TYPE_FLOAT():
             return FloatType()
-        if ctx.TYPE_UNIT():
-            return UnitType()
         if ctx.TYPE_PAIR():
             pair_type = PairType(self.visit(ctx.first), self.visit(ctx.second))
             return pair_type
@@ -449,6 +447,8 @@ class TkslFileVisitor(TkslVisitor):
             return MapType(self.visit(ctx.key), self.visit(ctx.val))
         if ctx.TYPE_VEC():
             return VecType(self.visit(ctx.element))
+        if ctx.TYPE_OPTION():
+            return OptionType(self.visit(ctx.inner))
         if ctx.TYPE_STRUCT():
             return StructType(Row(self.visit(ctx.fields)))
         if ctx.graph_type():

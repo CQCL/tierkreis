@@ -9,7 +9,7 @@ import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import NoneType, _get_optional_type
+from tierkreis.core.types import _get_optional_type
 
 T = typing.TypeVar("T")
 
@@ -28,6 +28,13 @@ class ToPythonFailure(Exception):
 
     def __str__(self) -> str:
         return f"Value {self.value} conversion to python type failed."
+
+
+class NoneConversion(IncompatiblePyType):
+    def __str__(self) -> str:
+        return (
+            super().__str__() + "\nFor None values try using OpionValue(None) directly."
+        )
 
 
 class TierkreisValue(ABC):
@@ -92,7 +99,12 @@ class TierkreisValue(ABC):
                     # might still be convertible to Struct depending on field types
                     find_subclass = StructValue
                 else:
-                    raise IncompatiblePyType(value) from e
+                    exception = (
+                        NoneConversion(value)
+                        if value is None
+                        else IncompatiblePyType(value)
+                    )
+                    raise exception from e
         return find_subclass.from_python(value)
 
     def try_autopython(self) -> Optional[Any]:
@@ -108,29 +120,6 @@ class TierkreisValue(ABC):
             return self.to_python(getattr(self, "_pytype"))
         except ToPythonFailure as _:
             return None
-
-
-@dataclass(frozen=True)
-class UnitValue(TierkreisValue):
-    _proto_name: ClassVar[str] = "unit"
-    _pytype: ClassVar[typing.Type] = NoneType  # type: ignore
-
-    def to_proto(self) -> pg.Value:
-        return pg.Value(unit=pg.Empty())
-
-    def to_python(self, type_: typing.Type[T]) -> T:
-        return cast(T, None)
-
-    @classmethod
-    def from_python(cls, value: Any) -> "TierkreisValue":
-        return cls()
-
-    @classmethod
-    def from_proto(cls, value: Any) -> "TierkreisValue":
-        return cls()
-
-    def __str__(self) -> str:
-        return f"Unit"
 
 
 @dataclass(frozen=True)

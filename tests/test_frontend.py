@@ -163,7 +163,6 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
         ((2, "a"), tuple[int, str]),  # type: ignore
         ([1, 2, 3], list[int]),
         (True, bool),
-        (None, NoneType),
     ]
     for val, typ in pairs:
         assert await assert_id_py(val, typ)

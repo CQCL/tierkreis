@@ -18,8 +18,10 @@ except ImportError as _:
 
 
 def _get_optional_type(type_: typing.Type) -> Optional[typing.Type]:
+    """Check if type is of form Optional[T]"""
     args = typing.get_args(type_)
     if typing.get_origin(type_) is Union and NoneType in args:
+        # Optional[T] = Union[T, NoneType]
         return args[0]
     return None
 
@@ -46,8 +48,6 @@ class TierkreisType(ABC):
             result = StringType()
         elif type_ is float:
             result = FloatType()
-        elif type_ is NoneType:
-            result = UnitType()
         elif inner_type := _get_optional_type(type_):
             result = OptionType(TierkreisType.from_python(inner_type))
         elif type_origin is list:
@@ -101,8 +101,6 @@ class TierkreisType(ABC):
             result = StringType()
         elif name == "flt":
             result = FloatType()
-        elif name == "unit":
-            result = UnitType()
         elif name == "option":
             inner = TierkreisType.from_proto(cast(pg.Type, out_type))
             result = OptionType(inner)
@@ -136,15 +134,6 @@ class TierkreisType(ABC):
             raise TypeError()
 
         return result
-
-
-@dataclass
-class UnitType(TierkreisType):
-    def to_proto(self) -> pg.Type:
-        return pg.Type(unit=pg.Empty())
-
-    def __str__(self) -> str:
-        return "Unit"
 
 
 @dataclass

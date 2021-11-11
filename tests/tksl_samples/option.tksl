@@ -1,7 +1,11 @@
 use python_nodes::test_option;
 
+Graph id_option(inp: Option<Int>) -> (out: Option<Int>) {
+    output(out: inp);
+}
 
-Graph main() -> (out: Int) {
 
-    output (none: test_option(Option(Unit)), some: test_option(Option(30)));
+Graph main() -> (none: Int, some: Int) {
+
+    output (none: test_option(id_option(None)), some: test_option(Some(30)));
 }

@@ -21,8 +21,8 @@ type_:
     | TYPE_MAP '<' key = type_ ',' val = type_ '>'
     | TYPE_VEC '<' element = type_ '>'
     | TYPE_STRUCT '<' fields = f_param_list '>'
+    | TYPE_OPTION '<' inner = type_ '>'
     | graph_type
-    | TYPE_UNIT
     | ID;
 graph_type:
     '(' inputs = f_param_list ')' '->' '(' outputs = f_param_list ')';
@@ -63,7 +63,7 @@ macro_const:
     ID '!' '(' cargs += const_ (',' cargs += const_)* ')';
 
 vec_const: '[' (elems += const_ (',' elems += const_)*)? ']';
-opt_const: TYPE_OPTION '(' const_ ')';
+opt_const: SOME '(' const_ ')' #Some | NONE #None;
 const_:
     | bool_token
     | SIGNED_INT
@@ -71,7 +71,6 @@ const_:
     | SHORT_STRING
     | struct_const
     | macro_const
-    | TYPE_UNIT
     | opt_const
     | vec_const;
 
@@ -112,12 +111,13 @@ DO: 'do';
 CONST: 'const';
 OUTPUT: 'output';
 USE: 'use';
+SOME: 'Some';
+NONE: 'None';
 
 TYPE_INT: 'Int';
 TYPE_BOOL: 'Bool';
 TYPE_FLOAT: 'Float';
 TYPE_STR: 'Str';
-TYPE_UNIT: 'Unit';
 TYPE_OPTION: 'Option';
 TYPE_PAIR: 'Pair';
 TYPE_MAP: 'Map';

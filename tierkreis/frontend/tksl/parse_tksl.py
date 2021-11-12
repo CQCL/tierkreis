@@ -67,7 +67,7 @@ class FunctionDefinition:
 
 FuncDefs = Dict[str, Tuple[TierkreisGraph, FunctionDefinition]]
 PortMap = OrderedDict[str, Optional[TierkreisType]]
-Aliases = Dict[str, TypeScheme]
+Aliases = Dict[str, TierkreisType]
 
 
 class TkslCompileException(Exception):

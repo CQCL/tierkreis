@@ -217,9 +217,9 @@ def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
         else:
             namespaces[namespace] = NamespaceDefs({fname: func}, {})
 
-    for name, entry in pr_sig.aliases.items():
+    for name, type_proto in pr_sig.aliases.items():
         namespace, alias_name = name.split("/", 2)
-        type_ = TypeScheme.from_proto(entry)
+        type_ = TypeScheme.from_proto(type_proto)
         if namespace in namespaces:
             namespaces[namespace].aliases[alias_name] = type_
         else:

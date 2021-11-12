@@ -472,7 +472,7 @@ test = ["pytest (>=6.2)", "pytest-cov (>=2.12)", "codecov (>=2.1)"]
 
 [[package]]
 name = "opentelemetry-api"
-version = "1.6.2"
+version = "1.7.1"
 description = "OpenTelemetry Python API"
 category = "main"
 optional = true
@@ -483,19 +483,19 @@ Deprecated = ">=1.2.6"
 
 [[package]]
 name = "opentelemetry-exporter-otlp"
-version = "1.6.2"
+version = "1.7.1"
 description = "OpenTelemetry Collector Exporters"
 category = "main"
 optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
-opentelemetry-exporter-otlp-proto-grpc = "1.6.2"
-opentelemetry-exporter-otlp-proto-http = "1.6.2"
+opentelemetry-exporter-otlp-proto-grpc = "1.7.1"
+opentelemetry-exporter-otlp-proto-http = "1.7.1"
 
 [[package]]
 name = "opentelemetry-exporter-otlp-proto-grpc"
-version = "1.6.2"
+version = "1.7.1"
 description = "OpenTelemetry Collector Protobuf over gRPC Exporter"
 category = "main"
 optional = true
@@ -506,7 +506,7 @@ backoff = ">=1.10.0,<1.11.0"
 googleapis-common-protos = ">=1.52,<2.0"
 grpcio = ">=1.0.0,<2.0.0"
 opentelemetry-api = ">=1.3,<2.0"
-opentelemetry-proto = "1.6.2"
+opentelemetry-proto = "1.7.1"
 opentelemetry-sdk = ">=1.3,<2.0"
 
 [package.extras]
@@ -514,7 +514,7 @@ test = ["pytest-grpc"]
 
 [[package]]
 name = "opentelemetry-exporter-otlp-proto-http"
-version = "1.6.2"
+version = "1.7.1"
 description = "OpenTelemetry Collector Protobuf over HTTP Exporter"
 category = "main"
 optional = true
@@ -524,13 +524,13 @@ python-versions = ">=3.6"
 backoff = ">=1.10.0,<1.11.0"
 googleapis-common-protos = ">=1.52,<2.0"
 opentelemetry-api = ">=1.3,<2.0"
-opentelemetry-proto = "1.6.2"
+opentelemetry-proto = "1.7.1"
 opentelemetry-sdk = ">=1.3,<2.0"
 requests = ">=2.7,<3.0"
 
 [[package]]
 name = "opentelemetry-proto"
-version = "1.6.2"
+version = "1.7.1"
 description = "OpenTelemetry Python Proto"
 category = "main"
 optional = true
@@ -541,19 +541,19 @@ protobuf = ">=3.13.0"
 
 [[package]]
 name = "opentelemetry-sdk"
-version = "1.6.2"
+version = "1.7.1"
 description = "OpenTelemetry Python SDK"
 category = "main"
 optional = true
 python-versions = ">=3.6"
 
 [package.dependencies]
-opentelemetry-api = "1.6.2"
-opentelemetry-semantic-conventions = "0.25b2"
+opentelemetry-api = "1.7.1"
+opentelemetry-semantic-conventions = "0.26b1"
 
 [[package]]
 name = "opentelemetry-semantic-conventions"
-version = "0.25b2"
+version = "0.26b1"
 description = "OpenTelemetry Semantic Conventions"
 category = "main"
 optional = true
@@ -788,6 +788,22 @@ optional = false
 python-versions = ">=3.6"
 
 [[package]]
+name = "types-python-dateutil"
+version = "2.8.2"
+description = "Typing stubs for python-dateutil"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
+name = "types-setuptools"
+version = "57.4.2"
+description = "Typing stubs for setuptools"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "typing-extensions"
 version = "3.10.0.2"
 description = "Backported and Experimental Type Hints for Python 3.5+"
@@ -860,7 +876,7 @@ tksl = ["antlr4-python3-runtime", "click", "yachalk", "docker", "keyring", "keyr
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9,<3.11"
-content-hash = "04267943ce64c0165408d2de95fee2adc06dd5443159a304041245e7106ba009"
+content-hash = "d5e9bb64932482c626098d9afa89744534475d03945d981500fea1a8baac545c"
 
 [metadata.files]
 antlr4-python3-runtime = [
@@ -1282,32 +1298,32 @@ networkx = [
     {file = "networkx-2.6.3.tar.gz", hash = "sha256:c0946ed31d71f1b732b5aaa6da5a0388a345019af232ce2f49c766e2d6795c51"},
 ]
 opentelemetry-api = [
-    {file = "opentelemetry-api-1.6.2.tar.gz", hash = "sha256:d28513e948014a61b66472a9a5c51b6cc5f9f9f7f2785ad2c3d0006e9b0b9103"},
-    {file = "opentelemetry_api-1.6.2-py3-none-any.whl", hash = "sha256:223ba94033cc03cf3dc9be20304e90300402a8e9b60979ae7f4b76c4b1f76b0a"},
+    {file = "opentelemetry-api-1.7.1.tar.gz", hash = "sha256:aa4c29150042fd4e9efc30810bc5413a16a442b75fa16bef879651016ca8497e"},
+    {file = "opentelemetry_api-1.7.1-py3-none-any.whl", hash = "sha256:01f3129ca2797a98c7a032e1fdf24650a1cab506666b33a5974618724e262c78"},
 ]
 opentelemetry-exporter-otlp = [
-    {file = "opentelemetry-exporter-otlp-1.6.2.tar.gz", hash = "sha256:cd1b7843a1094b5a299fb4d8f6c77fc288e48f0b35ac6112b7951deb41f911dc"},
-    {file = "opentelemetry_exporter_otlp-1.6.2-py3-none-any.whl", hash = "sha256:ab68214a22855bdbd4259a4ffac0e68668d141d0a4fad603866720a01fb87b4a"},
+    {file = "opentelemetry-exporter-otlp-1.7.1.tar.gz", hash = "sha256:f369b9c9b0f64c5967c553430fc1b1acab9606a3d6c3ba8907a1a0b56f1767da"},
+    {file = "opentelemetry_exporter_otlp-1.7.1-py3-none-any.whl", hash = "sha256:9ea18fdd32dcfe872c7a0c50ad58833d61d2b0b7595ee3366bc6aff77054bfc5"},
 ]
 opentelemetry-exporter-otlp-proto-grpc = [
-    {file = "opentelemetry-exporter-otlp-proto-grpc-1.6.2.tar.gz", hash = "sha256:de92c822183f25aeff1be25e636172374efd0f878da41eb787dfd42546e5b63c"},
-    {file = "opentelemetry_exporter_otlp_proto_grpc-1.6.2-py3-none-any.whl", hash = "sha256:3d3c5d7fce654982274c056cf1d78cd212180c192050951a79f3989c1a97b60f"},
+    {file = "opentelemetry-exporter-otlp-proto-grpc-1.7.1.tar.gz", hash = "sha256:cf8c8cdeaea9c3438a1faff94b00cdac2dfcb672a0081c4334ffe6bdb5a40b55"},
+    {file = "opentelemetry_exporter_otlp_proto_grpc-1.7.1-py3-none-any.whl", hash = "sha256:272f80b7bd5ab925dc49cfe8427e835911e62ab793b703ba0817686e50532046"},
 ]
 opentelemetry-exporter-otlp-proto-http = [
-    {file = "opentelemetry-exporter-otlp-proto-http-1.6.2.tar.gz", hash = "sha256:14266eaa6756a4dea173563288ff8c7ae56c10ca6271096819ff7a9502297290"},
-    {file = "opentelemetry_exporter_otlp_proto_http-1.6.2-py3-none-any.whl", hash = "sha256:1d3b7d41fff6c43e1eb23c67fb9113f666570f94247ed1211a39249809456206"},
+    {file = "opentelemetry-exporter-otlp-proto-http-1.7.1.tar.gz", hash = "sha256:f79d6dddfed6f454975311fa11d819f1f418557a7546d87ec9d3b184adcf9804"},
+    {file = "opentelemetry_exporter_otlp_proto_http-1.7.1-py3-none-any.whl", hash = "sha256:c167fd418032994009c241189e18dab8abe1246b4ff2b98f7f16acaba6afdf33"},
 ]
 opentelemetry-proto = [
-    {file = "opentelemetry-proto-1.6.2.tar.gz", hash = "sha256:e85192583c798c2abee976f5d7cdb7d3fcf7a039f30c97a8313f59116c0a311e"},
-    {file = "opentelemetry_proto-1.6.2-py3-none-any.whl", hash = "sha256:f0fdba4b987ce338bf92e688c93f3debef641741dc25d6b114c68b60ba9080d2"},
+    {file = "opentelemetry-proto-1.7.1.tar.gz", hash = "sha256:fadb617947e2567740f8e92ae8f4564c5d8bfb2816dd34b19ca3efcf5eaa0806"},
+    {file = "opentelemetry_proto-1.7.1-py3-none-any.whl", hash = "sha256:ec0737f0277dfe3f1eac4cb0db277278573f7b071cf3389f1d9d01e3d3cfb465"},
 ]
 opentelemetry-sdk = [
-    {file = "opentelemetry-sdk-1.6.2.tar.gz", hash = "sha256:223a73aff23a07655378d74b9ec8aa2fb412a36be538b1c7179619194cc02b6e"},
-    {file = "opentelemetry_sdk-1.6.2-py3-none-any.whl", hash = "sha256:68d29873212184b975dcd280737b451355bd249af0ee27977faf85a0d5cf615e"},
+    {file = "opentelemetry-sdk-1.7.1.tar.gz", hash = "sha256:80f532dd5b293e80e563312977434faac59a9931fdd44761f6b34d3578f796ff"},
+    {file = "opentelemetry_sdk-1.7.1-py3-none-any.whl", hash = "sha256:3344ec6e0fef7aaef034cfe284fb0b75615d40fa988f81caba7aa9c1e7e28cb6"},
 ]
 opentelemetry-semantic-conventions = [
-    {file = "opentelemetry-semantic-conventions-0.25b2.tar.gz", hash = "sha256:f59a06acc3258b29b9048c4c83ea72032bf7c3c9607a7dfa6bf40593f8fbdd91"},
-    {file = "opentelemetry_semantic_conventions-0.25b2-py3-none-any.whl", hash = "sha256:c428c7c8df4dd0959966f53df755a760cc63a4b3c3bc4174e648b031e32c48b5"},
+    {file = "opentelemetry-semantic-conventions-0.26b1.tar.gz", hash = "sha256:edce22d1c320f896cccb6994f8467594a7cdc47a84156bc34485f2f0e5adce8f"},
+    {file = "opentelemetry_semantic_conventions-0.26b1-py3-none-any.whl", hash = "sha256:cba9799d26c8183f869c84cff1f217bb712c9306d05dc346f50032916e8d7065"},
 ]
 packaging = [
     {file = "packaging-21.2-py3-none-any.whl", hash = "sha256:14317396d1e8cdb122989b916fa2c7e9ca8e2be9e8060a6eff75b6b7b4d8a7e0"},
@@ -1471,6 +1487,14 @@ toml = [
 tomli = [
     {file = "tomli-1.2.2-py3-none-any.whl", hash = "sha256:f04066f68f5554911363063a30b108d2b5a5b1a010aa8b6132af78489fe3aade"},
     {file = "tomli-1.2.2.tar.gz", hash = "sha256:c6ce0015eb38820eaf32b5db832dbc26deb3dd427bd5f6556cf0acac2c214fee"},
+]
+types-python-dateutil = [
+    {file = "types-python-dateutil-2.8.2.tar.gz", hash = "sha256:84a1b09fae40d61c01f450ea87cd594201bbe8511a64fecbe433051b87fb582c"},
+    {file = "types_python_dateutil-2.8.2-py3-none-any.whl", hash = "sha256:74d7d3a79ff07e7921472cf252b7fe4ffda5dc35570b9d3c7c4908761e9f9b87"},
+]
+types-setuptools = [
+    {file = "types-setuptools-57.4.2.tar.gz", hash = "sha256:5499a0f429281d1a3aa9494c79b6599ab356dfe6d393825426bc749e48ea1bf8"},
+    {file = "types_setuptools-57.4.2-py3-none-any.whl", hash = "sha256:9c96aab47fdcf066fef83160b2b9ddbfab3d2c8fdc89053579d0b306837bf22a"},
 ]
 typing-extensions = [
     {file = "typing_extensions-3.10.0.2-py2-none-any.whl", hash = "sha256:d8226d10bc02a29bcc81df19a26e56a9647f8b0a6d4a83924139f4a8b01f17b7"},

@@ -139,6 +139,10 @@ class TkslVisitor(ParseTreeVisitor):
     def visitF_name(self, ctx: TkslParser.F_nameContext):
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by TkslParser#named_obj.
+    def visitNamed_obj(self, ctx: TkslParser.Named_objContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by TkslParser#AnonStruct.
     def visitAnonStruct(self, ctx: TkslParser.AnonStructContext):
         return self.visitChildren(ctx)

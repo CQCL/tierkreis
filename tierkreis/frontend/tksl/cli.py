@@ -11,6 +11,7 @@ from typing import (
     TextIO,
     cast,
 )
+import re
 
 import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
@@ -19,6 +20,7 @@ from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.types import (
     GraphType,
+    StructType,
     TierkreisType,
     TierkreisTypeErrors,
 )
@@ -174,16 +176,23 @@ def _arg_str(args: Dict[str, TierkreisType], order: Sequence[str]) -> str:
     return ", ".join(f"{chalk.yellow(port)}: {str(args[port])}" for port in order)
 
 
+PORT_RE = re.compile(r"([\w]+):")
+
+
 def _print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[str]):
     print(chalk.bold(f"Namespace: {namespace}"))
     print()
-    print(chalk.bold(f"Aliases"))
+    print(chalk.bold(f"Aliases and Struct definitions"))
 
-    alias_strings = [
-        (alias, str(type_.body)) for alias, type_ in sig[namespace].aliases.items()
-    ]
-
-    for alias, alias_string in alias_strings:
+    for alias, type_scheme in sig[namespace].aliases.items():
+        type_ = type_scheme.body
+        if isinstance(type_, StructType):
+            alias_string = type_.anon_name()
+            alias_string = PORT_RE.sub(
+                lambda match: chalk.yellow(match.group()), alias_string
+            )
+        else:
+            alias_string = str(type_)
         print(f"{chalk.bold.magenta(alias)} = {alias_string}\n")
 
     print()
@@ -196,10 +205,11 @@ def _print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[s
         graph_type = cast(GraphType, func.type_scheme.body)
         irest = graph_type.inputs.rest
         orest = graph_type.outputs.rest
-        irest = f", #: {irest}" if irest else ""
-        orest = f", #: {orest}" if orest else ""
+        irest = f", {chalk.yellow('#')}: {irest}" if irest else ""
+        orest = f", {chalk.yellow('#')}: {orest}" if orest else ""
         print(
-            f"{chalk.bold.blue(name)}({_arg_str(graph_type.inputs.content, func.input_order)}{irest})"
+            f"{chalk.bold.blue(name)}"
+            f"({_arg_str(graph_type.inputs.content, func.input_order)}{irest})"
             f" -> ({_arg_str(graph_type.outputs.content, func.output_order)}{orest})"
         )
         if func.docs:

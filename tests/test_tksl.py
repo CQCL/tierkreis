@@ -1,14 +1,13 @@
-from typing import Optional, Union, Callable
 from dataclasses import astuple
 from pathlib import Path
-import pytest
-import asyncio
-from tierkreis.core.values import IntValue, OptionValue
+from typing import Callable, Optional, Union
 
-from tierkreis.frontend import RuntimeClient
-from tierkreis.frontend.tksl import parse_tksl
+import pytest
 from tierkreis import TierkreisGraph
 from tierkreis.core.protos.tierkreis.graph import Graph
+from tierkreis.core.values import IntValue
+from tierkreis.frontend import RuntimeClient
+from tierkreis.frontend.tksl import parse_tksl
 
 
 def _get_source(path: Union[str, Path]) -> str:

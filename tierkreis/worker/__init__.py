@@ -33,6 +33,7 @@ from tierkreis.core.types import (
     Kind,
     Row,
     StarKind,
+    StructType,
     TierkreisType,
     TypeScheme,
 )
@@ -91,6 +92,14 @@ class Namespace:
 
     def add_alias(self, name, type_: Type) -> Type:
         self.aliases[name] = TypeScheme({}, [], TierkreisType.from_python(type_))
+        return type_
+
+    def add_named_struct(self, name, type_: Type) -> Type:
+        tk_type = TierkreisType.from_python(type_)
+        if not isinstance(tk_type, StructType):
+            raise ValueError(f"{type_} cannot be converted to a Tierkreis Struct Type.")
+        tk_type.name = name
+        self.aliases[name] = TypeScheme({}, [], tk_type)
         return type_
 
     def function(

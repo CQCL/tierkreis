@@ -23,7 +23,6 @@ from tierkreis.core.types import (
     StringType,
     StructType,
     TierkreisType,
-    TypeScheme,
     VecType,
 )
 from tierkreis.core.values import (
@@ -122,16 +121,23 @@ class TkslFileVisitor(TkslVisitor):
         noderef, _ = self.context.output_vars[var_name]
         return NodePort(noderef, port_name)
 
+    def visitNamed_obj(self, ctx: TkslParser.Named_objContext) -> tuple[str, str]:
+        name = ctx.name.text
+        namespace = ctx.namespace.text if ctx.ID(1) else ""
+
+        return namespace, name
+
     def visitF_name(
         self, ctx: TkslParser.F_nameContext
     ) -> Tuple[str, FunctionDefinition]:
-        func_name = ctx.func_name.text
-        if ctx.ID(1):
-            namespace = ctx.namespace.text
+        namespace, func_name = self.visitNamed_obj(ctx.named_obj())
+        if namespace:
+            pass
         elif func_name in self.context.use_defs:
             namespace = self.context.use_defs[func_name]
         else:
             namespace = "builtin"
+
         try:
             tkfunc = self.sig[namespace].functions[func_name]
             func_name = tkfunc.name
@@ -455,8 +461,23 @@ class TkslFileVisitor(TkslVisitor):
             g_type = self.visitGraph_type(ctx.graph_type()).graph_type
             assert g_type is not None
             return g_type
-        if ctx.ID():
-            return self.context.aliases[str(ctx.ID())]
+        if ctx.named_obj():
+            namespace, name = self.visitNamed_obj(ctx.named_obj())
+            if not namespace:
+                if name in self.context.aliases:
+                    return self.context.aliases[name]
+
+                if name in self.context.use_defs:
+                    namespace = self.context.use_defs[name]
+
+            namespace_defs = self.sig[namespace]
+            try:
+                return namespace_defs.aliases[name].body
+            except KeyError as e:
+                raise TkslCompileException(
+                    f"Type {name} not found in namespace {namespace}"
+                ) from e
+
         raise TkslCompileException(f"Unknown type: {ctx.getText()}")
 
     def visitDeclaration(self, ctx: TkslParser.DeclarationContext) -> None:

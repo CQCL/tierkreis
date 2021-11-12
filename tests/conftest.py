@@ -3,9 +3,9 @@ from typing import AsyncIterator
 
 import pytest
 
-from . import LOCAL_SERVER_PATH
-
 from tierkreis.frontend import RuntimeClient, local_runtime, DockerRuntime
+
+from . import LOCAL_SERVER_PATH
 
 
 def pytest_addoption(parser):

@@ -4,17 +4,16 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type, cast
 
 import pytest
-
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
+from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import StructValue, VecValue
 from tierkreis.frontend import RuntimeClient, local_runtime
 from tierkreis.frontend.tksl import parse_tksl
-from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
-from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import IntType, NoneType, TierkreisTypeErrors
 
-from . import LOCAL_SERVER_PATH, release_tests, REASON
+from . import LOCAL_SERVER_PATH, REASON, release_tests
 
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
@@ -193,15 +192,22 @@ async def test_execute_circuit(bell_circuit: str, client: RuntimeClient) -> None
     )
     tg.set_outputs(out=execute_node)
 
-    outputs = (
-        await client.run_graph(
-            tg,
-            {"circuits": [bell_circuit, bell_circuit], "shots": [10, 20]},
-        )
-    )["out"].to_python(List[Tuple[Dict[str, float], int]])
+    outputs = cast(
+        VecValue,
+        (
+            await client.run_graph(
+                tg,
+                {"circuits": [bell_circuit, bell_circuit], "shots": [10, 20]},
+            )
+        )["out"],
+    )
 
-    assert outputs[0][1] == 10
-    assert outputs[1][1] == 20
+    assert (
+        cast(StructValue, outputs.values[0]).values["n_samples"].try_autopython() == 10
+    )
+    assert (
+        cast(StructValue, outputs.values[1]).values["n_samples"].try_autopython() == 20
+    )
 
 
 @pytest.mark.asyncio

@@ -1,5 +1,6 @@
 
-use pytket::{compile_circuits, substitute_symbols, execute, load_qasm, load_circuit_json};
+use pytket::{compile_circuits, substitute_symbols, execute, load_qasm,
+load_circuit_json, Circuit};
 
 // not needed anymore
 Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,Int>>) {
@@ -19,11 +20,10 @@ Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,I
 
 }
 
-type SampledDist = Pair<Map<Str, Float>, Int>;
 
-Graph main() -> (res: SampledDist) {
+Graph main() -> (res: Vector<pytket::SampledDistribution>) {
     // a full circuit literal
-    const c1 = Struct {
+    const c1 = Circuit {
         implicit_permutation: [Struct {
             y: Struct {
                 index: [0],

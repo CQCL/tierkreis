@@ -23,7 +23,8 @@ type_:
     | TYPE_STRUCT '<' fields = f_param_list '>'
     | TYPE_OPTION '<' inner = type_ '>'
     | graph_type
-    | ID;
+    | named_obj;
+
 graph_type:
     '(' inputs = f_param_list ')' '->' '(' outputs = f_param_list ')';
 f_param_list: (par_list += f_param (',' par_list += f_param)*)?;
@@ -74,7 +75,8 @@ const_:
     | opt_const
     | vec_const;
 
-f_name: func_name = ID | namespace = ID '::' func_name = ID;
+f_name: named_obj;
+named_obj: name = ID | namespace = ID '::' name = ID;
 
 struct_id: TYPE_STRUCT # AnonStruct | ID # NamedStruct;
 

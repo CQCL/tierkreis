@@ -1,5 +1,5 @@
 import typing
-from typing import cast
+from typing import Optional, cast
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass, is_dataclass
 from uuid import UUID
@@ -90,15 +90,11 @@ class TierkreisType(ABC):
                 inputs=Row.from_python(args[0], visited_types),
                 outputs=Row.from_python(args[1], visited_types),
             )
-        elif type_origin is None and (
-            (TierkreisStruct in type_.__bases__) or is_dataclass(type_)
-        ):
-            result = StructType(shape=Row.from_python(type_, visited_types))
-
-        elif type_origin is not None and (
-            (TierkreisStruct in type_origin.__bases__) or is_dataclass(type_origin)
-        ):
-            result = StructType(shape=Row.from_python(type_, visited_types))
+        elif (TierkreisStruct in type_.__bases__) or is_dataclass(type_):
+            actual_type = type_origin or type_
+            result = StructType(
+                shape=Row.from_python(actual_type, visited_types), name=type_name
+            )
         elif type_ is UUID:
             result = StringType()
         else:
@@ -141,8 +137,10 @@ class TierkreisType(ABC):
             element = TierkreisType.from_proto(cast(pg.Type, out_type))
             result = VecType(element)
         elif name == "struct":
-            row = cast(pg.RowType, out_type)
-            result = StructType(Row.from_proto_rowtype(row))
+            struct_type = cast(pg.StructType, out_type)
+            result = StructType(
+                Row.from_proto_rowtype(struct_type.shape), struct_type.name or None
+            )
         elif name == "map":
             map_type = cast(pg.PairType, out_type)
             key = TierkreisType.from_proto(map_type.first)
@@ -375,12 +373,18 @@ class GraphType(TierkreisType):
 @dataclass
 class StructType(TierkreisType):
     shape: Row
+    name: Optional[str] = None
 
     def to_proto(self) -> pg.Type:
-        return pg.Type(struct=self.shape.to_proto().row)
+        row = self.shape.to_proto().row
+        struct_type = pg.StructType(row, self.name) if self.name else pg.StructType(row)
+        return pg.Type(struct=struct_type)
+
+    def anon_name(self) -> str:
+        return f"Struct<{self.shape.to_tksl()}>"
 
     def __str__(self) -> str:
-        return f"Struct<{self.shape.to_tksl()}>"
+        return self.name or self.anon_name()
 
     def children(self) -> list["TierkreisType"]:
         return self.shape.children()

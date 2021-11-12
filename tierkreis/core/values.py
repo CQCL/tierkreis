@@ -344,7 +344,7 @@ class PairValue(TierkreisValue):
         return f"Pair({str(self.first)}, {str(self.second)})"
 
     def to_tksl(self) -> str:
-        return f"Pair({self.first.to_tksl()}, {self.second.to_tksl()})"
+        return f"({self.first.to_tksl()}, {self.second.to_tksl()})"
 
 
 @dataclass(frozen=True)

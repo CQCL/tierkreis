@@ -1,7 +1,7 @@
 import copy
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, cast
 
 from antlr4 import CommonTokenStream, InputStream  # type: ignore
 from antlr4.error.ErrorListener import ErrorListener  # type: ignore
@@ -27,6 +27,7 @@ from tierkreis.core.types import (
 )
 from tierkreis.core.values import (
     FloatValue,
+    PairValue,
     TierkreisValue,
     IntValue,
     BoolValue,
@@ -400,6 +401,12 @@ class TkslFileVisitor(TkslVisitor):
                 if vec_ctx.elems[0].getText() == "":
                     return VecValue([])
             return VecValue(list(map(self.visitConst_, vec_ctx.elems)))
+
+        if ctx.pair_const():
+            pair_ctx = cast(TkslParser.Pair_constContext, ctx.pair_const())
+            return PairValue(
+                self.visitConst_(pair_ctx.first), self.visitConst_(pair_ctx.second)
+            )
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
             fields = dict(map(self.visitConst_assign, struct_ctx.fields))

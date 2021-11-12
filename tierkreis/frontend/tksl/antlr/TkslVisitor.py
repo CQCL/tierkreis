@@ -123,6 +123,10 @@ class TkslVisitor(ParseTreeVisitor):
     def visitVec_const(self, ctx: TkslParser.Vec_constContext):
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by TkslParser#pair_const.
+    def visitPair_const(self, ctx: TkslParser.Pair_constContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by TkslParser#Some.
     def visitSome(self, ctx: TkslParser.SomeContext):
         return self.visitChildren(ctx)

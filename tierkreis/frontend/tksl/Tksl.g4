@@ -64,6 +64,7 @@ macro_const:
     ID '!' '(' cargs += const_ (',' cargs += const_)* ')';
 
 vec_const: '[' (elems += const_ (',' elems += const_)*)? ']';
+pair_const: '(' first = const_ ',' second = const_ ')';
 opt_const: SOME '(' const_ ')' #Some | NONE #None;
 const_:
     | bool_token
@@ -73,6 +74,7 @@ const_:
     | struct_const
     | macro_const
     | opt_const
+    | pair_const
     | vec_const;
 
 f_name: named_obj;

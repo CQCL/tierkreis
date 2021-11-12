@@ -1,0 +1,3 @@
+Graph main() -> (first: Int, second: Str) {
+    output (unpack_pair((2, "asdf")));
+}

@@ -1,6 +1,5 @@
 """Send requests to tierkreis server to execute a graph."""
 import asyncio
-import copy
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
@@ -10,7 +9,6 @@ from typing import (
     Awaitable,
     Callable,
     Dict,
-    Optional,
     Type,
     TypeVar,
     cast,
@@ -22,7 +20,7 @@ import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import TierkreisGraph
-from tierkreis.core.types import TierkreisTypeErrors
+from tierkreis.core.types import TierkreisTypeErrors, TypeScheme
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
 
 if TYPE_CHECKING:
@@ -46,40 +44,13 @@ class RuntimeHTTPError(Exception):
         )
 
 
-NamespaceDict = Dict[str, TierkreisFunction]
-RuntimeSignature = Dict[str, NamespaceDict]
+@dataclass
+class NamespaceDefs:
+    functions: Dict[str, TierkreisFunction]
+    aliases: Dict[str, TypeScheme]
 
 
-class _TypeCheckContext:
-    """Context manger for type checked graph building."""
-
-    @dataclass
-    class TypeInferenceError(Exception):
-        """Error when context exit type inference is not succesful."""
-
-        errors: TierkreisTypeErrors
-
-        def __str__(self) -> str:
-            return f"Type inference of built graph failed with message:\n {self.errors}"
-
-    def __init__(
-        self, client: "RuntimeClient", initial_graph: Optional[TierkreisGraph] = None
-    ) -> None:
-        self.client = client
-        self.graph = (
-            TierkreisGraph() if initial_graph is None else copy.deepcopy(initial_graph)
-        )
-
-    async def __aenter__(self) -> TierkreisGraph:
-        return self.graph
-
-    async def __aexit__(self, exc_type, exc_value, traceback) -> None:
-        # exeception info not currently used
-        # but leaves the option to add context to errors using runtime
-        try:
-            self.graph._graph = (await self.client.type_check_graph(self.graph))._graph
-        except TierkreisTypeErrors as err:
-            raise self.TypeInferenceError(err)
+RuntimeSignature = Dict[str, NamespaceDefs]
 
 
 @dataclass(frozen=True)
@@ -236,15 +207,23 @@ class RuntimeClient:
 
 
 def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
-    namespaces: Dict[str, Dict[str, TierkreisFunction]] = dict()
+    namespaces: Dict[str, NamespaceDefs] = dict()
 
     for name, entry in pr_sig.functions.items():
         namespace, fname = name.split("/", 2)
         func = TierkreisFunction.from_proto(entry)
         if namespace in namespaces:
-            namespaces[namespace][fname] = func
+            namespaces[namespace].functions[fname] = func
         else:
-            namespaces[namespace] = {fname: func}
+            namespaces[namespace] = NamespaceDefs({fname: func}, {})
+
+    for name, entry in pr_sig.aliases.items():
+        namespace, alias_name = name.split("/", 2)
+        type_ = TypeScheme.from_proto(entry)
+        if namespace in namespaces:
+            namespaces[namespace].aliases[alias_name] = type_
+        else:
+            namespaces[namespace] = NamespaceDefs({}, {alias_name: type_})
 
     return namespaces
 

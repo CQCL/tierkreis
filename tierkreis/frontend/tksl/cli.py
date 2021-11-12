@@ -3,14 +3,25 @@ import sys
 import traceback
 from functools import wraps
 from pathlib import Path
-from typing import AsyncContextManager, Dict, Optional, TextIO, cast
+from typing import (
+    AsyncContextManager,
+    Dict,
+    Optional,
+    Sequence,
+    TextIO,
+    cast,
+)
 
 import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from yachalk import chalk
 from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
-from tierkreis.core.types import TierkreisType, TierkreisTypeErrors
+from tierkreis.core.types import (
+    GraphType,
+    TierkreisType,
+    TierkreisTypeErrors,
+)
 from tierkreis.frontend import DockerRuntime, RuntimeClient, local_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature
@@ -159,34 +170,37 @@ async def run(ctx: click.Context, source: TextIO):
             print(chalk.red(traceback.format_exc(0)), file=sys.stderr)
 
 
-def _arg_str(args: Dict[str, TierkreisType]) -> str:
-    return ", ".join(
-        f"{chalk.yellow(port)}: {str(_type)}" for port, _type in args.items()
-    )
+def _arg_str(args: Dict[str, TierkreisType], order: Sequence[str]) -> str:
+    return ", ".join(f"{chalk.yellow(port)}: {str(args[port])}" for port in order)
 
 
 def _print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[str]):
     print(chalk.bold(f"Namespace: {namespace}"))
     print()
-    names_dict = sig[namespace]
+    print(chalk.bold(f"Aliases"))
+
+    alias_strings = [
+        (alias, str(type_.body)) for alias, type_ in sig[namespace].aliases.items()
+    ]
+
+    for alias, alias_string in alias_strings:
+        print(f"{chalk.bold.magenta(alias)} = {alias_string}\n")
+
+    print()
+    print(chalk.bold(f"Functions"))
+
+    names_dict = sig[namespace].functions
     func_names = [function] if function else list(names_dict.keys())
     for name in sorted(func_names):
         func = names_dict[name]
-        inputs = {
-            port: func.type_scheme.body.inputs.content[port]
-            for port in func.input_order
-        }
-        outputs = {
-            port: func.type_scheme.body.outputs.content[port]
-            for port in func.output_order
-        }
-        irest = func.type_scheme.body.inputs.rest
-        orest = func.type_scheme.body.outputs.rest
+        graph_type = cast(GraphType, func.type_scheme.body)
+        irest = graph_type.inputs.rest
+        orest = graph_type.outputs.rest
         irest = f", #: {irest}" if irest else ""
         orest = f", #: {orest}" if orest else ""
         print(
-            f"{chalk.bold.blue(name)}({_arg_str(inputs)}{irest})"
-            f" -> ({_arg_str(outputs)}{orest})"
+            f"{chalk.bold.blue(name)}({_arg_str(graph_type.inputs.content, func.input_order)}{irest})"
+            f" -> ({_arg_str(graph_type.outputs.content, func.output_order)}{orest})"
         )
         if func.docs:
             print(chalk.green(func.docs))
@@ -204,7 +218,7 @@ async def signature(
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         label = ctx.obj["runtime_label"]
-        print(chalk.bold(f"Functions available on runtime: {label}"))
+        print(chalk.bold(f"Runtime: {label}"))
         print()
         sig = await client.get_signature()
         namespaces = [namespace] if namespace else list(sig.keys())

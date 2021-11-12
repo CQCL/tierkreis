@@ -23,6 +23,7 @@ from tierkreis.core.types import (
     StringType,
     StructType,
     TierkreisType,
+    TypeScheme,
     VecType,
 )
 from tierkreis.core.values import (
@@ -35,6 +36,7 @@ from tierkreis.core.values import (
     StructValue,
     OptionValue,
 )
+from tierkreis.frontend.runtime_client import RuntimeSignature
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslParser import TkslParser  # type: ignore
 from tierkreis.frontend.tksl.antlr.TkslVisitor import TkslVisitor  # type: ignore
@@ -65,9 +67,7 @@ class FunctionDefinition:
 
 FuncDefs = Dict[str, Tuple[TierkreisGraph, FunctionDefinition]]
 PortMap = OrderedDict[str, Optional[TierkreisType]]
-Aliases = Dict[str, TierkreisType]
-NamespaceDict = Dict[str, TierkreisFunction]
-RuntimeSignature = Dict[str, NamespaceDict]
+Aliases = Dict[str, TypeScheme]
 
 
 class TkslCompileException(Exception):
@@ -133,7 +133,7 @@ class TkslFileVisitor(TkslVisitor):
         else:
             namespace = "builtin"
         try:
-            tkfunc = self.sig[namespace][func_name]
+            tkfunc = self.sig[namespace].functions[func_name]
             func_name = tkfunc.name
             return func_name, def_from_tkfunc(tkfunc)
         except KeyError as err:
@@ -227,7 +227,7 @@ class TkslFileVisitor(TkslVisitor):
         outport = self.visitThunkable_port(ctx.thunkable_port())[0]
         arglist = self.visitNamed_map(ctx.named_map()) if ctx.named_map() else {}
         eval_n = self.graph.add_node("builtin/eval", thunk=outport, **arglist)
-        return eval_n, def_from_tkfunc(self.sig["builtin"]["eval"])
+        return eval_n, def_from_tkfunc(self.sig["builtin"].functions["eval"])
 
     def visitCallMap(self, ctx: TkslParser.CallMapContext) -> None:
         target = ctx.target.text
@@ -348,7 +348,7 @@ class TkslFileVisitor(TkslVisitor):
         namespace = ctx.namespace.text
         names = self.visitUse_ids(ctx.use_ids())
         if names is None:
-            names = list(self.sig[namespace].keys())
+            names = list(self.sig[namespace].functions.keys())
         self.context.use_defs.update({name: namespace for name in names})
 
     def visitUse_ids(self, ctx: TkslParser.Use_idsContext) -> Optional[List[str]]:

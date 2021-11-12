@@ -80,14 +80,14 @@ async def test_switch(client: RuntimeClient):
     sig = await client.get_signature()
 
     switch = tk_g.add_node(
-        sig["builtin"]["switch"],
+        sig["builtin"].functions["switch"],
         if_true=tk_g.add_const(add_2_g),
         if_false=tk_g.add_const(add_3_g),
         pred=tk_g.input["flag"],
     )
 
     eval_node = tk_g.add_node(
-        sig["builtin"]["eval"], thunk=switch, number=tk_g.input["number"]
+        sig["builtin"].functions["eval"], thunk=switch, number=tk_g.input["number"]
     )
 
     tk_g.set_outputs(out=eval_node["output"])
@@ -269,10 +269,10 @@ def graph_from_func(func: TierkreisFunction) -> TierkreisGraph:
 @pytest.mark.asyncio
 async def test_vec_sequence(client: RuntimeClient) -> None:
     sig = await client.get_signature()
-    pop_g = graph_from_func(sig["builtin"]["pop"])
-    push_g = graph_from_func(sig["builtin"]["push"])
+    pop_g = graph_from_func(sig["builtin"].functions["pop"])
+    push_g = graph_from_func(sig["builtin"].functions["push"])
 
-    seq_g = graph_from_func(sig["builtin"]["sequence"])
+    seq_g = graph_from_func(sig["builtin"].functions["sequence"])
 
     outputs = await client.run_graph(seq_g, {"first": pop_g, "second": push_g})
 

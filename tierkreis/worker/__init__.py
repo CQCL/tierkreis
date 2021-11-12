@@ -27,7 +27,15 @@ import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import Constraint, GraphType, Kind, Row, StarKind, TypeScheme
+from tierkreis.core.types import (
+    Constraint,
+    GraphType,
+    Kind,
+    Row,
+    StarKind,
+    TierkreisType,
+    TypeScheme,
+)
 from tierkreis.core.values import StructValue, TierkreisValue
 
 tracer = opentelemetry.trace.get_tracer(__name__)
@@ -73,11 +81,17 @@ class Namespace:
     """Namespace containing Tierkreis Functions"""
 
     name: str
-    functions: Dict[str, Function]
+    functions: dict[str, Function]
+    aliases: dict[str, TypeScheme]
 
     def __init__(self, name: str):
         self.name = name
         self.functions = {}
+        self.aliases = {}
+
+    def add_alias(self, name, type_: Type) -> Type:
+        self.aliases[name] = TypeScheme({}, [], TierkreisType.from_python(type_))
+        return type_
 
     def function(
         self,
@@ -197,10 +211,12 @@ class Namespace:
 class Worker:
     """Worker server."""
 
-    functions: Dict[str, Function]
+    functions: dict[str, Function]
+    aliases: dict[str, TypeScheme]
 
     def __init__(self):
         self.functions = {}
+        self.aliases = {}
 
     def add_namespace(self, namespace: "Namespace"):
         """Add namespace of functions to workspace."""
@@ -208,6 +224,10 @@ class Worker:
             newname = f"{namespace.name}/{name}"
             function.declaration.name = newname
             self.functions[newname] = function
+
+        for (name, type_) in namespace.aliases.items():
+            newname = f"{namespace.name}/{name}"
+            self.aliases[newname] = type_
 
     def run(self, function: str, inputs: StructValue) -> Awaitable[StructValue]:
         """Run function."""
@@ -318,7 +338,12 @@ class SignatureServerImpl(ps.SignatureBase):
             for (function_name, function) in self.worker.functions.items()
         }
 
-        return ps.ListFunctionsResponse(functions=functions)
+        aliases = {
+            alias_name: type_scheme.to_proto()
+            for (alias_name, type_scheme) in self.worker.aliases.items()
+        }
+
+        return ps.ListFunctionsResponse(functions=functions, aliases=aliases)
 
 
 async def _event_recv_request(request: grpclib.events.RecvRequest):

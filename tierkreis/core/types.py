@@ -47,10 +47,11 @@ class TierkreisType(ABC):
             return seen
 
         try:
-            visited_types[type_] = VarType(name=type_.__name__)
+            type_name = type_.__name__
         except AttributeError as _e:
-            visited_types[type_] = VarType(name=str(type_))
+            type_name = str(type_)
 
+        visited_types[type_] = VarType(f"CyclicType({type_name})")
         type_origin = typing.get_origin(type_)
         result: TierkreisType
 
@@ -341,7 +342,7 @@ class Row(TierkreisType):
 
     def to_tksl(self) -> str:
         contentstr = ", ".join(
-            (f"{key}: {str(val)}" for key, val in self.content.items())
+            (f"{key}: {str(val)}" for key, val in sorted(self.content.items()))
         )
         reststr = f", #: {self.rest}" if self.rest else ""
 
@@ -424,7 +425,7 @@ class RowKind(Kind):
 class TypeScheme:
     variables: dict[str, Kind]
     constraints: list[Constraint]
-    body: GraphType
+    body: TierkreisType
 
     def to_proto(self) -> pg.TypeScheme:
         return pg.TypeScheme(
@@ -444,7 +445,7 @@ class TypeScheme:
         constraints = [
             Constraint.from_proto(pg_const) for pg_const in proto_tg.constraints
         ]
-        body = cast(GraphType, TierkreisType.from_proto(proto_tg.body))
+        body = TierkreisType.from_proto(proto_tg.body)
         return cls(variables, constraints, body)
 
 

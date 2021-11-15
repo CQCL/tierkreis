@@ -26,14 +26,14 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
 
         for i in range(0, n_even, 2):
             nod = tk_g.add_node(
-                "python_nodes/add",
+                "builtin/iadd",
                 a=current_outputs[i],
                 b=current_outputs[i + 1],
             )
             next_outputs.append(nod["value"])
         if len(current_outputs) > n_even:
             nod = tk_g.add_node(
-                "python_nodes/add",
+                "builtin/iadd",
                 a=next_outputs[-1],
                 b=current_outputs[n_even],
             )
@@ -65,7 +65,7 @@ async def test_nint_adder(client: RuntimeClient):
 def add_n_graph(increment: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
-    add_node = tk_g.add_node("python_nodes/add", a=increment, b=tk_g.input["number"])
+    add_node = tk_g.add_node("builtin/iadd", a=increment, b=tk_g.input["number"])
     tk_g.set_outputs(output=add_node)
 
     return tk_g

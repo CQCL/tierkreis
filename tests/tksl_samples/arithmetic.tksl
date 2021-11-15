@@ -1,0 +1,6 @@
+Graph main() -> (int: Int, flt: Float) {
+    output (
+        int: eq(ipow(imod(isub(idiv(imul(iadd(2, 3), 10), 5), 3), 5), 2), 4),
+        flt: eq(fpow(fmod(fsub(fdiv(fmul(fadd(2.0, 3.0), 10.0), 5.0), 3.0), 3.0), 0.5), 1.0)
+        );
+}

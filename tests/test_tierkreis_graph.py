@@ -14,7 +14,7 @@ def test_creation() -> None:
     tg = TierkreisGraph()
 
     add_func = TierkreisFunction(
-        name="python_nodes/add",
+        name="builtin/iadd",
         type_scheme=TypeScheme(
             variables={},
             constraints=[],

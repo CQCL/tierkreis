@@ -13,7 +13,7 @@ Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,I
         output (outp: pushed.vec,
                 first: pop1.vec,
                 second: pop2.vec,
-                counter: python_nodes::add(counter, -1));
+                counter: iadd(counter, -1));
     };
 
     output (zipped: looped.outp);

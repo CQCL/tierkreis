@@ -5,7 +5,7 @@ from typing import Callable, Optional, Union
 import pytest
 from tierkreis import TierkreisGraph
 from tierkreis.core.protos.tierkreis.graph import Graph
-from tierkreis.core.values import IntValue, StringValue
+from tierkreis.core.values import BoolValue, IntValue, StringValue
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import parse_tksl
 
@@ -144,3 +144,15 @@ async def test_pair_syntax(client: RuntimeClient) -> None:
 
     outputs = await client.run_graph(tg, {})
     assert outputs == {"first": IntValue(2), "second": StringValue("asdf")}
+
+
+@pytest.mark.asyncio
+async def test_arithmetic(client: RuntimeClient) -> None:
+    sig = await client.get_signature()
+
+    tg = parse_tksl(
+        _get_source(Path(__file__).parent / "tksl_samples/arithmetic.tksl"), sig
+    )
+
+    outputs = await client.run_graph(tg, {})
+    assert outputs == {"int": BoolValue(True), "flt": BoolValue(True)}

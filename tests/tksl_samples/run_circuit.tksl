@@ -5,7 +5,7 @@ load_circuit_json, Circuit};
 // not needed anymore
 Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,Int>>) {
     looped <- while (outp: [], first: l1, second: l2, counter: N) {
-        output (pred: python_nodes::less_than(0, counter));
+        output (pred: ilt(0, counter));
     } do {
         pop1 <- pop(first);
         pop2 <- pop(second);

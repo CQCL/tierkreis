@@ -1,5 +1,3 @@
-use python_nodes::less_than;
-
 Graph add2(x: Int) -> (y: Int) {
     output (y: iadd(x, 2));
 }
@@ -52,7 +50,7 @@ Graph main(v1: Int, v2: Pair<Int, Bool>) -> (o1: Int, o2:Int) {
 
     // loop with condition
     looped_total <- while (x: other_total.value) {
-        output (pred: less_than(x, 100));
+        output (pred: ilt(x, 100));
     } do {
         output (x: add5(x));
     };

@@ -476,14 +476,14 @@ class TkslFileVisitor(TkslVisitor):
 
                 if name in self.context.use_defs:
                     namespace = self.context.use_defs[name]
-
-            namespace_defs = self.sig[namespace]
-            try:
-                return namespace_defs.aliases[name].body
-            except KeyError as e:
-                raise TkslCompileException(
-                    f"Type {name} not found in namespace {namespace}"
-                ) from e
+            if namespace:
+                namespace_defs = self.sig[namespace]
+                try:
+                    return namespace_defs.aliases[name].body
+                except KeyError as e:
+                    raise TkslCompileException(
+                        f"Type {name} not found in namespace {namespace}"
+                    ) from e
 
         raise TkslCompileException(f"Unknown type: {ctx.getText()}")
 

@@ -155,4 +155,5 @@ async def test_arithmetic(client: RuntimeClient) -> None:
     )
 
     outputs = await client.run_graph(tg, {})
-    assert outputs == {"int": BoolValue(True), "flt": BoolValue(True)}
+    # each output should result in a logically true result
+    assert all(val.try_autopython() for val in outputs.values())

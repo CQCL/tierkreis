@@ -1,8 +1,7 @@
-use python_nodes::less_than;
 
 Graph main(array: Vector<Int>, len: Int) -> (out: Int) {
     total <- while (ar: array, sum: 0, counter: len) {
-        output (pred: less_than(0, counter));
+        output (pred: ilt(0, counter));
     } do {
         popped <- pop(ar);
         output (sum: iadd(sum, popped.item), ar: popped.vec, counter: iadd(counter, -1));

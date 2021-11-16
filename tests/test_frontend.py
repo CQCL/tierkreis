@@ -11,7 +11,7 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
 from tierkreis.core.values import StructValue, VecValue
 from tierkreis.frontend import RuntimeClient, local_runtime
-from tierkreis.frontend.tksl import parse_tksl
+from tierkreis.frontend.tksl import load_tksl_file
 
 from . import LOCAL_SERVER_PATH, REASON, release_tests
 
@@ -47,9 +47,11 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
 
 @pytest.mark.asyncio
 async def test_nint_adder(client: RuntimeClient):
-    with open(Path(__file__).parent / "tksl_samples/nint_adder.tksl") as f:
-        tksl_source = f.read()
-    tksl_g = parse_tksl(tksl_source, await client.get_signature())
+
+    tksl_g = load_tksl_file(
+        Path(__file__).parent / "tksl_samples/nint_adder.tksl",
+        await client.get_signature(),
+    )
 
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list), client)

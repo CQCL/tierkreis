@@ -1,18 +1,13 @@
 from dataclasses import astuple
 from pathlib import Path
-from typing import Callable, Optional, Union
+from typing import Callable, Optional
 
 import pytest
 from tierkreis import TierkreisGraph
 from tierkreis.core.protos.tierkreis.graph import Graph
-from tierkreis.core.values import BoolValue, IntValue, StringValue
+from tierkreis.core.values import IntValue, StringValue
 from tierkreis.frontend import RuntimeClient
-from tierkreis.frontend.tksl import parse_tksl
-
-
-def _get_source(path: Union[str, Path]) -> str:
-    with open(path) as f:
-        return f.read()
+from tierkreis.frontend.tksl import load_tksl_file
 
 
 def _auto_name_map(index_map: dict[int, int]) -> dict[str, str]:
@@ -85,9 +80,7 @@ async def test_parse_sample(
 ) -> None:
     sig = await client.get_signature()
 
-    tg = parse_tksl(
-        _get_source(Path(__file__).parent / f"tksl_samples/{source}.tksl"), sig
-    )
+    tg = load_tksl_file(Path(__file__).parent / f"tksl_samples/{source}.tksl", sig)
 
     _compare_graphs(tg, expected_gen(), _auto_name_map(rename_map))
 
@@ -98,9 +91,7 @@ async def test_parse_sample(
 async def test_parse_bigexample(client: RuntimeClient) -> None:
     sig = await client.get_signature()
 
-    tg = parse_tksl(
-        _get_source(Path(__file__).parent / "tksl_samples/antlr_sample.tksl"), sig
-    )
+    tg = load_tksl_file(Path(__file__).parent / "tksl_samples/antlr_sample.tksl", sig)
 
     tg = await client.type_check_graph(tg)
     assert len(tg.nodes()) == 24
@@ -116,9 +107,7 @@ async def test_parse_bigexample(client: RuntimeClient) -> None:
 async def test_parse_runcircuit(client: RuntimeClient) -> None:
     sig = await client.get_signature()
 
-    tg = parse_tksl(
-        _get_source(Path(__file__).parent / "tksl_samples/run_circuit.tksl"), sig
-    )
+    tg = load_tksl_file(Path(__file__).parent / "tksl_samples/run_circuit.tksl", sig)
 
     tg = await client.type_check_graph(tg)
     assert len(tg.nodes()) == 13
@@ -128,9 +117,7 @@ async def test_parse_runcircuit(client: RuntimeClient) -> None:
 async def test_parse_option(client: RuntimeClient) -> None:
     sig = await client.get_signature()
 
-    tg = parse_tksl(
-        _get_source(Path(__file__).parent / "tksl_samples/option.tksl"), sig
-    )
+    tg = load_tksl_file(Path(__file__).parent / "tksl_samples/option.tksl", sig)
 
     outputs = await client.run_graph(tg, {})
     assert outputs == {"some": IntValue(30), "none": IntValue(-1)}
@@ -140,7 +127,7 @@ async def test_parse_option(client: RuntimeClient) -> None:
 async def test_pair_syntax(client: RuntimeClient) -> None:
     sig = await client.get_signature()
 
-    tg = parse_tksl(_get_source(Path(__file__).parent / "tksl_samples/pair.tksl"), sig)
+    tg = load_tksl_file(Path(__file__).parent / "tksl_samples/pair.tksl", sig)
 
     outputs = await client.run_graph(tg, {})
     assert outputs == {"first": IntValue(2), "second": StringValue("asdf")}
@@ -150,9 +137,7 @@ async def test_pair_syntax(client: RuntimeClient) -> None:
 async def test_arithmetic(client: RuntimeClient) -> None:
     sig = await client.get_signature()
 
-    tg = parse_tksl(
-        _get_source(Path(__file__).parent / "tksl_samples/arithmetic.tksl"), sig
-    )
+    tg = load_tksl_file(Path(__file__).parent / "tksl_samples/arithmetic.tksl", sig)
 
     outputs = await client.run_graph(tg, {})
     # each output should result in a logically true result

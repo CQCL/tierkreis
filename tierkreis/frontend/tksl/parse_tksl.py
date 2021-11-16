@@ -1,7 +1,9 @@
 import copy
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, cast
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
+from pathlib import Path
+import re
 
 from antlr4 import CommonTokenStream, InputStream  # type: ignore
 from antlr4.error.ErrorListener import ErrorListener  # type: ignore
@@ -52,9 +54,17 @@ def _read_file(file_path: StringValue) -> StringValue:
         return StringValue(f.read())
 
 
+def _include(file_path: StringValue) -> TierkreisValue:
+    raise TkslCompileException(
+        "include! macro only used by preprocessing.\n"
+        "Hint: try using load_tksl_file instead of parse_tksl."
+    )
+
+
 MACRODEFS: Dict[str, Callable[..., TierkreisValue]] = {
     "circuit_json": _circuit_json,
     "read_file": _read_file,
+    "include": _include,
 }
 
 
@@ -502,10 +512,36 @@ class ThrowingErrorListener(ErrorListener):
         raise ex
 
 
+def _get_source(path: Union[str, Path]) -> str:
+    with open(path) as f:
+        return f.read()
+
+
+INCLUDE_RE = re.compile(r'include!\("([^\(\);]+)"\);')
+
+
+def _preprocessing(source_file: Union[str, Path]) -> str:
+    path = Path(source_file)
+    orig_source = _get_source(path)
+
+    def _include(match: re.Match) -> str:
+        with open(path.parent / str(match.group(1))) as f:
+            return f.read()
+
+    new_source = INCLUDE_RE.sub(_include, orig_source)
+    return new_source
+
+
+def load_tksl_file(
+    path: Union[str, Path], signature: Optional[RuntimeSignature] = None
+) -> TierkreisGraph:
+    return parse_tksl(_preprocessing(path), signature)
+
+
 def parse_tksl(
     source: str, signature: Optional[RuntimeSignature] = None
 ) -> TierkreisGraph:
-    """Parse a tksl source file and return the "main" graph.
+    """Parse a tksl source file (after preprocessing) and return the "main" graph.
 
     :param source: Source file as string
     :type source: str

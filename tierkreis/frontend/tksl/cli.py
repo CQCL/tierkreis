@@ -8,7 +8,6 @@ from typing import (
     Dict,
     Optional,
     Sequence,
-    TextIO,
     cast,
 )
 import re
@@ -27,7 +26,7 @@ from tierkreis.core.types import (
 from tierkreis.frontend import DockerRuntime, RuntimeClient, local_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature
-from tierkreis.frontend.tksl import parse_tksl
+from tierkreis.frontend.tksl import load_tksl_file
 
 LOCAL_SERVER_PATH = Path(__file__).parent / "../../../../target/debug/tierkreis-server"
 RUNTIME_LABELS = ["docker", "local", "myqos"]
@@ -41,9 +40,9 @@ def coro(f):
     return wrapper
 
 
-async def _parse(source: TextIO, client: RuntimeClient) -> TierkreisGraph:
+async def _parse(source: Path, client: RuntimeClient) -> TierkreisGraph:
     try:
-        return parse_tksl(source.read(), await client.get_signature())
+        return load_tksl_file(source, await client.get_signature())
     except ParseCancellationException as _parse_err:
         print(chalk.red(f"Parse error: {str(_parse_err)}"), file=sys.stderr)
         sys.exit(1)
@@ -53,8 +52,7 @@ async def _check_graph(
     source_path: Path, client_manager: AsyncContextManager[RuntimeClient]
 ) -> TierkreisGraph:
     async with client_manager as client:
-        with open(source_path, "r") as f:
-            tkg = await _parse(f, client)
+        tkg = await _parse(source_path, client)
         try:
             tkg = await client.type_check_graph(tkg)
         except TierkreisTypeErrors as _errs:
@@ -142,8 +140,7 @@ async def view(
         tkg = await _check_graph(source_path, ctx.obj["client_manager"])
     else:
         async with ctx.obj["client_manager"] as client:
-            with open(source_path, "r") as f:
-                tkg = await _parse(f, client)
+            tkg = await _parse(source_path, client)
     if inline:
         tkg = tkg.inline_boxes(recursive=recursive)
     tkg.name = source_path.stem
@@ -153,10 +150,10 @@ async def view(
 
 
 @cli.command()
-@click.argument("source", type=click.File("r"))
+@click.argument("source", type=click.Path(exists=True))
 @click.pass_context
 @coro
-async def run(ctx: click.Context, source: TextIO):
+async def run(ctx: click.Context, source: Path):
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         tkg = await _parse(source, client)

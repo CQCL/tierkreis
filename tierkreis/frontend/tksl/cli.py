@@ -76,6 +76,7 @@ async def cli(ctx: click.Context, runtime: str):
     if runtime == "myqos":
         client_manager = myqos_runtime(
             "tierkreistrr595bx-pr.uksouth.cloudapp.azure.com"
+            # "127.0.0.1", 8090, True
         )
     elif runtime == "docker":
         client_manager = DockerRuntime("cqc/tierkreis")

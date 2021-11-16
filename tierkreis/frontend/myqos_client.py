@@ -37,6 +37,6 @@ class MyqosClient(RuntimeClient):
 
 
 @asynccontextmanager
-async def myqos_runtime(host: str, port: int = 443):
-    async with Channel(host, port, ssl=True) as channel:
+async def myqos_runtime(host: str, port: int = 443, local_debug: bool = False):
+    async with Channel(host, port, ssl=(None if local_debug else True)) as channel:
         yield MyqosClient(channel)

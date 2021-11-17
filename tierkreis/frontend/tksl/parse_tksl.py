@@ -373,10 +373,10 @@ class TkslFileVisitor(TkslVisitor):
             return [name.text for name in ctx.names]
         return None
 
-    def visitStart(self, ctx: TkslParser.StartContext) -> TierkreisGraph:
+    def visitStart(self, ctx: TkslParser.StartContext) -> FuncDefs:
         _ = list(map(self.visit, ctx.decs))
 
-        return self.context.functions["main"][0]
+        return self.context.functions
 
     def visitStruct_id(self, ctx: TkslParser.Struct_idContext) -> Optional[str]:
         if ctx.TYPE_STRUCT():
@@ -533,21 +533,36 @@ def _preprocessing(source_file: Union[str, Path]) -> str:
 
 
 def load_tksl_file(
-    path: Union[str, Path], signature: Optional[RuntimeSignature] = None
+    path: Union[str, Path],
+    **kwargs,
 ) -> TierkreisGraph:
-    return parse_tksl(_preprocessing(path), signature)
+    """Load TierkreisGraph from a tksl file. Applies preprocessing before
+    parsing.
+    Keyword arguments are passed to parse_tksl
+
+    :param path: path to source file
+    :type path: Union[str, Path]
+    :return: Compiled tierkreis graph
+    :rtype: TierkreisGraph
+    """
+    return parse_tksl(_preprocessing(path), **kwargs)
 
 
 def parse_tksl(
-    source: str, signature: Optional[RuntimeSignature] = None
+    source: str,
+    signature: Optional[RuntimeSignature] = None,
+    function_name: str = "main",
 ) -> TierkreisGraph:
-    """Parse a tksl source file (after preprocessing) and return the "main" graph.
+    """Parse a tksl source file (after preprocessing) and return the "main"
+    graph by default.
 
     :param source: Source file as string
     :type source: str
     :param signature: Runtime signature if available, defaults to None
     :type signature: Optional[RuntimeSignature], optional
-    :return: Graph defined as "main" in source
+    :param function_name: Runtime signature if available, defaults to "main"
+    :type signature: str, optional
+    :return: Graph defined as <function_name> in source
     :rtype: TierkreisGraph
     """
     signature = signature or {}
@@ -561,4 +576,5 @@ def parse_tksl(
     parser.addErrorListener(ThrowingErrorListener())
 
     tree = parser.start()
-    return TkslFileVisitor(signature, Context()).visitStart(tree)
+    func_defs = TkslFileVisitor(signature, Context()).visitStart(tree)
+    return func_defs[function_name][0]

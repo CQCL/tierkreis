@@ -50,7 +50,7 @@ async def test_nint_adder(client: RuntimeClient):
 
     tksl_g = load_tksl_file(
         Path(__file__).parent / "tksl_samples/nint_adder.tksl",
-        await client.get_signature(),
+        signature=await client.get_signature(),
     )
 
     for in_list in ([1] * 5, list(range(5))):

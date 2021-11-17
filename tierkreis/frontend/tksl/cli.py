@@ -42,7 +42,7 @@ def coro(f):
 
 async def _parse(source: Path, client: RuntimeClient) -> TierkreisGraph:
     try:
-        return load_tksl_file(source, await client.get_signature())
+        return load_tksl_file(source, signature=await client.get_signature())
     except ParseCancellationException as _parse_err:
         print(chalk.red(f"Parse error: {str(_parse_err)}"), file=sys.stderr)
         sys.exit(1)

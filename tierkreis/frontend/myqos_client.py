@@ -29,14 +29,16 @@ class MyqosClient(RuntimeClient):
     """Runtime client for use with tierkreis hosted on mushroom.
     Attempts to auto load credentials from keyring."""
 
-    def __init__(self, channel: "Channel") -> None:
-        login, password = _get_myqos_creds()
+    def __init__(self, channel: "Channel", staging_creds: bool = False) -> None:
+        login, password = _get_myqos_creds(staging_creds)
         if not (login is None or password is None):
             listen(channel, SendRequest, _gen_auth_injector(login, password))
         super().__init__(channel)
 
 
 @asynccontextmanager
-async def myqos_runtime(host: str, port: int = 443, local_debug: bool = False):
+async def myqos_runtime(
+    host: str, port: int = 443, local_debug: bool = False, staging_creds: bool = False
+):
     async with Channel(host, port, ssl=(None if local_debug else True)) as channel:
-        yield MyqosClient(channel)
+        yield MyqosClient(channel, staging_creds)

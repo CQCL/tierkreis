@@ -67,7 +67,7 @@ async def _check_graph(
     "--runtime",
     "-R",
     type=click.Choice(RUNTIME_LABELS, case_sensitive=True),
-    default="local",
+    default="myqos",
 )
 @coro
 async def cli(ctx: click.Context, runtime: str):
@@ -75,7 +75,8 @@ async def cli(ctx: click.Context, runtime: str):
     ctx.obj["runtime_label"] = runtime
     if runtime == "myqos":
         client_manager = myqos_runtime(
-            "tierkreistrr595bx-pr.uksouth.cloudapp.azure.com"
+            "tierkreistrr595bx-pr.uksouth.cloudapp.azure.com",
+            staging_creds=True
             # "127.0.0.1", 8090, True
         )
     elif runtime == "docker":

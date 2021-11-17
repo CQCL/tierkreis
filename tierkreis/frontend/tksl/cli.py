@@ -16,6 +16,7 @@ import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from yachalk import chalk
 from tierkreis import TierkreisGraph
+from tierkreis.core.values import TierkreisValue
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.types import (
     GraphType,
@@ -25,7 +26,7 @@ from tierkreis.core.types import (
 )
 from tierkreis.frontend import DockerRuntime, RuntimeClient, local_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
-from tierkreis.frontend.runtime_client import RuntimeSignature
+from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
 from tierkreis.frontend.tksl import load_tksl_file
 
 LOCAL_SERVER_PATH = Path(__file__).parent / "../../../../target/debug/tierkreis-server"
@@ -56,7 +57,7 @@ async def _check_graph(
         try:
             tkg = await client.type_check_graph(tkg)
         except TierkreisTypeErrors as _errs:
-            print(chalk.red(traceback.format_exc(0)), file=sys.stderr)
+            _print_typeerrs(traceback.format_exc(0))
             sys.exit(1)
         return tkg
 
@@ -151,6 +152,18 @@ async def view(
     tierkreis_to_graphviz(tkg).render(view_path[: -len(ext)], format=ext[1:])
 
 
+def _print_outputs(outputs: dict[str, TierkreisValue]):
+    print(
+        "\n".join(
+            f"{chalk.bold.yellow(key)}: {val.to_tksl()}" for key, val in outputs.items()
+        )
+    )
+
+
+def _print_typeerrs(errs: str):
+    print(chalk.red(errs), file=sys.stderr)
+
+
 @cli.command()
 @click.argument("source", type=click.Path(exists=True))
 @click.pass_context
@@ -161,14 +174,67 @@ async def run(ctx: click.Context, source: Path):
         tkg = await _parse(source, client)
         try:
             outputs = await client.run_graph(tkg, {})
-            print(
-                "\n".join(
-                    f"{chalk.bold.yellow(key)}: {val.to_tksl()}"
-                    for key, val in outputs.items()
-                )
-            )
+            _print_outputs(outputs)
         except TierkreisTypeErrors as _errs:
             print(chalk.red(traceback.format_exc(0)), file=sys.stderr)
+
+
+@cli.command()
+@click.argument("source", type=click.Path(exists=True))
+@click.pass_context
+@coro
+async def submit(ctx: click.Context, source: Path):
+    async with ctx.obj["client_manager"] as client:
+        client = cast(RuntimeClient, client)
+        tkg = await _parse(source, client)
+        try:
+            task_handle = await client.start_task(tkg, {})
+            print(chalk.bold.yellow("Task id:"), task_handle.task_id)
+        except TierkreisTypeErrors as _errs:
+            _print_typeerrs(traceback.format_exc(0))
+
+
+@cli.command()
+@click.argument("task_id")
+@click.pass_context
+@coro
+async def retrieve(ctx: click.Context, task_id: str):
+    async with ctx.obj["client_manager"] as client:
+        client = cast(RuntimeClient, client)
+        outputs = await client.await_task(TaskHandle(task_id))
+        _print_outputs(outputs)
+
+
+@cli.command()
+@click.option(
+    "--task", default=None, type=click.STRING, help="Task id to report status for"
+)
+@click.pass_context
+@coro
+async def status(ctx: click.Context, task: Optional[str]):
+    async with ctx.obj["client_manager"] as client:
+        client = cast(RuntimeClient, client)
+        task_statuses = await client.list_tasks()
+
+        handles = [TaskHandle(task)] if task else list(task_statuses.keys())
+        try:
+            statuses = [task_statuses[handle] for handle in handles]
+        except KeyError:
+            print(chalk.red(f"Task with id {task} not found on runtime."))
+            sys.exit(1)
+        handle_ids = [handle.task_id for handle in handles]
+        id_width = len(handle_ids[0])
+        cell_format = "{:<{width}}"
+        print(
+            f"{chalk.bold(cell_format.format('Task ID', width=id_width))}"
+            f"  {chalk.bold('Status')}"
+        )
+        print()
+        for handle_id, status in zip(handle_ids, statuses):
+            print(
+                f"{cell_format.format(handle_id, width=id_width)}"
+                f"  {status or 'unknown'}"
+            )
 
 
 def _arg_str(args: Dict[str, TierkreisType], order: Sequence[str]) -> str:

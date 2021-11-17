@@ -146,7 +146,7 @@ class RuntimeClient:
         for task in decoded.tasks:
             status_name, _ = betterproto.which_one_of(task, "status")
 
-            if status_name is None:
+            if status_name is (None or ""):
                 status_name = "running"
 
             result[TaskHandle(task.id)] = status_name

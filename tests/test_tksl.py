@@ -154,3 +154,25 @@ async def test_arithmetic(client: RuntimeClient) -> None:
     outputs = await client.run_graph(tg, {})
     # each output should result in a logically true result
     assert all(val.try_autopython() for val in outputs.values())
+
+
+@pytest.mark.asyncio
+async def test_higher_order(client: RuntimeClient) -> None:
+    sig = await client.get_signature()
+
+    meat = load_tksl_file(
+        Path(__file__).parent / "tksl_samples/sandwich.tksl",
+        signature=sig,
+        function_name="meat",
+    )
+
+    meta_sandwich = load_tksl_file(
+        Path(__file__).parent / "tksl_samples/sandwich.tksl",
+        signature=sig,
+        function_name="meta_sandwich",
+    )
+
+    assert (await client.run_graph(meat, {"inp": 2.0}))["out"].try_autopython() == 4.0
+    assert (await client.run_graph(meta_sandwich, {"inp": 1.5}))[
+        "out"
+    ].try_autopython() == 5.0

@@ -1,0 +1,31 @@
+Graph sandwich(filling: (inp: Float) -> (out: Float), start: Float) -> (eat: Float) {
+    // f(g(x), y) = g(x+1) - 1
+
+    // pre
+    bread <- fadd(start, 1.0);
+
+    filled <- eval(thunk: filling, inp: bread);
+
+    // post
+    bread <- fsub(filled.out, 1.0);
+    output (bread);
+}
+
+Graph meat(inp: Float) -> (out: Float) {
+    // g(x) = 2x
+
+    output (fmul(inp, 2.0));
+}
+
+Graph meat_sandwich(inp: Float) -> (out: Float) {
+    // h(x) = f(g, x)
+    output (sandwich(meat, inp));
+}
+
+Graph meta_sandwich(inp: Float) -> (out: Float) {
+    output (sandwich(meat_sandwich, inp));
+}
+
+Graph main() -> (eat: Float) {
+    output (meta_sandwich(3.0));
+}

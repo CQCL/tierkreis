@@ -2,7 +2,7 @@
 
 import sys
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Awaitable, Optional, cast
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Coroutine, Optional, cast
 
 import grpclib
 import grpclib.events
@@ -67,10 +67,18 @@ class Worker:
 
     functions: dict[str, Function]
     aliases: dict[str, TypeScheme]
+    server: Server
+    callback: Optional[tuple[str, int]] = None
 
     def __init__(self):
         self.functions = {}
         self.aliases = {}
+        self.server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
+
+        # Attach event listener for tracing
+        self._add_request_listener(_event_recv_request)
+        # Attach event listener to pick up callback address
+        self._add_request_listener(self._extract_callback)
 
     def add_namespace(self, namespace: "Namespace"):
         """Add namespace of functions to workspace."""
@@ -93,18 +101,27 @@ class Worker:
         # See https://github.com/python/mypy/issues/5485
         return cast(Any, func).run(inputs)
 
-    async def start(self, port: Optional[str] = None):
-        """Start server."""
-        server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
+    async def _extract_callback(self, request: grpclib.events.RecvRequest):
+        if self.callback is None:
+            callback_host = str(request.metadata.get("tierkreis_callback_host"))  # type: ignore
+            callback_port = int(request.metadata.get("tierkreis_callback_port"))  # type: ignore
 
-        # Attach event listener for tracing
-        grpclib.events.listen(server, grpclib.events.RecvRequest, _event_recv_request)
+            self.callback = (callback_host, callback_port)
+
+    def _add_request_listener(
+        self,
+        listener: Callable[[grpclib.events.RecvRequest], Coroutine[Any, Any, None]],
+    ):
+        grpclib.events.listen(self.server, grpclib.events.RecvRequest, listener)
+
+    async def start(self, port: Optional[int] = None):
+        """Start server."""
 
         if port:
-            await server.start(port=int(port))
+            await self.server.start(port=port)
 
             print(f"Started worker server on port: {port}", flush=True)
-            await server.wait_closed()
+            await self.server.wait_closed()
 
         else:
             with TemporaryDirectory() as socket_dir:
@@ -112,7 +129,7 @@ class Worker:
                 socket_path = f"{socket_dir}/python_worker.sock"
 
                 # Start the python worker gRPC server and bind to the unix domain socket
-                await server.start(path=socket_path)
+                await self.server.start(path=socket_path)
 
                 # Print the path of the unix domain socket to stdout so the runtime can
                 # connect to it. Without the flush the runtime did not receive the
@@ -120,7 +137,7 @@ class Worker:
                 print(socket_path)
                 sys.stdout.flush()
 
-                await server.wait_closed()
+                await self.server.wait_closed()
 
 
 class WorkerServerImpl(WorkerBase):

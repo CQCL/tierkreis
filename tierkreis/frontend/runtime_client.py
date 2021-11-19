@@ -15,6 +15,7 @@ from typing import (
 )
 
 import betterproto
+from grpclib.client import Channel
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
@@ -25,7 +26,7 @@ from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValu
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
-    from grpclib.client import Channel
+    from tierkreis.worker.worker import Worker
 
 
 @dataclass
@@ -204,6 +205,30 @@ class RuntimeClient:
 
         errors = cast(ps.TypeErrors, message)
         raise TierkreisTypeErrors.from_proto(errors)
+
+
+def with_runtime_client(worker: "Worker") -> Callable:
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        async def wrapped_func(*args, **kwargs):
+            if worker.callback is None:
+                raise RuntimeError(
+                    "Callback address has not been extracted from request."
+                )
+            async with Channel(*worker.callback) as channel:
+                args = (RuntimeClient(channel),) + args
+                return await func(*args, **kwargs)
+
+        try:
+            wrapped_func.__annotations__.pop("client")
+        except KeyError as e:
+            raise RuntimeError(
+                "Function to be wrapped must have"
+                " 'channel: RuntimeClient' as first argument"
+            ) from e
+        return wrapped_func
+
+    return decorator
 
 
 def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:

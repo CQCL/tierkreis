@@ -321,3 +321,12 @@ async def test_runtime_worker(client: RuntimeClient, mock_myqos_creds) -> None:
         workers=[Path("../workers/pytket_worker")],
     ) as runtime_server:
         await test_nint_adder(runtime_server)
+
+
+@pytest.mark.asyncio
+async def test_callback(client: RuntimeClient):
+    tg = TierkreisGraph()
+    idnode = tg.add_node("python_nodes/id_with_callback", value=2)
+    tg.set_outputs(out=idnode)
+
+    assert (await client.run_graph(tg, {}))["out"].try_autopython() == 2

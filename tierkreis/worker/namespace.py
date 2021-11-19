@@ -97,10 +97,10 @@ class Namespace:
         name: Optional[str] = None,
         constraints: Optional[List[Constraint]] = None,
         type_vars: Optional[Dict[Union[str, typing.TypeVar], Kind]] = None,
-    ):
+    ) -> Callable[[Callable], Callable]:
         """Decorator to mark python function as available Namespace."""
 
-        def decorator(func):
+        def decorator(func: Callable) -> Callable:
             func_name = name or func.__name__
 
             # Get input and output type hints

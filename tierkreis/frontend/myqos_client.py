@@ -3,8 +3,7 @@ from contextlib import asynccontextmanager
 
 import keyring
 
-from grpclib.events import listen
-from grpclib.events import SendRequest
+from grpclib.events import listen, SendRequest
 from grpclib.client import Channel
 
 from .runtime_client import RuntimeClient

@@ -19,7 +19,9 @@ Graph meat(inp: Float) -> (out: Float) {
 
 Graph meat_sandwich(inp: Float) -> (out: Float) {
     // h(x) = f(g, x)
-    output (sandwich(meat, inp));
+    made_sandwich <- partial(thunk: sandwich, filling: meat);
+    eaten <- made_sandwich.value(start: inp);
+    output (eaten.eat);
 }
 
 Graph meta_sandwich(inp: Float) -> (out: Float) {

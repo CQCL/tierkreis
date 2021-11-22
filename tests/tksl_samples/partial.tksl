@@ -1,0 +1,9 @@
+Graph add_x(x: Int, inp: Int) -> (out: Int) {
+    output (iadd(x, inp));
+}
+
+Graph main() -> (out: Int) {
+    partialed <- partial(thunk: add_x, x: iadd(1, 2));
+    evaled <- partialed.value(inp: 4);
+    output (out: evaled.out);
+}

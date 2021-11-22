@@ -8,12 +8,15 @@ from typing import (
     Any,
     Awaitable,
     Callable,
+    Coroutine,
     Dict,
     Type,
     TypeVar,
     cast,
 )
+from grpclib.events import SendRequest, listen
 
+import keyring
 import betterproto
 from grpclib.client import Channel
 import tierkreis.core.protos.tierkreis.graph as pg
@@ -23,6 +26,7 @@ from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors, TypeScheme
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
+from tierkreis.worker.worker import _KEYRING_SERVICE
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
@@ -219,6 +223,14 @@ class RuntimeClient:
         raise TierkreisTypeErrors.from_proto(errors)
 
 
+def _gen_auth_injector(login: str, pwd: str) -> Callable[["SendRequest"], Coroutine]:
+    async def _inject_auth(event: SendRequest) -> None:
+        event.metadata["token"] = login  # type: ignore
+        event.metadata["key"] = pwd  # type: ignore
+
+    return _inject_auth
+
+
 def with_runtime_client(worker: "Worker") -> Callable:
     def decorator(func: Callable) -> Callable:
         @wraps(func)
@@ -228,6 +240,10 @@ def with_runtime_client(worker: "Worker") -> Callable:
                     "Callback address has not been extracted from request."
                 )
             async with Channel(*worker.callback) as channel:
+                _token = keyring.get_password(_KEYRING_SERVICE, "token")
+                _key = keyring.get_password(_KEYRING_SERVICE, "key")
+                if not (_token is None or _key is None):
+                    listen(channel, SendRequest, _gen_auth_injector(_token, _key))
                 args = (RuntimeClient(channel),) + args
                 return await func(*args, **kwargs)
 

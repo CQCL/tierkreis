@@ -14,6 +14,8 @@ from grpclib.const import Status as StatusCode
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
 from opentelemetry.semconv.trace import SpanAttributes  # type: ignore
+import keyring
+
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
@@ -62,6 +64,9 @@ async def _event_recv_request(request: grpclib.events.RecvRequest):
     request.method_func = wrapped
 
 
+_KEYRING_SERVICE = "tierkreis_extracted"
+
+
 class Worker:
     """Worker server."""
 
@@ -79,6 +84,8 @@ class Worker:
         self._add_request_listener(_event_recv_request)
         # Attach event listener to pick up callback address
         self._add_request_listener(self._extract_callback)
+        # Attach event listener to extract auth credentials
+        self._add_request_listener(self._extract_auth)
 
     def add_namespace(self, namespace: "Namespace"):
         """Add namespace of functions to workspace."""
@@ -107,6 +114,14 @@ class Worker:
             callback_port = int(request.metadata.get("tierkreis_callback_port"))  # type: ignore
 
             self.callback = (callback_host, callback_port)
+
+    async def _extract_auth(self, request: grpclib.events.RecvRequest) -> None:
+        if keyring.get_password(_KEYRING_SERVICE, "token") is None:
+            token = request.metadata.pop("token", None)  # type: ignore
+            key = request.metadata.pop("key", None)  # type: ignore
+            if (token is not None) and (key is not None):
+                keyring.set_password(_KEYRING_SERVICE, "token", token)
+                keyring.set_password(_KEYRING_SERVICE, "key", key)
 
     def _add_request_listener(
         self,
@@ -138,6 +153,10 @@ class Worker:
                 sys.stdout.flush()
 
                 await self.server.wait_closed()
+
+        # clear any stored credentials
+        keyring.delete_password(_KEYRING_SERVICE, "token")
+        keyring.delete_password(_KEYRING_SERVICE, "key")
 
 
 class WorkerServerImpl(WorkerBase):

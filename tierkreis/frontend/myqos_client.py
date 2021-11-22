@@ -6,7 +6,7 @@ import keyring
 from grpclib.events import listen, SendRequest
 from grpclib.client import Channel
 
-from .runtime_client import RuntimeClient
+from .runtime_client import RuntimeClient, _gen_auth_injector
 
 
 def _get_myqos_creds(staging: bool = False) -> Tuple[Optional[str], Optional[str]]:
@@ -14,14 +14,6 @@ def _get_myqos_creds(staging: bool = False) -> Tuple[Optional[str], Optional[str
     login = keyring.get_password(keyring_service, "login")
     password = keyring.get_password(keyring_service, "password")
     return login, password
-
-
-def _gen_auth_injector(login: str, pwd: str) -> Callable[["SendRequest"], Coroutine]:
-    async def _inject_auth(event: SendRequest) -> None:
-        event.metadata["token"] = login  # type: ignore
-        event.metadata["key"] = pwd  # type: ignore
-
-    return _inject_auth
 
 
 class MyqosClient(RuntimeClient):

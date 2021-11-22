@@ -192,6 +192,18 @@ class RuntimeClient:
         outputs = await self.await_task(task)
         return outputs
 
+    def run_graph_block(
+        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
+    ) -> Dict[str, TierkreisValue]:
+        async def _run(
+            host: str,
+            port: int,
+        ):
+            async with Channel(host, port) as channel:
+                return await RuntimeClient(channel).run_graph(graph, py_inputs)
+
+        return async_to_sync(_run)(self._channel._host, self._channel._port)
+
     async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
         value = TierkreisValue.from_python(graph).to_proto()
 

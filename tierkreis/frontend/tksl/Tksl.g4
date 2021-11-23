@@ -35,10 +35,9 @@ instruction:
     | OUTPUT '(' arglist ')'                       # OutputCall
     | CONST const_name = ID '=' const_val = const_ # ConstDecl
     | target = ID '<-' IF '(' condition = outport ';' inputs = named_map? ')' if_block = code_block
-        ELSE else_block = code_block                                                                 # IfBlock
-    | target = ID '<-' WHILE '(' inputs = named_map? ')' condition = code_block DO body = code_block
-        # Loop
-    | source = port_label '->' target = port_label # Edge;
+        ELSE else_block = code_block                                      # IfBlock
+    | target = ID '<-' LOOP '(' inputs = named_map? ')' body = code_block # Loop
+    | source = port_label '->' target = port_label                        # Edge;
 
 node_inputs:
     f_name '(' arglist? ')'             # FuncCall
@@ -65,7 +64,7 @@ macro_const:
 
 vec_const: '[' (elems += const_ (',' elems += const_)*)? ']';
 pair_const: '(' first = const_ ',' second = const_ ')';
-opt_const: SOME '(' const_ ')' #Some | NONE #None;
+opt_const: SOME '(' const_ ')' # Some | NONE # None;
 const_:
     | bool_token
     | SIGNED_INT
@@ -110,8 +109,7 @@ TRUE: 'true';
 FALSE: 'false';
 IF: 'if';
 ELSE: 'else';
-WHILE: 'while';
-DO: 'do';
+LOOP: 'loop';
 CONST: 'const';
 OUTPUT: 'output';
 USE: 'use';

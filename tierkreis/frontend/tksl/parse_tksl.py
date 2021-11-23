@@ -276,7 +276,11 @@ class TkslFileVisitor(TkslVisitor):
 
         elsevisit = TkslFileVisitor(self.sig, ifcontext)
         else_g = elsevisit.visitCode_block(ctx.else_block)
-
+        for inp in ifcontext.inputs:
+            if inp not in if_g.inputs():
+                if_g.discard(if_g.input[inp])
+            if inp not in else_g.inputs():
+                else_g.discard(else_g.input[inp])
         sw_nod = self.graph.add_node(
             "builtin/switch", pred=condition, if_true=if_g, if_false=else_g
         )
@@ -301,25 +305,11 @@ class TkslFileVisitor(TkslVisitor):
         bodyvisit = TkslFileVisitor(self.sig, loopcontext)
         body_g = bodyvisit.visitCode_block(ctx.body)
 
-        conditionvisit = TkslFileVisitor(self.sig, loopcontext)
-        condition_g = conditionvisit.visitCode_block(ctx.condition)
-
-        # ignore unused inputs
-        body_g.set_outputs(
-            **{
-                inp: body_g.input[inp]
-                for inp in loopcontext.inputs
-                if inp not in body_g.inputs()
-            }
-        )
-
         for inp in loopcontext.inputs:
-            if inp not in condition_g.inputs():
-                condition_g.discard(condition_g.input[inp])
+            if inp not in body_g.inputs():
+                body_g.discard(body_g.input[inp])
 
-        loop_nod = self.graph.add_node(
-            "builtin/loop", condition=condition_g, body=body_g, **inputs
-        )
+        loop_nod = self.graph.add_node("builtin/loop", body=body_g, **inputs)
 
         loopcontext.outputs = OrderedDict({outp: None for outp in body_g.outputs()})
 

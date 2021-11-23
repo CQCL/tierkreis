@@ -39,12 +39,16 @@ Graph func(v1: Int, v2: Pair<Int, Bool>) -> (o1: Int, o2:Int) {
     // total4 <- sw.value(x:total4.x);
 
     // loop with condition
-    looped_total <- while (x: other_total.value) {
-        output (pred: ilt(x, 100));
-    } do {
-        output (x: add5(x));
-    };
+    looped_total <- loop (x: other_total.value) {
+        xs <- copy(x);
+        x <- if (ilt(xs.value_0, 100); x: xs.value_1) {
+            output (value: make_option(make_struct(x: add5(x))));
+        } else {
+            output (value: None);
+        };
 
+        output (value: x.value);
+    };
 
     const stuc = Point{p1: 4.3e1, p2: 3};
 

@@ -100,7 +100,7 @@ async def test_parse_bigexample(client: RuntimeClient) -> None:
     )
 
     tg = await client.type_check_graph(tg)
-    assert len(tg.nodes()) == 24
+    assert len(tg.nodes()) == 23
 
     for flag in (True, False):
         outputs = await client.run_graph(tg, {"v1": 67, "v2": (45, flag)})

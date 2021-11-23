@@ -1,10 +1,39 @@
-graph main(circ: circuit, params: vector<float>) -> (value: float) {
+use pytket::{Circuit, load_circuit_json, substitute_symbols, execute, z_expectation};
 
-    subs <- pytket::substitute_symbols(circ: circ, symbs: ["a"], params: params);
-    arr <- push(item: make_pair(first: subs, second: 1000), vec:[]);
-    res <- pytket::execute(circuit_shots:arr, backend_name: "AerBackend");
+
+type ParamsLists = Vector<Vector<Float>>;
+
+Graph run_circuit(circ: Circuit, params: ParamsLists) -> (value: Float) {
+
+    subs <- substitute_symbols(circ: circ, symbs: ["a"], params: params);
+    res <- execute(push([], subs), [1000], "AerBackend");
     res <- pop(res);
-    z_exp <- pytket::z_expectation(dist:res.item);
+    z_exp <- z_expectation(dist:res.item);
     output(value: z_exp.value);
 
+}
+
+Graph main() -> (final_params: ParamsLists) {
+
+    ansatz <- load_circuit_json(read_file!("tests/tksl_samples/symb_circ.json"));
+
+    objective <- partial(thunk: run_circuit, circ: ansatz);
+
+    final <- loop (params: [[1.2]], status: -1, obj: objective.value) {
+        params_copy <- copy(params);
+        pred <- scipy::minimize_checker(params_copy.value_0, status);
+        res <- if (pred.pred; params: params_copy.value_1, obj: obj) {
+            objs <- copy(obj);
+
+            min_n <- scipy::minimize(func: objs.value_0, params: params);
+
+            output (value: make_option(make_struct(params: min_n.params, status: min_n.status, obj: objs.value_1)));
+        } else {
+            output (value: None);
+        };
+
+        output (value: res.value);
+    };
+
+    output(final.params);
 }

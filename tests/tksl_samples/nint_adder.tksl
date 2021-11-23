@@ -1,10 +1,16 @@
 
 Graph main(array: Vector<Int>, len: Int) -> (out: Int) {
-    total <- while (ar: array, sum: 0, counter: len) {
-        output (pred: ilt(0, counter));
-    } do {
-        popped <- pop(ar);
-        output (sum: iadd(sum, popped.item), ar: popped.vec, counter: iadd(counter, -1));
+    total <- loop (ar: array, sum: 0, counter: len) {
+        counters <- copy(counter);
+        val <- if (ilt(0, counters.value_0); ar: ar, sum: sum, counter: counters.value_1) {
+            popped <- pop(ar);
+
+            output (value: make_option(make_struct(sum: iadd(sum, popped.item), ar: popped.vec, counter: iadd(counter, -1))));
+        } else {
+            output (value: None);
+        };
+        output (value: val.value);
+
     };
 
     output (out: total.sum);

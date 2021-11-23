@@ -3,22 +3,22 @@ use pytket::{compile_circuits, substitute_symbols, execute, load_qasm,
 load_circuit_json, Circuit};
 
 // not needed anymore
-Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,Int>>) {
-    looped <- while (outp: [], first: l1, second: l2, counter: N) {
-        output (pred: ilt(0, counter));
-    } do {
-        pop1 <- pop(first);
-        pop2 <- pop(second);
-        pushed <- push(outp, make_pair(pop1.item, pop2.item));
-        output (outp: pushed.vec,
-                first: pop1.vec,
-                second: pop2.vec,
-                counter: iadd(counter, -1));
-    };
+// Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,Int>>) {
+//     looped <- while (outp: [], first: l1, second: l2, counter: N) {
+//         output (pred: ilt(0, counter));
+//     } do {
+//         pop1 <- pop(first);
+//         pop2 <- pop(second);
+//         pushed <- push(outp, make_pair(pop1.item, pop2.item));
+//         output (outp: pushed.vec,
+//                 first: pop1.vec,
+//                 second: pop2.vec,
+//                 counter: iadd(counter, -1));
+//     };
 
-    output (zipped: looped.outp);
+//     output (zipped: looped.outp);
 
-}
+// }
 
 
 Graph main() -> (res: Vector<pytket::SampledDistribution>) {

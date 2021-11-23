@@ -125,18 +125,16 @@ async def check(ctx: click.Context, source: str) -> TierkreisGraph:
 @cli.command()
 @click.argument("source", type=click.Path(exists=True))
 @click.argument("view_path", type=click.Path(exists=False))
-@click.option("--inline", is_flag=True)
 @click.option("--check", "-C", is_flag=True)
-@click.option("--recursive", is_flag=True)
+@click.option("--unbox-level", default=0)
 @click.pass_context
 @coro
 async def view(
     ctx: click.Context,
     source: str,
     view_path: str,
-    inline: bool,
-    recursive: bool,
     check: bool,
+    unbox_level: int,
 ):
     source_path = Path(source)
     if check:
@@ -144,12 +142,13 @@ async def view(
     else:
         async with ctx.obj["client_manager"] as client:
             tkg = await _parse(source_path, client)
-    if inline:
-        tkg = tkg.inline_boxes(recursive=recursive)
+
     tkg.name = source_path.stem
     view_p = Path(view_path)
     ext = view_p.suffix
-    tierkreis_to_graphviz(tkg).render(view_path[: -len(ext)], format=ext[1:])
+    tierkreis_to_graphviz(tkg, unbox_level=unbox_level).render(
+        view_path[: -len(ext)], format=ext[1:]
+    )
 
 
 def _print_outputs(outputs: dict[str, TierkreisValue]):

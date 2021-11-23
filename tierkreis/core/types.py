@@ -364,7 +364,7 @@ class GraphType(TierkreisType):
         )
 
     def __str__(self) -> str:
-        return f"Graph ({self.inputs.to_tksl()}) -> ({self.outputs.to_tksl()})"
+        return f"({self.inputs.to_tksl()}) -> ({self.outputs.to_tksl()})"
 
     def children(self) -> list["TierkreisType"]:
         return self.inputs.children() + self.outputs.children()

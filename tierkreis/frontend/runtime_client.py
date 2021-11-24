@@ -26,7 +26,6 @@ from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors, TypeScheme
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
-from tierkreis.worker.worker import _KEYRING_SERVICE
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
@@ -232,6 +231,8 @@ def _gen_auth_injector(login: str, pwd: str) -> Callable[["SendRequest"], Corout
 
 
 def with_runtime_client(worker: "Worker") -> Callable:
+    from tierkreis.worker.worker import _KEYRING_SERVICE
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapped_func(*args, **kwargs):

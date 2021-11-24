@@ -1,0 +1,1 @@
+{"bits": [["c", [0]]], "commands": [{"args": [["q", [0]]], "op": {"params": ["a"], "type": "Rx"}}, {"args": [["q", [0]], ["c", [0]]], "op": {"type": "Measure"}}], "implicit_permutation": [[["q", [0]], ["q", [0]]]], "phase": "0.0", "qubits": [["q", [0]]]}

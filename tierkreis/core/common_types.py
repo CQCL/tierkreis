@@ -1,0 +1,152 @@
+# pylint: disable=protected-access
+"""Common compound type aliases."""
+
+from collections import Counter
+from typing import TYPE_CHECKING, Any, Dict, Tuple
+from dataclasses import dataclass
+from importlib import import_module
+
+try:
+    from mushroom_dataclasses.circuit import Circuit as CircStruct
+    from mushroom_dataclasses.circuit import (
+        Command,
+        Conditional,
+        GenericClassical,
+        Operation,
+        Permutation,
+        Register as UnitID,
+        BitRegister,
+        CircBox,
+    )
+except ImportError as e:
+    raise ImportError(
+        "Make sure tierkreis is installed with the 'commontypes' feature"
+    ) from e
+
+if TYPE_CHECKING:
+    from pytket.backends.backendresult import BackendResult
+    from pytket.partition import (
+        MeasurementSetup as PytketMeasurementSetup,
+        MeasurementBitMap as PytketMeasurementBitMap,
+    )
+    from pytket.pauli import QubitPauliString as PytketQubitPauliString
+
+Distribution = Dict[str, float]
+
+
+def _try_pytket_import(mod: str, obj: str) -> Any:
+    try:
+        module = import_module(mod)
+        loaded = getattr(module, obj)
+    except ModuleNotFoundError as e:
+        raise ImportError("This function requires pytket installed.") from e
+
+    return loaded
+
+
+@dataclass
+class SampledDistribution:
+    distribution: Distribution
+    n_samples: int
+
+
+def backres_to_sampleddist(backres: "BackendResult") -> SampledDistribution:
+    """Convert pytket BackendResult to Tierkreis type."""
+    assert backres.contains_measured_results
+    if backres._counts is not None:
+        total_shots = int(sum(backres._counts.values()))
+    else:
+        assert backres._shots is not None
+        total_shots = len(backres._shots)
+    return SampledDistribution(
+        {
+            "".join(map(str, key)): val
+            for key, val in backres.get_distribution().items()
+        },
+        total_shots,
+    )
+
+
+def _bitstring_to_tuple(bitstr: str) -> Tuple[int, ...]:
+    return tuple(map(int, bitstr))
+
+
+def sampleddist_to_backres(dist: SampledDistribution) -> "BackendResult":
+    """Convert Tierkreis type to pytket backend result"""
+    BackendResult = _try_pytket_import("pytket.backends.backendresult", "BackendResult")
+    OutcomeArray = _try_pytket_import("pytket.utils.outcomearray", "OutcomeArray")
+
+    counts = {
+        OutcomeArray.from_readouts([_bitstring_to_tuple(key)]): int(
+            val * dist.n_samples
+        )
+        for key, val in dist.distribution.items()
+    }
+
+    return BackendResult(counts=Counter(counts))
+
+
+QubitPauliString = list[tuple[UnitID, str]]
+
+
+def _qps_to_pytket(qps: QubitPauliString) -> "PytketQubitPauliString":
+    PytketQubitPauliString = _try_pytket_import("pytket.pauli", "QubitPauliString")
+    # Pauli = _try_pytket_import("pytket.pauli", "Pauli")
+    # Qubit = _try_pytket_import("pytket.circuit", "Qubit")
+    return PytketQubitPauliString.from_list(
+        [[uid.to_serializable(), pauli] for uid, pauli in qps]
+    )
+
+
+def _qps_from_pytket(tkqps: "PytketQubitPauliString") -> QubitPauliString:
+    return [(UnitID.from_serializable(qb), pauli) for qb, pauli in tkqps.to_list()]
+
+
+@dataclass
+class MeasurementBitMap:
+    circ_index: int
+    bits: list[int]
+    invert: bool
+
+    def to_pytket(self) -> "PytketMeasurementBitMap":
+        PytketMeasurementBitMap = _try_pytket_import(
+            "pytket.partition", "MeasurementBitMap"
+        )
+        return PytketMeasurementBitMap(self.circ_index, self.bits, self.invert)
+
+    @classmethod
+    def from_pytket(cls, py_map: "PytketMeasurementBitMap") -> "MeasurementBitMap":
+        return cls(py_map.circ_index, py_map.bits, py_map.invert)
+
+
+@dataclass
+class MeasurementSetup:
+    measurement_circs: list[CircStruct]
+    results: list[tuple[QubitPauliString, list[MeasurementBitMap]]]
+
+    def to_pytket(self) -> "PytketMeasurementSetup":
+        PytketMeasurementSetup = _try_pytket_import(
+            "pytket.partition", "MeasurementSetup"
+        )
+        ms = PytketMeasurementSetup()
+        for circ in self.measurement_circs:
+            ms.add_measurement_circuit(circ.to_pytket_circuit())
+        for qps, mbms in self.results:
+            tkqps = _qps_to_pytket(qps)
+            for mbm in mbms:
+                ms.add_result_for_term(tkqps, mbm.to_pytket())
+
+        return ms
+
+    @classmethod
+    def from_pytket(cls, py_map: "PytketMeasurementSetup") -> "MeasurementSetup":
+        return cls(
+            [CircStruct.from_pytket_circuit(c) for c in py_map.measurement_circs],
+            [
+                (
+                    _qps_from_pytket(tkqps),
+                    [MeasurementBitMap.from_pytket(tkmbm) for tkmbm in tkmbms],
+                )
+                for tkqps, tkmbms in py_map.results.items()
+            ],
+        )

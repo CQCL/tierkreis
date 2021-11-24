@@ -1,9 +1,9 @@
 Graph main() -> (out: Int) {
-    const s1 = Struct {a: 1, b: 2};
+    const s1 = Struct {foo: 1, bar: 2};
 
     unp <- unpack_struct(s1);
 
-    mak <- make_struct(a: iadd(unp.a, 1), b: isub(unp.b, 2));
+    mak <- make_struct(foo: iadd(unp.foo, 1),  bar: isub(unp.bar, 2));
 
 
 }

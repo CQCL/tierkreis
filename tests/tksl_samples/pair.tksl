@@ -1,5 +1,5 @@
-Graph make_the_pair(a: Int, b: Str) -> (c: Pair<Int, Str>) {
-    output (make_pair(iadd(a, 1), b));
+Graph make_the_pair(foo: Int, bar: Str) -> (out: Pair<Int, Str>) {
+    output (make_pair(iadd(foo, 1), bar));
 }
 
 Graph main() -> (first: Int, second: Str) {

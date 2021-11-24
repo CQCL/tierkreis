@@ -1,0 +1,83 @@
+use pytket::{Circuit, SampledDistribution};
+use eumen::{layered_hea, prep_vacuum_test, build_circuits, post_vacuum_test, MeasurementSetup};
+
+type ParamsLists = Vector<Vector<Float>>;
+type Objective = (params: Vector<Float>) -> (value: Float);
+type Runner = (circuits: Vector<Circuit>, shots: Vector<Int>) -> (value: Vector<SampledDistribution>);
+type Compiler = (circuits: Vector<Circuit>) -> (value: Vector<Circuit>);
+
+include!("qermit_frame.tksl");
+include!("myqos_execute.tksl");
+include!("rotosolve_opt.tksl");
+
+
+
+Graph measured_objective(
+    params: ParamsLists,
+    subcircuit: Circuit,
+    measurement_setup: MeasurementSetup,
+    symbols: Vector<Str>,
+    runner: Runner,
+    n_shots: Int
+) -> (value: Float) {
+
+
+    measset <- copy(measurement_setup);
+
+    circuits <- build_circuits(subcircuit, measset.value_0, symbols, params);
+    results <- eval(thunk: runner, circuits: circuits, shots: push([], n_shots));
+
+    expectations <- post_vacuum_test(results.value, measset.value_1);
+
+    element <- pop(expectations);
+    pair <- unpack_pair(element.item);
+    output (pair.second);
+}
+
+
+Graph main() -> (final_params: Vector<Float>) {
+    const backend = HoneywellConfig {
+        device_name: "HQS-LT-S1-SIM",
+        simulator: "state-vector",
+        machine_debug: false
+    };
+
+
+    // const backend = AerConfig {simulation_method: "automatic"};
+    // exp <- myqos::new_experiment("ex_test_1", "tierkreis");
+    const exp = "1b370750-c626-441f-a23d-7eb0a5c7bbcf";
+
+    compiler <- partial(thunk: compilation, pass: "RebaseHQS");
+
+    myq_run <- partial(
+        thunk: myqos_runner,
+        config: make_pair("Honeywell", backend),
+        experiment: exp,
+        compiler: compiler.value
+    );
+
+
+    vactest <- prep_vacuum_test(layered_hea(rotations: ["Ry"], n_qubits: 3, n_layers: 1));
+
+    runner <- partial(
+        thunk: qermit_frame_randomisation,
+        n_samples:5,
+        method: "UniversalFrameRandomisation",
+        runner: myq_run.value
+    );
+
+    objective <- partial(
+        thunk: measured_objective,
+        subcircuit: vactest.circuit,
+        measurement_setup: vactest.measurement_setup,
+        symbols: vactest.symbols,
+        runner: runner,
+        n_shots: 500
+        );
+
+    const initial_params = [[0.0, 0.0, 0.0, 0.0, 0.0, 0.0]];
+
+
+    output (rotosolve(initial_params, objective.value));
+
+}

@@ -1,0 +1,19 @@
+use qermit::{frame_randomisation_circuits, frame_randomisation_results};
+
+Graph qermit_frame_randomisation(
+    circuits: Vector<Circuit>,
+    shots: Int,
+    n_samples: Int,
+    method: Str,
+    runner: Runner
+) -> (value: Vector<SampledDistribution>) {
+    n_samples <- copy(n_samples);
+
+    fr_in <- frame_randomisation_circuits(circuits, shots, n_samples.value_0, method);
+
+    res <- eval(thunk: runner, circuits: fr_in.circuits, shots: fr_in.shots);
+
+    post_res <- frame_randomisation_results(res.value, n_samples.value_1);
+
+    output (post_res);
+}

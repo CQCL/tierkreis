@@ -1,0 +1,163 @@
+
+use pytket::{compile_circuits, substitute_symbols, execute, load_qasm,
+load_circuit_json, Circuit};
+
+// not needed anymore
+// Graph zip(l1: Vector<Str>, l2: Vector<Int>, N: Int) -> (zipped:Vector<Pair<Str,Int>>) {
+//     looped <- while (outp: [], first: l1, second: l2, counter: N) {
+//         output (pred: ilt(0, counter));
+//     } do {
+//         pop1 <- pop(first);
+//         pop2 <- pop(second);
+//         pushed <- push(outp, make_pair(pop1.item, pop2.item));
+//         output (outp: pushed.vec,
+//                 first: pop1.vec,
+//                 second: pop2.vec,
+//                 counter: iadd(counter, -1));
+//     };
+
+//     output (zipped: looped.outp);
+
+// }
+
+
+use myqos::{HoneywellConfig};
+Graph exe(circuits: Vector<Circuit>, shots: Vector<Int>) -> (res: Vector<pytket::SampledDistribution>) {
+    const backend = HoneywellConfig {device_name: "HQS-LT-S1-SIM", simulator: "state-vector", machine_debug: false};
+    // exp <- myqos::new_experiment("ex_test_1", "tierkreis");
+    const exp = "1b370750-c626-441f-a23d-7eb0a5c7bbcf";
+    output (myqos::execute("Honeywell", backend, exp, circuits, shots));
+}
+
+Graph main() -> (res: Vector<pytket::SampledDistribution>) {
+    // a full circuit literal
+    const c1 = Circuit {
+        implicit_permutation: [Struct {
+            y: Struct {
+                index: [0],
+                reg_name: "q"
+            },
+            x: Struct {
+                index: [0],
+                reg_name: "q"
+            }
+        }, Struct {
+            x: Struct {
+                index: [1],
+                reg_name: "q"
+            },
+            y: Struct {
+                reg_name: "q",
+                index: [1]
+            }
+        }],
+        bits: [Struct {
+            index: [0],
+            reg_name: "c"
+        }, Struct {
+            reg_name: "c",
+            index: [1]
+        }],
+        commands: [Struct {
+            op: Struct {
+                box: None,
+                conditional: None,
+                classical: None,
+                signature: None,
+                n_qb: None,
+                params: Some(["a_1"]),
+                op_type: "Rz"
+            },
+            args: [Struct {
+                reg_name: "q",
+                index: [0]
+            }],
+            opgroup: None
+        }, Struct {
+            op: Struct {
+                n_qb: None,
+                params: None,
+                box: None,
+                conditional: None,
+                classical: None,
+                signature: None,
+                op_type: "H"
+            },
+            args: [Struct {
+                reg_name: "q",
+                index: [0]
+            }],
+            opgroup: None
+        }, Struct {
+            args: [Struct {
+                reg_name: "q",
+                index: [0]
+            }, Struct {
+                reg_name: "q",
+                index: [1]
+            }],
+            opgroup: None,
+            op: Struct {
+                op_type: "CX",
+                box: None,
+                classical: None,
+                n_qb: None,
+                params: None,
+                conditional: None,
+                signature: None
+            }
+        }, Struct {
+            opgroup: None,
+            args: [Struct {
+                reg_name: "q",
+                index: [0]
+            }, Struct {
+                index: [0],
+                reg_name: "c"
+            }],
+            op: Struct {
+                op_type: "Measure",
+                conditional: None,
+                box: None,
+                classical: None,
+                params: None,
+                n_qb: None,
+                signature: None
+            }
+        }, Struct {
+            args: [Struct {
+                index: [1],
+                reg_name: "q"
+            }, Struct {
+                reg_name: "c",
+                index: [1]
+            }],
+            op: Struct {
+                op_type: "Measure",
+                n_qb: None,
+                signature: None,
+                classical: None,
+                params: None,
+                conditional: None,
+                box: None
+            },
+            opgroup: None
+        }],
+        name: None,
+        phase: "0.0",
+        qubits: [Struct {
+            reg_name: "q",
+            index: [0]
+        }, Struct {
+            index: [1],
+            reg_name: "q"
+        }]
+    };
+
+    // alternatively just load from json
+    // const json_str = read_file!("tests/tksl_samples/simple_qasm.json");
+    subs <- substitute_symbols(c1, ["a_1"], [0.1]);
+    comped <- compile_circuits(push([], subs), "RebaseHQS");
+    // output (res: execute(comped, [100], "AerBackend"));
+    output (res: exe(comped, [100]));
+}

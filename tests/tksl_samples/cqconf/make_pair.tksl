@@ -1,0 +1,7 @@
+Graph add_pair(a: Int, b: Str) -> (c: Pair<Int, Str>) {
+    output (make_pair(iadd(a, 1), b));
+}
+
+Graph main() -> (first: Int, second: Str) {
+    output (unpack_pair(add_pair(2, "asdf")));
+}

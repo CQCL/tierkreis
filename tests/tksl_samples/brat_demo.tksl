@@ -1,0 +1,8 @@
+Graph add2(thunk_in: Int) -> (thunk_out: Int) {
+    output (iadd(thunk_in, 2));
+}
+
+Graph main() -> (out: Int) {
+    evaled <- eval(thunk: add2, thunk_in: 4);
+    output (evaled.thunk_out);
+}

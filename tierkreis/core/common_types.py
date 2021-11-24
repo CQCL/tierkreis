@@ -93,13 +93,18 @@ def _qps_to_pytket(qps: QubitPauliString) -> "PytketQubitPauliString":
     PytketQubitPauliString = _try_pytket_import("pytket.pauli", "QubitPauliString")
     # Pauli = _try_pytket_import("pytket.pauli", "Pauli")
     # Qubit = _try_pytket_import("pytket.circuit", "Qubit")
+    if not qps:
+        return PytketQubitPauliString()
     return PytketQubitPauliString.from_list(
         [[uid.to_serializable(), pauli] for uid, pauli in qps]
     )
 
 
 def _qps_from_pytket(tkqps: "PytketQubitPauliString") -> QubitPauliString:
-    return [(UnitID.from_serializable(qb), pauli) for qb, pauli in tkqps.to_list()]
+    lst = tkqps.to_list()
+    if not lst:
+        return []
+    return [(UnitID.from_serializable(qb), pauli) for qb, pauli in lst]
 
 
 @dataclass

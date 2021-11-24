@@ -4,6 +4,7 @@ import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, is_dataclass
 from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast
+from uuid import UUID
 
 import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
@@ -217,6 +218,8 @@ class StringValue(TierkreisValue):
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
         if type_ is str:
+            return cast(T, self.value)
+        if type_ is UUID:
             return cast(T, self.value)
         raise ToPythonFailure(self)
 

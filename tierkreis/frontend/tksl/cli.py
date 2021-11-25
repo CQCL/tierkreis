@@ -41,19 +41,19 @@ def coro(f):
     return wrapper
 
 
-async def _parse(source: Path, client: RuntimeClient) -> TierkreisGraph:
+async def _parse(source: Path, client: RuntimeClient, **kwargs) -> TierkreisGraph:
     try:
-        return load_tksl_file(source, signature=await client.get_signature())
+        return load_tksl_file(source, signature=await client.get_signature(), **kwargs)
     except ParseCancellationException as _parse_err:
         print(chalk.red(f"Parse error: {str(_parse_err)}"), file=sys.stderr)
         sys.exit(1)
 
 
 async def _check_graph(
-    source_path: Path, client_manager: AsyncContextManager[RuntimeClient]
+    source_path: Path, client_manager: AsyncContextManager[RuntimeClient], **kwargs
 ) -> TierkreisGraph:
     async with client_manager as client:
-        tkg = await _parse(source_path, client)
+        tkg = await _parse(source_path, client, **kwargs)
         try:
             tkg = await client.type_check_graph(tkg)
         except TierkreisTypeErrors as _errs:
@@ -69,17 +69,14 @@ async def _check_graph(
     "-R",
     type=click.Choice(RUNTIME_LABELS, case_sensitive=True),
     default="myqos",
+    help="Choose runtime, default=myqos",
 )
 @coro
 async def cli(ctx: click.Context, runtime: str):
     ctx.ensure_object(dict)
     ctx.obj["runtime_label"] = runtime
     if runtime == "myqos":
-        client_manager = myqos_runtime(
-            "tierkreistrr595bx-pr.uksouth.cloudapp.azure.com",
-            staging_creds=True
-            # "127.0.0.1", 8090, True
-        )
+        client_manager = myqos_runtime("tierkreis.myqos.com")
     elif runtime == "docker":
         client_manager = DockerRuntime("cqc/tierkreis")
     else:
@@ -99,6 +96,7 @@ async def cli(ctx: click.Context, runtime: str):
 @click.pass_context
 @coro
 async def build(ctx: click.Context, source: str, target: Optional[str]):
+    """Build protobuf binary from tksl SOURCE and write to TARGET"""
     source_path = Path(source)
     if target:
         target_path = Path(target)
@@ -116,6 +114,7 @@ async def build(ctx: click.Context, source: str, target: Optional[str]):
 @click.pass_context
 @coro
 async def check(ctx: click.Context, source: str) -> TierkreisGraph:
+    """Type check tksl SOURCE  file against runtime signature."""
     source_path = Path(source)
     tkg = await _check_graph(source_path, ctx.obj["client_manager"])
     print(chalk.bold.green("Success: graph type check complete."))
@@ -124,9 +123,17 @@ async def check(ctx: click.Context, source: str) -> TierkreisGraph:
 
 @cli.command()
 @click.argument("source", type=click.Path(exists=True))
-@click.argument("view_path", type=click.Path(exists=False))
-@click.option("--check", "-C", is_flag=True)
-@click.option("--unbox-level", default=0)
+@click.argument(
+    "view_path",
+    type=click.Path(exists=False),
+)
+@click.option("--check", "-C", is_flag=True, help="Type check and annotate graph.")
+@click.option(
+    "--unbox-level",
+    default=0,
+    help="Nesting level to which boxes and thunks should be unthunked, default=0.",
+)
+@click.option("--function", default="main")
 @click.pass_context
 @coro
 async def view(
@@ -135,13 +142,17 @@ async def view(
     view_path: str,
     check: bool,
     unbox_level: int,
+    function: str,
 ):
+    """Visualise tksl SOURCE as tksl graph and output to VIEW_PATH."""
     source_path = Path(source)
     if check:
-        tkg = await _check_graph(source_path, ctx.obj["client_manager"])
+        tkg = await _check_graph(
+            source_path, ctx.obj["client_manager"], function_name=function
+        )
     else:
         async with ctx.obj["client_manager"] as client:
-            tkg = await _parse(source_path, client)
+            tkg = await _parse(source_path, client, function_name=function)
 
     tkg.name = source_path.stem
     view_p = Path(view_path)
@@ -168,6 +179,7 @@ def _print_typeerrs(errs: str):
 @click.pass_context
 @coro
 async def run(ctx: click.Context, source: Path):
+    """Run SOURCE on runtime and output to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         tkg = await _parse(source, client)
@@ -183,6 +195,7 @@ async def run(ctx: click.Context, source: Path):
 @click.pass_context
 @coro
 async def submit(ctx: click.Context, source: Path):
+    """Submit SOURCE to runtime and print task id to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         tkg = await _parse(source, client)
@@ -198,10 +211,23 @@ async def submit(ctx: click.Context, source: Path):
 @click.pass_context
 @coro
 async def retrieve(ctx: click.Context, task_id: str):
+    """Retrive outputs of submitted graph from runtime, using TASK_ID."""
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         outputs = await client.await_task(TaskHandle(task_id))
         _print_outputs(outputs)
+
+
+@cli.command()
+@click.argument("task_id")
+@click.pass_context
+@coro
+async def delete(ctx: click.Context, task_id: str):
+    """Delete task by TASK_ID."""
+    async with ctx.obj["client_manager"] as client:
+        client = cast(RuntimeClient, client)
+        await client.delete_task(TaskHandle(task_id))
+        print(f"Task {task_id} deleted")
 
 
 @cli.command()
@@ -211,6 +237,7 @@ async def retrieve(ctx: click.Context, task_id: str):
 @click.pass_context
 @coro
 async def status(ctx: click.Context, task: Optional[str]):
+    """Check status of tasks."""
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         task_statuses = await client.list_tasks()
@@ -283,12 +310,15 @@ def _print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[s
 
 @cli.command()
 @click.pass_context
-@click.option("--namespace", type=str)
-@click.option("--function", type=str)
+@click.option("--namespace", type=str, help="Show only signatures of this namespace.")
+@click.option(
+    "--function", type=str, help="Show only the signature of a particular function."
+)
 @coro
 async def signature(
     ctx: click.Context, namespace: Optional[str], function: Optional[str]
 ):
+    """Check signature of available namespaces and functions on runtime."""
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         label = ctx.obj["runtime_label"]

@@ -31,6 +31,10 @@ class TkslVisitor(ParseTreeVisitor):
     def visitUse_ids(self, ctx: TkslParser.Use_idsContext):
         return self.visitChildren(ctx)
 
+    # Visit a parse tree produced by TkslParser#generics.
+    def visitGenerics(self, ctx: TkslParser.GenericsContext):
+        return self.visitChildren(ctx)
+
     # Visit a parse tree produced by TkslParser#code_block.
     def visitCode_block(self, ctx: TkslParser.Code_blockContext):
         return self.visitChildren(ctx)

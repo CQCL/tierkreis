@@ -25,6 +25,7 @@ from tierkreis.core.types import (
     StringType,
     StructType,
     TierkreisType,
+    VarType,
     VecType,
 )
 from tierkreis.core.values import (
@@ -327,8 +328,15 @@ class TkslFileVisitor(TkslVisitor):
         _ = list(map(self.visit, ctx.inst_list))
         return self.graph
 
+    def visitGenerics(self, ctx: TkslParser.GenericsContext) -> list[VarType]:
+        return [VarType(name.text) for name in ctx.gen_ids]
+
     def visitFuncDef(self, ctx: TkslParser.FuncDefContext):
         name = str(ctx.ID())
+        vartypes = self.visitGenerics(ctx.generics()) if ctx.generics() else []
+
+        for var in vartypes:
+            self.context.aliases[var.name] = var
         f_def = self.visitGraph_type(ctx.graph_type())
         g_type = f_def.graph_type
         assert g_type is not None
@@ -343,6 +351,10 @@ class TkslFileVisitor(TkslVisitor):
         graph = def_visit.visitCode_block(ctx.code_block())
 
         self.context.functions[name] = (graph, f_def)
+
+        # clear function typevars from global context
+        for var in vartypes:
+            del self.context.aliases[var.name]
 
     def visitTypeAlias(self, ctx: TkslParser.TypeAliasContext):
         alias_name = str(ctx.ID())

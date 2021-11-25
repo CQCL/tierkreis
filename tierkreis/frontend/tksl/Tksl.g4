@@ -4,13 +4,16 @@ grammar Tksl;
  */
 start: decs += declaration+;
 declaration:
-    GRAPH ID graph_type code_block        # FuncDef
-    | USE namespace = ID '::' use_ids ';' # UseDef
-    | TYPE ID '=' type_ ';'               # TypeAlias;
+    GRAPH ID generics? graph_type code_block # FuncDef
+    | USE namespace = ID '::' use_ids ';'    # UseDef
+    | TYPE ID '=' type_ ';'                  # TypeAlias;
 use_ids:
     names += ID
     | '{' names += ID (',' names += ID)* '}'
     | '*';
+
+generics: '<' gen_ids += ID (',' gen_ids += ID)* '>';
+
 code_block: '{' (inst_list += instruction ';')+ '}';
 type_:
     | TYPE_INT
@@ -125,6 +128,7 @@ TYPE_PAIR: 'Pair';
 TYPE_MAP: 'Map';
 TYPE_VEC: 'Vector';
 TYPE_STRUCT: 'Struct';
+// TYPE_VAR: 'Var';
 
 NEWLINE:
     '\r'? '\n' -> skip; // return newlines to parser (is end-statement signal)

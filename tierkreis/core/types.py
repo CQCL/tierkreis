@@ -397,7 +397,49 @@ class Constraint(ABC):
 
     @classmethod
     def from_proto(cls, pg_const: pg.Constraint) -> "Constraint":
-        return cls()
+        name, _ = betterproto.which_one_of(pg_const, "constraint")
+
+        if name == "lacks":
+            lacks = pg_const.lacks
+            return LacksConstraint(
+                row=TierkreisType.from_proto(lacks.row), label=lacks.label
+            )
+        elif name == "partition":
+            partition = pg_const.partition
+            return PartitionConstraint(
+                left=TierkreisType.from_proto(partition.left),
+                right=TierkreisType.from_proto(partition.right),
+                union=TierkreisType.from_proto(partition.union),
+            )
+        else:
+            raise ValueError(f"Unknown constraint type: {name}")
+
+
+@dataclass
+class LacksConstraint(Constraint):
+    row: TierkreisType
+    label: str
+
+    def to_proto(self) -> pg.Constraint:
+        return pg.Constraint(
+            lacks=pg.LacksConstraint(row=self.row.to_proto(), label=self.label)
+        )
+
+
+@dataclass
+class PartitionConstraint(Constraint):
+    left: TierkreisType
+    right: TierkreisType
+    union: TierkreisType
+
+    def to_proto(self) -> pg.Constraint:
+        return pg.Constraint(
+            partition=pg.PartitionConstraint(
+                left=self.left.to_proto(),
+                right=self.right.to_proto(),
+                union=self.union.to_proto(),
+            )
+        )
 
 
 class Kind(ABC):

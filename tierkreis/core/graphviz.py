@@ -100,7 +100,8 @@ _HTML_PORTS_ROW_TEMPLATE = """
 """
 
 _HTML_PORT_TEMPLATE = (
-    '<TD BGCOLOR="{back_colour}" COLOR="{border_colour}" PORT="{port}" BORDER="{border_width}">'
+    '<TD BGCOLOR="{back_colour}" COLOR="{border_colour}"'
+    ' PORT="{port}" BORDER="{border_width}">'
     '<FONT POINT-SIZE="10.0" FACE="{fontface}" COLOR="{font_colour}">{port}</FONT></TD>'
 )
 

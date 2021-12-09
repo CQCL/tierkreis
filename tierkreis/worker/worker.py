@@ -120,8 +120,8 @@ class Worker:
             token = request.metadata.pop("token", None)  # type: ignore
             key = request.metadata.pop("key", None)  # type: ignore
             if (token is not None) and (key is not None):
-                keyring.set_password(_KEYRING_SERVICE, "token", token)
-                keyring.set_password(_KEYRING_SERVICE, "key", key)
+                keyring.set_password(_KEYRING_SERVICE, "token", str(token))
+                keyring.set_password(_KEYRING_SERVICE, "key", str(key))
 
     def _add_request_listener(
         self,

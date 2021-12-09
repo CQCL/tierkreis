@@ -1,4 +1,4 @@
-from typing import Coroutine, Callable, Tuple, Optional
+from typing import Tuple, Optional
 from contextlib import asynccontextmanager
 
 import keyring

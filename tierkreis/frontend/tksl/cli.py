@@ -133,7 +133,11 @@ async def check(ctx: click.Context, source: str) -> TierkreisGraph:
     default=0,
     help="Nesting level to which boxes and thunks should be unthunked, default=0.",
 )
-@click.option("--function", default="main")
+@click.option(
+    "--function",
+    default="main",
+    help="The name of the graph to visualise, default is main",
+)
 @click.pass_context
 @coro
 async def view(

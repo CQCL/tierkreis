@@ -128,7 +128,6 @@ TYPE_PAIR: 'Pair';
 TYPE_MAP: 'Map';
 TYPE_VEC: 'Vector';
 TYPE_STRUCT: 'Struct';
-// TYPE_VAR: 'Var';
 
 NEWLINE:
     '\r'? '\n' -> skip; // return newlines to parser (is end-statement signal)

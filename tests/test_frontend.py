@@ -165,54 +165,6 @@ async def test_idpy(bell_circuit, client: RuntimeClient):
 
 
 @pytest.mark.asyncio
-async def test_compile_circuit(bell_circuit: str, client: RuntimeClient) -> None:
-    tg = TierkreisGraph()
-    load_node = tg.add_node("pytket/load_circuit_json", json_str=tg.input["input"])
-    compile_node = tg.add_node(
-        "pytket/compile_circuits",
-        circuits=tg.make_vec([load_node["value"]]),
-        pass_name=tg.add_const("FullPeepholeOptimise"),
-    )
-    tg.set_outputs(out=compile_node)
-
-    outs = await client.run_graph(tg, {"input": bell_circuit})
-
-    assert isinstance(cast(VecValue, outs["out"]).values[0], StructValue)
-
-
-@pytest.mark.asyncio
-async def test_execute_circuit(bell_circuit: str, client: RuntimeClient) -> None:
-    tg = TierkreisGraph()
-    vec_elems = tg.vec_last_n_elems(tg.input["circuits"], 2)
-    load_node1 = tg.add_node("pytket/load_circuit_json", json_str=vec_elems[0])
-    load_node2 = tg.add_node("pytket/load_circuit_json", json_str=vec_elems[1])
-    execute_node = tg.add_node(
-        "pytket/execute",
-        circuits=tg.make_vec([load_node1, load_node2]),
-        shots=tg.input["shots"],
-        backend_name=tg.add_const("AerBackend"),
-    )
-    tg.set_outputs(out=execute_node)
-
-    outputs = cast(
-        VecValue,
-        (
-            await client.run_graph(
-                tg,
-                {"circuits": [bell_circuit, bell_circuit], "shots": [10, 20]},
-            )
-        )["out"],
-    )
-
-    assert (
-        cast(StructValue, outputs.values[0]).values["n_samples"].try_autopython() == 10
-    )
-    assert (
-        cast(StructValue, outputs.values[1]).values["n_samples"].try_autopython() == 20
-    )
-
-
-@pytest.mark.asyncio
 async def test_infer(client: RuntimeClient) -> None:
     # test when built with client types are auto inferred
     tg = TierkreisGraph()

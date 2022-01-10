@@ -48,8 +48,7 @@ async def local_runtime(
     parent_dir = Path(__file__).parent
 
     workers = workers or [
-        parent_dir / "../../../workers/worker_test",
-        parent_dir / "../../../workers/pytket_worker",
+        parent_dir / "../../tests/worker_test",
     ]
 
     command: List[Union[str, Path]] = [executable]

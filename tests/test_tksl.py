@@ -109,16 +109,17 @@ async def test_parse_bigexample(client: RuntimeClient) -> None:
         assert pyouts == {"o2": 103, "o1": 536 + (2 if flag else 5)}
 
 
-@pytest.mark.asyncio
-async def test_parse_runcircuit(client: RuntimeClient) -> None:
-    sig = await client.get_signature()
+# requires pytket worker
+# @pytest.mark.asyncio
+# async def test_parse_runcircuit(client: RuntimeClient) -> None:
+#     sig = await client.get_signature()
 
-    tg = load_tksl_file(
-        Path(__file__).parent / "tksl_samples/run_circuit.tksl", signature=sig
-    )
+#     tg = load_tksl_file(
+#         Path(__file__).parent / "tksl_samples/run_circuit.tksl", signature=sig
+#     )
 
-    tg = await client.type_check_graph(tg)
-    assert len(tg.nodes()) == 13
+#     tg = await client.type_check_graph(tg)
+#     assert len(tg.nodes()) == 13
 
 
 @pytest.mark.asyncio

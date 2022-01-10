@@ -9,7 +9,6 @@ from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, TierkreisTypeErrors
-from tierkreis.core.values import StructValue, VecValue
 from tierkreis.frontend import RuntimeClient, local_runtime
 from tierkreis.frontend.tksl import load_tksl_file
 
@@ -270,7 +269,7 @@ async def test_runtime_worker(client: RuntimeClient, mock_myqos_creds) -> None:
         myqos_worker="http://localhost:8080",
         show_output=False,
         # make sure it has to talk to the other server for the test worker functions
-        workers=[Path("../workers/pytket_worker")],
+        workers=[],
     ) as runtime_server:
         await test_nint_adder(runtime_server)
 

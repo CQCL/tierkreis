@@ -1,6 +1,7 @@
 [tool.poetry]
 name = "tierkreis"
-version = "0.1.4rc1"
+# placeholder version, set by deployment workflows
+version = "0.0.0"
 description = "Python client and utilities for tierkreis."
 authors = [
     "Seyon Sivarajah <seyon.sivarajah@cambridgequantum.com>",

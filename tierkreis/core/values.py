@@ -207,12 +207,12 @@ class BoolValue(TierkreisValue):
 
 @dataclass(frozen=True)
 class StringValue(TierkreisValue):
-    _proto_name: ClassVar[str] = "str_"
+    _proto_name: ClassVar[str] = "str"
     _pytype: ClassVar[typing.Type] = str
     value: str
 
     def to_proto(self) -> pg.Value:
-        return pg.Value(str_=self.value)
+        return pg.Value(str=self.value)
 
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar):

@@ -119,7 +119,7 @@ class TierkreisType(ABC):
             result = IntType()
         elif name == "bool":
             result = BoolType()
-        elif name == "str_":
+        elif name == "str":
             result = StringType()
         elif name == "flt":
             result = FloatType()
@@ -205,7 +205,7 @@ class BoolType(TierkreisType):
 @dataclass
 class StringType(TierkreisType):
     def to_proto(self) -> pg.Type:
-        return pg.Type(str_=pg.Empty())
+        return pg.Type(str=pg.Empty())
 
     def __str__(self) -> str:
         return "Str"

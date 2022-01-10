@@ -20,9 +20,7 @@ secondary = true
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.11"
-betterproto = { git = "https://github.com/danielgtaylor/python-betterproto", rev = "c424b6f", extras = [
-    "compiler",
-] }
+betterproto = { version = "2.0.0b4", extras = ["compiler"] }
 grpclib = "^0.4.2"
 networkx = "^2.6.3"
 graphviz = "^0.18"

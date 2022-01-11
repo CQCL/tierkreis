@@ -1,7 +1,7 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type, cast
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pytest
 from tierkreis import TierkreisGraph

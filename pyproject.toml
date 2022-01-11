@@ -12,6 +12,7 @@ include = ["tierkreis/core/protos/**/*.py"]
 
 [tool.poetry.scripts]
 tksl = 'tierkreis.frontend.tksl.cli:cli'
+tksl-start = 'tierkreis.frontend.tksl.cli:start'
 
 [[tool.poetry.source]]
 name = "cqcpython"

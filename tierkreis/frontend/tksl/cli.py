@@ -6,11 +6,14 @@ from pathlib import Path
 from typing import (
     AsyncContextManager,
     Dict,
+    List,
     Optional,
     Sequence,
     cast,
 )
+from contextlib import AbstractAsyncContextManager
 import re
+from signal import SIGINT, SIGTERM, signal
 
 import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
@@ -62,26 +65,107 @@ async def _check_graph(
         return tkg
 
 
+class Session(AbstractAsyncContextManager):
+    def __init__(self, manager: AsyncContextManager) -> None:
+        super().__init__()
+        self._manager = manager
+
+    async def __aenter__(self):
+        signal(SIGINT, self._sigint_handler)
+        signal(SIGTERM, self._sigint_handler)
+
+        return await self._manager.__aenter__()
+
+    async def __aexit__(self, type, value, traceback):
+
+        return await self._manager.__aexit__(type, value, traceback)
+
+    async def _sigint_handler(self, signal_received, frame):
+        print("Ctrl + C handler called")
+
+        await self.__aexit__(None, None, None)
+        sys.exit(0)
+
+
+async def main_coro(manager: AsyncContextManager):
+    async with manager as runtime:
+        try:
+            print(f"{runtime._channel._host}:{runtime._channel._port}")
+            await asyncio.sleep(10000000000000)
+        except asyncio.CancelledError:
+            print("\nShutting Down")
+
+
+def run_with_signals(manager: AsyncContextManager):
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    main_task = loop.create_task(main_coro(manager))
+    for signal in [SIGINT, SIGTERM]:
+        loop.add_signal_handler(signal, main_task.cancel)
+    try:
+        loop.run_until_complete(main_task)
+    finally:
+        loop.close()
+
+
+@click.group()
+def start():
+    """Start a tierkreis server on local host and print the address as
+    "localhost:<port>".
+    This can be passed to the tksl command, e.g.
+
+    >> tksl -r localhost -p 8090 signature
+
+    Start a local server binary:
+    >> tksl-start local
+    Start a local server from docker image:
+    >> tksl-start docker
+
+    See documentation of individual commands for more options.
+    """
+    pass
+
+
+@start.command()
+@click.argument("executable", type=click.Path(exists=True))
+@click.option("--worker", "-w", multiple=True, default=[])
+@click.option("--port", "-p", default=8090)
+@click.option("--remote-worker")
+def local(executable: Path, worker: List[str], port: int, remote_worker: Optional[str]):
+    """Start a local server with EXECUTABLE, on PORT, connected to local WORKERS
+    and REMOTE_WORKER URI
+
+    e.g.
+    >> tksl-start local ../target/debug/tierkreis-server -w
+       ../workers/pytket_worker --remote-worker http://localhost:8050"""
+    run_with_signals(
+        local_runtime(
+            executable, workers=worker, myqos_worker=remote_worker, grpc_port=port
+        )
+    )
+
+
 @click.group()
 @click.pass_context
 @click.option(
     "--runtime",
-    "-R",
-    type=click.Choice(RUNTIME_LABELS, case_sensitive=True),
-    default="myqos",
+    "-r",
+    default="tierkreis.myqos.com",
     help="Choose runtime, default=myqos",
 )
+@click.option(
+    "--port",
+    "-p",
+    help="Runtime port, default=8090 if runtime is localhost, else 443",
+)
 @coro
-async def cli(ctx: click.Context, runtime: str):
+async def cli(ctx: click.Context, runtime: str, port: Optional[int]):
+    local = runtime == "localhost"
+    if port is None:
+        port = 8090 if local else 443
     ctx.ensure_object(dict)
     ctx.obj["runtime_label"] = runtime
-    if runtime == "myqos":
-        client_manager = myqos_runtime("tierkreis.myqos.com")
-    elif runtime == "docker":
-        client_manager = DockerRuntime("cqc/tierkreis")
-    else:
-        assert LOCAL_SERVER_PATH.exists()
-        client_manager = local_runtime(LOCAL_SERVER_PATH)
+    client_manager = myqos_runtime(runtime, port, local_debug=local)
     asyncio.get_event_loop()
     ctx.obj["client_manager"] = client_manager
 

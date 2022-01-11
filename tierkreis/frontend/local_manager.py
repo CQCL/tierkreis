@@ -95,7 +95,7 @@ async def local_runtime(
         raise RuntimeLaunchFailed()
 
     try:
-        async with Channel("127.0.0.1", grpc_port) as channel:
+        async with Channel("localhost", grpc_port) as channel:
             yield RuntimeClient(channel)
 
     finally:

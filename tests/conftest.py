@@ -6,7 +6,7 @@ import pytest
 from tierkreis.frontend import (
     RuntimeClient,
     local_runtime,
-    DockerRuntime,
+    docker_runtime,
     myqos_runtime,
 )
 
@@ -60,7 +60,7 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
         pass
     if isdocker:
         # launch docker container and close at end
-        async with DockerRuntime(
+        async with docker_runtime(
             "cqc/tierkreis",
         ) as local_client:
             yield local_client

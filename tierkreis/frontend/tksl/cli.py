@@ -11,9 +11,8 @@ from typing import (
     Sequence,
     cast,
 )
-from contextlib import AbstractAsyncContextManager
 import re
-from signal import SIGINT, SIGTERM, signal
+from signal import SIGINT, SIGTERM
 
 import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
@@ -27,7 +26,11 @@ from tierkreis.core.types import (
     TierkreisType,
     TierkreisTypeErrors,
 )
-from tierkreis.frontend import DockerRuntime, RuntimeClient, local_runtime
+from tierkreis.frontend import (
+    RuntimeClient,
+    local_runtime,
+)
+from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
 from tierkreis.frontend.tksl import load_tksl_file
@@ -63,28 +66,6 @@ async def _check_graph(
             _print_typeerrs(traceback.format_exc(0))
             sys.exit(1)
         return tkg
-
-
-class Session(AbstractAsyncContextManager):
-    def __init__(self, manager: AsyncContextManager) -> None:
-        super().__init__()
-        self._manager = manager
-
-    async def __aenter__(self):
-        signal(SIGINT, self._sigint_handler)
-        signal(SIGTERM, self._sigint_handler)
-
-        return await self._manager.__aenter__()
-
-    async def __aexit__(self, type, value, traceback):
-
-        return await self._manager.__aexit__(type, value, traceback)
-
-    async def _sigint_handler(self, signal_received, frame):
-        print("Ctrl + C handler called")
-
-        await self.__aexit__(None, None, None)
-        sys.exit(0)
 
 
 async def main_coro(manager: AsyncContextManager):
@@ -123,11 +104,10 @@ def start():
 
     See documentation of individual commands for more options.
     """
-    pass
 
 
 @start.command()
-@click.argument("executable", type=click.Path(exists=True))
+@click.argument("executable", type=click.Path(exists=True), default=LOCAL_SERVER_PATH)
 @click.option("--worker", "-w", multiple=True, default=[])
 @click.option("--port", "-p", default=8090)
 @click.option("--remote-worker")
@@ -141,6 +121,47 @@ def local(executable: Path, worker: List[str], port: int, remote_worker: Optiona
     run_with_signals(
         local_runtime(
             executable, workers=worker, myqos_worker=remote_worker, grpc_port=port
+        )
+    )
+
+
+@start.command()
+@click.argument("image", default="cqcregistry.azurecr.io/cqc/tierkreis:latest")
+@click.option("--worker", "-w", multiple=True, default=[])
+@click.option(
+    "--docker-worker",
+    "-d",
+    multiple=True,
+    default=[],
+    help="worker in image in form image:path",
+)
+@click.option("--port", "-p", default=8090)
+@click.option("--remote-worker")
+def docker(
+    image: str,
+    worker: List[str],
+    docker_worker: List[str],
+    port: int,
+    remote_worker: Optional[str],
+):
+    """Start a local server with IMAGE, on PORT, connected to local WORKERS,
+    DOCKER_WORKERs in images and REMOTE_WORKER URI
+
+    e.g.
+    >> tksl-start docker cqc/tierkreis
+     -d cqc/tierkreis-workers:/root/workers/pytket_worker
+     -d cqc/tierkreis-workers:/root/workers/qermit_worker
+     -w ../workers/myqos_worker
+     --remote-worker http://localhost:8050"""
+
+    image_workers = [tuple(worker_str.split(":", 2)) for worker_str in docker_worker]
+    run_with_signals(
+        docker_runtime(
+            image,
+            grpc_port=port,
+            worker_images=image_workers,
+            host_workers=worker,
+            myqos_worker=remote_worker,
         )
     )
 

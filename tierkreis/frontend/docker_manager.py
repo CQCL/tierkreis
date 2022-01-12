@@ -1,21 +1,22 @@
 """Docker container management for tierkreis runtime servers and workers."""
 
+import asyncio
 import os
 import socket
 import subprocess
 import sys
-from contextlib import AbstractAsyncContextManager, ExitStack, contextmanager
+from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
+
 from pathlib import Path
-from types import TracebackType
 from typing import (
     IO,
     TYPE_CHECKING,
-    Callable,
+    AsyncIterator,
     Iterator,
     List,
     Optional,
-    Type,
-    Union,
+    Tuple,
+    ValuesView,
     cast,
 )
 
@@ -74,132 +75,144 @@ class ManagedClient(DockerClient):
             network.remove()
 
 
-class DockerRuntime(AbstractAsyncContextManager):
+@asynccontextmanager
+async def docker_runtime(
+    image: str,
+    worker_images: Optional[List[Tuple[str, str]]] = None,
+    host_workers: Optional[List[Path]] = None,
+    myqos_worker: Optional[str] = None,
+    grpc_port: int = 8090,
+    show_output: bool = False,
+) -> AsyncIterator[RuntimeClient]:
     """Context manager for setting up a containerised runtime + workers and
-    return a connected client."""
+    return a connected client.
 
-    def __init__(
-        self,
-        image: str,
-        worker_images: Optional[List[str]] = None,
-        host_workers: Optional[List[Path]] = None,
-        myqos_worker: Optional[str] = None,
-        grpc_port: int = 8080,
-        show_output: bool = False,
-    ):
-        self.grpc_port = grpc_port
-        self.image = image
-        self.worker_images = worker_images or []
-        self.host_workers = host_workers or []
-        self.show_output = show_output
-        self.myqos_worker = myqos_worker
-        self.ports = {"8080": str(self.grpc_port)}
-        self._exit: Optional[Callable] = None
+    :param image: name of tierkreis server image
+    :type image: str
+    :param worker_images: list of pairs of worker images and paths to worker
+        executables inside them, e.g. [("cqc/tierkreis-workers",
+        "/root/workers/pytket_worker"), ("cqc/tierkreis-workers",
+        "/root/workers/qermit_worker")], defaults to None
+    :type worker_images: Optional[List[Tuple[str, str]]], optional
+    :param host_workers: List of paths to local workers, e.g.
+        ["../workers/pytket_worker"], defaults to None
+    :type host_workers: Optional[List[Path]], optional
+    :param myqos_worker: "Host address of myqos worker", defaults toNone
+    :type myqos_worker: Optional[str], optional
+    :param grpc_port: Port for server, defaults to 8090
+    :type grpc_port: int, optional
+    :param show_output: Whether to print server logs on exit, defaults to False
+    :type show_output: bool, optional
+    :yield: RuntimeClient
+    :rtype: Iterator[AsyncIterator[RuntimeClient]]
+    """
 
-    async def __aenter__(self) -> RuntimeClient:
-        client = ManagedClient.from_env()
+    worker_images = worker_images or []
+    host_workers = host_workers or []
+    container_to_host_ports = {"8080": str(grpc_port)}
 
-        # ExitStack will hold the exits for all the contexts used
-        # and if anything goes wrong in setup, everything done so far will be
-        # exited in reverse order
-        with ExitStack() as stack:
-            command: List[str] = []
-            for path in self.host_workers:
-                port = stack.enter_context(self._start_host_worker(path))
-                command.extend(
-                    ["--worker-remote", f"http://host.docker.internal:{port}"]
-                )
+    client = ManagedClient.from_env()
 
-            network_name = stack.enter_context(client._docker_network())
+    # ExitStack will hold the exits for all the contexts used
+    # and if anything goes wrong in setup, everything done so far will be
+    # exited in reverse order
+    async with AsyncExitStack() as stack:
+        command: List[str] = []
+        for path in host_workers:
+            port = await stack.enter_async_context(
+                _start_host_worker(container_to_host_ports.values(), path)
+            )
+            command.extend(["--worker-remote", f"http://host.docker.internal:{port}"])
 
-            for i, image in enumerate(self.worker_images):
-                container_name = (
-                    stack.enter_context(
-                        client._run_container(image, network_name, name=f"worker_{i}")
-                    ).name
-                    or ""
-                )
-                command.extend(["--worker-remote", f"http://{container_name}:80"])
+        network_name = stack.enter_context(client._docker_network())
 
-            proc_env = {}
-
-            if self.myqos_worker:
-                # place mushroom authentication in environment if present
-                log, pwd = _get_myqos_creds()
-                if log:
-                    proc_env["TIERKREIS_MYQOS_TOKEN"] = log
-                if pwd:
-                    proc_env["TIERKREIS_MYQOS_KEY"] = pwd
-
-                command.extend(["--myqos-worker", self.myqos_worker])
-
-            runtime_container = stack.enter_context(
+        worker_coros = []
+        for i, (worker_image, container_path) in enumerate(worker_images):
+            # worker needs given name for connection to work
+            container_name = f"worker_{i}"
+            work_cont = stack.enter_context(
                 client._run_container(
-                    self.image,
+                    worker_image,
                     network_name,
-                    command=command,
-                    ports=self.ports,
-                    environment=proc_env,
+                    name=container_name,
+                    command=[
+                        container_path + "/main.py",
+                        "--port",
+                        "80",
+                    ],
                 )
             )
 
-            succesful_start = False
-            start_lines = []
-            for line in runtime_container.logs(stream=True):
-                start_lines.append(line)
-                if "Server started" in str(line):
-                    # server is ready to receive requests
-                    succesful_start = True
-                    break
+            worker_coros.append(
+                _check_start(work_cont, "Started worker server on port")
+            )
+            command.extend(["--worker-remote", f"http://{container_name}:80"])
 
-            if not succesful_start:
-                _write_process_out(b"\n".join(start_lines))
-                # process has terminated unexpectedly
-                raise RuntimeLaunchFailed()
+        await asyncio.gather(*worker_coros)
+        proc_env = {}
 
-            # nothing has gone wrong so far
-            # so pop all the exits in the stack, and define the exit function to
-            # be used later
-            popped = stack.pop_all()
+        if myqos_worker:
+            # place mushroom authentication in environment if present
+            log, pwd = _get_myqos_creds()
+            if log:
+                proc_env["TIERKREIS_MYQOS_TOKEN"] = log
+            if pwd:
+                proc_env["TIERKREIS_MYQOS_KEY"] = pwd
 
-            def _exit():
-                if self.show_output:
-                    _write_process_out(runtime_container.logs())
+            command.extend(["--myqos-worker", myqos_worker])
 
-                popped.close()
-
-            self._exit = _exit
-
-        async with Channel("127.0.0.1", self.grpc_port) as channel:
-            return RuntimeClient(channel)
-
-    async def __aexit__(
-        self,
-        __exc_type: Union[Type[BaseException], None],
-        __exc_value: Union[BaseException, None],
-        __traceback: Union[TracebackType, None],
-    ) -> bool:
-        if self._exit is not None:
-            self._exit()
-        return __exc_value is None
-
-    @contextmanager
-    def _start_host_worker(self, host_worker_path: Path) -> Iterator[str]:
-        while True:
-            free_port = _get_free_port()
-            if free_port not in self.ports:
-                break
-        proc = subprocess.Popen(
-            [f"{host_worker_path}/main.py", "--port", free_port],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+        runtime_container = stack.enter_context(
+            client._run_container(
+                image,
+                network_name,
+                command=command,
+                ports=container_to_host_ports,
+                environment=proc_env,
+            )
         )
-        for line in cast(IO[bytes], proc.stdout):
-            # wait for server to finish starting and announce port
-            if free_port in str(line):
-                break
-        try:
-            self.ports[free_port] = free_port
-            yield free_port
-        finally:
-            proc.terminate()
+
+        await _check_start(runtime_container, "Server started")
+
+        async with Channel("localhost", grpc_port) as channel:
+            yield RuntimeClient(channel)
+
+        if show_output:
+            _write_process_out(runtime_container.logs())
+
+
+async def _check_start(container: "Container", check_str: str):
+    start_lines = []
+    for line in container.logs(stream=True):
+        start_lines.append(line)
+        if check_str in str(line):
+            # server is ready to receive requests
+            return
+        await asyncio.sleep(1)
+
+    # failed to start correctly
+    _write_process_out(b"\n".join(start_lines))
+    raise RuntimeLaunchFailed()
+
+
+@asynccontextmanager
+async def _start_host_worker(
+    ports_to_avoid: ValuesView[str], host_worker_path: Path
+) -> AsyncIterator[str]:
+    while True:
+        free_port = _get_free_port()
+        if free_port not in ports_to_avoid:
+            break
+    proc = subprocess.Popen(
+        [f"{host_worker_path}/main.py", "--port", free_port],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+    for line in cast(IO[bytes], proc.stdout):
+        # wait for server to finish starting and announce port
+        if free_port in str(line):
+            break
+        await asyncio.sleep(1)
+    try:
+        yield free_port
+    finally:
+        proc.terminate()

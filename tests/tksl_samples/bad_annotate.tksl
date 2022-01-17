@@ -1,0 +1,8 @@
+Graph helper(in: Int, s1: Pair<Int, Bool>) -> (a: Int, b: Int) {
+    output(iadd(in, s1), 9);
+}
+
+Graph main() -> (res: Int) {
+    e <- eval(thunk: helper, in: 5, s1: 7);
+    output(e.a);
+}

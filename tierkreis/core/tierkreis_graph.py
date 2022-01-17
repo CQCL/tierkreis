@@ -421,6 +421,28 @@ class TierkreisGraph:
         )
         return edge
 
+    def annotate_input(
+        self, input_port: str, edge_type: Optional[Union[Type, TierkreisType]]
+    ):
+        (in_edge,) = [
+            e
+            for e in self.out_edges(self.input_node_name)
+            if e.source.port == input_port
+        ]
+        tk_type = _get_edge(edge_type)
+        in_edge.type_ = tk_type
+
+    def annotate_output(
+        self, output_port: str, edge_type: Optional[Union[Type, TierkreisType]]
+    ):
+        (out_edge,) = [
+            e
+            for e in self.in_edges(self.output_node_name)
+            if e.target.port == output_port
+        ]
+        tk_type = _get_edge(edge_type)
+        out_edge.type_ = tk_type
+
     def get_edge(self, source: NodePort, target: NodePort) -> TierkreisEdge:
         all_edges = (
             edge_data["edge_info"]

@@ -349,6 +349,10 @@ class TkslFileVisitor(TkslVisitor):
         )
         def_visit = TkslFileVisitor(self.sig, context)
         graph = def_visit.visitCode_block(ctx.code_block())
+        for in_port, type_ in context.inputs.items():
+            graph.annotate_input(in_port, type_)
+        for out_port, type_ in context.outputs.items():
+            graph.annotate_output(out_port, type_)
 
         self.context.functions[name] = (graph, f_def)
 

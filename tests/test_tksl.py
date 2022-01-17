@@ -5,6 +5,13 @@ from typing import Callable, Optional
 import pytest
 from tierkreis import TierkreisGraph
 from tierkreis.core.protos.tierkreis.graph import Graph
+from tierkreis.core.types import (
+    IntType,
+    MapType,
+    StringType,
+    VecType,
+    TierkreisTypeErrors,
+)
 from tierkreis.core.values import IntValue, StringValue
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
@@ -32,6 +39,13 @@ def _compare_graphs(
             new_edges.append(edge)
         s_proto = Graph(new_nodes, new_edges)
     assert f_proto.nodes == s_proto.nodes
+    # jsonify type annotations for ease of comparison
+    for proto in (f_proto, s_proto):
+        for e in proto.edges:
+            if e.edge_type is not None:
+                # hack, edge_type should be a TierkreisType
+                # but we are converting to string for compairson
+                e.edge_type = e.edge_type.to_json()  # type: ignore
     edge_set = lambda edge_list: set(map(astuple, edge_list))
     assert edge_set(f_proto.edges) == edge_set(s_proto.edges)
 
@@ -40,6 +54,8 @@ def _vecs_graph() -> TierkreisGraph:
     tg = TierkreisGraph()
     con = tg.add_const([2, 4])
     tg.set_outputs(vec=con)
+    tg.annotate_output("vec", VecType(IntType()))
+
     return tg
 
 
@@ -49,7 +65,7 @@ def _structs_graph() -> TierkreisGraph:
     sturct = tg.add_node("builtin/unpack_struct", struct=sturct["struct"])
 
     tg.set_outputs(age=sturct["age"])
-
+    tg.annotate_output("age", IntType())
     return tg
 
 
@@ -59,6 +75,9 @@ def _maps_graph() -> TierkreisGraph:
     ins = tg.add_node("builtin/insert_key", map=mp_val["map"], key=5, val="bar")
 
     tg.set_outputs(mp=ins["map"], vl=mp_val["val"])
+    tg.annotate_input("mp", MapType(IntType(), StringType()))
+    tg.annotate_output("mp", MapType(IntType(), StringType()))
+    tg.annotate_output("vl", StringType())
 
     return tg
 
@@ -164,3 +183,18 @@ async def test_higher_order(client: RuntimeClient) -> None:
     assert (await client.run_graph(meta_sandwich, {"inp": 1.5}))[
         "out"
     ].try_autopython() == 5.0
+
+
+@pytest.mark.asyncio
+async def test_bad_annotations(client: RuntimeClient) -> None:
+    sig = await client.get_signature()
+
+    tg = load_tksl_file(
+        Path(__file__).parent / "tksl_samples/bad_annotate.tksl",
+        signature=sig,
+    )
+
+    with pytest.raises(TierkreisTypeErrors) as err:
+        await client.type_check_graph(tg)
+
+    assert len(err.value) == 2

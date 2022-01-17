@@ -25,6 +25,11 @@ def pytest_addoption(parser):
         help="Whether to use the myqos runtime for testing",
     )
     parser.addoption(
+        "--myqos-staging",
+        action="store_true",
+        help="Use the myqos runtime from staging area (implies --myqos)",
+    )
+    parser.addoption(
         "--server-logs",
         action="store_true",
         help="Whether to attempt to print server logs (for debugging).",
@@ -46,6 +51,10 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
     try:
         isdocker = request.config.getoption("--docker") not in (None, False)
         ismyqos = request.config.getoption("--myqos") not in (None, False)
+        ismyqos_staging = request.config.getoption("--myqos-staging") not in (
+            None,
+            False,
+        )
         logs = request.config.getoption("--server-logs") not in (None, False)
     except Exception as _:
         pass
@@ -55,11 +64,14 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
             "cqc/tierkreis",
         ) as local_client:
             yield local_client
-    elif ismyqos:
+    elif ismyqos_staging:
         async with myqos_runtime(
             "tierkreistrr595bx-pr.uksouth.cloudapp.azure.com",
             staging_creds=True,
         ) as myqos_client:
+            yield myqos_client
+    elif ismyqos:
+        async with myqos_runtime("tierkreis.myqos.com") as myqos_client:
             yield myqos_client
     else:
         # launch a local server for this test run and kill it at the end

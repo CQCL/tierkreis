@@ -397,7 +397,7 @@ class TierkreisGraph:
         node_port_to: NodePort,
         edge_type: Optional[Union[Type, TierkreisType]] = None,
     ) -> TierkreisEdge:
-        tk_type = _get_edge(edge_type)
+        tk_type = _to_tierkreis_type(edge_type)
 
         edge = TierkreisEdge(node_port_from, node_port_to, tk_type)
         # if port is currently connected to discard, replace that edge
@@ -429,7 +429,7 @@ class TierkreisGraph:
             for e in self.out_edges(self.input_node_name)
             if e.source.port == input_port
         ]
-        tk_type = _get_edge(edge_type)
+        tk_type = _to_tierkreis_type(edge_type)
         in_edge.type_ = tk_type
 
     def annotate_output(
@@ -440,7 +440,7 @@ class TierkreisGraph:
             for e in self.in_edges(self.output_node_name)
             if e.target.port == output_port
         ]
-        tk_type = _get_edge(edge_type)
+        tk_type = _to_tierkreis_type(edge_type)
         out_edge.type_ = tk_type
 
     def get_edge(self, source: NodePort, target: NodePort) -> TierkreisEdge:
@@ -569,7 +569,7 @@ class TierkreisGraph:
         raise TypeError()
 
 
-def _get_edge(
+def _to_tierkreis_type(
     edge_type: Optional[Union[Type, TierkreisType]]
 ) -> Optional[TierkreisType]:
     if edge_type is None:

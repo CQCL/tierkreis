@@ -100,18 +100,6 @@ async def test_switch(client: RuntimeClient):
     assert outs["out"].try_autopython() == 6
 
 
-@pytest.fixture
-def bell_circuit() -> str:
-    return (
-        r'{"bits": [["c", [0]], ["c", [1]]], "commands": [{"args": [["q", [0]]], "op": '
-        r'{"type": "H"}}, {"args": [["q", [0]], ["q", [1]]], "op": {"type": "CX"}}, '
-        r'{"args": [["q", [0]], ["c", [0]]], "op": {"type": "Measure"}}, {"args": '
-        r'[["q", [1]], ["c", [1]]], "op": {"type": "Measure"}}], '
-        r'"implicit_permutation": [[["q", [0]], ["q", [0]]], [["q", [1]], ["q", '
-        r'[1]]]], "phase": "0.0", "qubits": [["q", [0]], ["q", [1]]]}'
-    )
-
-
 @dataclass
 class NestedStruct(TierkreisStruct):
     s: List[int]
@@ -138,7 +126,7 @@ def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
 
 
 @pytest.mark.asyncio
-async def test_idpy(bell_circuit, client: RuntimeClient):
+async def test_idpy(client: RuntimeClient):
     async def assert_id_py(val: Any, typ: Type) -> bool:
         tk_g = idpy_graph(client)
         output = await client.run_graph(tk_g, {"id_in": val})

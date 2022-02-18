@@ -49,8 +49,8 @@ commontypes = ["mushroom-dataclasses"]
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-black = "^21.10b0"
-mypy = "^0.910"
+black = "^22.1"
+mypy = "^0.931"
 pylint = "^2.11"
 types-setuptools = "^57.4.2"
 types-python-dateutil = "^2.8.2"

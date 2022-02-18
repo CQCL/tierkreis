@@ -45,6 +45,30 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
 
 
 @pytest.mark.asyncio
+async def test_mistyped_op(client: RuntimeClient):
+    tk_g = TierkreisGraph()
+    nod = tk_g.add_node("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
+    tk_g.set_outputs(out=nod)
+    with pytest.raises(RuntimeError, match="Type mismatch"):
+        await client.run_graph(tk_g, {"testinp": 3})
+
+
+@pytest.mark.asyncio
+async def test_mistyped_op_nochecks():
+    async with local_runtime(
+        LOCAL_SERVER_PATH,
+        grpc_port=9090,
+        show_output=False,
+        env_vars={"TIERKREIS_DISABLE_RUNTIME_CHECKS": "1"},
+    ) as server:
+        tk_g = TierkreisGraph()
+        nod = tk_g.add_node("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
+        tk_g.set_outputs(out=nod)
+        res = await server.run_graph(tk_g, {"testinp": 3})
+        assert res["out"].try_autopython() == 4.1
+
+
+@pytest.mark.asyncio
 async def test_nint_adder(client: RuntimeClient):
 
     tksl_g = load_tksl_file(

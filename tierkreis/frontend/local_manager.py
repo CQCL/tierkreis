@@ -7,7 +7,7 @@ import asyncio
 import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import IO, List, Optional, Union, cast, AsyncIterator
+from typing import IO, List, Mapping, Optional, Union, cast, AsyncIterator
 
 from grpclib.client import Channel
 
@@ -28,6 +28,7 @@ async def local_runtime(
     grpc_port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
+    env_vars: Optional[Mapping[str, str]] = None,
 ) -> AsyncIterator[RuntimeClient]:
     """Provide a context for a local runtime running in a subprocess.
 
@@ -56,6 +57,8 @@ async def local_runtime(
         command.extend(["--worker-path", worker])
 
     proc_env = os.environ.copy()
+    if env_vars:
+        proc_env.update(env_vars)
 
     if myqos_worker:
         # place mushroom authentication in environment if present

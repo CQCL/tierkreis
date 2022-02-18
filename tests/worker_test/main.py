@@ -24,6 +24,15 @@ async def id_py(value: A) -> A:
     return value
 
 
+# This deliberately has the wrong python type annotation because
+# the TierkreisFunction's types are copied from there. Thus, this
+# produces a TierkreisFunction which claims to be of type Int->Int,
+# even though it actually produces floats.
+@namespace.function()
+async def mistyped_op(inp: int) -> int:
+    return inp + 1.1  # type: ignore
+
+
 @namespace.function()
 async def python_add(a: int, b: int) -> int:
     return a + b

@@ -13,7 +13,7 @@ include!("rotosolve_opt.tksl");
 
 
 Graph measured_objective(
-    params: ParamsLists,
+    params: Vector<Float>,
     subcircuit: Circuit,
     measurement_setup: MeasurementSetup,
     symbols: Vector<Str>,

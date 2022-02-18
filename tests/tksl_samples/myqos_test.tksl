@@ -23,10 +23,12 @@ load_circuit_json, Circuit};
 
 use myqos::{HoneywellConfig};
 Graph exe(circuits: Vector<Circuit>, shots: Vector<Int>) -> (res: Vector<pytket::SampledDistribution>) {
-    const backend = HoneywellConfig {device_name: "HQS-LT-S1-SIM", simulator: "state-vector", machine_debug: false};
+    // const backend = HoneywellConfig {device_name: "HQS-LT-S1-SIM", simulator: "state-vector", machine_debug: false};
     // exp <- myqos::new_experiment("ex_test_1", "tierkreis");
+    const backend = AerConfig {simulation_method: "automatic"};
+
     const exp = "1b370750-c626-441f-a23d-7eb0a5c7bbcf";
-    output (myqos::execute("Honeywell", backend, exp, circuits, shots));
+    output (myqos::execute("Aer", backend, exp, circuits, shots));
 }
 
 Graph main() -> (res: Vector<pytket::SampledDistribution>) {
@@ -157,7 +159,7 @@ Graph main() -> (res: Vector<pytket::SampledDistribution>) {
     // alternatively just load from json
     // const json_str = read_file!("tests/tksl_samples/simple_qasm.json");
     subs <- substitute_symbols(c1, ["a_1"], [0.1]);
-    comped <- compile_circuits(push([], subs), "RebaseHQS");
+    comped <- compile_circuits(push([], subs), "SynthesiseTket");
     // output (res: execute(comped, [100], "AerBackend"));
     output (res: exe(comped, [100]));
 }

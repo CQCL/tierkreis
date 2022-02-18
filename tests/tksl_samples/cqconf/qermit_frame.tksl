@@ -2,7 +2,7 @@ use qermit::{frame_randomisation_circuits, frame_randomisation_results};
 
 Graph qermit_frame_randomisation(
     circuits: Vector<Circuit>,
-    shots: Int,
+    shots: Vector<Int>,
     n_samples: Int,
     method: Str,
     runner: Runner

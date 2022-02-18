@@ -120,7 +120,10 @@ def local(executable: Path, worker: List[str], port: int, remote_worker: Optiona
        ../workers/pytket_worker --remote-worker http://localhost:8050"""
     run_with_signals(
         local_runtime(
-            executable, workers=worker, myqos_worker=remote_worker, grpc_port=port
+            executable,
+            workers=list(map(Path, worker)),
+            myqos_worker=remote_worker,
+            grpc_port=port,
         )
     )
 
@@ -154,13 +157,14 @@ def docker(
      -w ../workers/myqos_worker
      --remote-worker http://localhost:8050"""
 
-    image_workers = [tuple(worker_str.split(":", 2)) for worker_str in docker_worker]
+    image_worker_gen = (worker_str.split(":", 2) for worker_str in docker_worker)
+    image_workers = [(img, pth) for img, pth in image_worker_gen]
     run_with_signals(
         docker_runtime(
             image,
             grpc_port=port,
             worker_images=image_workers,
-            host_workers=worker,
+            host_workers=list(map(Path, worker)),
             myqos_worker=remote_worker,
         )
     )

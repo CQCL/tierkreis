@@ -68,6 +68,8 @@ pytket = "^0.17.0"
 [tool.poetry.group.generate.dependencies]
 betterproto = { version = "2.0.0b4", extras = ["compiler"] }
 poethepoet = "^0.12.3"
+# 2.1.0 incompatible with jinja2 2.11
+markupsafe = "<2.1.0"
 
 [tool.poe.tasks]
 generate = [

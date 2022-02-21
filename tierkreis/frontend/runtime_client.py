@@ -86,6 +86,9 @@ class RuntimeClient:
         self._channel = channel
         self._stubs: dict[str, ServiceStub] = {}
 
+    def socket_address(self) -> str:
+        return f"{self._channel._host}:{self._channel._port}"
+
     def _stub_gen(self, key: str, stub_t: Type[StubType]) -> StubType:
         if key not in self._stubs:
             self._stubs[key] = stub_t(self._channel)

@@ -278,7 +278,7 @@ async def test_runtime_worker(client: RuntimeClient, mock_myqos_creds) -> None:
     async with local_runtime(
         LOCAL_SERVER_PATH,
         grpc_port=9090,
-        myqos_worker="http://localhost:8080",
+        myqos_worker="http://" + client.socket_address(),
         show_output=False,
         # make sure it has to talk to the other server for the test worker functions
         workers=[],

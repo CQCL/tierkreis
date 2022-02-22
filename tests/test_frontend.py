@@ -54,6 +54,7 @@ async def test_mistyped_op(client: RuntimeClient):
 
 
 @pytest.mark.asyncio
+@pytest.mark.skipif(release_tests, reason=REASON)
 async def test_mistyped_op_nochecks():
     async with local_runtime(
         LOCAL_SERVER_PATH,

@@ -48,6 +48,7 @@ async def client(request) -> AsyncIterator[RuntimeClient]:
     isdocker = False
     logs = False
     ismyqos = False
+    ismyqos_staging = False
     try:
         isdocker = request.config.getoption("--docker") not in (None, False)
         ismyqos = request.config.getoption("--myqos") not in (None, False)

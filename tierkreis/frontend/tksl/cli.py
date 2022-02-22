@@ -26,6 +26,7 @@ from tierkreis.core.types import (
     TierkreisType,
     TierkreisTypeErrors,
 )
+from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
 from tierkreis.frontend import (
     RuntimeClient,
     local_runtime,
@@ -47,7 +48,20 @@ def coro(f):
     return wrapper
 
 
-async def _parse(source: Path, client: RuntimeClient, **kwargs) -> TierkreisGraph:
+async def _parse(
+    source: Path, client: RuntimeClient, proto=False, **kwargs
+) -> TierkreisGraph:
+    if proto:
+        if source.suffix == ".tksl":
+            print(
+                chalk.red(
+                    "Warning: The source file ends in"
+                    " .tksl but the proto flag is specified."
+                    " Check you intend the input to be parsed as protobuf binary."
+                )
+            )
+        with open(source, "rb") as f:
+            return TierkreisGraph.from_proto(ProtoGraph().parse(f.read()))
     try:
         return load_tksl_file(source, signature=await client.get_signature(), **kwargs)
     except ParseCancellationException as _parse_err:
@@ -56,10 +70,13 @@ async def _parse(source: Path, client: RuntimeClient, **kwargs) -> TierkreisGrap
 
 
 async def _check_graph(
-    source_path: Path, client_manager: AsyncContextManager[RuntimeClient], **kwargs
+    source_path: Path,
+    client_manager: AsyncContextManager[RuntimeClient],
+    proto=False,
+    **kwargs,
 ) -> TierkreisGraph:
     async with client_manager as client:
-        tkg = await _parse(source_path, client, **kwargs)
+        tkg = await _parse(source_path, client, proto=proto, **kwargs)
         try:
             tkg = await client.type_check_graph(tkg)
         except TierkreisTypeErrors as _errs:
@@ -183,8 +200,13 @@ def docker(
     "-p",
     help="Runtime port, default=8090 if runtime is localhost, else 443",
 )
+@click.option(
+    "--proto",
+    help="Provide a protobuf binary instead of tksl source.",
+    is_flag=True,
+)
 @coro
-async def cli(ctx: click.Context, runtime: str, port: Optional[int]):
+async def cli(ctx: click.Context, runtime: str, port: Optional[int], proto: bool):
     local = runtime == "localhost"
     if port is None:
         port = 8090 if local else 443
@@ -193,6 +215,7 @@ async def cli(ctx: click.Context, runtime: str, port: Optional[int]):
     client_manager = myqos_runtime(runtime, port, local_debug=local)
     asyncio.get_event_loop()
     ctx.obj["client_manager"] = client_manager
+    ctx.obj["proto"] = proto
 
 
 @cli.command()
@@ -206,6 +229,11 @@ async def cli(ctx: click.Context, runtime: str, port: Optional[int]):
 @coro
 async def build(ctx: click.Context, source: str, target: Optional[str]):
     """Build protobuf binary from tksl SOURCE and write to TARGET"""
+    if ctx.obj["proto"]:
+        raise RuntimeError(
+            "Protobuf binary source is invalid input to build command."
+            + "Check --proto flag."
+        )
     source_path = Path(source)
     if target:
         target_path = Path(target)
@@ -225,7 +253,9 @@ async def build(ctx: click.Context, source: str, target: Optional[str]):
 async def check(ctx: click.Context, source: str) -> TierkreisGraph:
     """Type check tksl SOURCE  file against runtime signature."""
     source_path = Path(source)
-    tkg = await _check_graph(source_path, ctx.obj["client_manager"])
+    tkg = await _check_graph(
+        source_path, ctx.obj["client_manager"], proto=ctx.obj["proto"]
+    )
     print(chalk.bold.green("Success: graph type check complete."))
     return tkg
 
@@ -261,11 +291,16 @@ async def view(
     source_path = Path(source)
     if check:
         tkg = await _check_graph(
-            source_path, ctx.obj["client_manager"], function_name=function
+            source_path,
+            ctx.obj["client_manager"],
+            proto=ctx.obj["proto"],
+            function_name=function,
         )
     else:
         async with ctx.obj["client_manager"] as client:
-            tkg = await _parse(source_path, client, function_name=function)
+            tkg = await _parse(
+                source_path, client, proto=ctx.obj["proto"], function_name=function
+            )
 
     tkg.name = source_path.stem
     view_p = Path(view_path)

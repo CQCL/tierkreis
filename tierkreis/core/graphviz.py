@@ -101,17 +101,23 @@ _HTML_PORTS_ROW_TEMPLATE = """
 
 _HTML_PORT_TEMPLATE = (
     '<TD BGCOLOR="{back_colour}" COLOR="{border_colour}"'
-    ' PORT="{port}" BORDER="{border_width}">'
+    ' PORT="{port_id}" BORDER="{border_width}">'
     '<FONT POINT-SIZE="10.0" FACE="{fontface}" COLOR="{font_colour}">{port}</FONT></TD>'
 )
 
+_INPUT_PREFIX = "in."
+_OUTPUT_PREFIX = "out."
 
-def _html_ports(ports: Iterable[str]) -> str:
+
+def _html_ports(ports: Iterable[str], id_prefix: str) -> str:
 
     return _HTML_PORTS_ROW_TEMPLATE.format(
         port_cells="".join(
             _HTML_PORT_TEMPLATE.format(
                 port=port,
+                # differentiate input and output node identifiers
+                # with a prefix
+                port_id=id_prefix + port,
                 back_colour=_COLOURS["background"],
                 font_colour=_COLOURS["dark"],
                 border_width="1",
@@ -189,6 +195,7 @@ def tierkreis_to_graphviz(
 
     unboxed_nodes = set()
     unthunked_nodes = set()
+    discard_nodes = set()
     for node_name, node in tk_graph.nodes().items():
         node_identifier = prefix + node_name
         if node.is_discard_node():
@@ -199,6 +206,7 @@ def tierkreis_to_graphviz(
                 color=_COLOURS["discard"],
                 width="0.1",
             )
+            discard_nodes.add(node_identifier)
             continue
 
         node_label, fillcolor = _node_features(node_name, node)
@@ -249,7 +257,9 @@ def tierkreis_to_graphviz(
                         node_back_color=fillcolor,
                         border_colour=_COLOURS["node_border"],
                         node_label=("Box: " + node_label) if isbox else "Thunk",
-                        outputs_row=_html_ports(out_ports) if out_ports else "",
+                        outputs_row=_html_ports(out_ports, _OUTPUT_PREFIX)
+                        if out_ports
+                        else "",
                     )
                     c.attr(label=f"<{html_label}>")
                 c.attr(
@@ -262,8 +272,8 @@ def tierkreis_to_graphviz(
         html_label = _format_html_label(
             node_back_color=fillcolor,
             node_label=node_label,
-            inputs_row=_html_ports(in_ports) if in_ports else "",
-            outputs_row=_html_ports(out_ports) if out_ports else "",
+            inputs_row=_html_ports(in_ports, _INPUT_PREFIX) if in_ports else "",
+            outputs_row=_html_ports(out_ports, _OUTPUT_PREFIX) if out_ports else "",
             border_colour=_COLOURS["background"]
             if fillcolor == _COLOURS["background"]
             else _COLOURS["node_border"],
@@ -286,19 +296,29 @@ def tierkreis_to_graphviz(
     for edge in tk_graph.edges():
         src_node = prefix + edge.source.node_ref.name
         tgt_node = prefix + edge.target.node_ref.name
+
         if src_node in unboxed_nodes:
             src_node = src_node + "output"
+            # box output node only has input ports
+            src_nodeport = f"{src_node}:{_INPUT_PREFIX}{edge.source.port}"
+        elif src_node in unthunked_nodes:
+            src_nodeport = src_node + "thunk"
+        else:
+            src_nodeport = f"{src_node}:{_OUTPUT_PREFIX}{edge.source.port}"
+
         if tgt_node in unboxed_nodes:
             tgt_node = tgt_node + "input"
-
-        if src_node in unthunked_nodes:
-            src_nodename = src_node + "thunk"
+            # box input node only has output ports
+            tgt_nodeport = f"{tgt_node}:{_OUTPUT_PREFIX}{edge.target.port}"
+        elif tgt_node in discard_nodes:
+            # discard nodes don't have ports (not HTML labels)
+            tgt_nodeport = tgt_node
         else:
-            src_nodename = f"{src_node}:{edge.source.port}"
-        tgt_nodename = f"{tgt_node}:{edge.target.port}"
+            tgt_nodeport = f"{tgt_node}:{_INPUT_PREFIX}{edge.target.port}"
+
         gv_graph.edge(
-            src_nodename,
-            tgt_nodename,
+            src_nodeport,
+            tgt_nodeport,
             label=_trim_str(str(edge.type_ or ""), 20),
             **edge_attr,
         )

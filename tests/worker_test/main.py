@@ -1,5 +1,4 @@
-#!/bin/sh
-"exec" "`dirname $0`/.venv/bin/python" "$0" "$@"
+#!/usr/bin/env python
 import asyncio
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar, cast

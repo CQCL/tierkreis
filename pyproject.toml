@@ -1,83 +1,76 @@
-[tool.poetry]
+[project]
 name = "tierkreis"
 # placeholder version, set by deployment workflows
 version = "0.0.0"
 description = "Python client and utilities for tierkreis."
 authors = [
-    "Seyon Sivarajah <seyon.sivarajah@cambridgequantum.com>",
-    "Lukas Heidemann <lukas.heidemann@cambridgequantum.com>",
-    "John Children <john.children@cambridgequantum.com>",
+    {name = "Seyon Sivarajah", email = "seyon.sivarajah@cambridgequantum.com"},
+    {name = "Lukas Heidemann", email = "lukas.heidemann@cambridgequantum.com"},
+    {name = "John Children", email = "john.children@cambridgequantum.com"},
+    {name = "Alan Lawrence", email = "alan.lawrence@cambridgequantum.com"}
 ]
-include = ["tierkreis/core/protos/**/*.py"]
 
-[tool.poetry.scripts]
+requires-python = ">=3.9,<3.11"
+dependencies = [
+    "betterproto==2.0.0b4",
+    "grpclib>=0.4.2,<0.5",
+    "networkx>=2.6.3,<3",
+    "graphviz>=0.18,<0.19",
+    "keyring==23.2",
+    "keyrings.alt==4.1"
+]
+
+[project.scripts]
 tksl = 'tierkreis.frontend.tksl.cli:cli'
 tksl-start = 'tierkreis.frontend.tksl.cli:start'
 
-[[tool.poetry.source]]
-name = "cqcpython"
-url = "https://cqcpythonrepository.azurewebsites.net/simple/"
-secondary = true
-
-[tool.poetry.dependencies]
-python = ">=3.9,<3.11"
-betterproto = { version = "2.0.0b4" }
-grpclib = "^0.4.2"
-networkx = "^2.6.3"
-graphviz = "^0.18"
-keyring = { version = "23.2" }
-"keyrings.alt" = { version = "4.1" }
-
-
-# optional dependencies
-docker = { version = "^5", optional = true }
-opentelemetry-sdk = { version = "^1.5.0", optional = true }
-opentelemetry-exporter-otlp = { version = "^1.5.0", optional = true }
-antlr4-python3-runtime = { version = "^4.9.2", optional = true }
-click = { version = "^8.0.3", optional = true }
-yachalk = { version = "^0.1.4", optional = true }
-mushroom-dataclasses = { version = "^0.36.0", optional = true }
-
-
-[tool.poetry.extras]
-frontend = ["docker"]
-tksl = ["antlr4-python3-runtime", "click", "yachalk", "docker"]
-runtime = ["opentelemetry-sdk", "opentelemetry-exporter-otlp"]
-commontypes = ["mushroom-dataclasses"]
-
-[tool.poetry.group.lint]
-optional = true
-
-[tool.poetry.group.lint.dependencies]
-black = "^22.1"
-mypy = "^0.931"
-pylint = "^2.11"
-types-setuptools = "^57.4.2"
-types-python-dateutil = "^2.8.2"
-
-
-[tool.poetry.group.test]
-optional = true
-
-[tool.poetry.group.test.dependencies]
-pytest = "^6.2"
-pytest-asyncio = "^0.16"
-pytket = "^0.17.0"
-
-
-[tool.poetry.group.generate.dependencies]
-betterproto = { version = "2.0.0b4", extras = ["compiler"] }
-poethepoet = "^0.12.3"
-# 2.1.0 incompatible with jinja2 2.11
-markupsafe = "<2.1.0"
-
-[tool.poe.tasks]
-generate = [
-    { cmd = "mkdir -p ./tierkreis/core/protos" },
-    { cmd = "protoc --python_betterproto_out=./tierkreis/core/protos -I ../protos ../protos/**/*.proto" },
+[project.optional-dependencies]
+frontend = [ "docker>=5,<6" ] # Note repetition with tksl
+tksl = [
+    "antlr4-python3-runtime>=4.9.2,<4.10",
+    "click>=8.0.3,<9",
+    "yachalk>=0.1.4,<0.2",
+    "docker>=5,<6", # Note repetition with frontend
+]
+runtime = [
+    "opentelemetry-sdk>=1.5.0,<2",
+    "opentelemetry-exporter-otlp>=1.5.0,<2",
 ]
 
+commontypes = [
+    "mushroom-dataclasses>=0.36.0,<0.37"
+]
+lint = [
+    "black>=22.1,<23",
+    "mypy>=0.931,<0.932",
+    "pylint>=2.11,<3",
+    "types-setuptools>=57.4.2,<58",
+    "types-python-dateutil>=2.8.2,<3"
+]
+test = [
+    "pytest>=6.2,<7",
+    "pytest-asyncio>=0.16,<0.17",
+    "pytket>=0.17.0,<0.18"
+]
+
+[tool.mypy]
+exclude = [
+    '/tksl/antlr/',
+    '^build/'
+]
+
+[[tool.mypy.overrides]]
+module = "tierkreis.core.protos.*"
+ignore_errors = true
 
 [build-system]
-requires = ["poetry-core>=1.2.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["betterproto[compiler]==2.0.0b4", "markupsafe<2.1.0", "setuptools>=61.0", "wheel"]
+build-backend = "generate_protos"
+backend-path = ["local_build_backend"]
+
+[tool.setuptools.packages.find]
+include=[
+    "tierkreis*",
+    "local_build_backend" # For building wheel from sdist
+]
+

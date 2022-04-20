@@ -27,10 +27,7 @@ from tierkreis.core.types import (
     TierkreisTypeErrors,
 )
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
-from tierkreis.frontend import (
-    RuntimeClient,
-    local_runtime,
-)
+from tierkreis.frontend import RuntimeClient, local_runtime
 from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle

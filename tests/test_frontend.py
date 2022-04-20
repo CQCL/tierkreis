@@ -55,11 +55,9 @@ async def test_mistyped_op(client: RuntimeClient):
 
 @pytest.mark.asyncio
 @pytest.mark.skipif(release_tests, reason=REASON)
-async def test_mistyped_op_nochecks():
-    async with local_runtime(
-        LOCAL_SERVER_PATH,
+async def test_mistyped_op_nochecks(local_runtime_launcher):
+    async with local_runtime_launcher(
         grpc_port=9090,
-        show_output=False,
         env_vars={"TIERKREIS_DISABLE_RUNTIME_CHECKS": "1"},
     ) as server:
         tk_g = TierkreisGraph()
@@ -141,7 +139,7 @@ class TstStruct(TierkreisStruct):
     n: NestedStruct
 
 
-def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
+def idpy_graph() -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
     id_node = tk_g.add_node("python_nodes/id_py", value=tk_g.input["id_in"])
@@ -153,7 +151,7 @@ def idpy_graph(client: RuntimeClient) -> TierkreisGraph:
 @pytest.mark.asyncio
 async def test_idpy(client: RuntimeClient):
     async def assert_id_py(val: Any, typ: Type) -> bool:
-        tk_g = idpy_graph(client)
+        tk_g = idpy_graph()
         output = await client.run_graph(tk_g, {"id_in": val})
         val_decoded = output["id_out"].to_python(typ)
         return val_decoded == val
@@ -275,15 +273,16 @@ def mock_myqos_creds(monkeypatch):
 
 @pytest.mark.asyncio
 @pytest.mark.skipif(release_tests, reason=REASON)
-async def test_runtime_worker(client: RuntimeClient, mock_myqos_creds) -> None:
-    async with local_runtime(
-        LOCAL_SERVER_PATH,
+async def test_runtime_worker(
+    client: RuntimeClient, local_runtime_launcher, mock_myqos_creds
+) -> None:
+    bar = local_runtime_launcher(
         grpc_port=9090,
         myqos_worker="http://" + client.socket_address(),
-        show_output=False,
         # make sure it has to talk to the other server for the test worker functions
         workers=[],
-    ) as runtime_server:
+    )
+    async with bar as runtime_server:
         await test_nint_adder(runtime_server)
 
 

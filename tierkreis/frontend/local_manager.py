@@ -24,7 +24,7 @@ def _wait_for_print(proc: subprocess.Popen, content: str):
 @asynccontextmanager
 async def local_runtime(
     executable: Path,
-    workers: Optional[List[Path]] = None,
+    workers: List[Path],
     grpc_port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
@@ -46,11 +46,6 @@ async def local_runtime(
     :yield: RuntimeClient
     :rtype: Iterator[RuntimeClient]
     """
-    parent_dir = Path(__file__).parent
-
-    workers = workers or [
-        parent_dir / "../../tests/worker_test",
-    ]
 
     command: List[Union[str, Path]] = [executable]
     for worker in workers:

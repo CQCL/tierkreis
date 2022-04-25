@@ -64,13 +64,12 @@ module = "tierkreis.core.protos.*"
 ignore_errors = true
 
 [build-system]
-requires = ["betterproto[compiler]==2.0.0b4", "markupsafe<2.1.0", "setuptools>=61.0", "wheel"]
+# PEP 518 says these *python packages* are installed when building an sdist/wheel
+# (or pip install). However there is no facility for installing non-python-packages,
+# so the Tierkreis developer will need cargo/rustc and protoc on their system first.
+requires = ["betterproto[compiler]==2.0.0b4", "markupsafe<2.1.0", "maturin==0.12.9", "setuptools>=61.0"]
+# Note maturin generates a warning:
+# `build-backend` in pyproject.toml is not set to `maturin`, packaging tools such as pip will not use maturin to build this project.
+# As maturin doesn't realize that our local_build_backend delegates to maturin.
 build-backend = "generate_protos"
 backend-path = ["local_build_backend"]
-
-[tool.setuptools.packages.find]
-include=[
-    "tierkreis*",
-    "local_build_backend" # For building wheel from sdist
-]
-

@@ -1,4 +1,4 @@
-from setuptools import build_meta as default_backend
+import maturin as default_backend  # type: ignore
 
 import glob
 import os
@@ -55,8 +55,16 @@ get_requires_for_build_wheel = default_backend.get_requires_for_build_wheel
 prepare_metadata_for_build_wheel = default_backend.prepare_metadata_for_build_wheel
 
 # PEP 660 defines additional hooks to support "pip install --editable":
-#   build_editable, get_requires_for_build_editable, prepare_metadata_for_build_editable
-# however the underlying default_backend does not define these, so we don't either.
+def build_editable(*args, **kwargs):
+    generate_proto_code()
+    return default_backend.build_editable(*args, **kwargs)
+
+
+get_requires_for_build_editable = default_backend.get_requires_for_build_editable
+
+prepare_metadata_for_build_editable = (
+    default_backend.prepare_metadata_for_build_editable
+)
 
 if __name__ == "__main__":
     # Also support handrunning to regenerate python code from protos in-tree.

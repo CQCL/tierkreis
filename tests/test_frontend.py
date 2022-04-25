@@ -1,4 +1,5 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
+from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type
@@ -6,11 +7,23 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 import pytest
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
-from tierkreis.core.tierkreis_graph import FunctionNode, NodePort
+from tierkreis.core.tierkreis_graph import FunctionNode, GraphValue, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import IntType, TierkreisTypeErrors
-from tierkreis.frontend import RuntimeClient, local_runtime
+from tierkreis.core.types import (
+    FloatType,
+    GraphType,
+    IntType,
+    PairType,
+    Row,
+    StarKind,
+    TierkreisTypeErrors,
+    TypeScheme,
+    VarType,
+)
+from tierkreis.core.values import FloatValue, StructValue
+from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
+from tierkreis.frontend.type_inference import infer_graph_types
 
 from . import LOCAL_SERVER_PATH, REASON, release_tests
 
@@ -293,3 +306,83 @@ async def test_callback(client: RuntimeClient):
     tg.set_outputs(out=idnode)
 
     assert (await client.run_graph(tg, {}))["out"].try_autopython() == 2
+
+
+_foo_func = TierkreisFunction(
+    "foo",
+    TypeScheme(
+        {"a": StarKind()},
+        [],
+        GraphType(
+            inputs=Row({"value": VarType("a")}, None),
+            outputs=Row({"res": PairType(VarType("a"), IntType())}, None),
+        ),
+    ),
+    "no docs",
+    ["value"],
+    ["res"],
+)
+
+
+def test_infer_graph_types():
+    tg = TierkreisGraph()
+    foo = tg.add_node("foo", value=3)
+    tg.set_outputs(out=foo["res"])
+    with pytest.raises(TierkreisTypeErrors, match="unknown function 'foo'"):
+        infer_graph_types(tg, [])
+    tg = infer_graph_types(tg, [_foo_func])
+    out_type = tg.get_edge(NodePort(foo, "res"), NodePort(tg.output, "out")).type_
+    assert out_type == PairType(IntType(), IntType())
+
+
+@pytest.mark.asyncio
+async def test_infer_graph_types_with_sig(client: RuntimeClient):
+    # client is only used for signatures of builtins etc.
+    sigs = await client.get_signature()
+
+    tg = TierkreisGraph()
+    mkp = tg.add_node(
+        sigs["builtin"].functions["make_pair"], first=tg.input["in"], second=3
+    )
+    tg.set_outputs(val=mkp["pair"])
+
+    tg = infer_graph_types(tg, sigs)
+    in_type = tg.get_edge(NodePort(tg.input, "in"), NodePort(mkp, "first")).type_
+    assert isinstance(in_type, VarType)
+    out_type = tg.get_edge(NodePort(mkp, "pair"), NodePort(tg.output, "val")).type_
+    assert out_type == PairType(in_type, IntType())
+
+
+@pytest.mark.asyncio
+async def test_infer_graph_types_with_inputs(client: RuntimeClient):
+    funcs = [
+        (await client.get_signature())["python_nodes"].functions["id_py"],
+        _foo_func,
+    ]
+    tg = TierkreisGraph()
+    foo = tg.add_node("foo", value=tg.input["inp"])
+    tg.set_outputs(out=foo["res"])
+
+    tg2 = deepcopy(tg)
+
+    inputs = StructValue({"inp": FloatValue(3.14)})
+    tg, inputs_ = infer_graph_types(tg, funcs, inputs)
+    assert inputs_ == inputs
+    out_type = tg.get_edge(NodePort(foo, "res"), NodePort(tg.output, "out")).type_
+    assert out_type == PairType(FloatType(), IntType())
+
+    graph_inputs = StructValue({"inp": GraphValue(idpy_graph())})
+    with pytest.raises(TierkreisTypeErrors):
+        # Pass an argument inconsistent with the annotations now on tg
+        infer_graph_types(tg, funcs, graph_inputs)
+
+    # deep copy (above) has no annotations yet, so ok
+    tg2, inputs_ = infer_graph_types(tg2, funcs, graph_inputs)
+    out_type = tg2.get_edge(NodePort(foo, "res"), NodePort(tg2.output, "out")).type_
+    assert isinstance(out_type, PairType) and out_type.second == IntType()
+    assert isinstance(out_type.first, GraphType)
+    argtypes, restypes = out_type.first.inputs, out_type.first.outputs
+    assert argtypes.rest is restypes.rest is None
+    assert len(argtypes.content) == len(restypes.content) == 1
+    assert argtypes.content["id_in"] == restypes.content["id_out"]
+    assert isinstance(argtypes.content["id_in"], VarType)

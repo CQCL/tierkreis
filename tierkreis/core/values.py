@@ -488,9 +488,9 @@ class StructValue(TierkreisValue):
         return {name: value.to_proto() for name, value in self.values.items()}
 
     @classmethod
-    def from_python(cls, value: Any) -> "TierkreisValue":
+    def from_python(cls, value: TierkreisStruct) -> "StructValue":
         assert is_dataclass(value)
-        vals = vars(cast(TierkreisStruct, value))
+        vals = vars(value)
         types = python_struct_fields(type(value))
 
         return StructValue(
@@ -503,7 +503,7 @@ class StructValue(TierkreisValue):
         )
 
     @classmethod
-    def from_proto(cls, value: Any) -> "TierkreisValue":
+    def from_proto(cls, value: Any) -> "StructValue":
         struct_value = cast(pg.StructValue, value)
         return StructValue(
             {

@@ -25,7 +25,7 @@ from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
 from tierkreis.frontend.type_inference import infer_graph_types
 
-from . import LOCAL_SERVER_PATH, REASON, release_tests
+from . import REASON, release_tests
 
 
 def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:

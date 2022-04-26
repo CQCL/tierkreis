@@ -1,13 +1,14 @@
 import pytest
+
+from pytket import Qubit, Circuit  # type: ignore
+from pytket.pauli import QubitPauliString, Pauli  # type: ignore
+from pytket.partition import MeasurementBitMap, MeasurementSetup  # type: ignore
+
 from tierkreis.core.common_types import (
     _qps_to_pytket,
     _qps_from_pytket,
 )
 import tierkreis.core.common_types as common
-
-from pytket import Qubit, Circuit  # type: ignore
-from pytket.pauli import QubitPauliString, Pauli  # type: ignore
-from pytket.partition import MeasurementBitMap, MeasurementSetup  # type: ignore
 
 
 @pytest.mark.parametrize(

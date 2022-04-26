@@ -1,8 +1,8 @@
-import maturin as default_backend  # type: ignore
-
 import glob
 import os
 from subprocess import check_call
+
+import maturin as default_backend  # type: ignore
 
 # PEP 517 / 518 local (aka in-tree) backend for pip/build/etc.
 # We expect to be run from the project root, i.e. python/

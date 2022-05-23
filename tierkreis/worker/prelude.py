@@ -20,10 +20,14 @@ parser.add_argument(
     "--port", help="If specified listen on network port rather than UDP."
 )
 
+profile_worker: bool
+
 
 def setup_tracing(service_name: str):
 
     endpoint = os.environ.get("TIERKREIS_OTLP")
+    global profile_worker
+    profile_worker = bool(os.environ.get("TIERKREIS_PROFILE_WORKER"))
 
     if endpoint is None:
         return

@@ -56,8 +56,29 @@ async def _event_recv_request(request: grpclib.events.RecvRequest):
                 kind=opentelemetry.trace.SpanKind.SERVER,
                 attributes=attributes,
             )
-            with span:
-                await method_func(stream)
+            with span as s:
+                from .prelude import profile_worker  # avoid cyclic import
+
+                if profile_worker:
+                    import cProfile, pstats  # could be global
+                    from io import StringIO
+
+                    render_results = StringIO()
+                    with cProfile.Profile() as pr:
+                        # If there are multiple requests being processed at the
+                        # same time, due to "async" this will likely get confused,
+                        # i.e. combine processing for any+all of them together.
+                        pr.enable()
+                        await method_func(stream)
+                        pr.disable()
+                        stats = pstats.Stats(pr, stream=render_results)
+                    stats.sort_stats("cumtime")
+                    stats.print_stats(20)  # Top 20 lines
+                    render_results.seek(0)
+                    s.set_attribute("profile_results", render_results.read())
+                else:
+                    await method_func(stream)
+
         finally:
             opentelemetry.context.detach(token)
 
@@ -171,8 +192,13 @@ class WorkerServerImpl(WorkerBase):
         try:
             inputs_struct = StructValue.from_proto_dict(inputs.map)
             outputs_struct = await self.worker.run(function, inputs_struct)
-            outputs = pg.StructValue(outputs_struct.to_proto_dict())
-            return RunFunctionResponse(outputs=outputs)
+            with tracer.start_as_current_span(
+                "encoding python type in RunFunctionResponse proto"
+            ):
+                res = RunFunctionResponse(
+                    outputs=pg.StructValue(outputs_struct.to_proto_dict())
+                )
+            return res
         except DecodeInputError as err:
             raise GRPCError(
                 status=StatusCode.INVALID_ARGUMENT,

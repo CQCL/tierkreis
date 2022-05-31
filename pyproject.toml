@@ -53,6 +53,9 @@ test = [
     "pytket>=0.17.0,<0.18"
 ]
 
+[tool.black]
+exclude = '/tksl/antlr/'
+
 [tool.mypy]
 exclude = [
     '/tksl/antlr/',
@@ -121,7 +124,7 @@ enable=[
     "yield-outside-function"
 ]
 # Ignore long lines containing URLs or pylint or mypy directives.
-ignore-long-lines='^(.*#\w*pylint: disable.*|.*# type: ignore.*|\s*(# )?<?https?://\S+>?)$'
+ignore-long-lines='(#\w*pylint: disable.*|# type: ignore.*|https?://\S+>?)$'
 
 
 [build-system]
@@ -132,5 +135,5 @@ requires = ["betterproto[compiler]==2.0.0b4", "markupsafe<2.1.0", "maturin==0.12
 # Note maturin generates a warning:
 # `build-backend` in pyproject.toml is not set to `maturin`, packaging tools such as pip will not use maturin to build this project.
 # As maturin doesn't realize that our local_build_backend delegates to maturin.
-build-backend = "generate_protos"
+build-backend = "gen_python_srcs"
 backend-path = ["local_build_backend"]

@@ -3,7 +3,7 @@ from __future__ import annotations
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, is_dataclass
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast, TypeVar
 from uuid import UUID
 
 import betterproto
@@ -45,7 +45,11 @@ class TierkreisValue(ABC):
     def __init_subclass__(cls, **kwargs) -> None:
         super().__init_subclass__()
         TierkreisValue._proto_map[getattr(cls, "_proto_name")] = cls
-        TierkreisValue._pytype_map[getattr(cls, "_pytype")] = cls
+        TierkreisValue._pytype_map[getattr(cls, "_class_pytype")] = cls
+
+    @property
+    def _instance_pytype(self):
+        return self._class_pytype
 
     @abstractmethod
     def to_proto(self) -> pg.Value:
@@ -94,8 +98,8 @@ class TierkreisValue(ABC):
         else:
             try:
                 find_subclass = next(
-                    cls._pytype_map[pytype]
-                    for pytype in cls._pytype_map
+                    tktype
+                    for pytype, tktype in cls._pytype_map.items()
                     if pytype is not Optional and isinstance(value, pytype)  # type: ignore
                 )
             except StopIteration as e:
@@ -122,7 +126,7 @@ class TierkreisValue(ABC):
                 :rtype: Optional[Any]
         """
         try:
-            return self.to_python(getattr(self, "_pytype"))
+            return self.to_python(self._instance_pytype)
         except ToPythonFailure as _:
             return None
 
@@ -130,8 +134,14 @@ class TierkreisValue(ABC):
 @dataclass(frozen=True)
 class OptionValue(TierkreisValue):
     _proto_name: ClassVar[str] = "option"
-    _pytype: ClassVar[typing.Type] = Optional  # type: ignore
+    _class_pytype: ClassVar[typing.Type] = Optional  # type: ignore
     inner: Optional[TierkreisValue]
+
+    @property
+    def _instance_pytype(self):
+        return Optional[
+            TypeVar("C") if self.inner is None else self.inner._instance_pytype
+        ]
 
     def to_proto(self) -> pg.Value:
         optval = (
@@ -176,7 +186,7 @@ class OptionValue(TierkreisValue):
 @dataclass(frozen=True)
 class BoolValue(TierkreisValue):
     _proto_name: ClassVar[str] = "boolean"
-    _pytype: ClassVar[typing.Type] = bool
+    _class_pytype: ClassVar[typing.Type] = bool
 
     value: bool
 
@@ -208,7 +218,7 @@ class BoolValue(TierkreisValue):
 @dataclass(frozen=True)
 class StringValue(TierkreisValue):
     _proto_name: ClassVar[str] = "str"
-    _pytype: ClassVar[typing.Type] = str
+    _class_pytype: ClassVar[typing.Type] = str
     value: str
 
     def to_proto(self) -> pg.Value:
@@ -241,7 +251,7 @@ class StringValue(TierkreisValue):
 @dataclass(frozen=True)
 class IntValue(TierkreisValue):
     _proto_name: ClassVar[str] = "integer"
-    _pytype: ClassVar[typing.Type] = int
+    _class_pytype: ClassVar[typing.Type] = int
     value: int
 
     def to_proto(self) -> pg.Value:
@@ -273,7 +283,7 @@ class IntValue(TierkreisValue):
 @dataclass(frozen=True)
 class FloatValue(TierkreisValue):
     _proto_name: ClassVar[str] = "flt"
-    _pytype: ClassVar[typing.Type] = float
+    _class_pytype: ClassVar[typing.Type] = float
     value: float
 
     def to_proto(self) -> pg.Value:
@@ -305,9 +315,13 @@ class FloatValue(TierkreisValue):
 @dataclass(frozen=True)
 class PairValue(TierkreisValue):
     _proto_name: ClassVar[str] = "pair"
-    _pytype: ClassVar[typing.Type] = tuple
+    _class_pytype: ClassVar[typing.Type] = tuple
     first: TierkreisValue
     second: TierkreisValue
+
+    @property
+    def _instance_pytype(self):
+        return tuple[self.first._instance_pytype, self.second._instance_pytype]
 
     def to_proto(self) -> pg.Value:
         return pg.Value(
@@ -353,8 +367,16 @@ class PairValue(TierkreisValue):
 @dataclass(frozen=True)
 class VecValue(TierkreisValue):
     _proto_name: ClassVar[str] = "vec"
-    _pytype: ClassVar[typing.Type] = list
+    _class_pytype: ClassVar[typing.Type] = list
     values: list[TierkreisValue]
+
+    @property
+    def _instance_pytype(self):
+        elem_t = (
+            TypeVar("E") if len(self.values) == 0 else self.values[0]._instance_pytype
+        )
+        # Would be better to check all elements are the same.
+        return list[elem_t]
 
     def to_proto(self) -> pg.Value:
         return pg.Value(
@@ -393,8 +415,17 @@ class VecValue(TierkreisValue):
 @dataclass(frozen=True)
 class MapValue(TierkreisValue):
     _proto_name: ClassVar[str] = "map"
-    _pytype: ClassVar[typing.Type] = dict
+    _class_pytype: ClassVar[typing.Type] = dict
     values: Dict[TierkreisValue, TierkreisValue]
+
+    @property
+    def _instance_pytype(self):
+        k = next(iter(self.values.keys()), None)
+        key_t = TypeVar("K") if k is None else k._instance_pytype
+        v = next(iter(self.values.values()), None)
+        val_t = TypeVar("V") if v is None else v._instance_pytype
+        # Would be better to check all keys and all values are the same.
+        return dict[key_t, val_t]
 
     def to_proto(self) -> pg.Value:
         return pg.Value(
@@ -454,7 +485,7 @@ class MapValue(TierkreisValue):
 @dataclass(frozen=True)
 class StructValue(TierkreisValue):
     _proto_name: ClassVar[str] = "struct"
-    _pytype: ClassVar[typing.Type] = TierkreisStruct
+    _class_pytype: ClassVar[typing.Type] = TierkreisStruct
     values: Dict[str, TierkreisValue]
 
     def to_proto(self) -> pg.Value:

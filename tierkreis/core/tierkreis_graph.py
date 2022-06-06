@@ -589,7 +589,7 @@ def _to_tierkreis_type(
 class GraphValue(TierkreisValue):
     value: TierkreisGraph
     _proto_name: str = "graph"
-    _pytype: typing.Type = TierkreisGraph
+    _class_pytype: typing.ClassVar[typing.Type] = TierkreisGraph
 
     def to_proto(self) -> pg.Value:
         return pg.Value(graph=self.value.to_proto())

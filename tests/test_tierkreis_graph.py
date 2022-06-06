@@ -7,7 +7,15 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisFunction,
 )
 from tierkreis.core.types import IntType, TypeScheme, Row, GraphType
-from tierkreis.core.values import TierkreisValue
+from tierkreis.core.values import (
+    TierkreisValue,
+    OptionValue,
+    VecValue,
+    IntValue,
+    FloatValue,
+    MapValue,
+    PairValue,
+)
 
 
 def test_creation() -> None:
@@ -84,14 +92,50 @@ def test_insert_subgraph() -> None:
 
 
 def test_value_topython():
-    convertible_vals = (1, "two", False, 2.3)
+    convertible_vals = (1, "two", False, 2.3, [1, 2], ("a", 4), {"asf": 3, "fsd": 4})
 
     for val in convertible_vals:
         assert TierkreisValue.from_python(val).try_autopython() == val
 
-    fail_vals = ([1, 2], ("a", 4), {"asf": 3, "fsd": 4})
+    fail_vals = ([1, 2.2], {"asd": 3, "fgh": False})
     for val in fail_vals:
         assert TierkreisValue.from_python(val).try_autopython() is None
+
+    assert OptionValue(VecValue([IntValue(3), IntValue(4)])).try_autopython() == [3, 4]
+
+
+@pytest.mark.xfail(raises=AssertionError)
+def test_value_topython_list_with_empty():
+    pyval = [[], [3, 4]]
+    tkval = TierkreisValue.from_python(pyval)
+    if tkval != VecValue([VecValue([]), VecValue([IntValue(3), IntValue(4)])]):
+        # We expect this to work (even though xfail'd) - else test setup has gone wrong
+        pytest.fail()
+    pyval2 = tkval.try_autopython()
+    # The following fails because we can't figure out the element-type of the outer list
+    # from the first element (the empty list). Looking at the second element would work.
+    assert pyval2 == pyval
+
+
+@pytest.mark.xfail(raises=AssertionError)
+def test_value_topython_map_with_empty():
+    pyval = {10: ([], [3, 4]), 15: ([2.1, 3.2], [])}
+    tkval = TierkreisValue.from_python(pyval)
+    if tkval != MapValue(
+        {
+            IntValue(10): PairValue(VecValue([]), VecValue([IntValue(3), IntValue(4)])),
+            IntValue(15): PairValue(
+                VecValue([FloatValue(2.1), FloatValue(3.2)]), VecValue([])
+            ),
+        }
+    ):
+        # We expect this to work (even though xfail'd) - else test setup has gone wrong
+        pytest.fail()
+    pyval2 = tkval.try_autopython()
+    # The following fails because we can't figure out the value-type of the Map
+    # from either element (whichever comes first!).
+    # We'd need to combine type info from both values.
+    assert pyval == pyval2
 
 
 def test_inline_boxes():

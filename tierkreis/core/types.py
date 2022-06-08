@@ -15,7 +15,7 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 try:
     from types import NoneType  # type: ignore
 except ImportError as _:
-    NoneType = type(None)  # type: ignore
+    NoneType = type(None)
 
 
 def _get_optional_type(type_: typing.Type) -> typing.Optional[typing.Type]:

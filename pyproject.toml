@@ -61,6 +61,7 @@ exclude = [
     '/tksl/antlr/',
     '^build/'
 ]
+warn_unused_ignores = true
 
 [[tool.mypy.overrides]]
 module = "tierkreis.core.protos.*"

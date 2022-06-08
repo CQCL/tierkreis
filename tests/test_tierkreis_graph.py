@@ -83,7 +83,7 @@ def test_insert_subgraph() -> None:
     assert len(main_g.nodes()) == 7
     assert len(main_g.edges()) == 7
 
-    with pytest.raises(TierkreisGraph.DuplicateNodeName) as e:  # type: ignore
+    with pytest.raises(TierkreisGraph.DuplicateNodeName) as e:
         _ = main_g.insert_graph(
             subgraph, "subgraph::", one=main_g.input["newin1"], two=4
         )

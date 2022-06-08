@@ -7,18 +7,18 @@ from dataclasses import dataclass
 from importlib import import_module
 
 try:
-    from mushroom_dataclasses.circuit import Circuit as CircStruct  # type: ignore
-    from mushroom_dataclasses.circuit import Register as UnitID  # type: ignore
+    from mushroom_dataclasses.circuit import Circuit as CircStruct
+    from mushroom_dataclasses.circuit import Register as UnitID
 except ImportError as e:
     raise ImportError(
         "Make sure tierkreis is installed with the 'commontypes' feature"
     ) from e
 
 if TYPE_CHECKING:
-    from pytket.backends.backendresult import BackendResult  # type: ignore
+    from pytket.backends.backendresult import BackendResult
     from pytket.partition import (  # type: ignore
-        MeasurementSetup as PytketMeasurementSetup,  # type: ignore
-        MeasurementBitMap as PytketMeasurementBitMap,  # type: ignore
+        MeasurementSetup as PytketMeasurementSetup,
+        MeasurementBitMap as PytketMeasurementBitMap,
     )
     from pytket.pauli import QubitPauliString as PytketQubitPauliString  # type: ignore
 

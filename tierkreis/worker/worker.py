@@ -131,15 +131,15 @@ class Worker:
 
     async def _extract_callback(self, request: grpclib.events.RecvRequest):
         if self.callback is None:
-            callback_host = str(request.metadata.get("tierkreis_callback_host"))  # type: ignore
+            callback_host = str(request.metadata.get("tierkreis_callback_host"))
             callback_port = int(request.metadata.get("tierkreis_callback_port"))  # type: ignore
 
             self.callback = (callback_host, callback_port)
 
     async def _extract_auth(self, request: grpclib.events.RecvRequest) -> None:
         if keyring.get_password(_KEYRING_SERVICE, "token") is None:
-            token = request.metadata.pop("token", None)  # type: ignore
-            key = request.metadata.pop("key", None)  # type: ignore
+            token = request.metadata.pop("token", None)
+            key = request.metadata.pop("key", None)
             if (token is not None) and (key is not None):
                 keyring.set_password(_KEYRING_SERVICE, "token", str(token))
                 keyring.set_password(_KEYRING_SERVICE, "key", str(key))

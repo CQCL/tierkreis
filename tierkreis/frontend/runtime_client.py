@@ -227,8 +227,8 @@ class RuntimeClient:
 
 def _gen_auth_injector(login: str, pwd: str) -> Callable[["SendRequest"], Coroutine]:
     async def _inject_auth(event: SendRequest) -> None:
-        event.metadata["token"] = login  # type: ignore
-        event.metadata["key"] = pwd  # type: ignore
+        event.metadata["token"] = login
+        event.metadata["key"] = pwd
 
     return _inject_auth
 

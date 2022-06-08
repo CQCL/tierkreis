@@ -100,7 +100,7 @@ class TierkreisValue(ABC):
                 find_subclass = next(
                     tktype
                     for pytype, tktype in cls._pytype_map.items()
-                    if pytype is not Optional and isinstance(value, pytype)  # type: ignore
+                    if pytype is not Optional and isinstance(value, pytype)
                 )
             except StopIteration as e:
                 if is_dataclass(value):

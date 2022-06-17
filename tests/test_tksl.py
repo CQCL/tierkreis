@@ -61,8 +61,8 @@ def _vecs_graph() -> TierkreisGraph:
 
 def _structs_graph() -> TierkreisGraph:
     tg = TierkreisGraph()
-    sturct = tg.add_node("builtin/make_struct", name="hello", age=23, height=12.3)
-    sturct = tg.add_node("builtin/unpack_struct", struct=sturct["struct"])
+    sturct = tg.add_func("builtin/make_struct", name="hello", age=23, height=12.3)
+    sturct = tg.add_func("builtin/unpack_struct", struct=sturct["struct"])
 
     tg.set_outputs(age=sturct["age"])
     tg.annotate_output("age", IntType())
@@ -71,8 +71,8 @@ def _structs_graph() -> TierkreisGraph:
 
 def _maps_graph() -> TierkreisGraph:
     tg = TierkreisGraph()
-    mp_val = tg.add_node("builtin/remove_key", map=tg.input["mp"], key=3)
-    ins = tg.add_node("builtin/insert_key", map=mp_val["map"], key=5, val="bar")
+    mp_val = tg.add_func("builtin/remove_key", map=tg.input["mp"], key=3)
+    ins = tg.add_func("builtin/insert_key", map=mp_val["map"], key=5, val="bar")
 
     tg.set_outputs(mp=ins["map"], vl=mp_val["val"])
     tg.annotate_input("mp", MapType(IntType(), StringType()))

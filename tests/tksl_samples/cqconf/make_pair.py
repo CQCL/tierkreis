@@ -6,7 +6,7 @@ from tierkreis.frontend.myqos_client import myqos_runtime
 async def main():
 
     tg = TierkreisGraph()
-    unpack = tg.add_node("builtin/unpack_pair", pair=(2, "asdf"))
+    unpack = tg.add_func("builtin/unpack_pair", pair=(2, "asdf"))
     tg.set_outputs(first=unpack["first"], second=unpack["second"])
 
     async with myqos_runtime("tierkreis.myqos.com") as client:

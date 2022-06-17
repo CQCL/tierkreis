@@ -235,7 +235,7 @@ class TkslFileVisitor(TkslVisitor):
                 self.context.functions[f_name][0], f_name, **arglist
             )
         else:
-            noderef = self.graph.add_node(f_name, **arglist)
+            noderef = self.graph.add_func(f_name, **arglist)
 
         return noderef, f_def
 
@@ -244,7 +244,7 @@ class TkslFileVisitor(TkslVisitor):
     ) -> Tuple[NodeRef, FunctionDefinition]:
         outport = self.visitThunkable_port(ctx.thunkable_port())[0]
         arglist = self.visitNamed_map(ctx.named_map()) if ctx.named_map() else {}
-        eval_n = self.graph.add_node("builtin/eval", thunk=outport, **arglist)
+        eval_n = self.graph.add_func("builtin/eval", thunk=outport, **arglist)
         return eval_n, def_from_tkfunc(self.sig["builtin"].functions["eval"])
 
     def visitCallMap(self, ctx: TkslParser.CallMapContext) -> None:
@@ -282,10 +282,10 @@ class TkslFileVisitor(TkslVisitor):
                 if_g.discard(if_g.input[inp])
             if inp not in else_g.inputs():
                 else_g.discard(else_g.input[inp])
-        sw_nod = self.graph.add_node(
+        sw_nod = self.graph.add_func(
             "builtin/switch", pred=condition, if_true=if_g, if_false=else_g
         )
-        eval_n = self.graph.add_node("builtin/eval", thunk=sw_nod["value"], **inputs)
+        eval_n = self.graph.add_func("builtin/eval", thunk=sw_nod["value"], **inputs)
 
         output_names = set(if_g.outputs()).union(else_g.outputs())
         ifcontext.outputs = OrderedDict({outp: None for outp in output_names})
@@ -310,7 +310,7 @@ class TkslFileVisitor(TkslVisitor):
             if inp not in body_g.inputs():
                 body_g.discard(body_g.input[inp])
 
-        loop_nod = self.graph.add_node("builtin/loop", body=body_g, **inputs)
+        loop_nod = self.graph.add_func("builtin/loop", body=body_g, **inputs)
 
         loopcontext.outputs = OrderedDict({outp: None for outp in body_g.outputs()})
 

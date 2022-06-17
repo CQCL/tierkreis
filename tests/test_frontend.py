@@ -37,14 +37,14 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
         n_even = len(current_outputs) & ~1
 
         for i in range(0, n_even, 2):
-            nod = tk_g.add_node(
+            nod = tk_g.add_func(
                 "builtin/iadd",
                 a=current_outputs[i],
                 b=current_outputs[i + 1],
             )
             next_outputs.append(nod["value"])
         if len(current_outputs) > n_even:
-            nod = tk_g.add_node(
+            nod = tk_g.add_func(
                 "builtin/iadd",
                 a=next_outputs[-1],
                 b=current_outputs[n_even],
@@ -60,7 +60,7 @@ def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
 @pytest.mark.asyncio
 async def test_mistyped_op(client: RuntimeClient):
     tk_g = TierkreisGraph()
-    nod = tk_g.add_node("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
+    nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
     tk_g.set_outputs(out=nod)
     with pytest.raises(RuntimeError, match="Type mismatch"):
         await client.run_graph(tk_g, {"testinp": 3})
@@ -74,7 +74,7 @@ async def test_mistyped_op_nochecks(local_runtime_launcher):
         env_vars={"TIERKREIS_DISABLE_RUNTIME_CHECKS": "1"},
     ) as server:
         tk_g = TierkreisGraph()
-        nod = tk_g.add_node("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
+        nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
         tk_g.set_outputs(out=nod)
         res = await server.run_graph(tk_g, {"testinp": 3})
         assert res["out"].try_autopython() == 4.1
@@ -102,8 +102,8 @@ async def test_nint_adder(client: RuntimeClient):
 def add_n_graph(increment: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
-    add_node = tk_g.add_node("builtin/iadd", a=increment, b=tk_g.input["number"])
-    tk_g.set_outputs(output=add_node)
+    add_func = tk_g.add_func("builtin/iadd", a=increment, b=tk_g.input["number"])
+    tk_g.set_outputs(output=add_func)
 
     return tk_g
 
@@ -115,14 +115,14 @@ async def test_switch(client: RuntimeClient):
     tk_g = TierkreisGraph()
     sig = await client.get_signature()
 
-    switch = tk_g.add_node(
+    switch = tk_g.add_func(
         sig["builtin"].functions["switch"],
         if_true=tk_g.add_const(add_2_g),
         if_false=tk_g.add_const(add_3_g),
         pred=tk_g.input["flag"],
     )
 
-    eval_node = tk_g.add_node(
+    eval_node = tk_g.add_func(
         sig["builtin"].functions["eval"], thunk=switch, number=tk_g.input["number"]
     )
 
@@ -155,7 +155,7 @@ class TstStruct(TierkreisStruct):
 def idpy_graph() -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
-    id_node = tk_g.add_node("python_nodes/id_py", value=tk_g.input["id_in"])
+    id_node = tk_g.add_func("python_nodes/id_py", value=tk_g.input["id_in"])
     tk_g.set_outputs(id_out=id_node)
 
     return tk_g
@@ -232,7 +232,7 @@ async def test_infer_errors_when_running(client: RuntimeClient) -> None:
 @pytest.mark.asyncio
 async def test_fail_node(client: RuntimeClient) -> None:
     tg = TierkreisGraph()
-    tg.add_node("python_nodes/fail")
+    tg.add_func("python_nodes/fail")
 
     with pytest.raises(RuntimeError) as err:
         await client.run_graph(tg, {})
@@ -244,7 +244,7 @@ def graph_from_func(func: TierkreisFunction) -> TierkreisGraph:
     # build a graph with a single function node, with the same interface as that
     # function
     tg = TierkreisGraph()
-    node = tg.add_node(func.name, **{port: tg.input[port] for port in func.input_order})
+    node = tg.add_func(func.name, **{port: tg.input[port] for port in func.input_order})
     tg.set_outputs(**{port: node[port] for port in func.output_order})
     return tg
 
@@ -302,7 +302,7 @@ async def test_runtime_worker(
 @pytest.mark.asyncio
 async def test_callback(client: RuntimeClient):
     tg = TierkreisGraph()
-    idnode = tg.add_node("python_nodes/id_with_callback", value=2)
+    idnode = tg.add_func("python_nodes/id_with_callback", value=2)
     tg.set_outputs(out=idnode)
 
     assert (await client.run_graph(tg, {}))["out"].try_autopython() == 2
@@ -326,7 +326,7 @@ _foo_func = TierkreisFunction(
 
 def test_infer_graph_types():
     tg = TierkreisGraph()
-    foo = tg.add_node("foo", value=3)
+    foo = tg.add_func("foo", value=3)
     tg.set_outputs(out=foo["res"])
     with pytest.raises(TierkreisTypeErrors, match="unknown function 'foo'"):
         infer_graph_types(tg, [])
@@ -341,7 +341,7 @@ async def test_infer_graph_types_with_sig(client: RuntimeClient):
     sigs = await client.get_signature()
 
     tg = TierkreisGraph()
-    mkp = tg.add_node(
+    mkp = tg.add_func(
         sigs["builtin"].functions["make_pair"], first=tg.input["in"], second=3
     )
     tg.set_outputs(val=mkp["pair"])
@@ -360,7 +360,7 @@ async def test_infer_graph_types_with_inputs(client: RuntimeClient):
         _foo_func,
     ]
     tg = TierkreisGraph()
-    foo = tg.add_node("foo", value=tg.input["inp"])
+    foo = tg.add_func("foo", value=tg.input["inp"])
     tg.set_outputs(out=foo["res"])
 
     tg2 = deepcopy(tg)

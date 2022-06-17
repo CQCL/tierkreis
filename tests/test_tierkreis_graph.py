@@ -35,11 +35,11 @@ def test_creation() -> None:
         output_order=["value"],
         docs="",
     )
-    add = tg.add_node(add_func, a=3, b=tg.input["input"])
+    add = tg.add_func(add_func, a=3, b=tg.input["input"])
     tg.set_outputs(output=add)
 
     id_g = TierkreisGraph()
-    id_node = id_g.add_node("builtin/id", value=id_g.input["value"])
+    id_node = id_g.add_func("builtin/id", value=id_g.input["value"])
     id_g.set_outputs(value=id_node["value"])
 
     tg.add_box(id_g)

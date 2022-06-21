@@ -42,6 +42,10 @@ class TierkreisNode(ABC):
             result = InputNode()
         elif name == "output":
             result = OutputNode()
+        elif name == "tag":
+            result = TagNode(cast(str, out_node))
+        elif name == "match":
+            result = MatchNode()
         else:
             raise ValueError(f"Unknown protobuf node type: {name}")
 
@@ -89,6 +93,20 @@ class FunctionNode(TierkreisNode):
 
     def to_proto(self) -> pg.Node:
         return pg.Node(function=self.function_name)
+
+
+@dataclass
+class TagNode(TierkreisNode):
+    tag_name: str
+
+    def to_proto(self) -> pg.Node:
+        return pg.Node(tag=self.tag_name)
+
+
+@dataclass
+class MatchNode(TierkreisNode):
+    def to_proto(self) -> pg.Node:
+        return pg.Node(match=pg.Empty())
 
 
 @dataclass
@@ -237,6 +255,26 @@ class TierkreisGraph:
     ) -> NodeRef:
         # TODO restrict to graph i/o
         return self.add_node(BoxNode(graph), name, **kwargs)
+
+    def add_match(
+        self,
+        variant_value: IncomingWireType,
+        _tk_node_name: Optional[str] = None,
+        /,
+        **variant_handlers: IncomingWireType,
+    ) -> NodeRef:
+        return self.add_node(
+            MatchNode(), _tk_node_name, variant_value=variant_value, **variant_handlers
+        )
+
+    def add_tag(
+        self,
+        tag: str,
+        *,  # Following are keyword only
+        name: Optional[str] = None,
+        value: IncomingWireType,
+    ) -> NodeRef:
+        return self.add_node(TagNode(tag), name, value=value)
 
     def insert_graph(
         self,

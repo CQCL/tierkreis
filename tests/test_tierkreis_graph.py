@@ -15,6 +15,7 @@ from tierkreis.core.values import (
     FloatValue,
     MapValue,
     PairValue,
+    TierkreisVariant,
 )
 
 
@@ -92,7 +93,16 @@ def test_insert_subgraph() -> None:
 
 
 def test_value_topython():
-    convertible_vals = (1, "two", False, 2.3, [1, 2], ("a", 4), {"asf": 3, "fsd": 4})
+    convertible_vals = (
+        1,
+        "two",
+        False,
+        2.3,
+        [1, 2],
+        ("a", 4),
+        {"asf": 3, "fsd": 4},
+        TierkreisVariant("mylabel", 5),
+    )
 
     for val in convertible_vals:
         assert TierkreisValue.from_python(val).try_autopython() == val

@@ -6,6 +6,8 @@ from tierkreis.core.tierkreis_graph import (
     BoxNode,
     ConstNode,
     FunctionNode,
+    MatchNode,
+    TagNode,
     GraphValue,
     InputNode,
     OutputNode,
@@ -152,7 +154,14 @@ def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
             node_label += "\n<BR/>"
         fillcolor = _COLOURS["const"]
         node_label += _trim_str(node.value.to_tksl(), 15)
-
+    elif isinstance(node, MatchNode):
+        if node_label:
+            node_label += "\n<BR/>"
+        node_label += "Match"
+    elif isinstance(node, TagNode):
+        if node_label:
+            node_label += "\n<BR/>"
+        node_label += "Tag: " + node.tag_name
     elif isinstance(node, BoxNode):
         if not node_label:
             node_label = "Box"

@@ -151,6 +151,9 @@ class TierkreisType(ABC):
             inputs = Row.from_proto_rowtype(graph_type.inputs)
             outputs = Row.from_proto_rowtype(graph_type.outputs)
             result = GraphType(inputs, outputs)
+        elif name == "variant":
+            shape = cast(pg.RowType, out_type)
+            result = VariantType(Row.from_proto_rowtype(shape))
         else:
             raise ValueError(f"Unknown protobuf type: {name}")
 
@@ -385,6 +388,21 @@ class StructType(TierkreisType):
 
     def __str__(self) -> str:
         return self.name or self.anon_name()
+
+    def children(self) -> list["TierkreisType"]:
+        return self.shape.children()
+
+
+@dataclass
+class VariantType(TierkreisType):
+    shape: Row
+
+    def to_proto(self) -> pg.Type:
+        row = self.shape.to_proto().row
+        return pg.Type(variant=row)
+
+    def __str__(self) -> str:
+        return f"Variant<{self.shape.to_tksl()}>"
 
     def children(self) -> list["TierkreisType"]:
         return self.shape.children()

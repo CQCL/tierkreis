@@ -551,3 +551,47 @@ class StructValue(TierkreisValue):
         key_vals = (f"{key}: {val.to_tksl()}" for key, val in self.values.items())
 
         return f"Struct{{{', '.join(key_vals)}}}"
+
+
+@dataclass(frozen=True)
+class TierkreisVariant(typing.Generic[T]):
+    """Used to represent a Tierkreis Variant as a native python value"""
+
+    tag: str
+    value: T
+
+
+@dataclass(frozen=True)
+class VariantValue(TierkreisValue):
+    _proto_name: ClassVar[str] = "variant"
+    _class_pytype: ClassVar[typing.Type] = TierkreisVariant
+    tag: str
+    value: TierkreisValue
+
+    @property
+    def _instance_pytype(self):
+        return TierkreisVariant[self.value._instance_pytype]
+
+    def to_proto(self) -> pg.Value:
+        return pg.Value(
+            variant=pg.VariantValue(tag=self.tag, value=self.value.to_proto())
+        )
+
+    def to_python(self, type_: typing.Type[T]) -> T:
+        if isinstance(type_, typing.TypeVar):
+            return cast(T, self)
+        if typing.get_origin(type_) is TierkreisVariant:
+            (type_args,) = typing.get_args(type_)
+            return cast(T, TierkreisVariant(self.tag, self.value.to_python(type_args)))
+        raise ToPythonFailure(self)
+
+    def to_tksl(self) -> str:
+        return f"Variant{{{self.tag}: {self.value.to_tksl()}}}"
+
+    @classmethod
+    def from_python(cls, value: TierkreisVariant) -> "TierkreisValue":
+        return VariantValue(value.tag, TierkreisValue.from_python(value.value))
+
+    @classmethod
+    def from_proto(cls, value: pg.VariantValue) -> "TierkreisValue":
+        return VariantValue(value.tag, TierkreisValue.from_proto(value.value))

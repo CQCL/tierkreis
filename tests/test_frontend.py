@@ -3,6 +3,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Type
+from time import time
 
 import pytest
 from tierkreis import TierkreisGraph
@@ -20,7 +21,7 @@ from tierkreis.core.types import (
     TypeScheme,
     VarType,
 )
-from tierkreis.core.values import FloatValue, StructValue
+from tierkreis.core.values import FloatValue, StructValue, VariantValue
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
 from tierkreis.frontend.type_inference import infer_graph_types
@@ -134,6 +135,61 @@ async def test_switch(client: RuntimeClient):
     outs = await client.run_graph(tk_g, {"flag": False, "number": 3})
 
     assert outs["out"].try_autopython() == 6
+
+
+@pytest.mark.asyncio
+async def test_match(client: RuntimeClient):
+    # Test a variant type < one: Float | many: Vec<Float> >
+    one_graph = TierkreisGraph()
+    one_graph.set_outputs(
+        value=one_graph.add_func("builtin/fadd", a=one_graph.input["value"], b=3.14)
+    )
+    many_graph = TierkreisGraph()
+    many_graph.set_outputs(
+        value=many_graph.add_func("builtin/pop", vec=many_graph.input["value"])["item"]
+    )
+
+    match_graph = TierkreisGraph()
+    match_graph.set_outputs(
+        result=match_graph.add_func(
+            "python_nodes/id_delay",
+            wait=1,
+            value=match_graph.add_func(
+                "builtin/eval",
+                thunk=match_graph.add_match(
+                    match_graph.input["vv"],
+                    one=match_graph.add_const(one_graph),
+                    many=match_graph.add_func(
+                        "python_nodes/id_delay",
+                        wait=1,
+                        value=match_graph.add_const(many_graph),
+                    ),
+                )["thunk"],
+            ),
+        )
+    )
+
+    start_time = time()
+    outs = await client.run_graph(
+        match_graph, {"vv": VariantValue("one", FloatValue(6.0))}
+    )
+    time_taken = time() - start_time
+    assert outs["result"] == FloatValue(9.14)
+    # Must have waited at least 1s for the delay on the graph output.
+    assert time_taken >= 1.0
+    # Should not have had to wait 1s first for the "many" graph input to be ready,
+    # as that was not the variant was not selected.
+    # (1.5s is arbitrary, but less than 2s.)
+    assert time_taken < 1.5
+
+
+@pytest.mark.asyncio
+async def test_tag(client: RuntimeClient):
+    g = TierkreisGraph()
+    g.set_outputs(res=g.add_tag("foo", value=g.input["arg"]))
+    v = FloatValue(67.1)
+    outs = await client.run_graph(g, {"arg": v})
+    assert outs == {"res": VariantValue("foo", v)}
 
 
 @dataclass

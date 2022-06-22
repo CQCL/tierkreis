@@ -197,8 +197,12 @@ class TkslFileVisitor(TkslVisitor):
         raise TkslCompileException()
 
     def visitPort_map(self, ctx: TkslParser.Port_mapContext) -> Tuple[str, NodePort]:
-        # only one outport in portmap
-        return self.visitInport(ctx.inport()), self.visitOutport(ctx.outport())[0]
+        # Should be only one outport in portmap
+        in_name = self.visitInport(ctx.inport())
+        out_ports = self.visitOutport(ctx.outport())
+        if len(out_ports) != 1:
+            raise TkslCompileException(f"Expected exactly one outport, got {out_ports}")
+        return in_name, out_ports[0]
 
     def visitPositional_args(
         self, ctx: TkslParser.Positional_argsContext

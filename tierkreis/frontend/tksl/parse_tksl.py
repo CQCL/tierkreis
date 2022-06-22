@@ -173,7 +173,11 @@ class TkslFileVisitor(TkslVisitor):
                 return [self.graph.input[name]]
             if name in self.context.output_vars:
                 node_ref, func = self.context.output_vars[name]
-                return make_outports(node_ref, func.outputs)
+                if len(func.outputs) > 0:
+                    return make_outports(node_ref, func.outputs)
+                raise TkslCompileException(
+                    f"Node {name} does not have any known outports"
+                )
             if name in self.context.functions:
                 grap, _ = self.context.functions[name]
                 const_node = self.graph.add_const(grap)

@@ -113,6 +113,7 @@ def start():
 
     Start a local server binary:
     >> tksl-start local
+
     Start a local server from docker image:
     >> tksl-start docker
 
@@ -125,7 +126,14 @@ def start():
 @click.option("--worker", "-w", multiple=True, default=[])
 @click.option("--port", "-p", default=8090)
 @click.option("--remote-worker")
-def local(executable: Path, worker: List[str], port: int, remote_worker: Optional[str]):
+@click.option("--server-logs", "-s", is_flag=True, default=False)
+def local(
+    executable: Path,
+    worker: List[str],
+    port: int,
+    remote_worker: Optional[str],
+    server_logs: bool,
+):
     """Start a local server with EXECUTABLE, on PORT, connected to local WORKERS
     and REMOTE_WORKER URI
 
@@ -138,6 +146,7 @@ def local(executable: Path, worker: List[str], port: int, remote_worker: Optiona
             workers=list(map(Path, worker)),
             myqos_worker=remote_worker,
             grpc_port=port,
+            show_output=server_logs,
         )
     )
 
@@ -154,12 +163,14 @@ def local(executable: Path, worker: List[str], port: int, remote_worker: Optiona
 )
 @click.option("--port", "-p", default=8090)
 @click.option("--remote-worker")
+@click.option("--server-logs", "-s", is_flag=True, default=False)
 def docker(
     image: str,
     worker: List[str],
     docker_worker: List[str],
     port: int,
     remote_worker: Optional[str],
+    server_logs: bool,
 ):
     """Start a local server with IMAGE, on PORT, connected to local WORKERS,
     DOCKER_WORKERs in images and REMOTE_WORKER URI
@@ -180,6 +191,7 @@ def docker(
             worker_images=image_workers,
             host_workers=list(map(Path, worker)),
             myqos_worker=remote_worker,
+            show_output=server_logs,
         )
     )
 

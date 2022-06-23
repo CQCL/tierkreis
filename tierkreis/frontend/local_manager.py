@@ -8,6 +8,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import IO, List, Mapping, Optional, Union, cast, AsyncIterator
+from threading import Thread
 
 from grpclib.client import Channel
 
@@ -15,8 +16,21 @@ from .runtime_client import RuntimeClient, RuntimeLaunchFailed
 from .myqos_client import _get_myqos_creds
 
 
-def _wait_for_print(proc: subprocess.Popen, content: str):
-    for line in cast(IO[bytes], proc.stdout):
+def echo_thread(src: IO[bytes], dest: Union[int, str]):
+    def run():
+        # closefd=False only works when 'open'ing a 'fileno()'
+        with open(dest, "wb", closefd=isinstance(dest, str)) as d:
+            for line in src:
+                d.write(line)
+                d.flush()
+
+    t = Thread(target=run)
+    t.start()
+    return t
+
+
+def _wait_for_print(proc_out: IO[bytes], content: str):
+    for line in proc_out:
         if content in str(line):
             break
 
@@ -74,22 +88,24 @@ async def local_runtime(
         env=proc_env,
     )
 
-    _wait_for_print(proc, "Server started")
+    echo_threads = []
+    if show_output:
+        echo_threads.append(
+            echo_thread(cast(IO[bytes], proc.stderr), sys.stderr.fileno())
+        )
 
-    def write_process_out(process: subprocess.Popen) -> None:
-        # get remaining output
-        out, errs = proc.communicate()
-        if errs:
-            with os.fdopen(sys.stderr.fileno(), "wb", closefd=False) as stderr:
-                stderr.write(errs)
-        with os.fdopen(sys.stdout.fileno(), "wb", closefd=False) as stdout:
-            if out:
-                stdout.write(out)
-            stdout.flush()
+    proc_out = cast(IO[bytes], proc.stdout)
+    _wait_for_print(proc_out, "Server started")
+    # We opened stdout as a subprocess.PIPE, so we must read it
+    # to prevent the buffer from filling up (which blocks the server)
+    echo_threads.append(
+        echo_thread(proc_out, sys.stdout.fileno() if show_output else os.devnull)
+    )
 
     if proc.poll() is not None:
         # process has terminated unexpectedly
-        write_process_out(proc)
+        for t in echo_threads:
+            t.join()
         raise RuntimeLaunchFailed()
 
     try:
@@ -98,9 +114,11 @@ async def local_runtime(
 
     finally:
         proc.send_signal(signal.SIGINT)
-        _wait_for_print(proc, "shutdown complete")
 
-        await asyncio.sleep(1)  # FIXME deadlocks without this line
+        await asyncio.sleep(1)  # FIXME deadlocks without this line (?)
         proc.kill()
+
         if show_output:
-            write_process_out(proc)
+            # Ensure that output has been echoed (and wait for server to close stream)
+            for t in echo_threads:
+                t.join()

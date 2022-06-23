@@ -13,6 +13,7 @@ authors = [
 requires-python = ">=3.9,<3.11"
 dependencies = [
     "betterproto==2.0.0b4",
+    "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with betterproto
     "grpclib>=0.4.2,<0.5",
     "networkx>=2.6.3,<3",
     "graphviz>=0.18,<0.19",
@@ -132,7 +133,13 @@ ignore-long-lines='(#\w*pylint: disable.*|# type: ignore.*|https?://\S+>?)$'
 # PEP 518 says these *python packages* are installed when building an sdist/wheel
 # (or pip install). However there is no facility for installing non-python-packages,
 # so the Tierkreis developer will need cargo/rustc and protoc on their system first.
-requires = ["betterproto[compiler]==2.0.0b4", "markupsafe<2.1.0", "maturin==0.12.9", "setuptools>=61.0"]
+requires = [
+    "betterproto[compiler]==2.0.0b4",
+    "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with betterproto
+    "markupsafe<2.1.0",
+    "maturin==0.12.9",
+    "setuptools>=61.0"
+]
 # Note maturin generates a warning:
 # `build-backend` in pyproject.toml is not set to `maturin`, packaging tools such as pip will not use maturin to build this project.
 # As maturin doesn't realize that our local_build_backend delegates to maturin.

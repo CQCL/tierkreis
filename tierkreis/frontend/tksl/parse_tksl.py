@@ -554,6 +554,19 @@ def load_tksl_file(
     return parse_tksl(_preprocessing(path), **kwargs)
 
 
+def _parser(source: str) -> TkslParser:
+    lexer = TkslLexer(InputStream(source))
+    lexer.removeErrorListeners()
+    lexer.addErrorListener(ThrowingErrorListener())
+
+    stream = CommonTokenStream(lexer)
+    parser = TkslParser(stream)
+    parser.removeErrorListeners()
+    parser.addErrorListener(ThrowingErrorListener())
+
+    return parser
+
+
 def parse_tksl(
     source: str,
     signature: Optional[RuntimeSignature] = None,
@@ -572,15 +585,12 @@ def parse_tksl(
     :rtype: TierkreisGraph
     """
     signature = signature or {}
-    lexer = TkslLexer(InputStream(source))
-    lexer.removeErrorListeners()
-    lexer.addErrorListener(ThrowingErrorListener())
-
-    stream = CommonTokenStream(lexer)
-    parser = TkslParser(stream)
-    parser.removeErrorListeners()
-    parser.addErrorListener(ThrowingErrorListener())
-
+    parser = _parser(source)
     tree = parser.start()
     func_defs = TkslFileVisitor(signature, Context()).visitStart(tree)
     return func_defs[function_name][0]
+
+
+def parse_const(source: str) -> TierkreisValue:
+    tree = _parser(source).const_()
+    return TkslFileVisitor({}, Context()).visitConst_(tree)

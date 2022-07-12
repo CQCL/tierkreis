@@ -95,11 +95,10 @@ inport: ID;
  */
 fragment DIGIT: [0-9];
 fragment INT: DIGIT+;
-fragment DECIMAL: INT '.' INT? | '.' INT;
 fragment EXP: ('e' | 'E') SIGNED_INT;
 fragment SIGN: ('+' | '-');
 SIGNED_INT: SIGN? INT; // match integers
-SIGNED_FLOAT: SIGN? INT EXP | DECIMAL EXP?;
+SIGNED_FLOAT: SIGN? ('.' INT | INT (EXP | '.' INT EXP?));
 
 fragment STRING_ESCAPE_SEQ: '\\' . | '\\' NEWLINE;
 SHORT_STRING:

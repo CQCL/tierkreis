@@ -12,7 +12,7 @@ from tierkreis.core.types import (
     VecType,
     TierkreisTypeErrors,
 )
-from tierkreis.core.values import IntValue, StringValue
+from tierkreis.core.values import IntValue, StringValue, FloatValue, VecValue
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
 
@@ -198,3 +198,14 @@ async def test_bad_annotations(client: RuntimeClient) -> None:
         await client.type_check_graph(tg)
 
     assert len(err.value) == 2
+
+
+def test_parse_const() -> None:
+    from tierkreis.frontend.tksl.parse_tksl import parse_const
+
+    assert parse_const("2.0") == FloatValue(2.0)
+    assert parse_const("2") == IntValue(2)
+    assert parse_const("-2.0") == FloatValue(-2.0)
+    assert parse_const("[2,4]") == VecValue([IntValue(2), IntValue(4)])
+    assert parse_const("[2.0,3.4]") == VecValue([FloatValue(2.0), FloatValue(3.4)])
+    assert parse_const("[-2.0,-3.4]") == VecValue([FloatValue(-2.0), FloatValue(-3.4)])

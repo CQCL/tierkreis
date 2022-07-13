@@ -8,9 +8,10 @@ use tierkreis_proto::signature as ps;
 use tierkreis_proto::ConvertError;
 
 fn infer2(req: &PyBytes) -> Result<ps::infer_graph_types_response::Response, ConvertError> {
-    let req = ps::InferGraphTypesRequest::decode(req.as_bytes()).map_err(|_| ConvertError)?;
-    let gwi = req.gwi.ok_or(ConvertError)?;
-    let graph = gwi.graph.ok_or(ConvertError)?.try_into()?;
+    let req =
+        ps::InferGraphTypesRequest::decode(req.as_bytes()).map_err(|_| ConvertError::ProtoError)?;
+    let gwi = req.gwi.ok_or(ConvertError::ProtoError)?;
+    let graph = gwi.graph.ok_or(ConvertError::ProtoError)?.try_into()?;
     // The client can pass signatures (inc builtins) from a running server if desired.
     let sigs: Signature = req
         .functions

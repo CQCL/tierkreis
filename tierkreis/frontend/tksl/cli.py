@@ -202,7 +202,7 @@ def docker(
     "--runtime",
     "-r",
     default="tierkreis.myqos.com",
-    help="Choose runtime, default=myqos",
+    help="Choose runtime, default=tierkreis.myqos.com",
 )
 @click.option(
     "--port",

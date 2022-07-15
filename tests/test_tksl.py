@@ -1,6 +1,6 @@
 from dataclasses import astuple
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 import pytest
 from tierkreis import TierkreisGraph
@@ -12,7 +12,14 @@ from tierkreis.core.types import (
     VecType,
     TierkreisTypeErrors,
 )
-from tierkreis.core.values import IntValue, StringValue, FloatValue, VecValue
+from tierkreis.core.values import (
+    BoolValue,
+    IntValue,
+    StringValue,
+    FloatValue,
+    VecValue,
+    TierkreisValue,
+)
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
 
@@ -129,25 +136,27 @@ async def test_parse_bigexample(client: RuntimeClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_parse_option(client: RuntimeClient) -> None:
+@pytest.mark.parametrize(
+    "source,inputs,expected_outputs",
+    [
+        ("option.tksl", {}, {"some": IntValue(30), "none": IntValue(-1)}),
+        ("pair.tksl", {}, {"first": IntValue(2), "second": StringValue("asdf")}),
+        ("if_no_inputs.tksl", {"pred": BoolValue(True)}, {"res": IntValue(3)}),
+        ("if_no_inputs.tksl", {"pred": BoolValue(False)}, {"res": IntValue(5)}),
+    ],
+)
+async def test_run_sample(
+    client: RuntimeClient,
+    source: str,
+    inputs: Dict[str, TierkreisValue],
+    expected_outputs: Dict[str, TierkreisValue],
+) -> None:
     sig = await client.get_signature()
 
-    tg = load_tksl_file(
-        Path(__file__).parent / "tksl_samples/option.tksl", signature=sig
-    )
+    tg = load_tksl_file(Path(__file__).parent / "tksl_samples" / source, signature=sig)
 
-    outputs = await client.run_graph(tg, {})
-    assert outputs == {"some": IntValue(30), "none": IntValue(-1)}
-
-
-@pytest.mark.asyncio
-async def test_pair_syntax(client: RuntimeClient) -> None:
-    sig = await client.get_signature()
-
-    tg = load_tksl_file(Path(__file__).parent / "tksl_samples/pair.tksl", signature=sig)
-
-    outputs = await client.run_graph(tg, {})
-    assert outputs == {"first": IntValue(2), "second": StringValue("asdf")}
+    outputs = await client.run_graph(tg, inputs)
+    assert outputs == expected_outputs
 
 
 @pytest.mark.asyncio

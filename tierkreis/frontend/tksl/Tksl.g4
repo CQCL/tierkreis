@@ -37,7 +37,7 @@ instruction:
     target = ID '<-' call = node_inputs            # CallMap
     | OUTPUT '(' arglist ')'                       # OutputCall
     | CONST const_name = ID '=' const_val = const_ # ConstDecl
-    | target = ID '<-' IF '(' condition = outport ';' inputs = named_map? ')' if_block = code_block
+    | target = ID '<-' IF '(' condition = outport (';' inputs = named_map)? ')' if_block = code_block
         ELSE else_block = code_block                                      # IfBlock
     | target = ID '<-' LOOP '(' inputs = named_map? ')' body = code_block # Loop
     | source = port_label '->' target = port_label                        # Edge;

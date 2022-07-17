@@ -191,6 +191,18 @@ class TierkreisGraph:
             )
         )
 
+    def _to_nodeport(self, source: Union[NodePort, NodeRef, Any]) -> NodePort:
+        if not isinstance(source, (NodePort, NodeRef)):
+            try:
+                source = self.add_const(source)
+            except ValueError as err:
+                raise ValueError(
+                    "Incoming wire must be a NodePort, "
+                    "a NodeRef to a node with a single output 'value', "
+                    "or a constant value to be added as a ConstNode."
+                ) from err
+        return source if isinstance(source, NodePort) else source["value"]
+
     def add_node(
         self,
         _tk_node: TierkreisNode,
@@ -207,18 +219,7 @@ class TierkreisGraph:
 
         self._graph.add_node(node_ref.name, node_info=_tk_node)
         for target_port_name, source in incoming_wires.items():
-            target = NodePort(node_ref, target_port_name)
-            if not isinstance(source, (NodePort, NodeRef)):
-                try:
-                    source = self.add_const(source)
-                except ValueError as err:
-                    raise ValueError(
-                        "Incoming wire must be a NodePort, "
-                        "a NodeRef to a node with a single output 'value', "
-                        "or a constant value to be added as a ConstNode."
-                    ) from err
-            source = source if isinstance(source, NodePort) else source["value"]
-            self.add_edge(source, target)
+            self.add_edge(self._to_nodeport(source), node_ref[target_port_name])
 
         return node_ref
 
@@ -495,11 +496,9 @@ class TierkreisGraph:
         except StopIteration as e:
             raise self.MissingEdge(source, target) from e
 
-    def set_outputs(self, **kwargs: Union[NodePort, NodeRef]) -> None:
+    def set_outputs(self, **kwargs: Union[NodePort, NodeRef, Any]) -> None:
         for out_name, port in kwargs.items():
-            target = NodePort(self.output, out_name)
-            source = port if isinstance(port, NodePort) else port["value"]
-            self.add_edge(source, target)
+            self.add_edge(self._to_nodeport(port), self.output[out_name])
 
     def in_edges(self, node: Union[NodeRef, str]) -> List[TierkreisEdge]:
         node_name = node if isinstance(node, str) else node.name

@@ -109,14 +109,9 @@ class MatchNode(TierkreisNode):
         return pg.Node(match=pg.Empty())
 
 
-@dataclass
+@dataclass(frozen=True)
 class NodeRef:
     name: str
-
-    def __eq__(self, o: object) -> bool:
-        if not isinstance(o, NodeRef):
-            return False
-        return self.name == o.name
 
     def __getitem__(self, key: str) -> "NodePort":
         # syntactic sugar for creating references to output ports from node

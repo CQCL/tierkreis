@@ -297,7 +297,6 @@ class TierkreisGraph:
 
         # return a map from subgraph outputs to inserted nodeports
         return_outputs: Dict[str, NodePort] = dict()
-        node_refs = dict()
         for node_name, node in graph.nodes().items():
             if node_name in {graph.input_node_name, graph.output_node_name}:
                 continue
@@ -326,7 +325,6 @@ class TierkreisGraph:
                 if output_node == node_name
             }
             node_ref = self.add_node(node, new_node_name, **input_ports)
-            node_refs[new_node_name] = node_ref
             return_outputs.update(
                 {
                     graph_output: NodePort(node_ref, output_port)
@@ -346,8 +344,8 @@ class TierkreisGraph:
             target_node = name_prefix + target_node
 
             self.add_edge(
-                NodePort(node_refs[source_node], edge.source.port),
-                NodePort(node_refs[target_node], edge.target.port),
+                NodeRef(source_node)[edge.source.port],
+                NodeRef(target_node)[edge.target.port],
                 edge.type_,
             )
 

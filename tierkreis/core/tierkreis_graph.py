@@ -168,10 +168,8 @@ class TierkreisGraph:
     def __init__(self, name: Optional[str] = None) -> None:
         self.name = name
         self._graph = nx.MultiDiGraph()
-        self._graph.add_node(self.input_node_name, node_info=InputNode())
-        self._graph.add_node(self.output_node_name, node_info=OutputNode())
-        self.output = NodeRef(self.output_node_name)
-        self.input = NodeRef(self.input_node_name)
+        self.input = self.add_node(InputNode(), self.input_node_name)
+        self.output = self.add_node(OutputNode(), self.output_node_name)
 
     def inputs(self) -> List[str]:
         return [edge.source.port for edge in self.out_edges(self.input)]

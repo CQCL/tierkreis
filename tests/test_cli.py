@@ -41,3 +41,23 @@ def test_build_view(client: "RuntimeClient"):
             )
             == 0
         )
+
+
+@pytest.mark.asyncio
+def test_run_with_args(client: "RuntimeClient"):
+    host, port = client.socket_address().split(":")
+    nint_tksl = Path(__file__).parent.absolute() / "tksl_samples" / "nint_adder.tksl"
+    command_header = ["tksl", "-r", host, "-p", port, "run", str(nint_tksl)]
+
+    output = subprocess.check_output(command_header + ["array: [3, 5, 11], len: 2"])
+    assert output.decode("utf-8").strip() == "out: 16"
+
+    output = subprocess.check_output(command_header + ["array: [1, 3, 5, 11], len: 4"])
+    assert output.decode("utf-8").strip() == "out: 20"
+
+    output = subprocess.check_output(command_header + ["array: [], len: 0"])
+    assert output.decode("utf-8").strip() == "out: 0"
+
+    p = subprocess.run(command_header + ["array: []"], capture_output=True)
+    assert p.returncode != 0
+    assert "Failed to unify types" in p.stderr.decode("utf-8")

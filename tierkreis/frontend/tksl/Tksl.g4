@@ -55,12 +55,15 @@ outport: thunkable_port | node_inputs | const_;
 
 thunkable_port: port_label | ID;
 
-const_assign: ID ':' const_;
+struct_field: ID ':' const_;
 
 struct_const:
-    sid = struct_id '{' fields += const_assign (
-        ',' fields += const_assign
-    )* '}';
+    sid = struct_id '{' fields = struct_fields '}';
+
+struct_fields:
+    fields += struct_field (
+        ',' fields += struct_field
+    )*;
 
 macro_const:
     ID '!' '(' cargs += const_ (',' cargs += const_)* ')';

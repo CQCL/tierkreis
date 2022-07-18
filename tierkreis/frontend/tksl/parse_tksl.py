@@ -399,8 +399,8 @@ class TkslFileVisitor(TkslVisitor):
             return str(ctx.ID())
         raise TkslCompileException()
 
-    def visitConst_assign(
-        self, ctx: TkslParser.Const_assignContext
+    def visitStruct_field(
+        self, ctx: TkslParser.Struct_fieldContext
     ) -> Tuple[str, TierkreisValue]:
         return str(ctx.ID()), self.visitConst_(ctx.const_())
 
@@ -409,6 +409,10 @@ class TkslFileVisitor(TkslVisitor):
 
     def visitNone(self, ctx: TkslParser.NoneContext) -> OptionValue:
         return OptionValue(None)
+
+    def visitStruct_fields(self, ctx: TkslParser.Struct_fieldsContext) -> StructValue:
+        fields = dict(map(self.visitStruct_field, ctx.fields))
+        return StructValue(fields)
 
     def visitConst_(self, ctx: TkslParser.Const_Context) -> TierkreisValue:
         if ctx.SIGNED_INT():
@@ -433,8 +437,7 @@ class TkslFileVisitor(TkslVisitor):
             )
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
-            fields = dict(map(self.visitConst_assign, struct_ctx.fields))
-            return StructValue(fields)
+            return self.visitStruct_fields(struct_ctx.fields)
         if ctx.opt_const():
             return self.visit(ctx.opt_const())
         if ctx.macro_const():
@@ -597,6 +600,12 @@ def parse_tksl(
     tree = parser.start()
     func_defs = TkslFileVisitor(signature, Context()).visitStart(tree)
     return func_defs[function_name][0]
+
+
+def parse_struct_fields(source: str) -> StructValue:
+    parser = _parser(source)
+    tree = parser.struct_fields()
+    return TkslFileVisitor({}, Context()).visitStruct_fields(tree)
 
 
 def parse_const(source: str) -> TierkreisValue:

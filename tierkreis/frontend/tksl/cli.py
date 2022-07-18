@@ -18,7 +18,7 @@ import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from yachalk import chalk
 from tierkreis import TierkreisGraph
-from tierkreis.core.values import TierkreisValue
+from tierkreis.core.values import TierkreisValue, StructValue
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.types import (
     GraphType,
@@ -31,7 +31,8 @@ from tierkreis.frontend import RuntimeClient, local_runtime
 from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
-from tierkreis.frontend.tksl import load_tksl_file
+from . import load_tksl_file
+from .parse_tksl import parse_struct_fields
 
 LOCAL_SERVER_PATH = Path(__file__).parent / "../../../../target/debug/tierkreis-server"
 RUNTIME_LABELS = ["docker", "local", "myqos"]
@@ -43,6 +44,18 @@ def coro(f):
         return asyncio.run(f(*args, **kwargs))
 
     return wrapper
+
+
+def _inputs(source: str) -> Dict[str, TierkreisValue]:
+    source = source.strip()
+    if source == "":
+        return {}
+    try:
+        v: StructValue = parse_struct_fields(source)
+        return v.values
+    except ParseCancellationException as _parse_err:
+        print(chalk.red(f"Parse error in inputs: {_parse_err}"), file=sys.stderr)
+        sys.exit(1)
 
 
 async def _parse(
@@ -333,34 +346,40 @@ def _print_typeerrs(errs: str):
 
 @cli.command()
 @click.argument("source", type=click.Path(exists=True))
+@click.argument("inputs", default="")
 @click.pass_context
 @coro
-async def run(ctx: click.Context, source: Path):
-    """Run SOURCE on runtime and output to console."""
+async def run(ctx: click.Context, source: Path, inputs: str):
+    """Run SOURCE on runtime with optional INPUTS and output to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         tkg = await _parse(source, client)
+        py_inputs = _inputs(inputs)
         try:
-            outputs = await client.run_graph(tkg, {})
+            outputs = await client.run_graph(tkg, py_inputs)
             _print_outputs(outputs)
         except TierkreisTypeErrors as _errs:
-            print(chalk.red(traceback.format_exc(0)), file=sys.stderr)
+            _print_typeerrs(traceback.format_exc(0))
+            sys.exit(1)
 
 
 @cli.command()
 @click.argument("source", type=click.Path(exists=True))
+@click.argument("inputs", default="")
 @click.pass_context
 @coro
-async def submit(ctx: click.Context, source: Path):
-    """Submit SOURCE to runtime and print task id to console."""
+async def submit(ctx: click.Context, source: Path, inputs: str):
+    """Submit SOURCE and optional INPUTS to runtime and print task id to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(RuntimeClient, client)
         tkg = await _parse(source, client)
+        py_inputs = _inputs(inputs)
         try:
-            task_handle = await client.start_task(tkg, {})
+            task_handle = await client.start_task(tkg, py_inputs)
             print(chalk.bold.yellow("Task id:"), task_handle.task_id)
         except TierkreisTypeErrors as _errs:
             _print_typeerrs(traceback.format_exc(0))
+            sys.exit(1)
 
 
 @cli.command()

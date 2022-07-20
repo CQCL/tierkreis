@@ -4,6 +4,7 @@ from typing import Callable, Dict, Optional
 
 import pytest
 from tierkreis import TierkreisGraph
+from tierkreis.core import Labels
 from tierkreis.core.protos.tierkreis.graph import Graph
 from tierkreis.core.types import (
     IntType,
@@ -17,7 +18,9 @@ from tierkreis.core.values import (
     IntValue,
     StringValue,
     FloatValue,
+    VariantValue,
     VecValue,
+    StructValue,
     TierkreisValue,
 )
 from tierkreis.frontend import RuntimeClient
@@ -89,6 +92,20 @@ def _maps_graph() -> TierkreisGraph:
     return tg
 
 
+def _tag_match_graph() -> TierkreisGraph:
+    id_graph = TierkreisGraph()
+    id_graph.set_outputs(value=id_graph.input[Labels.VALUE])
+
+    tg = TierkreisGraph()
+    in_v = tg.add_tag("foo", value=4)
+    m = tg.add_match(in_v, foo=tg.add_const(id_graph))
+    e = tg.add_func("builtin/eval", thunk=m[Labels.THUNK])
+    tg.set_outputs(res=e[Labels.VALUE])
+    tg.annotate_output("res", IntType())
+
+    return tg
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "source,expected_gen,rename_map",
@@ -96,6 +113,7 @@ def _maps_graph() -> TierkreisGraph:
         ("vecs", _vecs_graph, {}),
         ("structs", _structs_graph, {1: 0, 2: 1, 3: 2, 0: 3}),
         ("maps", _maps_graph, {0: 1, 1: 0, 2: 4, 4: 3, 3: 2}),
+        ("tag_match", _tag_match_graph, {0: 1, 1: 0, 2: 3, 3: 2}),
     ],
 )
 async def test_parse_sample(
@@ -143,6 +161,36 @@ async def test_parse_bigexample(client: RuntimeClient) -> None:
         ("pair.tksl", {}, {"first": IntValue(2), "second": StringValue("asdf")}),
         ("if_no_inputs.tksl", {"pred": BoolValue(True)}, {"res": IntValue(3)}),
         ("if_no_inputs.tksl", {"pred": BoolValue(False)}, {"res": IntValue(5)}),
+        (
+            "match_variant.tksl",
+            {"expr": VariantValue("cst", IntValue(5)), "vv": IntValue(67)},
+            {"res": IntValue(5)},
+        ),
+        (
+            "match_variant.tksl",
+            {"expr": VariantValue("var", StructValue({})), "vv": IntValue(4)},
+            {"res": IntValue(4)},
+        ),
+        (
+            "match_variant.tksl",
+            {
+                "expr": VariantValue(
+                    "sum", StructValue({"a": IntValue(5), "b": IntValue(3)})
+                ),
+                "vv": IntValue(99),
+            },
+            {"res": IntValue(8)},
+        ),
+        (
+            "match_variant.tksl",
+            {
+                "expr": VariantValue(
+                    "prod", StructValue({"a": IntValue(5), "b": IntValue(3)})
+                ),
+                "vv": IntValue(99),
+            },
+            {"res": IntValue(15)},
+        ),
     ],
 )
 async def test_run_sample(
@@ -218,3 +266,4 @@ def test_parse_const() -> None:
     assert parse_const("[2,4]") == VecValue([IntValue(2), IntValue(4)])
     assert parse_const("[2.0,3.4]") == VecValue([FloatValue(2.0), FloatValue(3.4)])
     assert parse_const("[-2.0,-3.4]") == VecValue([FloatValue(-2.0), FloatValue(-3.4)])
+    assert parse_const("tag(foo: 3)") == VariantValue("foo", IntValue(3))

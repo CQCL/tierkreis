@@ -11,8 +11,9 @@ from antlr4.error.Errors import ParseCancellationException  # type: ignore
 
 # from pytket.qasm import circuit_from_qasm
 from tierkreis import TierkreisGraph
+from tierkreis.core import Labels
 from tierkreis.core.function import TierkreisFunction
-from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge
+from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge, TagNode
 from tierkreis.core.types import (
     BoolType,
     FloatType,
@@ -25,6 +26,7 @@ from tierkreis.core.types import (
     StringType,
     StructType,
     TierkreisType,
+    VariantType,
     VarType,
     VecType,
 )
@@ -38,6 +40,7 @@ from tierkreis.core.values import (
     VecValue,
     StructValue,
     OptionValue,
+    VariantValue,
 )
 from tierkreis.frontend.runtime_client import RuntimeSignature
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore
@@ -213,8 +216,17 @@ class TkslFileVisitor(TkslVisitor):
     ) -> List[NodePort]:
         return sum(map(self.visitOutport, ctx.arg_l), [])
 
-    def visitNamed_map(self, ctx: TkslParser.Named_mapContext) -> Dict[str, NodePort]:
-        return dict(map(self.visitPort_map, ctx.port_l))
+    def visitNamed_map(
+        self, ctx: TkslParser.Named_mapContext
+    ) -> OrderedDict[str, NodePort]:
+        return OrderedDict(map(self.visitPort_map, ctx.port_l))
+
+    def visitOptionalNamed_map(
+        self, ctx: Optional[TkslParser.Named_mapContext]
+    ) -> Dict[str, NodePort]:
+        if ctx:
+            return self.visitNamed_map(ctx)
+        return {}
 
     def visitArglist(self, ctx: TkslParser.ArglistContext) -> Dict[str, NodePort]:
         if ctx.named_map():
@@ -247,11 +259,19 @@ class TkslFileVisitor(TkslVisitor):
 
         return noderef, f_def
 
+    def visitTag(
+        self, ctx: TkslParser.TagContext
+    ) -> Tuple[NodeRef, FunctionDefinition]:
+        tag = str(ctx.ID())
+        (value,) = self.visit(ctx.outport())
+        noderef = self.graph.add_node(TagNode(tag), value=value)
+        return noderef, FunctionDefinition([Labels.VALUE], [Labels.VALUE])
+
     def visitThunk(
         self, ctx: TkslParser.ThunkContext
     ) -> Tuple[NodeRef, FunctionDefinition]:
         outport = self.visitThunkable_port(ctx.thunkable_port())[0]
-        arglist = self.visitNamed_map(ctx.named_map()) if ctx.named_map() else {}
+        arglist = self.visitOptionalNamed_map(ctx.named_map())
         eval_n = self.graph.add_func("builtin/eval", thunk=outport, **arglist)
         return eval_n, def_from_tkfunc(self.sig["builtin"].functions["eval"])
 
@@ -269,63 +289,91 @@ class TkslFileVisitor(TkslVisitor):
         const_val = self.visitConst_(ctx.const_())
         self.context.constants[target] = self.graph.add_const(const_val)
 
+    def _cloneContextWithInputs(self, inputs: Dict[str, NodePort]) -> Context:
+        new_ctx = Context()
+        new_ctx.functions = self.context.functions.copy()
+        new_ctx.use_defs = self.context.use_defs.copy()
+        new_ctx.inputs = OrderedDict({inp: None for inp in inputs})
+        return new_ctx
+
+    @staticmethod
+    def _discard_unused_inputs(
+        graphs: Iterable[TierkreisGraph], inputs: Iterable[str]
+    ) -> None:
+        for inp in inputs:
+            for graph in graphs:
+                if inp not in graph.inputs():
+                    graph.discard(graph.input[inp])
+
     def visitIfBlock(self, ctx: TkslParser.IfBlockContext):
         target = ctx.target.text
         condition = self.visitOutport(ctx.condition)[0]
-        inputs = self.visitNamed_map(ctx.inputs) if ctx.inputs else {}
+        inputs = self.visitOptionalNamed_map(ctx.inputs)
 
-        ifcontext = Context()
-        ifcontext.functions = self.context.functions.copy()
-        ifcontext.use_defs = self.context.use_defs.copy()
-        ifcontext.inputs = OrderedDict({inp: None for inp in inputs})
-        # outputs from if-else block have to be named map (not positional)
+        ifcontext = self._cloneContextWithInputs(inputs)
+        # outputs from if/else blocks have to be named map (not positional)
 
         ifvisit = TkslFileVisitor(self.sig, ifcontext)
         if_g = ifvisit.visitCode_block(ctx.if_block)
 
         elsevisit = TkslFileVisitor(self.sig, ifcontext)
         else_g = elsevisit.visitCode_block(ctx.else_block)
-        for inp in ifcontext.inputs:
-            if inp not in if_g.inputs():
-                if_g.discard(if_g.input[inp])
-            if inp not in else_g.inputs():
-                else_g.discard(else_g.input[inp])
+        self._discard_unused_inputs([if_g, else_g], ifcontext.inputs)
+
         sw_nod = self.graph.add_func(
             "builtin/switch", pred=condition, if_true=if_g, if_false=else_g
         )
         eval_n = self.graph.add_func("builtin/eval", thunk=sw_nod["value"], **inputs)
 
         output_names = set(if_g.outputs()).union(else_g.outputs())
-        ifcontext.outputs = OrderedDict({outp: None for outp in output_names})
-
-        fake_func = FunctionDefinition(list(ifcontext.inputs), list(ifcontext.outputs))
+        fake_func = FunctionDefinition(list(ifcontext.inputs), list(output_names))
         self.context.output_vars[target] = (eval_n, fake_func)
 
     def visitLoop(self, ctx: TkslParser.LoopContext):
         target = ctx.target.text
-        inputs = self.visitNamed_map(ctx.inputs) if ctx.inputs else {}
+        inputs = self.visitOptionalNamed_map(ctx.inputs)
 
-        loopcontext = Context()
-        loopcontext.functions = self.context.functions.copy()
-        loopcontext.use_defs = self.context.use_defs.copy()
-        loopcontext.inputs = OrderedDict({inp: None for inp in inputs})
-        # outputs from if-else block have to be named map (not positional)
+        loopcontext = self._cloneContextWithInputs(inputs)
+        # outputs from loop body have to be named map (not positional)
 
         bodyvisit = TkslFileVisitor(self.sig, loopcontext)
         body_g = bodyvisit.visitCode_block(ctx.body)
 
-        for inp in loopcontext.inputs:
-            if inp not in body_g.inputs():
-                body_g.discard(body_g.input[inp])
+        self._discard_unused_inputs([body_g], loopcontext.inputs)
 
         loop_nod = self.graph.add_func("builtin/loop", body=body_g, **inputs)
 
-        loopcontext.outputs = OrderedDict({outp: None for outp in body_g.outputs()})
-
-        fake_func = FunctionDefinition(
-            list(loopcontext.inputs), list(loopcontext.outputs)
-        )
+        fake_func = FunctionDefinition(list(loopcontext.inputs), list(body_g.outputs()))
         self.context.output_vars[target] = (loop_nod, fake_func)
+
+    # Visit a parse tree produced by TkslParser#Match.
+    def visitMatch(self, ctx: TkslParser.MatchContext):
+        target = ctx.target.text
+        (scrutinee,) = self.visitOutport(ctx.scrutinee)
+        inputs = self.visitOptionalNamed_map(ctx.inputs)
+        if Labels.VALUE in inputs:
+            raise TkslCompileException(
+                "Cannot pass extra 'value' input as 'value' reserved for variant"
+            )
+
+        case_ctx = self._cloneContextWithInputs(inputs)
+        case_ctx.inputs[Labels.VALUE] = None
+        # outputs from each case have to be named map (not positional)
+
+        cases = dict(
+            TkslFileVisitor(self.sig, case_ctx).visitMatch_case(c) for c in ctx.cases
+        )
+
+        self._discard_unused_inputs(cases.values(), case_ctx.inputs)
+
+        m = self.graph.add_match(scrutinee, **cases)
+        eval_n = self.graph.add_func("builtin/eval", thunk=m[Labels.THUNK], **inputs)
+
+        output_names = frozenset.union(
+            *[frozenset(case_g.outputs()) for case_g in cases.values()]
+        )
+        fake_func = FunctionDefinition(list(case_ctx.inputs), list(output_names))
+        self.context.output_vars[target] = (eval_n, fake_func)
 
     def visitEdge(self, ctx: TkslParser.EdgeContext) -> TierkreisEdge:
         return self.graph.add_edge(
@@ -335,6 +383,13 @@ class TkslFileVisitor(TkslVisitor):
     def visitCode_block(self, ctx: TkslParser.Code_blockContext) -> TierkreisGraph:
         _ = list(map(self.visit, ctx.inst_list))
         return self.graph
+
+    def visitMatch_case(
+        self, ctx: TkslParser.Match_caseContext
+    ) -> Tuple[str, TierkreisGraph]:
+        tag = ctx.tag.text
+        block = self.visitCode_block(ctx.code_block())
+        return (tag, block)
 
     def visitGenerics(self, ctx: TkslParser.GenericsContext) -> list[VarType]:
         return [VarType(name.text) for name in ctx.gen_ids]
@@ -414,6 +469,9 @@ class TkslFileVisitor(TkslVisitor):
         fields = dict(map(self.visitStruct_field, ctx.fields))
         return StructValue(fields)
 
+    def visitVariant_const(self, ctx: TkslParser.Variant_constContext) -> VariantValue:
+        return VariantValue(str(ctx.ID()), self.visitConst_(ctx.const_()))
+
     def visitConst_(self, ctx: TkslParser.Const_Context) -> TierkreisValue:
         if ctx.SIGNED_INT():
             return IntValue(int(str(ctx.SIGNED_INT())))
@@ -440,6 +498,8 @@ class TkslFileVisitor(TkslVisitor):
             return self.visitStruct_fields(struct_ctx.fields)
         if ctx.opt_const():
             return self.visit(ctx.opt_const())
+        if ctx.variant_const():
+            return self.visitVariant_const(ctx.variant_const())
         if ctx.macro_const():
             macro_ctx = ctx.macro_const()
             macro_name = str(macro_ctx.ID())
@@ -491,6 +551,8 @@ class TkslFileVisitor(TkslVisitor):
             return OptionType(self.visit(ctx.inner))
         if ctx.TYPE_STRUCT():
             return StructType(Row(self.visit(ctx.fields)))
+        if ctx.TYPE_VARIANT():
+            return VariantType(Row(dict(map(self.visitF_param, ctx.variants))))
         if ctx.graph_type():
             g_type = self.visitGraph_type(ctx.graph_type()).graph_type
             assert g_type is not None

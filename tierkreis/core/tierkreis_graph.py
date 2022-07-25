@@ -59,19 +59,19 @@ class TierkreisNode(ABC):
         return getattr(self, "function_name", "") == "builtin/discard"
 
 
-@dataclass
+@dataclass(frozen=True)
 class InputNode(TierkreisNode):
     def to_proto(self) -> pg.Node:
         return pg.Node(input=pg.Empty())
 
 
-@dataclass
+@dataclass(frozen=True)
 class OutputNode(TierkreisNode):
     def to_proto(self) -> pg.Node:
         return pg.Node(output=pg.Empty())
 
 
-@dataclass
+@dataclass(frozen=True)
 class ConstNode(TierkreisNode):
     value: TierkreisValue
 
@@ -79,7 +79,7 @@ class ConstNode(TierkreisNode):
         return pg.Node(const=self.value.to_proto())
 
 
-@dataclass
+@dataclass(frozen=True)
 class BoxNode(TierkreisNode):
     graph: "TierkreisGraph"
 
@@ -87,7 +87,7 @@ class BoxNode(TierkreisNode):
         return pg.Node(box=self.graph.to_proto())
 
 
-@dataclass
+@dataclass(frozen=True)
 class FunctionNode(TierkreisNode):
     function_name: str
 
@@ -95,7 +95,7 @@ class FunctionNode(TierkreisNode):
         return pg.Node(function=self.function_name)
 
 
-@dataclass
+@dataclass(frozen=True)
 class TagNode(TierkreisNode):
     tag_name: str
 
@@ -103,7 +103,7 @@ class TagNode(TierkreisNode):
         return pg.Node(tag=self.tag_name)
 
 
-@dataclass
+@dataclass(frozen=True)
 class MatchNode(TierkreisNode):
     def to_proto(self) -> pg.Node:
         return pg.Node(match=pg.Empty())
@@ -124,7 +124,7 @@ class NodePort:
     port: PortID
 
 
-@dataclass
+@dataclass  # Not frozen: Edge type gets updated (other fields do not)
 class TierkreisEdge:
     source: NodePort
     target: NodePort
@@ -151,11 +151,11 @@ class TierkreisGraph:
     input_node_name: str = "input"
     output_node_name: str = "output"
 
-    @dataclass
+    @dataclass(frozen=True)
     class DuplicateNodeName(Exception):
         name: str
 
-    @dataclass
+    @dataclass(frozen=True)
     class MissingEdge(Exception):
         source: NodePort
         target: NodePort

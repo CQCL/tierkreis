@@ -1,3 +1,4 @@
+from typing import Any, Iterable
 import pytest
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import (
@@ -17,6 +18,10 @@ from tierkreis.core.values import (
     PairValue,
     TierkreisVariant,
 )
+
+
+def count(i: Iterable[Any]) -> int:
+    return sum(1 for _ in i)
 
 
 def test_creation() -> None:
@@ -49,13 +54,13 @@ def test_creation() -> None:
 
     for graph in (tg, deser_tg):
 
-        assert len(graph.nodes()) == 5
-        assert len(graph.edges()) == 3
+        assert count(graph.nodes()) == 5
+        assert count(graph.edges()) == 3
 
         assert graph.inputs() == ["input"]
         assert graph.outputs() == ["output"]
 
-        assert graph.out_edges(add)[0] == TierkreisEdge(
+        assert next(graph.out_edges(add)) == TierkreisEdge(
             add["value"], NodePort(graph.output, "output"), None
         )
 
@@ -81,8 +86,8 @@ def test_insert_subgraph() -> None:
 
     main_g.set_outputs(value=make_p)
 
-    assert len(main_g.nodes()) == 7
-    assert len(main_g.edges()) == 7
+    assert count(main_g.nodes()) == 7
+    assert count(main_g.edges()) == 7
 
     with pytest.raises(TierkreisGraph.DuplicateNodeName) as e:
         _ = main_g.insert_graph(

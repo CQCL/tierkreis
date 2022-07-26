@@ -5,14 +5,22 @@ import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from itertools import count, dropwhile
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Type, Union, cast
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+    cast,
+)
 
 import betterproto
 import networkx as nx  # type: ignore
-from networkx.classes.reportviews import (  # type: ignore
-    InMultiEdgeDataView,
-    OutMultiEdgeDataView,
-)
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.types import TierkreisType
@@ -124,7 +132,7 @@ class NodePort:
     port: PortID
 
 
-@dataclass  # Not frozen: Edge type gets updated (other fields do not)
+@dataclass(frozen=True)
 class TierkreisEdge:
     source: NodePort
     target: NodePort
@@ -143,6 +151,15 @@ class TierkreisEdge:
 
 # allow specifying input as a port, node with single output, or constant value
 IncomingWireType = Union[NodePort, NodeRef, Any]
+
+_EdgeData = Tuple[str, str, Tuple[str, str]]
+
+
+def _to_edgedata(edgeit: Iterable[Any]) -> Iterator[_EdgeData]:
+    return (
+        (src, dest, (cast(str, srcport), cast(str, destport)))
+        for (src, dest, (srcport, destport)) in edgeit
+    )
 
 
 class TierkreisGraph:
@@ -355,28 +372,19 @@ class TierkreisGraph:
         if recursive:
             boxed_g = boxed_g.inline_boxes(recursive)
 
-        curr_inputs = cast(
-            InMultiEdgeDataView,
-            self._graph.in_edges(box_node_name, data="edge_info", keys=True),
-        )
+        curr_inputs = self.in_edges(box_node_name)
 
-        incoming_ports = {
-            edge.target.port: edge.source for (_, _, _, edge) in curr_inputs
-        }
+        incoming_ports = {edge.target.port: edge.source for edge in curr_inputs}
 
         inserted_outputs = self.insert_graph(boxed_g, box_node_name, **incoming_ports)
-        curr_outputs = cast(
-            OutMultiEdgeDataView,
-            self._graph.out_edges(box_node_name, data="edge_info", keys=True),
+        curr_outputs = list(
+            _to_edgedata(self._graph.out_edges(box_node_name, keys=True))
         )
-        edge_bin = []
-        for (source, target, key, edge) in curr_outputs:
-            edge = cast(TierkreisEdge, edge)
-            edge_bin.append((source, target, key))
-            self.add_edge(inserted_outputs[edge.source.port], edge.target, edge.type_)
 
-        for edge in edge_bin:
-            self._graph.remove_edge(*edge)
+        for e in curr_outputs:
+            edge = self._to_tkedge(e)
+            self.add_edge(inserted_outputs[edge.source.port], edge.target, edge.type_)
+            self._graph.remove_edge(*e)
 
     def inline_boxes(self, recursive=False) -> "TierkreisGraph":
         """Inline boxes by inserting the graphs they contain in to the parent
@@ -407,11 +415,8 @@ class TierkreisGraph:
             name: self._graph.nodes[name]["node_info"] for name in self._graph.nodes
         }
 
-    def edges(self) -> List[TierkreisEdge]:
-        return [
-            cast(TierkreisEdge, edge_info[2])
-            for edge_info in self._graph.edges(data="edge_info", keys=False)
-        ]
+    def edges(self) -> Iterator[TierkreisEdge]:
+        return map(self._to_tkedge, _to_edgedata(self._graph.edges(keys=True)))
 
     def __getitem__(self, key: Union[str, NodeRef]) -> TierkreisNode:
         name = key.name if isinstance(key, NodeRef) else key
@@ -425,13 +430,12 @@ class TierkreisGraph:
     ) -> TierkreisEdge:
         tk_type = _to_tierkreis_type(edge_type)
 
-        edge = TierkreisEdge(node_port_from, node_port_to, tk_type)
         # if port is currently connected to discard, replace that edge
         try:
             del_edge = next(
                 out_edge
-                for out_edge in self.out_edges(edge.source.node_ref)
-                if out_edge.source.port == edge.source.port
+                for out_edge in self.out_edges(node_port_from.node_ref)
+                if out_edge.source.port == node_port_from.port
                 and self[out_edge.target.node_ref].is_discard_node()
             )
             self._graph.remove_edge(
@@ -440,49 +444,49 @@ class TierkreisGraph:
             self._graph.remove_node(del_edge.target.node_ref.name)
         except StopIteration:
             pass
-        self._graph.add_edge(
+        edge_data = (
             node_port_from.node_ref.name,
             node_port_to.node_ref.name,
-            edge_info=edge,
+            (node_port_from.port, node_port_to.port),
         )
-        return edge
+        self._graph.add_edge(
+            *edge_data,
+            type=tk_type,
+        )
+
+        return self._to_tkedge(edge_data)
 
     def annotate_input(
         self, input_port: str, edge_type: Optional[Union[Type, TierkreisType]]
     ):
         (in_edge,) = [
             e
-            for e in self.out_edges(self.input_node_name)
-            if e.source.port == input_port
+            for e in _to_edgedata(
+                self._graph.out_edges(self.input_node_name, keys=True)
+            )
+            if e[2][0] == input_port
         ]
         tk_type = _to_tierkreis_type(edge_type)
-        in_edge.type_ = tk_type
+        self._graph.edges[in_edge]["type"] = tk_type
 
     def annotate_output(
         self, output_port: str, edge_type: Optional[Union[Type, TierkreisType]]
     ):
         (out_edge,) = [
             e
-            for e in self.in_edges(self.output_node_name)
-            if e.target.port == output_port
+            for e in _to_edgedata(
+                self._graph.in_edges(self.output_node_name, keys=True)
+            )
+            if e[2][1] == output_port
         ]
+
         tk_type = _to_tierkreis_type(edge_type)
-        out_edge.type_ = tk_type
+        self._graph.edges[out_edge]["type"] = tk_type
 
     def get_edge(self, source: NodePort, target: NodePort) -> TierkreisEdge:
-        all_edges = (
-            edge_data["edge_info"]
-            for edge_data in cast(
-                Dict[int, Dict[str, TierkreisEdge]],
-                self._graph.get_edge_data(source.node_ref.name, target.node_ref.name),
-            ).values()
-        )
         try:
             return next(
-                dropwhile(
-                    lambda edge: not (edge.source == source and edge.target == target),
-                    all_edges,
-                )
+                e for e in self.out_edges(source.node_ref) if e.target == target
             )
         except StopIteration as e:
             raise self.MissingEdge(source, target) from e
@@ -491,23 +495,26 @@ class TierkreisGraph:
         for out_name, port in kwargs.items():
             self.add_edge(self._to_nodeport(port), self.output[out_name])
 
-    def in_edges(self, node: Union[NodeRef, str]) -> List[TierkreisEdge]:
-        node_name = node if isinstance(node, str) else node.name
-        return [
-            cast(TierkreisEdge, edge_info[2])
-            for edge_info in self._graph.in_edges(
-                node_name, data="edge_info", keys=False
-            )
-        ]
+    def _to_tkedge(self, handle: _EdgeData) -> TierkreisEdge:
+        src, tgt, (src_port, tgt_port) = handle
+        return TierkreisEdge(
+            NodeRef(src)[src_port],
+            NodeRef(tgt)[tgt_port],
+            self._graph.get_edge_data(src, tgt, (src_port, tgt_port))["type"],
+        )
 
-    def out_edges(self, node: Union[NodeRef, str]) -> List[TierkreisEdge]:
+    def in_edges(self, node: Union[NodeRef, str]) -> Iterator[TierkreisEdge]:
         node_name = node if isinstance(node, str) else node.name
-        return [
-            cast(TierkreisEdge, edge_info[2])
-            for edge_info in self._graph.out_edges(
-                node_name, data="edge_info", keys=False
-            )
-        ]
+        return map(
+            self._to_tkedge, _to_edgedata(self._graph.in_edges(node_name, keys=True))
+        )
+
+    def out_edges(self, node: Union[NodeRef, str]) -> Iterator[TierkreisEdge]:
+        node_name = node if isinstance(node, str) else node.name
+        return map(
+            self._to_tkedge,
+            _to_edgedata(self._graph.out_edges(node_name, keys=True)),
+        )
 
     def discard(self, out_port: NodePort) -> None:
         _ = self.add_func("builtin/discard", value=out_port)
@@ -549,15 +556,9 @@ class TierkreisGraph:
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()
         pg_graph.nodes = {
-            node_name: node.to_proto()
-            for node_name, node in cast(
-                Iterator[Tuple[str, TierkreisNode]], self._graph.nodes(data="node_info")
-            )
+            node_name: node.to_proto() for node_name, node in self.nodes().items()
         }
-        pg_graph.edges = [
-            cast(TierkreisEdge, edge_info[2]).to_proto()
-            for edge_info in self._graph.edges(data="edge_info", keys=False)
-        ]
+        pg_graph.edges = [e.to_proto() for e in self.edges()]
         return pg_graph
 
     @classmethod

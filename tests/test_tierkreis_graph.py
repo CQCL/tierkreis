@@ -4,6 +4,7 @@ from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import (
     FunctionNode,
     NodePort,
+    NodeRef,
     TierkreisEdge,
     TierkreisFunction,
 )
@@ -53,15 +54,15 @@ def test_creation() -> None:
     deser_tg = TierkreisGraph.from_proto(tg.to_proto())
 
     for graph in (tg, deser_tg):
-
         assert count(graph.nodes()) == 5
         assert count(graph.edges()) == 3
 
         assert graph.inputs() == ["input"]
         assert graph.outputs() == ["output"]
 
+        add_node = NodeRef(add.name, graph)
         assert next(graph.out_edges(add)) == TierkreisEdge(
-            add["value"], NodePort(graph.output, "output"), None
+            add_node["value"], NodePort(graph.output, "output"), None
         )
 
 

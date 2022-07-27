@@ -120,6 +120,7 @@ class MatchNode(TierkreisNode):
 @dataclass(frozen=True)
 class NodeRef:
     name: str
+    graph: "TierkreisGraph"
 
     def __getitem__(self, key: str) -> "NodePort":
         # syntactic sugar for creating references to output ports from node
@@ -160,6 +161,13 @@ def _to_edgedata(edgeit: Iterable[Any]) -> Iterator[_EdgeData]:
         (src, dest, (cast(str, srcport), cast(str, destport)))
         for (src, dest, (srcport, destport)) in edgeit
     )
+
+
+class MismatchedGraphs(Exception):
+    def __init__(self, src: NodeRef, tgt: NodeRef):
+        self.src = NodeRef
+        self.tgt = NodeRef
+        super().__init__(f"Cannot add edges between nodes from different graphs.")
 
 
 class TierkreisGraph:
@@ -222,7 +230,7 @@ class TierkreisGraph:
     ) -> NodeRef:
         if _tk_node_name is None:
             _tk_node_name = self._get_fresh_name()
-        node_ref = NodeRef(_tk_node_name)
+        node_ref = NodeRef(_tk_node_name, self)
 
         if node_ref.name in self._graph.nodes:
             raise self.DuplicateNodeName(node_ref.name)
@@ -354,8 +362,8 @@ class TierkreisGraph:
             target_node = name_prefix + target_node
 
             self.add_edge(
-                NodeRef(source_node)[edge.source.port],
-                NodeRef(target_node)[edge.target.port],
+                NodeRef(source_node, self)[edge.source.port],
+                NodeRef(target_node, self)[edge.target.port],
                 edge.type_,
             )
 
@@ -430,6 +438,9 @@ class TierkreisGraph:
     ) -> TierkreisEdge:
         tk_type = _to_tierkreis_type(edge_type)
 
+        if node_port_from.node_ref.graph is not node_port_to.node_ref.graph:
+            raise MismatchedGraphs(node_port_from.node_ref, node_port_to.node_ref)
+
         # if port is currently connected to discard, replace that edge
         try:
             del_edge = next(
@@ -498,8 +509,8 @@ class TierkreisGraph:
     def _to_tkedge(self, handle: _EdgeData) -> TierkreisEdge:
         src, tgt, (src_port, tgt_port) = handle
         return TierkreisEdge(
-            NodeRef(src)[src_port],
-            NodeRef(tgt)[tgt_port],
+            NodeRef(src, self)[src_port],
+            NodeRef(tgt, self)[tgt_port],
             self._graph.get_edge_data(src, tgt, (src_port, tgt_port))["type"],
         )
 
@@ -570,8 +581,8 @@ class TierkreisGraph:
             tk_graph.add_node(TierkreisNode.from_proto(pg_node), node_name)
 
         for pg_edge in pg_graph.edges:
-            source_node = NodeRef(pg_edge.node_from)
-            target_node = NodeRef(pg_edge.node_to)
+            source_node = NodeRef(pg_edge.node_from, tk_graph)
+            target_node = NodeRef(pg_edge.node_to, tk_graph)
             source = NodePort(source_node, PortID(pg_edge.port_from))
             target = NodePort(target_node, PortID(pg_edge.port_to))
             # TODO make all edge type conversions possible

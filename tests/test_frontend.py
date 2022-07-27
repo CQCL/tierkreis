@@ -402,7 +402,8 @@ async def test_infer_graph_types_with_sig(client: RuntimeClient):
     )
     tg.set_outputs(val=mkp["pair"])
 
-    tg = infer_graph_types(tg, sigs)
+    # updates the graph wrapped by tg inplace
+    tg._graph = infer_graph_types(tg, sigs)._graph
     in_type = tg.get_edge(NodePort(tg.input, "in"), NodePort(mkp, "first")).type_
     assert isinstance(in_type, VarType)
     out_type = tg.get_edge(NodePort(mkp, "pair"), NodePort(tg.output, "val")).type_

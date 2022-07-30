@@ -259,31 +259,29 @@ async def test_infer(client: RuntimeClient) -> None:
 async def test_copy(client: RuntimeClient) -> None:
     tg = TierkreisGraph()
 
-    def num_copy_nodes() -> int:
-        return len(
-            [
-                n
-                for n in tg.nodes().values()
-                if getattr(n, "function_name", "") == "builtin/copy"
-            ]
-        )
+    def num_copies_discards() -> Tuple[int, int]:
+        node_funcs = [getattr(n, "function_name", "") for n in tg.nodes().values()]
+        return node_funcs.count("builtin/copy"), node_funcs.count("builtin/discard")
 
     a = tg.input["a"]
     tg.add_func("builtin/discard", value=a)
-    # Even before we mark as copyable, discards should be removed
+    assert num_copies_discards() == (0, 1)
+    with pytest.raises(ValueError, match="use or copy_value"):
+        a.copy()
+    assert num_copies_discards() == (0, 1)
+    # Even without an explicit copy, discards should be removed
     f = tg.add_func("builtin/iadd", a=a, b=tg.input["b"])
-    assert num_copy_nodes() == 0
-    assert not any(n.is_discard_node() for n in tg.nodes().values())
+    assert num_copies_discards() == (0, 0)
 
-    a_squared_plus_b = tg.add_func("builtin/imul", a=a.copy(), b=f)
-    assert num_copy_nodes() == 1
-    tg.set_outputs(out=a_squared_plus_b)
+    a_squared_plus_ab = tg.add_func("builtin/imul", a=a.copy(), b=f)
+    assert num_copies_discards() == (1, 0)
+    tg.set_outputs(out=a_squared_plus_ab)
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
     assert outputs == {"out": IntValue(10)}
 
     b_plus_2a = tg.add_func("builtin/iadd", a=a.copy(), b=tg.copy_port(f))
     tg.set_outputs(res=b_plus_2a)  # Adds outputs to those already present
-    assert num_copy_nodes() == 3
+    assert num_copies_discards() == (3, 0)
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
     assert outputs == {"out": IntValue(10), "res": IntValue(7)}
 

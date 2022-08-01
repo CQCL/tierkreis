@@ -560,7 +560,7 @@ class TierkreisGraph:
             if self[existing_edge.target.node_ref].is_discard_node():
                 if force_copy:
                     raise ValueError(
-                        f"{value} is discarded, so don't copy() - use directly, or call copy_value for 2"
+                        f"{value} is discarded - don't copy(), use or copy_value()"
                     )
                 # Removing the discard deletes any edges to it, then fallthrough
                 self._graph.remove_node(existing_edge.target.node_ref.name)
@@ -578,7 +578,7 @@ class TierkreisGraph:
                 )
         elif force_copy:
             raise ValueError(
-                f"No current uses of {value} so no copy() allowed - use directly, or call copy_value for 2"
+                f"No current uses of {value} - don't copy(), use or copy_value()"
             )
         return value
 

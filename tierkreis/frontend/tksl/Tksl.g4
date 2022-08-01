@@ -42,7 +42,7 @@ instruction:
         ELSE else_block = code_block               # IfBlock
     | target = ID '<-' MATCH '(' scrutinee = outport (';' inputs = named_map)? ')'
         ('|' cases += match_case)+                 # Match
-    | target = ID '<-' LOOP '(' inputs = named_map? ')' body = code_block # Loop
+    | target = ID '<-' LOOP '(' port_map ')' body = code_block # Loop
     | source = port_label '->' target = port_label # Edge;
 
 node_inputs:

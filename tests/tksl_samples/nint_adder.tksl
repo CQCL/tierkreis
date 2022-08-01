@@ -1,17 +1,17 @@
 
 Graph main(array: Vector<Int>, len: Int) -> (out: Int) {
-    total <- loop (ar: array, sum: 0, counter: len) {
-        counters <- copy(counter);
-        val <- if (ilt(0, counters.value_0); ar: ar, sum: sum, counter: counters.value_1) {
+    total <- loop (value: make_struct(ar: array, sum: 0, counter: len)) {
+        sturct <- unpack_struct(value);
+        counters <- copy(sturct.counter);
+        val <- if (ilt(0, counters.value_0); ar: sturct.ar, sum: sturct.sum, counter: counters.value_1) {
             popped <- pop(ar);
 
-            output (value: make_option(make_struct(sum: iadd(sum, popped.item), ar: popped.vec, counter: iadd(counter, -1))));
+            output (value: tag(continue: make_struct(sum: iadd(sum, popped.item), ar: popped.vec, counter: iadd(counter, -1))));
         } else {
-            output (value: None);
+            output (value: tag(break: sum));
         };
         output (value: val.value);
-
     };
 
-    output (out: total.sum);
+    output (out: total);
 }

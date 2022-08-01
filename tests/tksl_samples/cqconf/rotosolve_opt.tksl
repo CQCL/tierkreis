@@ -2,23 +2,24 @@ use opt::{rotosolve_minimize, rotosolve_checker};
 
 Graph rotosolve(initial_params: ParamsLists, objective: Objective) -> (final_params: Vector<Float>) {
 
-    all_params <- loop (params: initial_params, obj: objective) {
-        params_copy <- copy(params);
+    all_params <- loop (value: make_struct(params: initial_params, obj: objective)) {
+        args <- unpack_struct(value);
+        params_copy <- copy(args.params);
         pred <- opt::rotosolve_checker(params_copy.value_0);
-        res <- if (pred.pred; params: params_copy.value_1, obj: obj) {
+        res <- if (pred.pred; params: params_copy.value_1, obj: args.obj) {
             objs <- copy(obj);
 
             min_n <- opt::rotosolve_minimize(func: objs.value_0, params: params);
 
-            output (value: make_option(make_struct(params: min_n.value,  obj: objs.value_1)));
+            output (value: tag(continue: make_struct(params: min_n.value,  obj: objs.value_1)));
 
         } else {
-            output (value: None);
+            output (value: tag(break: params));
         };
 
         output (value: res.value);
     };
 
-    final_params <- pop(all_params.params);
+    final_params <- pop(all_params.value);
     output (final_params.item);
 }

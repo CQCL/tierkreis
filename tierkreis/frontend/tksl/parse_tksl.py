@@ -331,17 +331,21 @@ class TkslFileVisitor(TkslVisitor):
 
     def visitLoop(self, ctx: TkslParser.LoopContext):
         target = ctx.target.text
-        inputs = self.visitOptionalNamed_map(ctx.inputs)
+        port, value = self.visitPort_map(ctx.port_map())
+        if port != Labels.VALUE:
+            raise TkslCompileException(
+                f"Loops must have a single input called '{Labels.VALUE}'"
+            )
 
-        loopcontext = self._cloneContextWithInputs(inputs)
-        # outputs from loop body have to be named map (not positional)
+        loopcontext = self._cloneContextWithInputs({port: value})
 
         bodyvisit = TkslFileVisitor(self.sig, loopcontext)
         body_g = bodyvisit.visitCode_block(ctx.body)
 
+        # This is only for loops that ignore the "value" input
         self._discard_unused_inputs([body_g], loopcontext.inputs)
 
-        loop_nod = self.graph.add_func("builtin/loop", body=body_g, **inputs)
+        loop_nod = self.graph.add_func("builtin/loop", body=body_g, value=value)
 
         fake_func = FunctionDefinition(list(loopcontext.inputs), list(body_g.outputs()))
         self.context.output_vars[target] = (loop_nod, fake_func)

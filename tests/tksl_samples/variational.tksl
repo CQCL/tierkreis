@@ -19,21 +19,22 @@ Graph main() -> (final_params: ParamsLists) {
 
     objective <- partial(thunk: run_circuit, circ: ansatz);
 
-    final <- loop (params: [[1.2]], status: -1, obj: objective.value) {
-        params_copy <- copy(params);
-        pred <- scipy::minimize_checker(params_copy.value_0, status);
-        res <- if (pred.pred; params: params_copy.value_1, obj: obj) {
+    final <- loop (value: make_struct(params: [[1.2]], status: -1, obj: objective.value)) {
+        args <- unpack_struct(value);
+        params_copy <- copy(args.params);
+        pred <- scipy::minimize_checker(params_copy.value_0, args.status);
+        res <- if (pred.pred; params: params_copy.value_1, obj: args.obj) {
             objs <- copy(obj);
 
             min_n <- scipy::minimize(func: objs.value_0, params: params);
 
-            output (value: make_option(make_struct(params: min_n.params, status: min_n.status, obj: objs.value_1)));
+            output (value: tag(continue: make_struct(params: min_n.params, status: min_n.status, obj: objs.value_1)));
         } else {
-            output (value: None);
+            output (value: tag(break: params));
         };
 
         output (value: res.value);
     };
 
-    output(final.params);
+    output(final.value);
 }

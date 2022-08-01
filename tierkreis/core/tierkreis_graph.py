@@ -131,6 +131,9 @@ class NodePort:
     node_ref: NodeRef
     port: PortID
 
+    def copy(self, force=True):
+        return self.node_ref.graph.copy(self, force=force)
+
 
 @dataclass(frozen=True)
 class TierkreisEdge:
@@ -429,26 +432,10 @@ class TierkreisGraph:
         if node_port_from.node_ref.graph is not node_port_to.node_ref.graph:
             raise MismatchedGraphs(node_port_from.node_ref, node_port_to.node_ref)
 
-        # if port is currently connected to discard, replace that edge
-        try:
-            existing_edges = [
-                out_edge
-                for out_edge in self.out_edges(node_port_from.node_ref)
-                if out_edge.source.port == node_port_from.port
-            ]
-            assert len(existing_edges) <= 1
-            if len(existing_edges) > 0:
-                (existing_edge,) = existing_edges
-                if self[existing_edge.target.node_ref].is_discard_node():
-                    # Removal of the node also removes the incoming edge
-                    self._graph.remove_node(existing_edge.target.node_ref.name)
-                else:
-                    raise ValueError(
-                        f"Already an edge from {node_port_from}"
-                        " to {existing_edge.target}"
-                    )
-        except StopIteration:
-            pass
+        # Remove any discard node on an existing outgoing edge
+        np = self._get_unused_copy(node_port_from, allow_copy=False, force_copy=False)
+        assert np == node_port_from
+
         edge_data = (
             node_port_from.node_ref.name,
             node_port_to.node_ref.name,
@@ -552,6 +539,47 @@ class TierkreisGraph:
             curr_arr = pop["vec"]
             outports.insert(0, pop["item"])
         return outports
+
+    def copy(self, value: IncomingWireType, force: bool = True) -> NodePort:
+        # Adding a constant with force=True will fail, but ok with force=False
+        return self._get_unused_copy(
+            self._to_nodeport(value), allow_copy=True, force_copy=force
+        )
+
+    def _get_unused_copy(
+        self, value: NodePort, allow_copy: bool, force_copy: bool
+    ) -> NodePort:
+        existing_edges = [
+            out_edge
+            for out_edge in self.out_edges(value.node_ref)
+            if out_edge.source.port == value.port
+        ]
+        assert len(existing_edges) <= 1
+        if (
+            len(existing_edges) == 0
+            or self[existing_edges[0].target.node_ref].is_discard_node()
+        ):
+            if force_copy:
+                raise ValueError(
+                    f"No current uses of {value} so no copy() allowed - use directly, or call copy_value for 2"
+                )
+            if len(existing_edges) > 0:
+                # Removing the discard deletes any edges to it
+                self._graph.remove_node(existing_edges[0].target.node_ref.name)
+            return value
+        (existing_edge,) = existing_edges
+        if not allow_copy:
+            raise ValueError(
+                f"An edge already exists from {value}, to {existing_edge.target}"
+            )
+        self._graph.remove_edge(
+            existing_edge.source.node_ref.name,
+            existing_edge.target.node_ref.name,
+            (existing_edge.source.port, existing_edge.target.port),
+        )
+        val1, val2 = self.copy_value(value)
+        self.add_edge(val2, existing_edge.target, existing_edge.type_)
+        return val1
 
     def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
         copy_n = self.add_func("builtin/copy", value=value)

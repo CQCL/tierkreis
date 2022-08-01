@@ -21,7 +21,7 @@ from tierkreis.core.types import (
     TypeScheme,
     VarType,
 )
-from tierkreis.core.values import FloatValue, StructValue, VariantValue
+from tierkreis.core.values import FloatValue, StructValue, VariantValue, IntValue
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
 from tierkreis.frontend.type_inference import infer_graph_types
@@ -253,6 +253,39 @@ async def test_infer(client: RuntimeClient) -> None:
     assert any(node.is_discard_node() for node in tg.nodes().values())
 
     assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
+
+
+@pytest.mark.asyncio
+async def test_copy(client: RuntimeClient) -> None:
+    tg = TierkreisGraph()
+
+    def num_copy_nodes() -> int:
+        return len(
+            [
+                n
+                for n in tg.nodes().values()
+                if getattr(n, "function_name", "") == "builtin/copy"
+            ]
+        )
+
+    a = tg.input["a"]
+    tg.add_func("builtin/discard", value=a)
+    # Even before we mark as copyable, discards should be removed
+    f = tg.add_func("builtin/iadd", a=a, b=tg.input["b"])
+    assert num_copy_nodes() == 0
+    assert not any(n.is_discard_node() for n in tg.nodes().values())
+
+    f2 = tg.add_func("builtin/imul", a=a.copy(), b=f)
+    assert num_copy_nodes() == 1
+    tg.set_outputs(out=f2)  # a*(a+b)
+    outputs = await client.run_graph(tg, {"a": 2, "b": 3})
+    assert outputs == {"out": IntValue(10)}
+
+    # add_outputs might be a better name than set_outputs?
+    tg.set_outputs(res=tg.add_func("builtin/iadd", a=a.copy(), b=tg.copy(f)))  # 2a+b
+    assert num_copy_nodes() == 3
+    outputs = await client.run_graph(tg, {"a": 2, "b": 3})
+    assert outputs == {"out": IntValue(10), "res": IntValue(7)}
 
 
 @pytest.mark.asyncio

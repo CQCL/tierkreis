@@ -555,31 +555,32 @@ class TierkreisGraph:
             if out_edge.source.port == value.port
         ]
         assert len(existing_edges) <= 1
-        if (
-            len(existing_edges) == 0
-            or self[existing_edges[0].target.node_ref].is_discard_node()
-        ):
-            if force_copy:
-                raise ValueError(
-                    f"No current uses of {value} so no copy() allowed - use directly, or call copy_value for 2"
+        if len(existing_edges) > 0:
+            (existing_edge,) = existing_edges
+            if self[existing_edge.target.node_ref].is_discard_node():
+                if force_copy:
+                    raise ValueError(
+                        f"{value} is discarded, so don't copy() - use directly, or call copy_value for 2"
+                    )
+                # Removing the discard deletes any edges to it, then fallthrough
+                self._graph.remove_node(existing_edge.target.node_ref.name)
+            elif allow_copy:
+                self._graph.remove_edge(
+                    existing_edge.source.node_ref.name,
+                    existing_edge.target.node_ref.name,
+                    (existing_edge.source.port, existing_edge.target.port),
                 )
-            if len(existing_edges) > 0:
-                # Removing the discard deletes any edges to it
-                self._graph.remove_node(existing_edges[0].target.node_ref.name)
-            return value
-        (existing_edge,) = existing_edges
-        if not allow_copy:
+                value, val2 = self.copy_value(value)
+                self.add_edge(val2, existing_edge.target, existing_edge.type_)
+            else:
+                raise ValueError(
+                    f"An edge already exists from {value}, to {existing_edge.target}"
+                )
+        elif force_copy:
             raise ValueError(
-                f"An edge already exists from {value}, to {existing_edge.target}"
+                f"No current uses of {value} so no copy() allowed - use directly, or call copy_value for 2"
             )
-        self._graph.remove_edge(
-            existing_edge.source.node_ref.name,
-            existing_edge.target.node_ref.name,
-            (existing_edge.source.port, existing_edge.target.port),
-        )
-        val1, val2 = self.copy_value(value)
-        self.add_edge(val2, existing_edge.target, existing_edge.type_)
-        return val1
+        return value
 
     def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
         copy_n = self.add_func("builtin/copy", value=value)

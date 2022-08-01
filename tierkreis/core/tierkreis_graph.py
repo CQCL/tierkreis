@@ -12,7 +12,6 @@ from typing import (
     Iterator,
     List,
     Optional,
-    Set,
     Tuple,
     Type,
     Union,
@@ -383,16 +382,17 @@ class TierkreisGraph:
         curr_inputs = self.in_edges(box_node_name)
 
         incoming_ports = {edge.target.port: edge.source for edge in curr_inputs}
+        curr_outputs = [
+            self._to_tkedge(e)
+            for e in _to_edgedata(self._graph.out_edges(box_node_name, keys=True))
+        ]
+        # Removal from the underlying graph also removes all incident edges
+        self._graph.remove_node(box_node_name)
 
         inserted_outputs = self.insert_graph(boxed_g, box_node_name, **incoming_ports)
-        curr_outputs = list(
-            _to_edgedata(self._graph.out_edges(box_node_name, keys=True))
-        )
 
-        for e in curr_outputs:
-            edge = self._to_tkedge(e)
+        for edge in curr_outputs:
             self.add_edge(inserted_outputs[edge.source.port], edge.target, edge.type_)
-            self._graph.remove_edge(*e)
 
     def inline_boxes(self, recursive=False) -> "TierkreisGraph":
         """Inline boxes by inserting the graphs they contain in to the parent
@@ -403,18 +403,13 @@ class TierkreisGraph:
         """
 
         graph = copy.deepcopy(self)
-        node_bin: Set[str] = set()
-        for node_name, node in graph.nodes().items():
+        # Iterate through self.nodes rather than graph.nodes so we can mutate latter
+        for node_name, node in self.nodes().items():
 
             if not isinstance(node, BoxNode):
                 continue
 
             graph._inline_box(node_name, recursive)
-
-            node_bin.add(node_name)
-
-        for node_name in node_bin:
-            graph._graph.remove_node(node_name)
 
         return graph
 
@@ -443,16 +438,22 @@ class TierkreisGraph:
 
         # if port is currently connected to discard, replace that edge
         try:
-            del_edge = next(
+            existing_edges = [
                 out_edge
                 for out_edge in self.out_edges(node_port_from.node_ref)
                 if out_edge.source.port == node_port_from.port
-                and self[out_edge.target.node_ref].is_discard_node()
-            )
-            self._graph.remove_edge(
-                del_edge.source.node_ref.name, del_edge.target.node_ref.name
-            )
-            self._graph.remove_node(del_edge.target.node_ref.name)
+            ]
+            assert len(existing_edges) <= 1
+            if len(existing_edges) > 0:
+                (existing_edge,) = existing_edges
+                if self[existing_edge.target.node_ref].is_discard_node():
+                    # Removal of the node also removes the incoming edge
+                    self._graph.remove_node(existing_edge.target.node_ref.name)
+                else:
+                    raise ValueError(
+                        f"Already an edge from {node_port_from}"
+                        " to {existing_edge.target}"
+                    )
         except StopIteration:
             pass
         edge_data = (

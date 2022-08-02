@@ -132,7 +132,7 @@ class NodePort:
     port: PortID
 
     def copy_value(self, force: bool = True) -> "NodePort":
-        return self.node_ref.graph.copy_port(self, force=force)
+        return self.node_ref.graph.copy_value(self, force=force)
 
 
 @dataclass(frozen=True)
@@ -540,10 +540,10 @@ class TierkreisGraph:
             outports.insert(0, pop["item"])
         return outports
 
-    def copy_port(
+    def copy_value(
         self, value: Union[NodePort, NodeRef], force: bool = True
     ) -> NodePort:
-        np = value if isinstance(value, NodePort) else value["value"]
+        np = self._to_nodeport(value)
         return self._get_unused_copy(np, allow_copy=True, force_copy=force)
 
     def _get_unused_copy(

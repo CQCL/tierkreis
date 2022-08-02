@@ -279,7 +279,7 @@ async def test_copy(client: RuntimeClient) -> None:
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
     assert outputs == {"out": IntValue(10)}
 
-    b_plus_2a = tg.add_func("builtin/iadd", a=a.copy_value(), b=tg.copy_port(f))
+    b_plus_2a = tg.add_func("builtin/iadd", a=a.copy_value(), b=tg.copy_value(f))
     tg.set_outputs(res=b_plus_2a)  # Adds outputs to those already present
     assert num_copies_discards() == (3, 0)
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})

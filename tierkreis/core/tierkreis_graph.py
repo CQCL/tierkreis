@@ -131,7 +131,7 @@ class NodePort:
     node_ref: NodeRef
     port: PortID
 
-    def copy(self, force: bool = True) -> "NodePort":
+    def copy_value(self, force: bool = True) -> "NodePort":
         return self.node_ref.graph.copy_port(self, force=force)
 
 

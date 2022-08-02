@@ -267,19 +267,19 @@ async def test_copy(client: RuntimeClient) -> None:
     tg.add_func("builtin/discard", value=a)
     assert num_copies_discards() == (0, 1)
     with pytest.raises(ValueError, match="is discarded"):
-        a.copy()
+        a.copy_value()
     assert num_copies_discards() == (0, 1)
     # Even without an explicit copy, discards should be removed
     f = tg.add_func("builtin/iadd", a=a, b=tg.input["b"])
     assert num_copies_discards() == (0, 0)
 
-    a_squared_plus_ab = tg.add_func("builtin/imul", a=a.copy(), b=f)
+    a_squared_plus_ab = tg.add_func("builtin/imul", a=a.copy_value(), b=f)
     assert num_copies_discards() == (1, 0)
     tg.set_outputs(out=a_squared_plus_ab)
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
     assert outputs == {"out": IntValue(10)}
 
-    b_plus_2a = tg.add_func("builtin/iadd", a=a.copy(), b=tg.copy_port(f))
+    b_plus_2a = tg.add_func("builtin/iadd", a=a.copy_value(), b=tg.copy_port(f))
     tg.set_outputs(res=b_plus_2a)  # Adds outputs to those already present
     assert num_copies_discards() == (3, 0)
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
@@ -293,12 +293,12 @@ def test_copy_unused() -> None:
 
     old_proto = tg.to_proto()
 
-    f2 = f.copy(force=False)
+    f2 = f.copy_value(force=False)
     assert f2 == f
     assert tg.to_proto() == old_proto  # Did nothing
 
     with pytest.raises(ValueError, match="is unused"):
-        f.copy(force=True)
+        f.copy_value(force=True)
     assert tg.to_proto() == old_proto
 
 
@@ -309,10 +309,10 @@ def test_copy_discarded() -> None:
     old_proto = tg.to_proto()
 
     with pytest.raises(ValueError, match="is discarded"):
-        f.copy(force=True)
+        f.copy_value(force=True)
     assert tg.to_proto() == old_proto
 
-    f2 = f.copy(force=False)
+    f2 = f.copy_value(force=False)
     assert f2 == f
     assert all(not n.is_discard_node() for n in tg.nodes().values())
 

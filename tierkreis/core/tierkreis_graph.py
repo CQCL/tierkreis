@@ -151,6 +151,13 @@ class TierkreisEdge:
             edge_type=cast(pg.Type, edge_type),
         )
 
+    def to_edge_handle(self) -> "_EdgeData":
+        return (
+            self.source.node_ref.name,
+            self.target.node_ref.name,
+            (self.source.port, self.target.port),
+        )
+
 
 # allow specifying input as a port, node with single output, or constant value
 IncomingWireType = Union[NodePort, NodeRef, Any]
@@ -563,16 +570,10 @@ class TierkreisGraph:
                 # Removing the discard deletes any edges to it, then fallthrough
                 self._graph.remove_node(existing_edge.target.node_ref.name)
             elif allow_copy:
-                self._graph.remove_edge(
-                    existing_edge.source.node_ref.name,
-                    existing_edge.target.node_ref.name,
-                    (existing_edge.source.port, existing_edge.target.port),
-                )
-                copy_n = self.add_func("builtin/copy", value=value)
-                self.add_edge(
-                    copy_n["value_0"], existing_edge.target, existing_edge.type_
-                )
-                value = copy_n["value_1"]
+                self._graph.remove_edge(*existing_edge.to_edge_handle())
+                cp = self.add_func("builtin/copy", value=value)
+                self.add_edge(cp["value_0"], existing_edge.target, existing_edge.type_)
+                value = cp["value_1"]
             else:
                 raise ValueError(
                     f"An edge already exists from {value}, to {existing_edge.target}"

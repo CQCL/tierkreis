@@ -275,14 +275,14 @@ async def test_copy(client: RuntimeClient) -> None:
     assert num_copy_nodes() == 0
     assert not any(n.is_discard_node() for n in tg.nodes().values())
 
-    f2 = tg.add_func("builtin/imul", a=a.copy(), b=f)
+    a_squared_plus_b = tg.add_func("builtin/imul", a=a.copy(), b=f)
     assert num_copy_nodes() == 1
-    tg.set_outputs(out=f2)  # a*(a+b)
+    tg.set_outputs(out=a_squared_plus_b)
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
     assert outputs == {"out": IntValue(10)}
 
-    # add_outputs might be a better name than set_outputs?
-    tg.set_outputs(res=tg.add_func("builtin/iadd", a=a.copy(), b=tg.copy(f)))  # 2a+b
+    b_plus_2a = tg.add_func("builtin/iadd", a=a.copy(), b=tg.copy_port(f))
+    tg.set_outputs(res=b_plus_2a)  # Adds outputs to those already present
     assert num_copy_nodes() == 3
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
     assert outputs == {"out": IntValue(10), "res": IntValue(7)}

@@ -131,8 +131,8 @@ class NodePort:
     node_ref: NodeRef
     port: PortID
 
-    def copy(self, force=True):
-        return self.node_ref.graph.copy(self, force=force)
+    def copy(self, force: bool = True) -> "NodePort":
+        return self.node_ref.graph.copy_port(self, force=force)
 
 
 @dataclass(frozen=True)
@@ -540,11 +540,11 @@ class TierkreisGraph:
             outports.insert(0, pop["item"])
         return outports
 
-    def copy(self, value: IncomingWireType, force: bool = True) -> NodePort:
-        # Adding a constant with force=True will fail, but ok with force=False
-        return self._get_unused_copy(
-            self._to_nodeport(value), allow_copy=True, force_copy=force
-        )
+    def copy_port(
+        self, value: Union[NodePort, NodeRef], force: bool = True
+    ) -> NodePort:
+        np = value if isinstance(value, NodePort) else value["value"]
+        return self._get_unused_copy(np, allow_copy=True, force_copy=force)
 
     def _get_unused_copy(
         self, value: NodePort, allow_copy: bool, force_copy: bool

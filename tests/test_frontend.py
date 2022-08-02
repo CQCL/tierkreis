@@ -266,7 +266,7 @@ async def test_copy(client: RuntimeClient) -> None:
     a = tg.input["a"]
     tg.add_func("builtin/discard", value=a)
     assert num_copies_discards() == (0, 1)
-    with pytest.raises(ValueError, match="use or copy_value"):
+    with pytest.raises(ValueError, match="is discarded .* use or copy_value"):
         a.copy()
     assert num_copies_discards() == (0, 1)
     # Even without an explicit copy, discards should be removed
@@ -284,6 +284,37 @@ async def test_copy(client: RuntimeClient) -> None:
     assert num_copies_discards() == (3, 0)
     outputs = await client.run_graph(tg, {"a": 2, "b": 3})
     assert outputs == {"out": IntValue(10), "res": IntValue(7)}
+
+
+def test_copy_unused() -> None:
+    tg = TierkreisGraph()
+
+    f = tg.add_func("builtin/iadd", a=tg.input["arg"], b=1)["value"]
+
+    old_proto = tg.to_proto()
+
+    f2 = f.copy(force=False)
+    assert f2 == f
+    assert tg.to_proto() == old_proto  # Did nothing
+
+    with pytest.raises(ValueError, match="is unused .* use or copy_value"):
+        f.copy(force=True)
+    assert tg.to_proto() == old_proto
+
+
+def test_copy_discarded() -> None:
+    tg = TierkreisGraph()
+    f = tg.add_func("builtin/iadd", a=tg.input["arg"], b=2)["value"]
+    tg.discard(f)
+    old_proto = tg.to_proto()
+
+    with pytest.raises(ValueError, match="is discarded"):
+        f.copy(force=True)
+    assert tg.to_proto() == old_proto
+
+    f2 = f.copy(force=False)
+    assert f2 == f
+    assert all(not n.is_discard_node() for n in tg.nodes().values())
 
 
 @pytest.mark.asyncio

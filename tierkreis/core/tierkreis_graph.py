@@ -577,9 +577,7 @@ class TierkreisGraph:
                     f"An edge already exists from {value}, to {existing_edge.target}"
                 )
         elif force_copy:
-            raise ValueError(
-                f"No current uses of {value} - don't copy(), use or copy_value()"
-            )
+            raise ValueError(f"{value} is unused - don't copy(), use or copy_value()")
         return value
 
     def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:

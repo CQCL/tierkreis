@@ -368,32 +368,6 @@ class TierkreisGraph:
 
         return return_outputs
 
-    def _inline_box(self, box_node_name: str, recursive: bool) -> None:
-        """Replace a box node with the graph it contains, inplace. Optionally
-        use the recursive flag to inline all boxes inside the box
-        recursively."""
-
-        node = self[box_node_name]
-        assert isinstance(node, BoxNode)
-        boxed_g = node.graph
-        if recursive:
-            boxed_g = boxed_g.inline_boxes(recursive)
-
-        curr_inputs = self.in_edges(box_node_name)
-
-        incoming_ports = {edge.target.port: edge.source for edge in curr_inputs}
-        curr_outputs = [
-            self._to_tkedge(e)
-            for e in _to_edgedata(self._graph.out_edges(box_node_name, keys=True))
-        ]
-        # Removal from the underlying graph also removes all incident edges
-        self._graph.remove_node(box_node_name)
-
-        inserted_outputs = self.insert_graph(boxed_g, box_node_name, **incoming_ports)
-
-        for edge in curr_outputs:
-            self.add_edge(inserted_outputs[edge.source.port], edge.target, edge.type_)
-
     def inline_boxes(self, recursive=False) -> "TierkreisGraph":
         """Inline boxes by inserting the graphs they contain in to the parent
         graph. Optionally do this recursively.
@@ -409,7 +383,26 @@ class TierkreisGraph:
             if not isinstance(node, BoxNode):
                 continue
 
-            graph._inline_box(node_name, recursive)
+            boxed_g = node.graph
+            if recursive:
+                boxed_g = boxed_g.inline_boxes(recursive)
+
+            curr_inputs = graph.in_edges(node_name)
+
+            incoming_ports = {edge.target.port: edge.source for edge in curr_inputs}
+            curr_outputs = [
+                graph._to_tkedge(e)
+                for e in _to_edgedata(graph._graph.out_edges(node_name, keys=True))
+            ]
+            # Removal from the underlying graph also removes all incident edges
+            graph._graph.remove_node(node_name)
+
+            inserted_outputs = graph.insert_graph(boxed_g, node_name, **incoming_ports)
+
+            for edge in curr_outputs:
+                graph.add_edge(
+                    inserted_outputs[edge.source.port], edge.target, edge.type_
+                )
 
         return graph
 

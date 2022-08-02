@@ -247,12 +247,12 @@ async def test_idpy(client: RuntimeClient):
 async def test_infer(client: RuntimeClient) -> None:
     # test when built with client types are auto inferred
     tg = TierkreisGraph()
-    _, val1 = tg.copy_value(3)
-    tg.set_outputs(out=val1)
+    item = tg.add_func("builtin/pop", vec=[3, 4])["item"]
+    tg.set_outputs(out=item)
     tg = await client.type_check_graph(tg)
     assert any(node.is_discard_node() for node in tg.nodes().values())
 
-    assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
+    assert isinstance(tg.get_edge(item, NodePort(tg.output, "out")).type_, IntType)
 
 
 @pytest.mark.asyncio
@@ -266,7 +266,7 @@ async def test_copy(client: RuntimeClient) -> None:
     a = tg.input["a"]
     tg.add_func("builtin/discard", value=a)
     assert num_copies_discards() == (0, 1)
-    with pytest.raises(ValueError, match="is discarded .* use or copy_value"):
+    with pytest.raises(ValueError, match="is discarded"):
         a.copy()
     assert num_copies_discards() == (0, 1)
     # Even without an explicit copy, discards should be removed
@@ -297,7 +297,7 @@ def test_copy_unused() -> None:
     assert f2 == f
     assert tg.to_proto() == old_proto  # Did nothing
 
-    with pytest.raises(ValueError, match="is unused .* use or copy_value"):
+    with pytest.raises(ValueError, match="is unused"):
         f.copy(force=True)
     assert tg.to_proto() == old_proto
 

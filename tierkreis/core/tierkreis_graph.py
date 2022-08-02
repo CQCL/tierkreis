@@ -559,9 +559,7 @@ class TierkreisGraph:
             (existing_edge,) = existing_edges
             if self[existing_edge.target.node_ref].is_discard_node():
                 if force_copy:
-                    raise ValueError(
-                        f"{value} is discarded - don't copy(), use or copy_value()"
-                    )
+                    raise ValueError(f"{value} is discarded, just use directly")
                 # Removing the discard deletes any edges to it, then fallthrough
                 self._graph.remove_node(existing_edge.target.node_ref.name)
             elif allow_copy:
@@ -570,20 +568,18 @@ class TierkreisGraph:
                     existing_edge.target.node_ref.name,
                     (existing_edge.source.port, existing_edge.target.port),
                 )
-                value, val2 = self.copy_value(value)
-                self.add_edge(val2, existing_edge.target, existing_edge.type_)
+                copy_n = self.add_func("builtin/copy", value=value)
+                self.add_edge(
+                    copy_n["value_0"], existing_edge.target, existing_edge.type_
+                )
+                value = copy_n["value_1"]
             else:
                 raise ValueError(
                     f"An edge already exists from {value}, to {existing_edge.target}"
                 )
         elif force_copy:
-            raise ValueError(f"{value} is unused - don't copy(), use or copy_value()")
+            raise ValueError(f"{value} is unused, just use directly")
         return value
-
-    def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
-        copy_n = self.add_func("builtin/copy", value=value)
-
-        return copy_n["value_0"], copy_n["value_1"]
 
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()

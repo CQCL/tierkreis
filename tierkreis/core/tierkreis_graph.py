@@ -266,13 +266,7 @@ class TierkreisGraph:
         return self.add_node(FunctionNode(f_name), _tk_node_name, **kwargs)
 
     def add_const(self, value: Any, name: Optional[str] = None) -> NodeRef:
-        tkval = (
-            value
-            if isinstance(value, TierkreisValue)
-            else TierkreisValue.from_python(value)
-        )
-
-        return self.add_node(ConstNode(tkval), name)
+        return self.add_node(ConstNode(TierkreisValue.from_python(value)), name)
 
     def add_box(
         self,

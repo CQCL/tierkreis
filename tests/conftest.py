@@ -1,13 +1,14 @@
 import asyncio
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator, Callable
 from pathlib import Path
+from typing import Any, AsyncIterator, Callable
+
 import pytest
 
 from tierkreis.frontend import (
     RuntimeClient,
-    local_runtime,
     docker_runtime,
+    local_runtime,
     myqos_runtime,
 )
 

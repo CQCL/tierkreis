@@ -1,8 +1,9 @@
 import glob
 import os
 import subprocess
-from warnings import warn
 import urllib.request
+from warnings import warn
+
 import maturin as default_backend  # type: ignore
 
 # PEP 517 / 518 local (aka in-tree) backend for pip/build/etc.

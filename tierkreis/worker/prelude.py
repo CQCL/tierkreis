@@ -1,11 +1,16 @@
-"""Prelude definitions and functions for server executable scripts."""
+"""Prelude definitions and functions for server executable scripts.
+
+isort:skip_file
+"""
 
 import argparse
 import asyncio
 import os
 
 import opentelemetry.trace  # type: ignore
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter  # type: ignore
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # type: ignore
+    OTLPSpanExporter,
+)
 from opentelemetry.sdk.resources import SERVICE_NAME, Resource  # type: ignore
 from opentelemetry.sdk.trace import TracerProvider  # type: ignore
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # type: ignore

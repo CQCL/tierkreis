@@ -16,10 +16,10 @@ except ImportError as e:
 
 if TYPE_CHECKING:
     from pytket.backends.backendresult import BackendResult
-    from pytket.partition import MeasurementBitMap as PytketMeasurementBitMap  # type: ignore
-    from pytket.partition import (  # type: ignore
-        MeasurementSetup as PytketMeasurementSetup,
-    )
+
+    # use obscure names for following imports to make isort, black and mypy happy
+    from pytket.partition import MeasurementBitMap as _PMBP  # type: ignore
+    from pytket.partition import MeasurementSetup as _PMS  # type: ignore
     from pytket.pauli import QubitPauliString as PytketQubitPauliString  # type: ignore
 
 Distribution = Dict[str, float]
@@ -104,14 +104,14 @@ class MeasurementBitMap:
     bits: list[int]
     invert: bool
 
-    def to_pytket(self) -> "PytketMeasurementBitMap":
+    def to_pytket(self) -> "_PMBP":
         PytketMeasurementBitMap = _try_pytket_import(
             "pytket.partition", "MeasurementBitMap"
         )
         return PytketMeasurementBitMap(self.circ_index, self.bits, self.invert)
 
     @classmethod
-    def from_pytket(cls, py_map: "PytketMeasurementBitMap") -> "MeasurementBitMap":
+    def from_pytket(cls, py_map: "_PMBP") -> "MeasurementBitMap":
         return cls(py_map.circ_index, py_map.bits, py_map.invert)
 
 
@@ -120,7 +120,7 @@ class MeasurementSetup:
     measurement_circs: list[CircStruct]
     results: list[tuple[QubitPauliString, list[MeasurementBitMap]]]
 
-    def to_pytket(self) -> "PytketMeasurementSetup":
+    def to_pytket(self) -> "_PMS":
         PytketMeasurementSetup = _try_pytket_import(
             "pytket.partition", "MeasurementSetup"
         )
@@ -135,7 +135,7 @@ class MeasurementSetup:
         return ms
 
     @classmethod
-    def from_pytket(cls, py_map: "PytketMeasurementSetup") -> "MeasurementSetup":
+    def from_pytket(cls, py_map: "_PMS") -> "MeasurementSetup":
         return cls(
             [CircStruct.from_pytket_circuit(c) for c in py_map.measurement_circs],
             [

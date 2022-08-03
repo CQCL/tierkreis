@@ -45,6 +45,7 @@ lint = [
     "black>=22.1,<23",
     "mypy>=0.931,<0.932",
     "pylint~=2.13,!=2.13.6",
+    "isort~=5.10",
     "types-setuptools>=57.4.2,<58",
     "types-python-dateutil>=2.8.2,<3"
 ]
@@ -56,6 +57,11 @@ test = [
 
 [tool.black]
 exclude = '/tksl/antlr/'
+
+[tool.isort]
+profile = "black"
+skip_gitignore = true
+
 
 [tool.mypy]
 exclude = [

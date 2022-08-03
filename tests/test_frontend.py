@@ -29,7 +29,7 @@ from tierkreis.frontend.type_inference import infer_graph_types
 from . import REASON, release_tests
 
 
-def nint_adder(number: int, client: RuntimeClient) -> TierkreisGraph:
+def nint_adder(number: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
     current_outputs = tk_g.vec_last_n_elems(tk_g.input["array"], number)
 
@@ -90,7 +90,7 @@ async def test_nint_adder(client: RuntimeClient):
     )
 
     for in_list in ([1] * 5, list(range(5))):
-        tk_g = nint_adder(len(in_list), client)
+        tk_g = nint_adder(len(in_list))
         outputs = await client.run_graph(tk_g, {"array": in_list})
         assert outputs["out"].try_autopython() == sum(in_list)
 

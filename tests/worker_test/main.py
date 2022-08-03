@@ -2,7 +2,6 @@
 import asyncio
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar, cast
-from grpclib.client import Channel
 
 from tierkreis import TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct

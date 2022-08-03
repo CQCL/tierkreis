@@ -51,7 +51,7 @@ lint = [
 test = [
     "pytest>=6.2,<7",
     "pytest-asyncio>=0.16,<0.17",
-    "pytket>=0.17.0,<0.18"
+    "pytket>=1.0"
 ]
 
 [tool.black]

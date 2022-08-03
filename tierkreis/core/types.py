@@ -1,9 +1,10 @@
 import typing
-from typing import Optional, cast
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, is_dataclass, is_dataclass
-from uuid import UUID
+from dataclasses import dataclass, field, is_dataclass
 from functools import reduce
+from typing import Optional, cast
+from uuid import UUID
+
 import betterproto
 
 import tierkreis.core.protos.tierkreis.graph as pg

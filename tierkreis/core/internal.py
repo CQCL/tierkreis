@@ -1,5 +1,5 @@
 import typing
-from typing import cast, Any, Dict
+from typing import Any, Dict, cast
 
 
 def python_struct_fields(type_: typing.Type) -> Dict[str, typing.Type]:

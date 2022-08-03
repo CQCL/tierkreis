@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Callable, Dict, Optional
 
 import pytest
+
 from tierkreis import TierkreisGraph
 from tierkreis.core import Labels
 from tierkreis.core.protos.tierkreis.graph import Graph
@@ -10,18 +11,18 @@ from tierkreis.core.types import (
     IntType,
     MapType,
     StringType,
-    VecType,
     TierkreisTypeErrors,
+    VecType,
 )
 from tierkreis.core.values import (
     BoolValue,
+    FloatValue,
     IntValue,
     StringValue,
-    FloatValue,
-    VariantValue,
-    VecValue,
     StructValue,
     TierkreisValue,
+    VariantValue,
+    VecValue,
 )
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file

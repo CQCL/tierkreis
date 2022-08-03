@@ -1,7 +1,8 @@
 from __future__ import annotations
+
+import typing
 from dataclasses import dataclass
 from typing import Generic
-import typing
 
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.tierkreis_struct import TierkreisStruct

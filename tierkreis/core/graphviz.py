@@ -1,20 +1,20 @@
 """Visualise TierkreisGraph using graphviz."""
 from typing import Iterable, Optional, Tuple, cast
+
 import graphviz as gv  # type: ignore
 
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
     ConstNode,
     FunctionNode,
-    MatchNode,
-    TagNode,
     GraphValue,
     InputNode,
+    MatchNode,
     OutputNode,
+    TagNode,
     TierkreisGraph,
     TierkreisNode,
 )
-
 
 # old palettte: https://colorhunt.co/palette/343a407952b3ffc107e1e8eb
 # _COLOURS = {

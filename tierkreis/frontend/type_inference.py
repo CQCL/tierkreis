@@ -2,14 +2,16 @@ from typing import Iterable, Optional, Tuple, Union, overload
 
 import betterproto
 
+import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.signature as ps
+
 # Awkwardly, the Rust stubs end up here:
-from tierkreis import tierkreis as tierkreis_type_inference
 from tierkreis import TierkreisGraph
+from tierkreis import tierkreis as tierkreis_type_inference
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
-import tierkreis.core.protos.tierkreis.signature as ps
-import tierkreis.core.protos.tierkreis.graph as pg
+
 from . import RuntimeSignature
 
 

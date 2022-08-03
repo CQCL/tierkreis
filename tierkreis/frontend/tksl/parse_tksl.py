@@ -1,9 +1,9 @@
 import copy
+import re
 from collections import OrderedDict
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
 from pathlib import Path
-import re
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 from antlr4 import CommonTokenStream, InputStream  # type: ignore
 from antlr4.error.ErrorListener import ErrorListener  # type: ignore
@@ -13,7 +13,7 @@ from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from tierkreis import TierkreisGraph
 from tierkreis.core import Labels
 from tierkreis.core.function import TierkreisFunction
-from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TierkreisEdge, TagNode
+from tierkreis.core.tierkreis_graph import NodePort, NodeRef, TagNode, TierkreisEdge
 from tierkreis.core.types import (
     BoolType,
     FloatType,
@@ -31,16 +31,16 @@ from tierkreis.core.types import (
     VecType,
 )
 from tierkreis.core.values import (
-    FloatValue,
-    PairValue,
-    TierkreisValue,
-    IntValue,
     BoolValue,
-    StringValue,
-    VecValue,
-    StructValue,
+    FloatValue,
+    IntValue,
     OptionValue,
+    PairValue,
+    StringValue,
+    StructValue,
+    TierkreisValue,
     VariantValue,
+    VecValue,
 )
 from tierkreis.frontend.runtime_client import RuntimeSignature
 from tierkreis.frontend.tksl.antlr.TkslLexer import TkslLexer  # type: ignore

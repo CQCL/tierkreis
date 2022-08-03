@@ -3,10 +3,11 @@ from __future__ import annotations
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, is_dataclass
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, cast, TypeVar
+from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, TypeVar, cast
 from uuid import UUID
 
 import betterproto
+
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct

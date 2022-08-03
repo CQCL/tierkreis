@@ -2,10 +2,11 @@
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Type
 from time import time
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pytest
+
 from tierkreis import TierkreisGraph
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import FunctionNode, GraphValue, NodePort
@@ -21,7 +22,7 @@ from tierkreis.core.types import (
     TypeScheme,
     VarType,
 )
-from tierkreis.core.values import FloatValue, StructValue, VariantValue, IntValue
+from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
 from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
 from tierkreis.frontend.type_inference import infer_graph_types

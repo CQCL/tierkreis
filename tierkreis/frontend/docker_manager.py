@@ -6,7 +6,6 @@ import socket
 import subprocess
 import sys
 from contextlib import AsyncExitStack, asynccontextmanager, contextmanager
-
 from pathlib import Path
 from typing import (
     IO,
@@ -20,12 +19,11 @@ from typing import (
     cast,
 )
 
+from docker import DockerClient  # type: ignore
 from grpclib.client import Channel
 
-from docker import DockerClient  # type: ignore
-
-from .runtime_client import RuntimeClient, RuntimeLaunchFailed
 from .myqos_client import _get_myqos_creds
+from .runtime_client import RuntimeClient, RuntimeLaunchFailed
 
 if TYPE_CHECKING:
     from docker.models.containers import Container  # type: ignore

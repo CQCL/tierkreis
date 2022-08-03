@@ -1,10 +1,9 @@
-from typing import Tuple, Optional
 from contextlib import asynccontextmanager
+from typing import Optional, Tuple
 
 import keyring
-
-from grpclib.events import listen, SendRequest
 from grpclib.client import Channel
+from grpclib.events import SendRequest, listen
 
 from .runtime_client import RuntimeClient, _gen_auth_injector
 

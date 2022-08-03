@@ -1,5 +1,7 @@
 from typing import Any, Iterable
+
 import pytest
+
 from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import (
     FunctionNode,
@@ -8,16 +10,16 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisEdge,
     TierkreisFunction,
 )
-from tierkreis.core.types import IntType, TypeScheme, Row, GraphType
+from tierkreis.core.types import GraphType, IntType, Row, TypeScheme
 from tierkreis.core.values import (
-    TierkreisValue,
-    OptionValue,
-    VecValue,
-    IntValue,
     FloatValue,
+    IntValue,
     MapValue,
+    OptionValue,
     PairValue,
+    TierkreisValue,
     TierkreisVariant,
+    VecValue,
 )
 
 

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Awaitable, Callable, Coroutine, Optional,
 import grpclib
 import grpclib.events
 import grpclib.server
+import keyring
 import opentelemetry.context  # type: ignore
 import opentelemetry.propagate  # type: ignore
 import opentelemetry.trace  # type: ignore
@@ -14,7 +15,6 @@ from grpclib.const import Status as StatusCode
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
 from opentelemetry.semconv.trace import SpanAttributes  # type: ignore
-import keyring
 
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
@@ -60,7 +60,8 @@ async def _event_recv_request(request: grpclib.events.RecvRequest):
                 from .prelude import profile_worker  # avoid cyclic import
 
                 if profile_worker:
-                    import cProfile, pstats  # could be global
+                    import cProfile  # could be global
+                    import pstats
                     from io import StringIO
 
                     render_results = StringIO()

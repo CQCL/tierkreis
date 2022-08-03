@@ -20,6 +20,7 @@ from typing import (
 
 import betterproto
 import networkx as nx  # type: ignore
+
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.types import TierkreisType
@@ -670,7 +671,6 @@ class GraphValue(TierkreisValue):
 
 # allow graph displays in jupyter notebooks
 from tierkreis.core.graphviz import tierkreis_to_graphviz
-
 
 setattr(
     TierkreisGraph,

@@ -1,36 +1,31 @@
 import asyncio
+import re
 import sys
 import traceback
 from functools import wraps
 from pathlib import Path
-from typing import (
-    AsyncContextManager,
-    Dict,
-    List,
-    Optional,
-    Sequence,
-    cast,
-)
-import re
 from signal import SIGINT, SIGTERM
+from typing import AsyncContextManager, Dict, List, Optional, Sequence, cast
 
 import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from yachalk import chalk
+
 from tierkreis import TierkreisGraph
-from tierkreis.core.values import TierkreisValue, StructValue
 from tierkreis.core.graphviz import tierkreis_to_graphviz
+from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
 from tierkreis.core.types import (
     GraphType,
     StructType,
     TierkreisType,
     TierkreisTypeErrors,
 )
-from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
+from tierkreis.core.values import StructValue, TierkreisValue
 from tierkreis.frontend import RuntimeClient, local_runtime
 from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
+
 from . import load_tksl_file
 from .parse_tksl import parse_struct_fields
 

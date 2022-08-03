@@ -14,11 +14,12 @@ from typing import (
     TypeVar,
     cast,
 )
+
+import betterproto
+import keyring
+from grpclib.client import Channel
 from grpclib.events import SendRequest, listen
 
-import keyring
-import betterproto
-from grpclib.client import Channel
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
@@ -29,6 +30,7 @@ from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValu
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
+
     from tierkreis.worker.worker import Worker
 
 

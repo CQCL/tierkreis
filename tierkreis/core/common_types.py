@@ -2,9 +2,9 @@
 """Common compound type aliases."""
 
 from collections import Counter
-from typing import TYPE_CHECKING, Any, Dict, Tuple
 from dataclasses import dataclass
 from importlib import import_module
+from typing import TYPE_CHECKING, Any, Dict, Tuple
 
 try:
     from mushroom_dataclasses.circuit import Circuit as CircStruct
@@ -16,9 +16,9 @@ except ImportError as e:
 
 if TYPE_CHECKING:
     from pytket.backends.backendresult import BackendResult
+    from pytket.partition import MeasurementBitMap as PytketMeasurementBitMap  # type: ignore
     from pytket.partition import (  # type: ignore
         MeasurementSetup as PytketMeasurementSetup,
-        MeasurementBitMap as PytketMeasurementBitMap,
     )
     from pytket.pauli import QubitPauliString as PytketQubitPauliString  # type: ignore
 

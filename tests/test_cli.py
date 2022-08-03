@@ -1,7 +1,7 @@
-from typing import TYPE_CHECKING
 import subprocess
 import tempfile
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 

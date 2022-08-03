@@ -173,10 +173,10 @@ def _to_edgedata(edgeit: Iterable[Any]) -> Iterator[_EdgeData]:
 
 
 class MismatchedGraphs(Exception):
-    def __init__(self, src: NodeRef, tgt: NodeRef):
-        self.src = NodeRef
-        self.tgt = NodeRef
-        super().__init__(f"Cannot add edges between nodes from different graphs.")
+    def __init__(self, graph: "TierkreisGraph", endpoint: NodeRef):
+        self.graph = graph
+        self.endpoint = endpoint
+        super().__init__(f"Cannot add an edge whose endpoint is on a different graph")
 
 
 class TierkreisGraph:
@@ -430,8 +430,10 @@ class TierkreisGraph:
     ) -> TierkreisEdge:
         tk_type = _to_tierkreis_type(edge_type)
 
-        if node_port_from.node_ref.graph is not node_port_to.node_ref.graph:
-            raise MismatchedGraphs(node_port_from.node_ref, node_port_to.node_ref)
+        if node_port_from.node_ref.graph is not self:
+            raise MismatchedGraphs(self, node_port_from.node_ref)
+        if node_port_to.node_ref.graph is not self:
+            raise MismatchedGraphs(self, node_port_to.node_ref)
 
         # Remove any discard node on an existing outgoing edge
         np = self._get_unused_copy(node_port_from, allow_copy=False, force_copy=False)

@@ -11,6 +11,7 @@ from tierkreis import tierkreis as tierkreis_type_inference
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
+from tierkreis.frontend.runtime_client import NamespaceDefs
 
 from . import RuntimeSignature
 
@@ -64,3 +65,11 @@ def infer_graph_types(
             return g
         return (g, StructValue.from_proto(resp.success.inputs))
     raise TierkreisTypeErrors.from_proto(resp.error)
+
+
+def builtin_namespace() -> NamespaceDefs:
+    fdefs = (
+        TierkreisFunction.from_proto(ps.FunctionDeclaration().parse(fdef))
+        for fdef in tierkreis_type_inference.builtin_namespace()
+    )
+    return NamespaceDefs({fdef.name: fdef for fdef in fdefs}, {})

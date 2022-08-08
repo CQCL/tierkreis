@@ -5,14 +5,12 @@ from typing import Any, AsyncIterator, Callable
 
 import pytest
 
-from tierkreis.frontend import (
-    RuntimeClient,
-    docker_runtime,
-    local_runtime,
-    myqos_runtime,
-)
+from tierkreis.frontend import docker_runtime, local_runtime, myqos_runtime
+from tierkreis.frontend.python_runtime import PyRuntime
+from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 
 from . import LOCAL_SERVER_PATH
+from .worker_test import main
 
 
 def pytest_addoption(parser):
@@ -46,7 +44,23 @@ def event_loop(request):
 
 
 @pytest.fixture(scope="session")
-async def client(request, local_runtime_launcher) -> AsyncIterator[RuntimeClient]:
+def pyruntime():
+    return PyRuntime([main.namespace])
+
+
+@pytest.fixture(scope="session", params=[False, True])
+async def client(request, server_client, pyruntime) -> RuntimeClient:
+    # if parameter is true, return python runtime
+    if request.param:
+        return pyruntime
+    else:
+        return server_client
+
+
+@pytest.fixture(scope="session")
+async def server_client(
+    request, local_runtime_launcher
+) -> AsyncIterator[ServerRuntime]:
     isdocker = False
     ismyqos = False
     ismyqos_staging = False
@@ -88,7 +102,7 @@ def local_runtime_launcher(request) -> Callable:
         logs = False
 
     @asynccontextmanager
-    async def foo(**kwarg_overrides: Any) -> AsyncIterator[RuntimeClient]:
+    async def foo(**kwarg_overrides: Any) -> AsyncIterator[ServerRuntime]:
         kwargs = {
             "workers": [Path(__file__).parent / "worker_test"],
             "show_output": logs,

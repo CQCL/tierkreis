@@ -23,9 +23,11 @@ from tierkreis.core.types import (
     VarType,
 )
 from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
-from tierkreis.frontend import RuntimeClient
+from tierkreis.frontend.python_runtime import PyRuntime
+from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 from tierkreis.frontend.tksl import load_tksl_file
 from tierkreis.frontend.type_inference import infer_graph_types
+from tierkreis.worker.exceptions import NodeExecutionError
 
 from . import REASON, release_tests
 
@@ -60,12 +62,12 @@ def nint_adder(number: int) -> TierkreisGraph:
 
 
 @pytest.mark.asyncio
-async def test_mistyped_op(client: RuntimeClient):
+async def test_mistyped_op(server_client: ServerRuntime):
     tk_g = TierkreisGraph()
     nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
     tk_g.set_outputs(out=nod)
     with pytest.raises(RuntimeError, match="Type mismatch"):
-        await client.run_graph(tk_g, {"testinp": 3})
+        await server_client.run_graph(tk_g, {"testinp": 3})
 
 
 @pytest.mark.asyncio
@@ -178,10 +180,15 @@ async def test_match(client: RuntimeClient):
     assert outs["result"] == FloatValue(9.14)
     # Must have waited at least 1s for the delay on the graph output.
     assert time_taken >= 1.0
-    # Should not have had to wait 1s first for the "many" graph input to be ready,
-    # as that was not the variant was not selected.
-    # (1.5s is arbitrary, but less than 2s.)
-    assert time_taken < 1.5
+
+    if isinstance(client, PyRuntime):
+        # PyRuntime waits for all inputs to a node to be ready.
+        assert time_taken > 2.0
+    else:
+        # Should not have had to wait 1s first for the "many" graph input to be ready,
+        # as that was not the variant was not selected.
+        # (1.5s is arbitrary, but less than 2s.)
+        assert time_taken < 1.5
 
 
 @pytest.mark.asyncio
@@ -334,7 +341,7 @@ async def test_infer_errors(client: RuntimeClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_infer_errors_when_running(client: RuntimeClient) -> None:
+async def test_infer_errors_when_running(server_client: ServerRuntime) -> None:
     # build graph with two type errors
     tg = TierkreisGraph()
     node_0 = tg.add_const(0)
@@ -343,7 +350,7 @@ async def test_infer_errors_when_running(client: RuntimeClient) -> None:
     tg.set_outputs(out=node_1["invalid"])
 
     with pytest.raises(TierkreisTypeErrors) as err:
-        await client.run_graph(tg, {})
+        await server_client.run_graph(tg, {})
 
     assert len(err.value) == 2
 
@@ -353,7 +360,10 @@ async def test_fail_node(client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     tg.add_func("python_nodes/fail")
 
-    with pytest.raises(RuntimeError) as err:
+    exception: Type[Exception] = (
+        NodeExecutionError if isinstance(client, PyRuntime) else RuntimeError
+    )
+    with pytest.raises(exception) as err:
         await client.run_graph(tg, {})
 
     assert "fail node was run" in str(err.value)
@@ -406,11 +416,11 @@ def mock_myqos_creds(monkeypatch):
 @pytest.mark.asyncio
 @pytest.mark.skipif(release_tests, reason=REASON)
 async def test_runtime_worker(
-    client: RuntimeClient, local_runtime_launcher, mock_myqos_creds
+    server_client: ServerRuntime, local_runtime_launcher, mock_myqos_creds
 ) -> None:
     bar = local_runtime_launcher(
         grpc_port=9090,
-        myqos_worker="http://" + client.socket_address(),
+        myqos_worker="http://" + server_client.socket_address(),
         # make sure it has to talk to the other server for the test worker functions
         workers=[],
     )
@@ -419,12 +429,12 @@ async def test_runtime_worker(
 
 
 @pytest.mark.asyncio
-async def test_callback(client: RuntimeClient):
+async def test_callback(server_client: ServerRuntime):
     tg = TierkreisGraph()
     idnode = tg.add_func("python_nodes/id_with_callback", value=2)
     tg.set_outputs(out=idnode)
 
-    assert (await client.run_graph(tg, {}))["out"].try_autopython() == 2
+    assert (await server_client.run_graph(tg, {}))["out"].try_autopython() == 2
 
 
 _foo_func = TierkreisFunction(

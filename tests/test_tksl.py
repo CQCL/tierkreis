@@ -24,7 +24,7 @@ from tierkreis.core.values import (
     VariantValue,
     VecValue,
 )
-from tierkreis.frontend import RuntimeClient
+from tierkreis.frontend.runtime_client import RuntimeClient
 from tierkreis.frontend.tksl import load_tksl_file
 
 

@@ -6,12 +6,12 @@ from typing import TYPE_CHECKING
 import pytest
 
 if TYPE_CHECKING:
-    from tierkreis.frontend import RuntimeClient
+    from tierkreis.frontend import ServerRuntime
 
 
 @pytest.mark.asyncio
-def test_build_view(client: "RuntimeClient"):
-    host, port = client.socket_address().split(":")
+def test_build_view(server_client: "ServerRuntime"):
+    host, port = server_client.socket_address().split(":")
     command_header = ["tksl", "-r", host, "-p", port]
     with tempfile.TemporaryDirectory() as tmpdirname:
         binfile = tmpdirname + "/test_tierkreis_proto.bin"
@@ -44,8 +44,8 @@ def test_build_view(client: "RuntimeClient"):
 
 
 @pytest.mark.asyncio
-def test_run_with_args(client: "RuntimeClient"):
-    host, port = client.socket_address().split(":")
+def test_run_with_args(server_client: "ServerRuntime"):
+    host, port = server_client.socket_address().split(":")
     nint_tksl = Path(__file__).parent.absolute() / "tksl_samples" / "nint_adder.tksl"
     command_header = ["tksl", "-r", host, "-p", port, "run", str(nint_tksl)]
 

@@ -23,7 +23,7 @@ from docker import DockerClient  # type: ignore
 from grpclib.client import Channel
 
 from .myqos_client import _get_myqos_creds
-from .runtime_client import RuntimeClient, RuntimeLaunchFailed
+from .runtime_client import RuntimeLaunchFailed, ServerRuntime
 
 if TYPE_CHECKING:
     from docker.models.containers import Container  # type: ignore
@@ -81,7 +81,7 @@ async def docker_runtime(
     myqos_worker: Optional[str] = None,
     grpc_port: int = 8090,
     show_output: bool = False,
-) -> AsyncIterator[RuntimeClient]:
+) -> AsyncIterator[ServerRuntime]:
     """Context manager for setting up a containerised runtime + workers and
     return a connected client.
 
@@ -172,7 +172,7 @@ async def docker_runtime(
         await _check_start(runtime_container, "Server started")
 
         async with Channel("localhost", grpc_port) as channel:
-            yield RuntimeClient(channel)
+            yield ServerRuntime(channel)
 
         if show_output:
             _write_process_out(runtime_container.logs())

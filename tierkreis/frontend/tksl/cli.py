@@ -21,7 +21,7 @@ from tierkreis.core.types import (
     TierkreisTypeErrors,
 )
 from tierkreis.core.values import StructValue, TierkreisValue
-from tierkreis.frontend import RuntimeClient, local_runtime
+from tierkreis.frontend import ServerRuntime, local_runtime
 from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
@@ -54,7 +54,7 @@ def _inputs(source: str) -> Dict[str, TierkreisValue]:
 
 
 async def _parse(
-    source: Path, client: RuntimeClient, proto=False, **kwargs
+    source: Path, client: ServerRuntime, proto=False, **kwargs
 ) -> TierkreisGraph:
     if proto:
         if source.suffix == ".tksl":
@@ -76,7 +76,7 @@ async def _parse(
 
 async def _check_graph(
     source_path: Path,
-    client_manager: AsyncContextManager[RuntimeClient],
+    client_manager: AsyncContextManager[ServerRuntime],
     proto=False,
     **kwargs,
 ) -> TierkreisGraph:
@@ -347,7 +347,7 @@ def _print_typeerrs(errs: str):
 async def run(ctx: click.Context, source: Path, inputs: str):
     """Run SOURCE on runtime with optional INPUTS and output to console."""
     async with ctx.obj["client_manager"] as client:
-        client = cast(RuntimeClient, client)
+        client = cast(ServerRuntime, client)
         tkg = await _parse(source, client)
         py_inputs = _inputs(inputs)
         try:
@@ -366,7 +366,7 @@ async def run(ctx: click.Context, source: Path, inputs: str):
 async def submit(ctx: click.Context, source: Path, inputs: str):
     """Submit SOURCE and optional INPUTS to runtime and print task id to console."""
     async with ctx.obj["client_manager"] as client:
-        client = cast(RuntimeClient, client)
+        client = cast(ServerRuntime, client)
         tkg = await _parse(source, client)
         py_inputs = _inputs(inputs)
         try:
@@ -384,7 +384,7 @@ async def submit(ctx: click.Context, source: Path, inputs: str):
 async def retrieve(ctx: click.Context, task_id: str):
     """Retrive outputs of submitted graph from runtime, using TASK_ID."""
     async with ctx.obj["client_manager"] as client:
-        client = cast(RuntimeClient, client)
+        client = cast(ServerRuntime, client)
         outputs = await client.await_task(TaskHandle(task_id))
         _print_outputs(outputs)
 
@@ -396,7 +396,7 @@ async def retrieve(ctx: click.Context, task_id: str):
 async def delete(ctx: click.Context, task_id: str):
     """Delete task by TASK_ID."""
     async with ctx.obj["client_manager"] as client:
-        client = cast(RuntimeClient, client)
+        client = cast(ServerRuntime, client)
         await client.delete_task(TaskHandle(task_id))
         print(f"Task {task_id} deleted")
 
@@ -410,7 +410,7 @@ async def delete(ctx: click.Context, task_id: str):
 async def status(ctx: click.Context, task: Optional[str]):
     """Check status of tasks."""
     async with ctx.obj["client_manager"] as client:
-        client = cast(RuntimeClient, client)
+        client = cast(ServerRuntime, client)
         task_statuses = await client.list_tasks()
 
         handles = [TaskHandle(task)] if task else list(task_statuses.keys())
@@ -491,7 +491,7 @@ async def signature(
 ):
     """Check signature of available namespaces and functions on runtime."""
     async with ctx.obj["client_manager"] as client:
-        client = cast(RuntimeClient, client)
+        client = cast(ServerRuntime, client)
         label = ctx.obj["runtime_label"]
         print(chalk.bold(f"Runtime: {label}"))
         print()

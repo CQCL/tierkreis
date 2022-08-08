@@ -5,7 +5,7 @@ import keyring
 from grpclib.client import Channel
 from grpclib.events import SendRequest, listen
 
-from .runtime_client import RuntimeClient, _gen_auth_injector
+from .runtime_client import ServerRuntime, _gen_auth_injector
 
 
 def _get_myqos_creds(staging: bool = False) -> Tuple[Optional[str], Optional[str]]:
@@ -15,7 +15,7 @@ def _get_myqos_creds(staging: bool = False) -> Tuple[Optional[str], Optional[str
     return login, password
 
 
-class MyqosClient(RuntimeClient):
+class MyqosClient(ServerRuntime):
     """Runtime client for use with tierkreis hosted on mushroom.
     Attempts to auto load credentials from keyring."""
 

@@ -13,7 +13,7 @@ from typing import IO, AsyncIterator, List, Mapping, Optional, Union, cast
 from grpclib.client import Channel
 
 from .myqos_client import _get_myqos_creds
-from .runtime_client import RuntimeClient, RuntimeLaunchFailed
+from .runtime_client import RuntimeLaunchFailed, ServerRuntime
 
 
 def echo_thread(src: IO[bytes], dest: Union[int, str]):
@@ -43,7 +43,7 @@ async def local_runtime(
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
     env_vars: Optional[Mapping[str, str]] = None,
-) -> AsyncIterator[RuntimeClient]:
+) -> AsyncIterator[ServerRuntime]:
     """Provide a context for a local runtime running in a subprocess.
 
     :param executable: Path to server binary
@@ -110,7 +110,7 @@ async def local_runtime(
 
     try:
         async with Channel("localhost", grpc_port) as channel:
-            yield RuntimeClient(channel)
+            yield ServerRuntime(channel)
 
     finally:
         proc.send_signal(signal.SIGINT)

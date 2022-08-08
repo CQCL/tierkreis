@@ -1,7 +1,8 @@
 use prost::Message;
 use pyo3::prelude::*;
-use pyo3::types::PyBytes;
+use pyo3::types::{PyBytes, PyList};
 use std::convert::TryInto;
+use tierkreis_core::builtins;
 use tierkreis_core::graph::FunctionDeclaration;
 use tierkreis_core::type_checker::{GraphWithInputs, Signature, Typeable};
 use tierkreis_proto::signature as ps;
@@ -63,9 +64,22 @@ fn infer_graph_types(py: Python, req: &PyBytes) -> PyObject {
     PyBytes::new(py, res.encode_to_vec().as_slice()).to_object(py)
 }
 
+#[pyfunction]
+fn builtin_namespace(py: Python) -> PyObject {
+    PyList::new(
+        py,
+        builtins::namespace().map(|(_, v)| {
+            let fd: ps::FunctionDeclaration = v.into();
+            PyBytes::new(py, fd.encode_to_vec().as_slice()).to_object(py)
+        }),
+    )
+    .to_object(py)
+}
+
 #[pymodule]
 fn tierkreis(_py: Python, m: &PyModule) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(infer_graph_types, m)?)?;
+    m.add_function(wrap_pyfunction!(builtin_namespace, m)?)?;
 
     Ok(())
 }

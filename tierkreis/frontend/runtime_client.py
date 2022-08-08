@@ -1,5 +1,6 @@
 """Send requests to tierkreis server to execute a graph."""
 import asyncio
+from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
@@ -81,7 +82,23 @@ class InputConversionError(Exception):
 StubType = TypeVar("StubType", bound="ServiceStub")
 
 
-class RuntimeClient:
+class RuntimeClient(ABC):
+    @abstractmethod
+    async def get_signature(self) -> RuntimeSignature:
+        ...
+
+    @abstractmethod
+    async def run_graph(
+        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
+    ) -> Dict[str, TierkreisValue]:
+        ...
+
+    @abstractmethod
+    async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
+        ...
+
+
+class ServerRuntime(RuntimeClient):
     """Client for tierkreis server."""
 
     def __init__(self, channel: "Channel") -> None:
@@ -208,7 +225,7 @@ class RuntimeClient:
             port: int,
         ):
             async with Channel(host, port) as channel:
-                return await RuntimeClient(channel).run_graph(graph, py_inputs)
+                return await ServerRuntime(channel).run_graph(graph, py_inputs)
 
         return async_to_sync(_run)(self._channel._host, self._channel._port)
 
@@ -250,7 +267,7 @@ def with_runtime_client(worker: "Worker") -> Callable:
                 _key = keyring.get_password(_KEYRING_SERVICE, "key")
                 if not (_token is None or _key is None):
                     listen(channel, SendRequest, _gen_auth_injector(_token, _key))
-                args = (RuntimeClient(channel),) + args
+                args = (ServerRuntime(channel),) + args
                 return await func(*args, **kwargs)
 
         try:

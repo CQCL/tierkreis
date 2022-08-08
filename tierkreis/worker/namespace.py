@@ -196,7 +196,7 @@ class Namespace:
             self.functions[func_name] = Function(
                 run=wrapped_func,
                 declaration=TierkreisFunction(
-                    func_name,
+                    f"{self.name}/{func_name}",
                     type_scheme=type_scheme,
                     docs=getdoc(func) or "",
                     input_order=_get_ordered_names(hint_inputs),

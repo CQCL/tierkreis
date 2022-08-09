@@ -1,12 +1,10 @@
 from .tierkreis_graph import TierkreisGraph
 
 
-def _singleton(cls):
-    return cls()
-
-
-@_singleton
 class Labels:
+    def __init__(self):
+        raise RuntimeError("Do not instantiate")
+
     THUNK = "thunk"
     VALUE = "value"
     VARIANT_VALUE = "variant_value"

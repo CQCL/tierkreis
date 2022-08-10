@@ -216,7 +216,7 @@ class TierkreisGraph:
             )
         )
 
-    def _to_nodeport(self, source: Union[NodePort, NodeRef, Any]) -> NodePort:
+    def _to_nodeport(self, source: IncomingWireType) -> NodePort:
         if not isinstance(source, (NodePort, NodeRef)):
             try:
                 source = self.add_const(source)
@@ -497,7 +497,7 @@ class TierkreisGraph:
         except StopIteration as e:
             raise self.MissingEdge(source, target) from e
 
-    def set_outputs(self, **kwargs: Union[NodePort, NodeRef, Any]) -> None:
+    def set_outputs(self, **kwargs: IncomingWireType) -> None:
         for out_name, port in kwargs.items():
             self.add_edge(self._to_nodeport(port), self.output[out_name])
 

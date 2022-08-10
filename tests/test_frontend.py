@@ -23,9 +23,8 @@ from tierkreis.core.types import (
     VarType,
 )
 from tierkreis.core.values import FloatValue, StructValue, VariantValue
-from tierkreis.frontend import RuntimeClient
+from tierkreis.frontend import RuntimeClient, ServerRuntime
 from tierkreis.frontend.python_runtime import PyRuntime
-from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 from tierkreis.frontend.tksl import load_tksl_file
 from tierkreis.frontend.type_inference import infer_graph_types
 from tierkreis.worker.exceptions import NodeExecutionError

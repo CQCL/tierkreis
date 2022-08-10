@@ -132,9 +132,6 @@ class NodePort:
     node_ref: NodeRef
     port: PortID
 
-    def copy_value(self, force: bool = True) -> "NodePort":
-        return self.node_ref.graph.copy_value(self, force=force)
-
 
 @dataclass(frozen=True)
 class TierkreisEdge:
@@ -436,10 +433,23 @@ class TierkreisGraph:
         if node_port_to.node_ref.graph is not self:
             raise MismatchedGraphs(self, node_port_to.node_ref)
 
-        # Remove any discard node on an existing outgoing edge
-        np = self._get_unused_copy(node_port_from, allow_copy=False, force_copy=False)
-        assert np == node_port_from
-
+        # if port is currently connected to discard, replace that edge
+        existing_edges = [
+            out_edge
+            for out_edge in self.out_edges(node_port_from.node_ref)
+            if out_edge.source.port == node_port_from.port
+        ]
+        assert len(existing_edges) <= 1
+        if len(existing_edges) > 0:
+            (existing_edge,) = existing_edges
+            if self[existing_edge.target.node_ref].is_discard_node():
+                # Removal of the node also removes the incoming edge
+                self._graph.remove_node(existing_edge.target.node_ref.name)
+            else:
+                raise ValueError(
+                    f"Already an edge from {node_port_from}"
+                    " to {existing_edge.target}"
+                )
         edge_data = (
             node_port_from.node_ref.name,
             node_port_to.node_ref.name,
@@ -544,40 +554,10 @@ class TierkreisGraph:
             outports.insert(0, pop["item"])
         return outports
 
-    def copy_value(
-        self, value: Union[NodePort, NodeRef], force: bool = True
-    ) -> NodePort:
-        np = self._to_nodeport(value)
-        return self._get_unused_copy(np, allow_copy=True, force_copy=force)
+    def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
+        copy_n = self.add_func("builtin/copy", value=value)
 
-    def _get_unused_copy(
-        self, value: NodePort, allow_copy: bool, force_copy: bool
-    ) -> NodePort:
-        existing_edges = [
-            out_edge
-            for out_edge in self.out_edges(value.node_ref)
-            if out_edge.source.port == value.port
-        ]
-        assert len(existing_edges) <= 1
-        if len(existing_edges) > 0:
-            (existing_edge,) = existing_edges
-            if self[existing_edge.target.node_ref].is_discard_node():
-                if force_copy:
-                    raise ValueError(f"{value} is discarded, just use directly")
-                # Removing the discard deletes any edges to it, then fallthrough
-                self._graph.remove_node(existing_edge.target.node_ref.name)
-            elif allow_copy:
-                self._graph.remove_edge(*existing_edge.to_edge_handle())
-                cp = self.add_func("builtin/copy", value=value)
-                self.add_edge(cp["value_0"], existing_edge.target, existing_edge.type_)
-                value = cp["value_1"]
-            else:
-                raise ValueError(
-                    f"An edge already exists from {value}, to {existing_edge.target}"
-                )
-        elif force_copy:
-            raise ValueError(f"{value} is unused, just use directly")
-        return value
+        return copy_n["value_0"], copy_n["value_1"]
 
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()

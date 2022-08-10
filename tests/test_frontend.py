@@ -22,7 +22,8 @@ from tierkreis.core.types import (
     TypeScheme,
     VarType,
 )
-from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
+from tierkreis.core.values import FloatValue, StructValue, VariantValue
+from tierkreis.frontend import RuntimeClient
 from tierkreis.frontend.python_runtime import PyRuntime
 from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 from tierkreis.frontend.tksl import load_tksl_file
@@ -255,74 +256,12 @@ async def test_idpy(client: RuntimeClient):
 async def test_infer(client: RuntimeClient) -> None:
     # test when built with client types are auto inferred
     tg = TierkreisGraph()
-    item = tg.add_func("builtin/pop", vec=[3, 4])["item"]
-    tg.set_outputs(out=item)
+    _, val1 = tg.copy_value(3)
+    tg.set_outputs(out=val1)
     tg = await client.type_check_graph(tg)
     assert any(node.is_discard_node() for node in tg.nodes().values())
 
-    assert isinstance(tg.get_edge(item, NodePort(tg.output, "out")).type_, IntType)
-
-
-@pytest.mark.asyncio
-async def test_copy(client: RuntimeClient) -> None:
-    tg = TierkreisGraph()
-
-    def num_copies_discards() -> Tuple[int, int]:
-        node_funcs = [getattr(n, "function_name", "") for n in tg.nodes().values()]
-        return node_funcs.count("builtin/copy"), node_funcs.count("builtin/discard")
-
-    a = tg.input["a"]
-    tg.add_func("builtin/discard", value=a)
-    assert num_copies_discards() == (0, 1)
-    with pytest.raises(ValueError, match="is discarded"):
-        a.copy_value()
-    assert num_copies_discards() == (0, 1)
-    # Even without an explicit copy, discards should be removed
-    f = tg.add_func("builtin/iadd", a=a, b=tg.input["b"])
-    assert num_copies_discards() == (0, 0)
-
-    a_squared_plus_ab = tg.add_func("builtin/imul", a=a.copy_value(), b=f)
-    assert num_copies_discards() == (1, 0)
-    tg.set_outputs(out=a_squared_plus_ab)
-    outputs = await client.run_graph(tg, {"a": 2, "b": 3})
-    assert outputs == {"out": IntValue(10)}
-
-    b_plus_2a = tg.add_func("builtin/iadd", a=a.copy_value(), b=tg.copy_value(f))
-    tg.set_outputs(res=b_plus_2a)  # Adds outputs to those already present
-    assert num_copies_discards() == (3, 0)
-    outputs = await client.run_graph(tg, {"a": 2, "b": 3})
-    assert outputs == {"out": IntValue(10), "res": IntValue(7)}
-
-
-def test_copy_unused() -> None:
-    tg = TierkreisGraph()
-
-    f = tg.add_func("builtin/iadd", a=tg.input["arg"], b=1)["value"]
-
-    old_proto = tg.to_proto()
-
-    f2 = f.copy_value(force=False)
-    assert f2 == f
-    assert tg.to_proto() == old_proto  # Did nothing
-
-    with pytest.raises(ValueError, match="is unused"):
-        f.copy_value(force=True)
-    assert tg.to_proto() == old_proto
-
-
-def test_copy_discarded() -> None:
-    tg = TierkreisGraph()
-    f = tg.add_func("builtin/iadd", a=tg.input["arg"], b=2)["value"]
-    tg.discard(f)
-    old_proto = tg.to_proto()
-
-    with pytest.raises(ValueError, match="is discarded"):
-        f.copy_value(force=True)
-    assert tg.to_proto() == old_proto
-
-    f2 = f.copy_value(force=False)
-    assert f2 == f
-    assert all(not n.is_discard_node() for n in tg.nodes().values())
+    assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
 
 
 @pytest.mark.asyncio

@@ -21,16 +21,17 @@ def _loop_graph() -> TierkreisGraph:
     )
 
     tg = TierkreisGraph()
+    v1, v2 = tg.copy_value(tg.input["value"])
     tg.set_outputs(
         value=tg.add_func(
             "builtin/eval",
             thunk=tg.add_func(
                 "builtin/switch",
-                pred=tg.add_func("builtin/igt", a=tg.input["value"], b=5),
+                pred=tg.add_func("builtin/igt", a=v1, b=5),
                 if_true=ifg,
                 if_false=elg,
             ),
-            x=tg.copy_value(tg.input["value"]),
+            x=v2,
         )["value"]
     )
     return tg

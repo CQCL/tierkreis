@@ -25,7 +25,6 @@ type_:
     | TYPE_VEC '<' element = type_ '>'
     | TYPE_STRUCT '<' fields = f_param_list '>'
     | TYPE_VARIANT '<' (variants += f_param ('|' variants += f_param)*)? '>'
-    | TYPE_OPTION '<' inner = type_ '>'
     | graph_type
     | named_obj;
 
@@ -69,16 +68,15 @@ struct_const:
     sid = struct_id '{' fields = struct_fields '}';
 
 struct_fields:
-    fields += struct_field (
+    (fields += struct_field (
         ',' fields += struct_field
-    )*;
+    )*)?;
 
 macro_const:
     ID '!' '(' cargs += const_ (',' cargs += const_)* ')';
 
 vec_const: '[' (elems += const_ (',' elems += const_)*)? ']';
 pair_const: '(' first = const_ ',' second = const_ ')';
-opt_const: SOME '(' const_ ')' # Some | NONE # None;
 variant_const: TAG '(' ID ':' const_ ')';
 const_:
     | bool_token
@@ -87,7 +85,6 @@ const_:
     | SHORT_STRING
     | struct_const
     | macro_const
-    | opt_const
     | pair_const
     | vec_const
     | variant_const;
@@ -128,8 +125,6 @@ LOOP: 'loop';
 CONST: 'const';
 OUTPUT: 'output';
 USE: 'use';
-SOME: 'Some';
-NONE: 'None';
 MATCH: 'match';
 TAG: 'tag';
 
@@ -137,7 +132,6 @@ TYPE_INT: 'Int';
 TYPE_BOOL: 'Bool';
 TYPE_FLOAT: 'Float';
 TYPE_STR: 'Str';
-TYPE_OPTION: 'Option';
 TYPE_PAIR: 'Pair';
 TYPE_MAP: 'Map';
 TYPE_VEC: 'Vector';

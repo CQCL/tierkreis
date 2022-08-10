@@ -1,11 +1,11 @@
 use python_nodes::test_option;
 
-Graph id_option(inp: Option<Int>) -> (out: Option<Int>) {
+Graph id_option(inp: Variant<Some:Int|None:Struct<>>) -> (out: Variant<Some:Int|None:Struct<>>) {
     output(out: inp);
 }
 
 
 Graph main() -> (none: Int, some: Int) {
 
-    output (none: test_option(id_option(None)), some: test_option(Some(30)));
+    output (none: test_option(id_option(tag(None:Struct{}))), some: test_option(tag(Some:30)));
 }

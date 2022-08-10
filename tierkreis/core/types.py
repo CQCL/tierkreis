@@ -12,6 +12,8 @@ import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
+from . import Labels
+
 # import from types when updating to python 3.10
 try:
     from types import NoneType  # type: ignore
@@ -66,7 +68,12 @@ class TierkreisType(ABC):
         elif type_ is float:
             result = FloatType()
         elif inner_type := _get_optional_type(type_):
-            result = OptionType(TierkreisType.from_python(inner_type, visited_types))
+            inner = TierkreisType.from_python(inner_type, visited_types)
+            return VariantType(
+                shape=Row(
+                    content={Labels.NONE: StructType(shape=Row()), Labels.SOME: inner}
+                )
+            )
         elif type_origin is list:
             args = typing.get_args(type_)
             result = VecType(element=TierkreisType.from_python(args[0], visited_types))
@@ -124,9 +131,6 @@ class TierkreisType(ABC):
             result = StringType()
         elif name == "flt":
             result = FloatType()
-        elif name == "option":
-            inner = TierkreisType.from_proto(cast(pg.Type, out_type))
-            result = OptionType(inner)
         elif name == "var":
             result = VarType(cast(str, out_type))
         elif name == "pair":
@@ -172,20 +176,6 @@ class TierkreisType(ABC):
             (child.contained_vartypes() for child in self.children()),
             set(),
         )
-
-
-@dataclass
-class OptionType(TierkreisType):
-    inner: TierkreisType
-
-    def to_proto(self) -> pg.Type:
-        return pg.Type(option=self.inner.to_proto())
-
-    def __str__(self) -> str:
-        return f"Option<{str(self.inner)}>"
-
-    def children(self) -> list["TierkreisType"]:
-        return [self.inner]
 
 
 @dataclass

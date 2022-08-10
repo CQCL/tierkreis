@@ -11,7 +11,9 @@ import betterproto
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import _get_optional_type
+from tierkreis.core.types import NoneType, _get_optional_type
+
+from . import Labels
 
 T = typing.TypeVar("T")
 
@@ -30,13 +32,6 @@ class ToPythonFailure(Exception):
 
     def __str__(self) -> str:
         return f"Value {self.value} conversion to python type failed."
-
-
-class NoneConversion(IncompatiblePyType):
-    def __str__(self) -> str:
-        return (
-            super().__str__() + "\nFor None values try using OpionValue(None) directly."
-        )
 
 
 class TierkreisValue(ABC):
@@ -96,6 +91,8 @@ class TierkreisValue(ABC):
             return GraphValue(value.graph)
         if isinstance(value, bool):
             find_subclass = cls._pytype_map[bool]
+        if value is None:
+            return option_none
         else:
             try:
                 find_subclass = next(
@@ -109,13 +106,14 @@ class TierkreisValue(ABC):
                     # might still be convertible to Struct depending on field types
                     find_subclass = StructValue
                 else:
-                    exception = (
-                        NoneConversion(value)
-                        if value is None
-                        else IncompatiblePyType(value)
-                    )
-                    raise exception from e
+                    raise IncompatiblePyType(value) from e
         return find_subclass.from_python(value)
+
+    @classmethod
+    def from_python_optional(cls, val: Optional[Any]) -> "TierkreisValue":
+        if val is None:
+            return option_none
+        return option_some(cls.from_python(val))
 
     def try_autopython(self) -> Optional[Any]:
         """Try to automatically convert to a python type without specifying the
@@ -130,58 +128,6 @@ class TierkreisValue(ABC):
             return self.to_python(self._instance_pytype)
         except ToPythonFailure as _:
             return None
-
-
-@dataclass(frozen=True)
-class OptionValue(TierkreisValue):
-    _proto_name: ClassVar[str] = "option"
-    _class_pytype: ClassVar[typing.Type] = Optional  # type: ignore
-    inner: Optional[TierkreisValue]
-
-    @property
-    def _instance_pytype(self):
-        return Optional[
-            TypeVar("C") if self.inner is None else self.inner._instance_pytype
-        ]
-
-    def to_proto(self) -> pg.Value:
-        optval = (
-            pg.OptionValue(value=self.inner.to_proto())
-            if self.inner
-            else pg.OptionValue()
-        )
-        return pg.Value(option=optval)
-
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
-        if self.inner is None:
-            return cast(T, None)
-        if inner_type := _get_optional_type(type_):
-            return cast(T, self.inner.to_python(inner_type))
-        raise ToPythonFailure(self)
-
-    @classmethod
-    def from_python(cls, value: Any) -> "TierkreisValue":
-        value = cast(Optional[Any], value)
-        optval = None if value is None else TierkreisValue.from_python(value)
-        return OptionValue(optval)
-
-    @classmethod
-    def from_proto(cls, value: pg.OptionValue) -> "TierkreisValue":
-        name, val = betterproto.which_one_of(value, "inner")
-        if name == "value":
-            return OptionValue(
-                TierkreisValue.from_proto(val),
-            )
-        else:
-            return OptionValue(None)
-
-    def __str__(self) -> str:
-        return f"Option({str(self.inner)})"
-
-    def to_tksl(self) -> str:
-        return f"Some({self.inner.to_tksl()})" if self.inner else "None"
 
 
 @dataclass(frozen=True)
@@ -527,7 +473,7 @@ class StructValue(TierkreisValue):
 
         return StructValue(
             {
-                name: OptionValue.from_python(value)
+                name: TierkreisValue.from_python_optional(value)
                 if _get_optional_type(types[name])
                 else TierkreisValue.from_python(value)
                 for name, value in vals.items()
@@ -571,6 +517,10 @@ class VariantValue(TierkreisValue):
 
     @property
     def _instance_pytype(self):
+        if self.tag == Labels.SOME:
+            return Optional[self.value._instance_pytype]
+        if self == option_none:
+            return Optional[Any]
         return TierkreisVariant[self.value._instance_pytype]
 
     def to_proto(self) -> pg.Value:
@@ -582,8 +532,13 @@ class VariantValue(TierkreisValue):
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
         if typing.get_origin(type_) is TierkreisVariant:
-            (type_args,) = typing.get_args(type_)
-            return cast(T, TierkreisVariant(self.tag, self.value.to_python(type_args)))
+            (type_arg,) = typing.get_args(type_)
+            return cast(T, TierkreisVariant(self.tag, self.value.to_python(type_arg)))
+        elif self == option_none:
+            assert type_ is NoneType or _get_optional_type(type_) is not None
+            return cast(T, None)
+        elif (inner_t := _get_optional_type(type_)) and self.tag == Labels.SOME:
+            return cast(T, self.value.to_python(inner_t))
         raise ToPythonFailure(self)
 
     def to_tksl(self) -> str:
@@ -596,3 +551,10 @@ class VariantValue(TierkreisValue):
     @classmethod
     def from_proto(cls, value: pg.VariantValue) -> "TierkreisValue":
         return VariantValue(value.tag, TierkreisValue.from_proto(value.value))
+
+
+option_none = VariantValue(Labels.NONE, StructValue({}))
+
+
+def option_some(inner: TierkreisValue) -> TierkreisValue:
+    return VariantValue(Labels.SOME, inner)

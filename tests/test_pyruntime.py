@@ -2,7 +2,7 @@ import pytest
 
 from tierkreis.core import Labels
 from tierkreis.core.tierkreis_graph import TierkreisEdge, TierkreisGraph
-from tierkreis.core.values import OptionValue, StringValue, TierkreisValue, VariantValue
+from tierkreis.core.values import TierkreisValue, VariantValue
 from tierkreis.frontend import python_builtin
 from tierkreis.frontend.python_runtime import PyRuntime
 from tierkreis.frontend.runtime_client import ServerRuntime
@@ -68,9 +68,6 @@ def sample_graph() -> TierkreisGraph:
             other=2,
         ),
         loop_out=tg.add_func("builtin/loop", body=_loop_graph(), value=2)["value"],
-        option=tg.add_func(
-            "builtin/unwrap", option=OptionValue(StringValue("inside_option"))
-        ),
     )
     return tg
 

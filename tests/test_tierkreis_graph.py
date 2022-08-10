@@ -15,11 +15,11 @@ from tierkreis.core.values import (
     FloatValue,
     IntValue,
     MapValue,
-    OptionValue,
     PairValue,
     TierkreisValue,
     TierkreisVariant,
     VecValue,
+    option_some,
 )
 
 
@@ -110,6 +110,7 @@ def test_value_topython():
         ("a", 4),
         {"asf": 3, "fsd": 4},
         TierkreisVariant("mylabel", 5),
+        None,
     )
 
     for val in convertible_vals:
@@ -119,7 +120,7 @@ def test_value_topython():
     for val in fail_vals:
         assert TierkreisValue.from_python(val).try_autopython() is None
 
-    assert OptionValue(VecValue([IntValue(3), IntValue(4)])).try_autopython() == [3, 4]
+    assert option_some(VecValue([IntValue(3), IntValue(4)])).try_autopython() == [3, 4]
 
 
 @pytest.mark.xfail(raises=AssertionError)

@@ -20,7 +20,6 @@ from tierkreis.core.types import (
     GraphType,
     IntType,
     MapType,
-    OptionType,
     PairType,
     Row,
     StringType,
@@ -34,7 +33,6 @@ from tierkreis.core.values import (
     BoolValue,
     FloatValue,
     IntValue,
-    OptionValue,
     PairValue,
     StringValue,
     StructValue,
@@ -463,12 +461,6 @@ class TkslFileVisitor(TkslVisitor):
     ) -> Tuple[str, TierkreisValue]:
         return str(ctx.ID()), self.visitConst_(ctx.const_())
 
-    def visitSome(self, ctx: TkslParser.SomeContext) -> OptionValue:
-        return OptionValue(self.visitConst_(ctx.const_()))
-
-    def visitNone(self, ctx: TkslParser.NoneContext) -> OptionValue:
-        return OptionValue(None)
-
     def visitStruct_fields(self, ctx: TkslParser.Struct_fieldsContext) -> StructValue:
         fields = dict(map(self.visitStruct_field, ctx.fields))
         return StructValue(fields)
@@ -500,8 +492,6 @@ class TkslFileVisitor(TkslVisitor):
         if ctx.struct_const():
             struct_ctx = ctx.struct_const()
             return self.visitStruct_fields(struct_ctx.fields)
-        if ctx.opt_const():
-            return self.visit(ctx.opt_const())
         if ctx.variant_const():
             return self.visitVariant_const(ctx.variant_const())
         if ctx.macro_const():
@@ -551,8 +541,6 @@ class TkslFileVisitor(TkslVisitor):
             return MapType(self.visit(ctx.key), self.visit(ctx.val))
         if ctx.TYPE_VEC():
             return VecType(self.visit(ctx.element))
-        if ctx.TYPE_OPTION():
-            return OptionType(self.visit(ctx.inner))
         if ctx.TYPE_STRUCT():
             return StructType(Row(self.visit(ctx.fields)))
         if ctx.TYPE_VARIANT():

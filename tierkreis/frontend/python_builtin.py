@@ -2,7 +2,7 @@
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, cast
+from typing import Generic, TypeVar, cast
 
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
@@ -240,17 +240,6 @@ namespace.functions["loop"] = Function(
 
 
 @dataclass
-class _OptOut(TierkreisStruct, Generic[a]):
-    value: Optional[a]
-
-
-@namespace.function(type_vars={"a": StarKind()})
-async def make_option(value: a) -> _OptOut[a]:
-    "Make option from value"
-    return _OptOut(value)
-
-
-@dataclass
 class _MakePairOut(TierkreisStruct, Generic[a, b]):
     pair: tuple[a, b]
 
@@ -378,14 +367,6 @@ async def _unpack_struct(ins: StructValue) -> StructValue:
 namespace.functions["unpack_struct"] = Function(
     run=_unpack_struct, declaration=_builtin_defs.functions["builtin/unpack_struct"]
 )
-
-
-@namespace.function(type_vars={"a": StarKind()})
-async def unwrap(option: Optional[a]) -> a:
-    """Get the item out of an Option"""
-    if option is None:
-        raise RuntimeError("Attempt to unwrap a None option.")
-    return option
 
 
 @namespace.function()

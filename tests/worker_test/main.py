@@ -69,6 +69,8 @@ async def fail() -> FailOutput:
 async def test_option(x: Optional[int]) -> int:
     if x is None:
         return -1
+    # Just check the runtime values correspond with the type annotations
+    assert isinstance(x, int)
     return x
 
 

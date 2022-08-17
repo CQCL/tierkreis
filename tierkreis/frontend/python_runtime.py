@@ -86,7 +86,8 @@ class PyRuntime(RuntimeClient):
     async def run_graph(
         self,
         run_g: TierkreisGraph,
-        py_inputs: dict[str, Any],
+        /,
+        **py_inputs: Any,
     ) -> dict[str, TierkreisValue]:
         """Run a tierkreis graph using the python runtime, and provided inputs.
         Returns the outputs of the graph.
@@ -143,7 +144,7 @@ class PyRuntime(RuntimeClient):
             elif isinstance(tk_node, BoxNode):
                 return await self.run_graph(
                     tk_node.graph,
-                    inps,
+                    **inps,
                 )
 
             elif isinstance(tk_node, MatchNode):
@@ -214,7 +215,7 @@ class PyRuntime(RuntimeClient):
         self, ins: dict[str, TierkreisValue]
     ) -> dict[str, TierkreisValue]:
         thunk = cast(GraphValue, ins.pop(Labels.THUNK)).value
-        return await self.run_graph(thunk, ins)
+        return await self.run_graph(thunk, **ins)
 
     async def _run_loop(
         self, ins: dict[str, TierkreisValue]
@@ -223,7 +224,7 @@ class PyRuntime(RuntimeClient):
         while True:
             outs = await self.run_graph(
                 body,
-                ins,
+                **ins,
             )
             out = cast(
                 VariantValue,

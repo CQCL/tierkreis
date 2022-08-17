@@ -80,11 +80,11 @@ async def id_with_callback(client: RuntimeClient, value: A) -> A:
     """Callback to runtime via channel to run identity"""
 
     tg = TierkreisGraph()
-    tg.set_outputs(out=tg.input["in"])
+    tg.set_outputs(out=tg.input["inp"])
 
     # async with channel as channel:
     #     rc = RuntimeClient(channel)
-    outs = await client.run_graph(tg, {"in": value})
+    outs = await client.run_graph(tg, inp=value)
 
     return cast(A, outs["out"])
 

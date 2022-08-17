@@ -351,7 +351,7 @@ async def run(ctx: click.Context, source: Path, inputs: str):
         tkg = await _parse(source, client)
         py_inputs = _inputs(inputs)
         try:
-            outputs = await client.run_graph(tkg, py_inputs)
+            outputs = await client.run_graph(tkg, **py_inputs)
             _print_outputs(outputs)
         except TierkreisTypeErrors as _errs:
             _print_typeerrs(traceback.format_exc(0))

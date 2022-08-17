@@ -1,9 +1,10 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
+from contextlib import AbstractAsyncContextManager
 from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Any, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 import pytest
 
@@ -67,12 +68,14 @@ async def test_mistyped_op(server_client: ServerRuntime):
     nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
     tk_g.set_outputs(out=nod)
     with pytest.raises(RuntimeError, match="Type mismatch"):
-        await server_client.run_graph(tk_g, {"testinp": 3})
+        await server_client.run_graph(tk_g, testinp=3)
 
 
 @pytest.mark.asyncio
 @pytest.mark.skipif(release_tests, reason=REASON)
-async def test_mistyped_op_nochecks(local_runtime_launcher):
+async def test_mistyped_op_nochecks(
+    local_runtime_launcher: Callable[..., AbstractAsyncContextManager[RuntimeClient]]
+):
     async with local_runtime_launcher(
         grpc_port=9090,
         env_vars={"TIERKREIS_DISABLE_RUNTIME_CHECKS": "1"},
@@ -80,7 +83,7 @@ async def test_mistyped_op_nochecks(local_runtime_launcher):
         tk_g = TierkreisGraph()
         nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
         tk_g.set_outputs(out=nod)
-        res = await server.run_graph(tk_g, {"testinp": 3})
+        res = await server.run_graph(tk_g, testinp=3)
         assert res["out"].try_autopython() == 4.1
 
 
@@ -94,12 +97,10 @@ async def test_nint_adder(client: RuntimeClient):
 
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list))
-        outputs = await client.run_graph(tk_g, {"array": in_list})
+        outputs = await client.run_graph(tk_g, array=in_list)
         assert outputs["out"].try_autopython() == sum(in_list)
 
-        tksl_outs = await client.run_graph(
-            tksl_g, {"array": in_list, "len": len(in_list)}
-        )
+        tksl_outs = await client.run_graph(tksl_g, array=in_list, len=len(in_list))
         assert tksl_outs["out"].try_autopython() == sum(in_list)
 
 
@@ -132,10 +133,10 @@ async def test_switch(client: RuntimeClient):
 
     tk_g.set_outputs(out=eval_node["output"])
 
-    outs = await client.run_graph(tk_g, {"flag": True, "number": 3})
+    outs = await client.run_graph(tk_g, flag=True, number=3)
 
     assert outs["out"].try_autopython() == 5
-    outs = await client.run_graph(tk_g, {"flag": False, "number": 3})
+    outs = await client.run_graph(tk_g, flag=False, number=3)
 
     assert outs["out"].try_autopython() == 6
 
@@ -173,9 +174,7 @@ async def test_match(client: RuntimeClient):
     )
 
     start_time = time()
-    outs = await client.run_graph(
-        match_graph, {"vv": VariantValue("one", FloatValue(6.0))}
-    )
+    outs = await client.run_graph(match_graph, vv=VariantValue("one", FloatValue(6.0)))
     time_taken = time() - start_time
     assert outs["result"] == FloatValue(9.14)
     # Must have waited at least 1s for the delay on the graph output.
@@ -196,7 +195,7 @@ async def test_tag(client: RuntimeClient):
     g = TierkreisGraph()
     g.set_outputs(res=g.add_tag("foo", value=g.input["arg"]))
     v = FloatValue(67.1)
-    outs = await client.run_graph(g, {"arg": v})
+    outs = await client.run_graph(g, arg=v)
     assert outs == {"res": VariantValue("foo", v)}
 
 
@@ -229,7 +228,7 @@ def idpy_graph() -> TierkreisGraph:
 async def test_idpy(client: RuntimeClient):
     async def assert_id_py(val: Any, typ: Type) -> bool:
         tk_g = idpy_graph()
-        output = await client.run_graph(tk_g, {"id_in": val})
+        output = await client.run_graph(tk_g, id_in=val)
         val_decoded = output["id_out"].to_python(typ)
         return val_decoded == val
 
@@ -288,7 +287,7 @@ async def test_infer_errors_when_running(server_client: ServerRuntime) -> None:
     tg.set_outputs(out=node_1["invalid"])
 
     with pytest.raises(TierkreisTypeErrors) as err:
-        await server_client.run_graph(tg, {})
+        await server_client.run_graph(tg)
 
     assert len(err.value) == 2
 
@@ -302,7 +301,7 @@ async def test_fail_node(client: RuntimeClient) -> None:
         NodeExecutionError if isinstance(client, PyRuntime) else RuntimeError
     )
     with pytest.raises(exception) as err:
-        await client.run_graph(tg, {})
+        await client.run_graph(tg)
 
     assert "fail node was run" in str(err.value)
 
@@ -324,7 +323,7 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
 
     seq_g = graph_from_func(sig["builtin"].functions["sequence"])
 
-    outputs = await client.run_graph(seq_g, {"first": pop_g, "second": push_g})
+    outputs = await client.run_graph(seq_g, first=pop_g, second=push_g)
 
     sequenced_g = outputs["sequenced"].to_python(TierkreisGraph).inline_boxes()
 
@@ -338,7 +337,7 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
 
     # check composition evaluates
     vec_in = ["foo", "bar", "bang"]
-    out = await client.run_graph(sequenced_g, {"vec": vec_in})
+    out = await client.run_graph(sequenced_g, vec=vec_in)
     vec_out = out["vec"].to_python(List[str])
     assert vec_in == vec_out
 
@@ -372,7 +371,7 @@ async def test_callback(server_client: ServerRuntime):
     idnode = tg.add_func("python_nodes/id_with_callback", value=2)
     tg.set_outputs(out=idnode)
 
-    assert (await server_client.run_graph(tg, {}))["out"].try_autopython() == 2
+    assert (await server_client.run_graph(tg))["out"].try_autopython() == 2
 
 
 _foo_func = TierkreisFunction(

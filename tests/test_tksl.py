@@ -148,7 +148,7 @@ async def test_parse_bigexample(client: RuntimeClient) -> None:
     assert len(tg.nodes()) == 23
 
     for flag in (True, False):
-        outputs = await client.run_graph(tg, {"v1": 67, "v2": (45, flag)})
+        outputs = await client.run_graph(tg, v1=67, v2=(45, flag))
 
         pyouts = {key: val.try_autopython() for key, val in outputs.items()}
         assert pyouts == {"o2": 103, "o1": 536 + (2 if flag else 5)}
@@ -204,7 +204,7 @@ async def test_run_sample(
 
     tg = load_tksl_file(Path(__file__).parent / "tksl_samples" / source, signature=sig)
 
-    outputs = await client.run_graph(tg, inputs)
+    outputs = await client.run_graph(tg, **inputs)
     assert outputs == expected_outputs
 
 
@@ -216,7 +216,7 @@ async def test_arithmetic(client: RuntimeClient) -> None:
         Path(__file__).parent / "tksl_samples/arithmetic.tksl", signature=sig
     )
 
-    outputs = await client.run_graph(tg, {})
+    outputs = await client.run_graph(tg)
     # each output should result in a logically true result
     assert all(val.try_autopython() for val in outputs.values())
 
@@ -237,8 +237,8 @@ async def test_higher_order(client: RuntimeClient) -> None:
         function_name="meta_sandwich",
     )
 
-    assert (await client.run_graph(meat, {"inp": 2.0}))["out"].try_autopython() == 4.0
-    assert (await client.run_graph(meta_sandwich, {"inp": 1.5}))[
+    assert (await client.run_graph(meat, inp=2.0))["out"].try_autopython() == 4.0
+    assert (await client.run_graph(meta_sandwich, inp=1.5))[
         "out"
     ].try_autopython() == 5.0
 

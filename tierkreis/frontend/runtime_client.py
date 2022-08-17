@@ -89,7 +89,10 @@ class RuntimeClient(ABC):
 
     @abstractmethod
     async def run_graph(
-        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
+        self,
+        graph: TierkreisGraph,
+        /,
+        **py_inputs: Any,
     ) -> Dict[str, TierkreisValue]:
         ...
 
@@ -204,7 +207,10 @@ class ServerRuntime(RuntimeClient):
         await self._runtime_stub.delete_task(id=task.task_id)
 
     async def run_graph(
-        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
+        self,
+        graph: TierkreisGraph,
+        /,
+        **py_inputs: Any,
     ) -> Dict[str, TierkreisValue]:
         """
         Run a graph and return results. This combines `start_task` and `await_task`.
@@ -218,14 +224,17 @@ class ServerRuntime(RuntimeClient):
         return outputs
 
     def run_graph_block(
-        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
+        self,
+        graph: TierkreisGraph,
+        /,
+        **py_inputs: Any,
     ) -> Dict[str, TierkreisValue]:
         async def _run(
             host: str,
             port: int,
         ):
             async with Channel(host, port) as channel:
-                return await ServerRuntime(channel).run_graph(graph, py_inputs)
+                return await ServerRuntime(channel).run_graph(graph, **py_inputs)
 
         return async_to_sync(_run)(self._channel._host, self._channel._port)
 

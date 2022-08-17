@@ -80,10 +80,10 @@ async def test_run_graph(
     ins = {"in": "hello", "vv": VariantValue("one", TierkreisValue.from_python(1))}
     out_py = await pyruntime.run_graph(
         sample_graph,
-        ins,
+        **ins,
     )
 
-    out_rs = await server_client.run_graph(sample_graph, ins)
+    out_rs = await server_client.run_graph(sample_graph, **ins)
     assert out_rs == out_py
 
 
@@ -97,7 +97,7 @@ async def test_callback(sample_graph: TierkreisGraph, pyruntime: PyRuntime):
         cache[e] = v
 
     pyruntime.set_callback(cback)
-    outs = await pyruntime.run_graph(sample_graph, ins)
+    outs = await pyruntime.run_graph(sample_graph, **ins)
     assert all(e in cache for e in sample_graph.edges())
     assert sorted(outs) == sorted(sample_graph.outputs())
 

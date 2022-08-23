@@ -1,8 +1,9 @@
-from typing import Any, Iterable
+from dataclasses import dataclass
+from typing import Any, Iterable, Optional
 
 import pytest
 
-from tierkreis.core import TierkreisGraph
+from tierkreis.core import Labels, TierkreisGraph
 from tierkreis.core.tierkreis_graph import (
     FunctionNode,
     NodePort,
@@ -10,7 +11,17 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisEdge,
     TierkreisFunction,
 )
-from tierkreis.core.types import GraphType, IntType, Row, TypeScheme
+from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.types import (
+    GraphType,
+    IntType,
+    Row,
+    StructType,
+    TierkreisType,
+    TypeScheme,
+    VariantType,
+    VarType,
+)
 from tierkreis.core.values import (
     FloatValue,
     IntValue,
@@ -121,6 +132,37 @@ def test_value_topython():
         assert TierkreisValue.from_python(val).try_autopython() is None
 
     assert option_some(VecValue([IntValue(3), IntValue(4)])).try_autopython() == [3, 4]
+
+
+@dataclass
+class Foo(TierkreisStruct):
+    head: int
+    tail: Optional["Foo"]
+
+
+def test_type_from_python():
+    t = TierkreisType.from_python(Foo)
+    assert isinstance(t, StructType)
+    fields = t.shape.content
+    tail = fields.pop("tail")
+    assert isinstance(tail, VariantType)
+    some = tail.shape.content[Labels.SOME]
+    assert isinstance(some, VarType) and some.name.startswith("CyclicType")
+    assert fields == {"head": IntType()}
+
+    @dataclass
+    class Bar(TierkreisStruct):
+        data1: Optional[int]
+        data2: Optional[int]
+
+    t = TierkreisType.from_python(Bar)
+    assert isinstance(t, StructType)
+    fields = t.shape.content
+    d1 = fields.pop("data1")
+    assert isinstance(d1, VariantType)
+    assert d1.shape.content.keys() == frozenset([Labels.SOME, Labels.NONE])
+    assert d1.shape.content[Labels.SOME] == IntType()
+    assert fields == {"data2": d1}
 
 
 @pytest.mark.xfail(raises=AssertionError)

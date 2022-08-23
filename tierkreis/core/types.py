@@ -69,7 +69,7 @@ class TierkreisType(ABC):
             result = FloatType()
         elif inner_type := _get_optional_type(type_):
             inner = TierkreisType.from_python(inner_type, visited_types)
-            return VariantType(
+            result = VariantType(
                 shape=Row(
                     content={Labels.NONE: StructType(shape=Row()), Labels.SOME: inner}
                 )

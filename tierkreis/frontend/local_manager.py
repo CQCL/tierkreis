@@ -42,6 +42,7 @@ async def local_runtime(
     grpc_port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
+    runtime_type_checking: Optional[str] = None,
     env_vars: Optional[Mapping[str, str]] = None,
 ) -> AsyncIterator[ServerRuntime]:
     """Provide a context for a local runtime running in a subprocess.
@@ -80,6 +81,9 @@ async def local_runtime(
         command.extend(["--myqos-worker", myqos_worker])
     if grpc_port:
         proc_env["TIERKREIS_GRPC_PORT"] = str(grpc_port)
+
+    if runtime_type_checking:
+        command.extend(["--runtime-type-checking", runtime_type_checking])
 
     proc = subprocess.Popen(
         command,

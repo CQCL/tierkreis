@@ -78,7 +78,7 @@ async def test_mistyped_op_nochecks(
 ):
     async with local_runtime_launcher(
         grpc_port=9090,
-        env_vars={"TIERKREIS_DISABLE_RUNTIME_CHECKS": "1"},
+        runtime_type_checking="disabled",
     ) as server:
         tk_g = TierkreisGraph()
         nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])

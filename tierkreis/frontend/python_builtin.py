@@ -342,6 +342,26 @@ namespace.functions["sequence"] = Function(
 )
 
 
+async def _parallel(inputs: StructValue) -> StructValue:
+    invals = cast(dict[str, IncomingWireType], inputs.values)
+    left = deepcopy(cast(GraphValue, invals.pop("left")).value)
+    right = deepcopy(cast(GraphValue, invals.pop("right")).value)
+    newg = TierkreisGraph()
+    box1 = newg.add_box(left, **{port: newg.input[port] for port in left.inputs()})
+    box2 = newg.add_box(right, **{port: newg.input[port] for port in right.inputs()})
+    outputs = dict(
+        {port: box1[port] for port in left.outputs()},
+        **{port: box2[port] for port in right.outputs()}
+    )
+    newg.set_outputs(**outputs)
+    return StructValue({"value": GraphValue(newg.inline_boxes())})
+
+
+namespace.functions["parallel"] = Function(
+    run=_parallel, declaration=_builtin_defs.functions["builtin/parallel"]
+)
+
+
 @namespace.function(type_vars={"a": StarKind()})
 async def switch(pred: bool, if_true: a, if_false: a) -> a:
     """Chooses a value depending on a boolean predicate."""

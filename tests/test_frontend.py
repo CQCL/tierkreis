@@ -374,6 +374,22 @@ async def test_callback(server_client: ServerRuntime):
     assert (await server_client.run_graph(tg))["out"].try_autopython() == 2
 
 
+@pytest.mark.asyncio
+async def test_do_callback(server_client: ServerRuntime):
+    tk_g = TierkreisGraph()
+    tk_g.set_outputs(value=tk_g.input["value"])
+
+    tk_g2 = TierkreisGraph()
+    callbacknode = tk_g2.add_func(
+        "python_nodes/do_callback",
+        graph=tk_g2.input["in_graph"],
+        value=tk_g2.input["in_value"],
+    )
+    tk_g2.set_outputs(out=callbacknode["value"])
+    out = await server_client.run_graph(tk_g2, in_value=3, in_graph=tk_g)
+    assert out["out"].try_autopython() == 3
+
+
 _foo_func = TierkreisFunction(
     "foo",
     TypeScheme(

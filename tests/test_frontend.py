@@ -9,6 +9,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 import pytest
 
 from tierkreis import TierkreisGraph
+from tierkreis.core import Labels
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_graph import FunctionNode, GraphValue, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
@@ -23,7 +24,7 @@ from tierkreis.core.types import (
     TypeScheme,
     VarType,
 )
-from tierkreis.core.values import FloatValue, StructValue, VariantValue
+from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
 from tierkreis.frontend import RuntimeClient, ServerRuntime
 from tierkreis.frontend.python_runtime import PyRuntime
 from tierkreis.frontend.tksl import load_tksl_file
@@ -388,6 +389,28 @@ async def test_do_callback(server_client: ServerRuntime):
     tk_g2.set_outputs(out=callbacknode["value"])
     out = await server_client.run_graph(tk_g2, in_value=3, in_graph=tk_g)
     assert out["out"].try_autopython() == 3
+
+
+@pytest.mark.asyncio
+async def test_reports_error(server_client: ServerRuntime):
+    pow_g = TierkreisGraph()
+    pow_g.set_outputs(
+        value=pow_g.add_tag(
+            Labels.BREAK,
+            value=pow_g.add_func("builtin/ipow", a=2, b=pow_g.input["value"]),
+        )
+    )
+    loop_g = TierkreisGraph()
+    loop_g.set_outputs(
+        value=loop_g.add_func("builtin/loop", body=pow_g, value=loop_g.input["value"])
+    )
+
+    # Sanity check the graph does execute ipow
+    out = await server_client.run_graph(loop_g, value=0)
+    assert out == {"value": IntValue(1)}
+    expected_err_msg = "Input b to ipow must be positive integer"
+    with pytest.raises(RuntimeError, match=expected_err_msg):
+        await server_client.run_graph(loop_g, value=-1)
 
 
 _foo_func = TierkreisFunction(

@@ -24,6 +24,7 @@ from tierkreis.core.types import (
 )
 from tierkreis.core.values import (
     FloatValue,
+    IncompatiblePyType,
     IntValue,
     MapValue,
     PairValue,
@@ -31,6 +32,7 @@ from tierkreis.core.values import (
     TierkreisVariant,
     VecValue,
     option_some,
+    register_struct_convertible,
 )
 
 
@@ -132,6 +134,20 @@ def test_value_topython():
         assert TierkreisValue.from_python(val).try_autopython() is None
 
     assert option_some(VecValue([IntValue(3), IntValue(4)])).try_autopython() == [3, 4]
+
+
+def test_value_topython_struct():
+    @dataclass
+    class NonTierkreisStruct:
+        foo: int
+
+    sturct = NonTierkreisStruct(3)
+    with pytest.raises(
+        IncompatiblePyType, match="Try calling register_struct_convertible"
+    ):
+        TierkreisValue.from_python(sturct)
+    register_struct_convertible(NonTierkreisStruct)
+    assert TierkreisValue.from_python(sturct).to_python(NonTierkreisStruct) == sturct
 
 
 @dataclass

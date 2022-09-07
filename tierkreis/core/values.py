@@ -23,7 +23,14 @@ class IncompatiblePyType(Exception):
     value: Any
 
     def __str__(self) -> str:
-        return f"Could not convert python value to tierkreis value: {self.value}"
+        msg = f"Could not convert python value to tierkreis value: {self.value}"
+        value_type = type(self.value)
+        if is_dataclass(value_type) and not issubclass(value_type, TierkreisStruct):
+            msg += (
+                f". Try calling {register_struct_convertible.__name__}"
+                f" with its type ({value_type})."
+            )
+        return msg
 
 
 @dataclass
@@ -99,12 +106,7 @@ class TierkreisValue(ABC):
                     if pytype is not Optional and isinstance(value, pytype)
                 )
             except StopIteration as e:
-                if is_dataclass(value):
-                    # dataclass that is not an instance of TierkreisStruct
-                    # might still be convertible to Struct depending on field types
-                    find_subclass = StructValue
-                else:
-                    raise IncompatiblePyType(value) from e
+                raise IncompatiblePyType(value) from e
         return find_subclass.from_python(value)
 
     @classmethod
@@ -126,6 +128,15 @@ class TierkreisValue(ABC):
             return self.to_python(self._instance_pytype)
         except ToPythonFailure as _:
             return None
+
+
+def register_struct_convertible(struct_class: typing.Type):
+    """Instructs subsequent calls of TierkreisValue.from_python to convert
+    instances of the supplied class (which must be a dataclass) into StructValues.
+    Otherwise, such conversion is only applied to subclasses of TierkreisStruct."""
+    if not is_dataclass(struct_class):
+        raise ValueError("Can only convert dataclasses")
+    TierkreisValue._pytype_map[struct_class] = StructValue
 
 
 @dataclass(frozen=True)

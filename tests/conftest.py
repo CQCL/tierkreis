@@ -10,7 +10,7 @@ from tierkreis.frontend.python_runtime import PyRuntime
 from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 
 from . import LOCAL_SERVER_PATH
-from .worker_test import main
+from .test_worker import main
 
 
 def pytest_addoption(parser):
@@ -104,7 +104,7 @@ def local_runtime_launcher(request) -> Callable:
     @asynccontextmanager
     async def foo(**kwarg_overrides: Any) -> AsyncIterator[ServerRuntime]:
         kwargs = {
-            "workers": [Path(__file__).parent / "worker_test"],
+            "workers": [Path(__file__).parent / "test_worker"],
             "show_output": logs,
             **kwarg_overrides,
         }

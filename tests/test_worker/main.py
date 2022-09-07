@@ -109,4 +109,4 @@ async def do_callback(
 
 
 if __name__ == "__main__":
-    start_worker_server(worker, "worker_test", [namespace])
+    start_worker_server(worker, "test_worker", [namespace])

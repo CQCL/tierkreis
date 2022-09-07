@@ -26,12 +26,12 @@ tksl = 'tierkreis.frontend.tksl.cli:cli'
 tksl-start = 'tierkreis.frontend.tksl.cli:start'
 
 [project.optional-dependencies]
-frontend = [ "docker>=5,<6" ] # Note repetition with tksl
+frontend = [ "docker>=5,<6" ]
 tksl = [
     "antlr4-python3-runtime>=4.9.2,<4.10",
     "click>=8.0.3,<9",
     "yachalk>=0.1.4,<0.2",
-    "docker>=5,<6", # Note repetition with frontend
+    "tierkreis[frontend]"
 ]
 runtime = [
     "opentelemetry-sdk>=1.5.0,<2",
@@ -52,7 +52,8 @@ lint = [
 test = [
     "pytest>=6.2,<7",
     "pytest-asyncio>=0.16,<0.17",
-    "pytket>=1.0"
+    "pytket>=1.0",
+    "tierkreis[runtime]"
 ]
 
 [tool.black]

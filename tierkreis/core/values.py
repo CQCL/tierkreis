@@ -89,8 +89,6 @@ class TierkreisValue(ABC):
             return value
         if isinstance(value, RuntimeGraph):
             return GraphValue(value.graph)
-        if isinstance(value, bool):
-            find_subclass = cls._pytype_map[bool]
         if value is None:
             return option_none
         else:
@@ -200,6 +198,9 @@ class IntValue(TierkreisValue):
     _proto_name: ClassVar[str] = "integer"
     _class_pytype: ClassVar[typing.Type] = int
     value: int
+
+    assert isinstance(True, int)  # Yes python!! So, check dict iteration order
+    assert bool in TierkreisValue._pytype_map  # will find entry for bool first.
 
     def to_proto(self) -> pg.Value:
         return pg.Value(integer=self.value)

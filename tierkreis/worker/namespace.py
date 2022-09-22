@@ -23,7 +23,11 @@ from tierkreis.core.types import (
     TierkreisType,
     TypeScheme,
 )
-from tierkreis.core.values import StructValue, TierkreisValue
+from tierkreis.core.values import (
+    StructValue,
+    TierkreisValue,
+    register_struct_convertible,
+)
 from tierkreis.worker.exceptions import (
     DecodeInputError,
     EncodeOutputError,
@@ -86,6 +90,7 @@ class Namespace:
         return type_
 
     def add_named_struct(self, name, type_: Type) -> Type:
+        register_struct_convertible(type_)
         tk_type = TierkreisType.from_python(type_)
         if not isinstance(tk_type, StructType):
             raise ValueError(f"{type_} cannot be converted to a Tierkreis Struct Type.")

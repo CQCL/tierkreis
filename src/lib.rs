@@ -2,7 +2,7 @@ use prost::Message;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
 use tierkreis_core::builtins;
-use tierkreis_core::namespace::{FunctionDeclaration, Namespace};
+use tierkreis_core::namespace::{Namespace, NamespaceItem};
 use tierkreis_core::prelude::TryInto;
 use tierkreis_core::type_checker::{GraphWithInputs, Signature, Typeable};
 use tierkreis_proto::signature as ps;
@@ -14,9 +14,9 @@ fn infer2(req: &PyBytes) -> Result<ps::infer_graph_types_response::Response, Con
     let gwi = req.gwi.ok_or(ConvertError::ProtoError)?;
     let graph = gwi.graph.ok_or(ConvertError::ProtoError)?.try_into()?;
     // The client can pass signatures (inc builtins) from a running server if desired.
-    let nmspc: Namespace<FunctionDeclaration> =
+    let nmspc: Namespace<NamespaceItem> =
         req.functions.ok_or(ConvertError::ProtoError)?.try_into()?;
-    let sigs: Signature = nmspc.map(|x| x.type_scheme);
+    let sigs: Signature = nmspc.map(|x| x.decl.type_scheme);
 
     if let Some(sv) = gwi.inputs {
         let gwi = GraphWithInputs {
@@ -60,7 +60,12 @@ fn infer_graph_types(py: Python, req: &PyBytes) -> PyObject {
 
 #[pyfunction]
 fn builtin_namespace(py: Python) -> PyObject {
-    let res: ps::Namespace = builtins::namespace().into();
+    let res: ps::Namespace = builtins::namespace()
+        .map(|x| NamespaceItem {
+            decl: x,
+            locations: vec![],
+        })
+        .into();
 
     PyBytes::new(py, res.encode_to_vec().as_slice()).to_object(py)
 }

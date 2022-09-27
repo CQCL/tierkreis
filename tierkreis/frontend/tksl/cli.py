@@ -15,12 +15,7 @@ from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
 from tierkreis.core.signature import Signature
-from tierkreis.core.types import (
-    GraphType,
-    StructType,
-    TierkreisType,
-    TierkreisTypeErrors,
-)
+from tierkreis.core.types import StructType, TierkreisTypeErrors
 from tierkreis.core.values import StructValue, TierkreisValue
 from tierkreis.frontend import ServerRuntime, local_runtime
 from tierkreis.frontend.builder import _func_sig
@@ -129,10 +124,14 @@ def local(
     e.g.
     >> tksl-start local ../target/debug/tierkreis-server -w
        ../workers/pytket_worker --remote-worker http://localhost:8050"""
+
+    worker_locations = [
+        (s[0], Path(s[1])) for s in map(lambda v: v.split(":", 1), worker)
+    ]
     run_with_signals(
         local_runtime(
             executable,
-            workers=list(map(Path, worker)),
+            workers=worker_locations,
             myqos_worker=remote_worker,
             grpc_port=port,
             show_output=server_logs,

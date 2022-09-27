@@ -14,13 +14,18 @@ class Namespace:
     @classmethod
     def from_proto(cls, ps_entry: ps.Namespace) -> "Namespace":
         return cls(
-            ps_entry.functions,
+            map_vals(ps_entry.functions, lambda v: v.decl),
             map_vals(ps_entry.subspaces, Namespace.from_proto),
         )
 
     def to_proto(self) -> ps.Namespace:
         return ps.Namespace(
-            functions=self.functions,
+            functions=map_vals(
+                self.functions,
+                lambda v: ps.NamespaceItem(
+                    decl=v, locations=[ps.Location(location=[])]
+                ),
+            ),
             subspaces=map_vals(self.subspaces, lambda v: v.to_proto()),
         )
 

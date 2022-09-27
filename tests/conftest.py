@@ -104,7 +104,7 @@ def local_runtime_launcher(request) -> Callable:
     @asynccontextmanager
     async def foo(**kwarg_overrides: Any) -> AsyncIterator[ServerRuntime]:
         kwargs = {
-            "workers": [Path(__file__).parent / "test_worker"],
+            "workers": [("python", Path(__file__).parent / "test_worker")],
             "show_output": logs,
             **kwarg_overrides,
         }

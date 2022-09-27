@@ -38,7 +38,7 @@ def _wait_for_print(proc_out: IO[bytes], content: str):
 @asynccontextmanager
 async def local_runtime(
     executable: Path,
-    workers: List[Path],
+    workers: List[tuple[str, Path]],
     grpc_port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
@@ -63,8 +63,8 @@ async def local_runtime(
     """
 
     command: List[Union[str, Path]] = [executable]
-    for worker in workers:
-        command.extend(["--worker-path", worker])
+    for (location, worker) in workers:
+        command.extend(["--worker-path", location + ":" + str(worker)])
 
     proc_env = os.environ.copy()
     if env_vars:

@@ -165,6 +165,9 @@ def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
     elif isinstance(node, BoxNode):
         if not node_label:
             node_label = "Box"
+            name = cast(BoxNode, node).graph.name
+            if name:
+                node_label += f": {name}"
     elif isinstance(node, (InputNode, OutputNode)):
         # effectively only leave the ports visible
         fillcolor = _COLOURS["background"]
@@ -265,7 +268,7 @@ def tierkreis_to_graphviz(
                     html_label = _format_html_label(
                         node_back_color=fillcolor,
                         border_colour=_COLOURS["node_border"],
-                        node_label=("Box: " + node_label) if isbox else "Thunk",
+                        node_label=(node_label) if isbox else "Thunk",
                         outputs_row=_html_ports(out_ports, _OUTPUT_PREFIX)
                         if out_ports
                         else "",
@@ -335,7 +338,9 @@ def tierkreis_to_graphviz(
     return gv_graph
 
 
-def render_graph(graph: TierkreisGraph, filename: str, format_st: str) -> None:
+def render_graph(
+    graph: TierkreisGraph, filename: str, format_st: str, **kwargs
+) -> None:
     """Use graphviz to render a graph visualisation to file
 
     :param graph: Graph to render
@@ -346,6 +351,6 @@ def render_graph(graph: TierkreisGraph, filename: str, format_st: str) -> None:
     documentation for full list.
     :type format_st: str
     """
-    gv_graph = tierkreis_to_graphviz(graph)
+    gv_graph = tierkreis_to_graphviz(graph, **kwargs)
 
     gv_graph.render(filename, format=format_st)

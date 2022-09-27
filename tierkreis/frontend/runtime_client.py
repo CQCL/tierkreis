@@ -51,13 +51,17 @@ class RuntimeHTTPError(Exception):
         )
 
 
+T = TypeVar("T")
+
+
 @dataclass
 class NamespaceDefs:
     functions: Dict[str, TierkreisFunction]
     aliases: Dict[str, TypeScheme]
 
 
-RuntimeSignature = Dict[str, NamespaceDefs]
+# Namespaces and functions available from a runtime signature
+RuntimeSignature = dict[str, NamespaceDefs]
 
 
 @dataclass(frozen=True)
@@ -292,25 +296,20 @@ def with_runtime_client(worker: "Worker") -> Callable:
 
 
 def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
-    namespaces: Dict[str, NamespaceDefs] = dict()
-
+    sig: RuntimeSignature = {}
     for name, entry in pr_sig.functions.items():
         namespace, fname = name.split("/", 2)
         func = TierkreisFunction.from_proto(entry)
-        if namespace in namespaces:
-            namespaces[namespace].functions[fname] = func
-        else:
-            namespaces[namespace] = NamespaceDefs({fname: func}, {})
+        ns = sig.setdefault(namespace, NamespaceDefs({}, {}))
+        ns.functions[fname] = func
 
     for name, type_proto in pr_sig.aliases.items():
         namespace, alias_name = name.split("/", 2)
         type_ = TypeScheme.from_proto(type_proto)
-        if namespace in namespaces:
-            namespaces[namespace].aliases[alias_name] = type_
-        else:
-            namespaces[namespace] = NamespaceDefs({}, {alias_name: type_})
+        ns = sig.setdefault(namespace, NamespaceDefs({}, {}))
+        ns.aliases[alias_name] = type_
 
-    return namespaces
+    return sig
 
 
 class RuntimeLaunchFailed(Exception):

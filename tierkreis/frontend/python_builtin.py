@@ -7,6 +7,7 @@ from typing import Generic, TypeVar, cast
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import StarKind
+from tierkreis.core.utils import map_vals
 from tierkreis.core.values import MapValue, StructValue
 from tierkreis.frontend.type_inference import builtin_namespace
 from tierkreis.worker import Namespace, Worker
@@ -69,7 +70,7 @@ async def _eval(_x: StructValue) -> StructValue:
 
 
 namespace.functions["eval"] = Function(
-    run=_eval, declaration=_builtin_defs.functions["builtin/eval"]
+    run=_eval, declaration=_builtin_defs.functions["eval"]
 )
 
 
@@ -206,7 +207,7 @@ async def _insert_key(ins: StructValue) -> StructValue:
 
 
 namespace.functions["insert_key"] = Function(
-    run=_insert_key, declaration=_builtin_defs.functions["builtin/insert_key"]
+    run=_insert_key, declaration=_builtin_defs.functions["insert_key"]
 )
 
 
@@ -235,7 +236,7 @@ async def _loop(_x: StructValue) -> StructValue:
 
 
 namespace.functions["loop"] = Function(
-    run=_loop, declaration=_builtin_defs.functions["builtin/loop"]
+    run=_loop, declaration=_builtin_defs.functions["loop"]
 )
 
 
@@ -256,7 +257,7 @@ async def make_struct(ins: StructValue) -> StructValue:
 
 
 namespace.functions["make_struct"] = Function(
-    run=make_struct, declaration=_builtin_defs.functions["builtin/make_struct"]
+    run=make_struct, declaration=_builtin_defs.functions["make_struct"]
 )
 
 
@@ -273,19 +274,20 @@ async def _or(a: bool, b: bool) -> bool:
 
 
 async def _partial(inputs: StructValue) -> StructValue:
-    invals = cast(dict[str, IncomingWireType], inputs.values)
+    invals = inputs.values
     thunk = deepcopy(cast(GraphValue, invals.pop("thunk")).value)
     newg = TierkreisGraph()
     rest_inputs = [port for port in thunk.inputs() if port not in invals]
-    invals.update({port: newg.input[port] for port in rest_inputs})
-    box = newg.add_box(thunk, **invals)
+    inports = map_vals(invals, lambda x: newg.add_const(x)["value"])
+    inports.update({port: newg.input[port] for port in rest_inputs})
+    box = newg.add_box(thunk, **inports)
     newg.set_outputs(**{port: box[port] for port in thunk.outputs()})
-    return StructValue({"value": GraphValue(newg.inline_boxes())})
+    return StructValue({"value": GraphValue(newg)})
 
 
 namespace.functions["partial"] = Function(
     run=_partial,
-    declaration=_builtin_defs.functions["builtin/partial"],
+    declaration=_builtin_defs.functions["partial"],
 )
 
 
@@ -322,7 +324,7 @@ async def _remove_key(ins: StructValue) -> StructValue:
 
 
 namespace.functions["remove_key"] = Function(
-    run=_remove_key, declaration=_builtin_defs.functions["builtin/remove_key"]
+    run=_remove_key, declaration=_builtin_defs.functions["remove_key"]
 )
 
 
@@ -338,12 +340,12 @@ async def _sequence(inputs: StructValue) -> StructValue:
 
 
 namespace.functions["sequence"] = Function(
-    run=_sequence, declaration=_builtin_defs.functions["builtin/sequence"]
+    run=_sequence, declaration=_builtin_defs.functions["sequence"]
 )
 
 
 async def _parallel(inputs: StructValue) -> StructValue:
-    invals = cast(dict[str, IncomingWireType], inputs.values)
+    invals = inputs.values
     left = deepcopy(cast(GraphValue, invals.pop("left")).value)
     right = deepcopy(cast(GraphValue, invals.pop("right")).value)
     newg = TierkreisGraph()
@@ -358,7 +360,7 @@ async def _parallel(inputs: StructValue) -> StructValue:
 
 
 namespace.functions["parallel"] = Function(
-    run=_parallel, declaration=_builtin_defs.functions["builtin/parallel"]
+    run=_parallel, declaration=_builtin_defs.functions["parallel"]
 )
 
 
@@ -385,7 +387,7 @@ async def _unpack_struct(ins: StructValue) -> StructValue:
 
 
 namespace.functions["unpack_struct"] = Function(
-    run=_unpack_struct, declaration=_builtin_defs.functions["builtin/unpack_struct"]
+    run=_unpack_struct, declaration=_builtin_defs.functions["unpack_struct"]
 )
 
 

@@ -29,6 +29,7 @@ from tierkreis.core.types import (
     VarType,
     VecType,
 )
+from tierkreis.core.utils import map_vals
 from tierkreis.core.values import (
     BoolValue,
     FloatValue,
@@ -319,7 +320,10 @@ class TkslFileVisitor(TkslVisitor):
         self._discard_unused_inputs([if_g, else_g], ifcontext.inputs)
 
         sw_nod = self.graph.add_func(
-            "builtin/switch", pred=condition, if_true=if_g, if_false=else_g
+            "builtin/switch",
+            pred=condition,
+            if_true=self.graph.add_const(if_g),
+            if_false=self.graph.add_const(else_g),
         )
         eval_n = self.graph.add_func("builtin/eval", thunk=sw_nod["value"], **inputs)
 
@@ -343,7 +347,9 @@ class TkslFileVisitor(TkslVisitor):
         # This is only for loops that ignore the "value" input
         self._discard_unused_inputs([body_g], loopcontext.inputs)
 
-        loop_nod = self.graph.add_func("builtin/loop", body=body_g, value=value)
+        loop_nod = self.graph.add_func(
+            "builtin/loop", body=self.graph.add_const(body_g), value=value
+        )
 
         fake_func = FunctionDefinition(list(loopcontext.inputs), list(body_g.outputs()))
         self.context.output_vars[target] = (loop_nod, fake_func)
@@ -368,7 +374,7 @@ class TkslFileVisitor(TkslVisitor):
 
         self._discard_unused_inputs(cases.values(), case_ctx.inputs)
 
-        m = self.graph.add_match(scrutinee, **cases)
+        m = self.graph.add_match(scrutinee, **map_vals(cases, self.graph.add_const))
         eval_n = self.graph.add_func("builtin/eval", thunk=m[Labels.THUNK], **inputs)
 
         output_names = frozenset.union(
@@ -649,7 +655,7 @@ def parse_tksl(
     :return: Graph defined as <function_name> in source
     :rtype: TierkreisGraph
     """
-    signature = signature or {}
+    signature = signature or RuntimeSignature({})
     parser = _parser(source)
     tree = parser.start()
     func_defs = TkslFileVisitor(signature, Context()).visitStart(tree)
@@ -659,9 +665,9 @@ def parse_tksl(
 def parse_struct_fields(source: str) -> StructValue:
     parser = _parser(source)
     tree = parser.struct_fields()
-    return TkslFileVisitor({}, Context()).visitStruct_fields(tree)
+    return TkslFileVisitor(RuntimeSignature({}), Context()).visitStruct_fields(tree)
 
 
 def parse_const(source: str) -> TierkreisValue:
     tree = _parser(source).const_()
-    return TkslFileVisitor({}, Context()).visitConst_(tree)
+    return TkslFileVisitor(RuntimeSignature({}), Context()).visitConst_(tree)

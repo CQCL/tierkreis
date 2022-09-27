@@ -5,7 +5,7 @@ import traceback
 from functools import wraps
 from pathlib import Path
 from signal import SIGINT, SIGTERM
-from typing import AsyncContextManager, Dict, List, Optional, Sequence, cast
+from typing import TYPE_CHECKING, AsyncContextManager, Dict, List, Optional, cast
 
 import click
 from antlr4.error.Errors import ParseCancellationException  # type: ignore
@@ -14,20 +14,19 @@ from yachalk import chalk
 from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
-from tierkreis.core.types import (
-    GraphType,
-    StructType,
-    TierkreisType,
-    TierkreisTypeErrors,
-)
+from tierkreis.core.types import StructType, TierkreisTypeErrors
 from tierkreis.core.values import StructValue, TierkreisValue
 from tierkreis.frontend import ServerRuntime, local_runtime
+from tierkreis.frontend.builder import _func_sig
 from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
 
 from . import load_tksl_file
 from .parse_tksl import parse_struct_fields
+
+if TYPE_CHECKING:
+    from tierkreis.core.function import TierkreisFunction
 
 LOCAL_SERVER_PATH = Path(__file__).parent / "../../../../target/debug/tierkreis-server"
 RUNTIME_LABELS = ["docker", "local", "myqos"]
@@ -434,14 +433,10 @@ async def status(ctx: click.Context, task: Optional[str]):
             )
 
 
-def _arg_str(args: Dict[str, TierkreisType], order: Sequence[str]) -> str:
-    return ", ".join(f"{chalk.yellow(port)}: {str(args[port])}" for port in order)
-
-
 PORT_RE = re.compile(r"([\w]+):")
 
 
-def _print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[str]):
+def print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[str]):
     print(chalk.bold(f"Namespace: {namespace}"))
     print()
     print(chalk.bold(f"Aliases and Struct definitions"))
@@ -463,20 +458,14 @@ def _print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[s
     names_dict = sig[namespace].functions
     func_names = [function] if function else list(names_dict.keys())
     for name in sorted(func_names):
-        func = names_dict[name]
-        graph_type = cast(GraphType, func.type_scheme.body)
-        irest = graph_type.inputs.rest
-        orest = graph_type.outputs.rest
-        irest = f", {chalk.yellow('#')}: {irest}" if irest else ""
-        orest = f", {chalk.yellow('#')}: {orest}" if orest else ""
-        print(
-            f"{chalk.bold.blue(name)}"
-            f"({_arg_str(graph_type.inputs.content, func.input_order)}{irest})"
-            f" -> ({_arg_str(graph_type.outputs.content, func.output_order)}{orest})"
-        )
-        if func.docs:
-            print(chalk.green(func.docs))
+        _print_func(name, names_dict[name])
         print()
+
+
+def _print_func(name: str, func: "TierkreisFunction"):
+    print(_func_sig(name, func))
+    if func.docs:
+        print(chalk.green(func.docs))
 
 
 @cli.command()
@@ -499,5 +488,5 @@ async def signature(
         namespaces = [namespace] if namespace else list(sig.keys())
 
         for namespace in namespaces:
-            _print_namespace(sig, namespace, function)
+            print_namespace(sig, namespace, function)
             print()

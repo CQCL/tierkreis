@@ -2,20 +2,37 @@ from __future__ import annotations
 
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, is_dataclass
-from typing import Any, Callable, ClassVar, Dict, List, Optional, Tuple, TypeVar, cast
+from dataclasses import dataclass, fields, is_dataclass, make_dataclass
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    TypeVar,
+    cast,
+    get_args,
+    get_origin,
+    get_type_hints,
+)
 from uuid import UUID
 
 import betterproto
 
 import tierkreis.core.protos.tierkreis.graph as pg
+from tierkreis.core import types as TKType
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import NoneType, _get_optional_type
+from tierkreis.core.types import NoneType, TierkreisType, _get_optional_type
 
 from . import Labels
 
 T = typing.TypeVar("T")
+TKVal1 = TypeVar("TKVal1", bound="TierkreisValue")
+TKVal2 = TypeVar("TKVal2", bound="TierkreisValue")
 
 
 @dataclass
@@ -272,11 +289,11 @@ class FloatValue(TierkreisValue):
 
 
 @dataclass(frozen=True)
-class PairValue(TierkreisValue):
+class PairValue(Generic[TKVal1, TKVal2], TierkreisValue):
     _proto_name: ClassVar[str] = "pair"
     _class_pytype: ClassVar[typing.Type] = tuple
-    first: TierkreisValue
-    second: TierkreisValue
+    first: TKVal1
+    second: TKVal2
 
     @property
     def _instance_pytype(self):
@@ -324,10 +341,10 @@ class PairValue(TierkreisValue):
 
 
 @dataclass(frozen=True)
-class VecValue(TierkreisValue):
+class VecValue(Generic[TKVal1], TierkreisValue):
     _proto_name: ClassVar[str] = "vec"
     _class_pytype: ClassVar[typing.Type] = list
-    values: list[TierkreisValue]
+    values: list[TKVal1]
 
     @property
     def _instance_pytype(self):
@@ -372,10 +389,10 @@ class VecValue(TierkreisValue):
 
 
 @dataclass(frozen=True)
-class MapValue(TierkreisValue):
+class MapValue(Generic[TKVal1, TKVal2], TierkreisValue):
     _proto_name: ClassVar[str] = "map"
     _class_pytype: ClassVar[typing.Type] = dict
-    values: Dict[TierkreisValue, TierkreisValue]
+    values: Dict[TKVal1, TKVal2]
 
     @property
     def _instance_pytype(self):
@@ -441,11 +458,30 @@ class MapValue(TierkreisValue):
         return f"{{{', '.join(entries)})}}"
 
 
-@dataclass(frozen=True)
-class StructValue(TierkreisValue):
+RowStruct = TypeVar("RowStruct", bound=TierkreisStruct)
+
+
+class StructValue(Generic[RowStruct], TierkreisValue):
     _proto_name: ClassVar[str] = "struct"
     _class_pytype: ClassVar[typing.Type] = TierkreisStruct
-    values: Dict[str, TierkreisValue]
+    _struct: RowStruct
+
+    def __init__(self, values: dict[str, TierkreisValue]) -> None:
+        __AnonStruct = make_dataclass(
+            "__AnonStruct", values.keys(), bases=(TierkreisStruct,)
+        )
+        self._struct = __AnonStruct(**values)
+
+    def __eq__(self, __o: object) -> bool:
+        if not isinstance(__o, StructValue):
+            return False
+        return self.values == __o.values
+
+    @property
+    def values(self) -> dict[str, TierkreisValue]:
+        return {
+            k: getattr(self._struct, k) for k in (f.name for f in fields(self._struct))
+        }
 
     def to_proto(self) -> pg.Value:
         return pg.Value(struct=pg.StructValue(map=self.to_proto_dict()))
@@ -521,7 +557,7 @@ class TierkreisVariant(typing.Generic[T]):
 
 
 @dataclass(frozen=True)
-class VariantValue(TierkreisValue):
+class VariantValue(Generic[RowStruct], TierkreisValue):
     _proto_name: ClassVar[str] = "variant"
     _class_pytype: ClassVar[typing.Type] = TierkreisVariant
     tag: str
@@ -565,8 +601,47 @@ class VariantValue(TierkreisValue):
         return VariantValue(value.tag, TierkreisValue.from_proto(value.value))
 
 
-option_none = VariantValue(Labels.NONE, StructValue({}))
+option_none: VariantValue = VariantValue(Labels.NONE, StructValue({}))
 
 
-def option_some(inner: TierkreisValue) -> TierkreisValue:
+def option_some(inner: TierkreisValue) -> VariantValue:
     return VariantValue(Labels.SOME, inner)
+
+
+def _typeddict_to_row(typeddict: dict[str, TierkreisValue]) -> TKType.Row:
+    return TKType.Row(
+        {key: tkvalue_to_tktype(val) for key, val in get_type_hints(typeddict).items()}
+    )
+
+
+def tkvalue_to_tktype(val_cls: typing.Type[TierkreisValue]) -> TierkreisType:
+    if get_origin(val_cls) == VecValue:
+        (inner,) = get_args(val_cls)
+        return TKType.VecType(tkvalue_to_tktype(inner))
+    if get_origin(val_cls) == VariantValue:
+        (typeddict,) = get_args(val_cls)
+        return TKType.VariantType(_typeddict_to_row(typeddict))
+
+    if get_origin(val_cls) == StructValue:
+        (typeddict,) = get_args(val_cls)
+        return TKType.StructType(_typeddict_to_row(typeddict))
+    if get_origin(val_cls) == PairValue:
+        first, second = get_args(val_cls)
+        return TKType.PairType(*map(tkvalue_to_tktype, (first, second)))
+    if get_origin(val_cls) == MapValue:
+        first, second = get_args(val_cls)
+        return TKType.MapType(*map(tkvalue_to_tktype, (first, second)))
+
+    if val_cls == IntValue:
+        return TKType.IntType()
+
+    if val_cls == BoolValue:
+        return TKType.BoolType()
+
+    if val_cls == FloatValue:
+        return TKType.FloatType()
+
+    if val_cls == StringValue:
+        return TKType.StringType()
+
+    raise ValueError("Cannot convert value class.")

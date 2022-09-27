@@ -46,7 +46,7 @@ def setup_tracing(service_name: str):
     opentelemetry.trace.set_tracer_provider(tracer_provider)
 
 
-def start_worker_server(worker: Worker, worker_name: str, namespaces=list[Namespace]):
+def start_worker_server(worker: Worker, worker_name: str, namespaces: list[Namespace]):
     """Set up tracing and run the worker server with the provided namespaces.
     Expects a port specified on the command line, and reports succesful start to
     stdout"""

@@ -1,4 +1,4 @@
-from typing import Iterable, Optional, Tuple, Union, overload
+from typing import Iterable, Mapping, Optional, Tuple, Union, overload
 
 import betterproto
 
@@ -41,7 +41,7 @@ def infer_graph_types(
 ) -> Union[TierkreisGraph, Tuple[TierkreisGraph, StructValue]]:
     func_list = (
         [func for nsdefs in funcs.values() for func in nsdefs.functions.values()]
-        if isinstance(funcs, dict)
+        if isinstance(funcs, Mapping)
         else funcs
     )
 
@@ -72,4 +72,4 @@ def builtin_namespace() -> NamespaceDefs:
         TierkreisFunction.from_proto(ps.FunctionDeclaration().parse(fdef))
         for fdef in tierkreis_type_inference.builtin_namespace()
     )
-    return NamespaceDefs({fdef.name: fdef for fdef in fdefs}, {})
+    return NamespaceDefs({fdef.name.split("/")[1]: fdef for fdef in fdefs}, {})

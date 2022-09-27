@@ -57,7 +57,7 @@ def test_creation() -> None:
         output_order=["value"],
         docs="",
     )
-    add = tg.add_func(add_func, a=3, b=tg.input["input"])
+    add = tg.add_func(add_func, a=tg.add_const(3), b=tg.input["input"])
     tg.set_outputs(output=add)
 
     id_g = TierkreisGraph()
@@ -91,7 +91,7 @@ def test_insert_subgraph() -> None:
 
     main_g = TierkreisGraph()
     subgraph_outs = main_g.insert_graph(
-        subgraph, "subgraph::", one=main_g.input["in1"], two=3
+        subgraph, "subgraph::", one=main_g.input["in1"], two=main_g.add_const(3)
     )
     assert (
         sum(node_name.startswith("subgraph::") for node_name in main_g.nodes())
@@ -107,7 +107,7 @@ def test_insert_subgraph() -> None:
 
     with pytest.raises(TierkreisGraph.DuplicateNodeName) as e:
         _ = main_g.insert_graph(
-            subgraph, "subgraph::", one=main_g.input["newin1"], two=4
+            subgraph, "subgraph::", one=main_g.input["newin1"], two=main_g.add_const(4)
         )
 
     assert e.value.name == "subgraph::NewNode(0)"
@@ -218,7 +218,7 @@ def test_value_topython_map_with_empty():
 def test_inline_boxes():
     tg_box = TierkreisGraph()
 
-    pair = tg_box.make_pair(tg_box.input["inp"], 3)
+    pair = tg_box.make_pair(tg_box.input["inp"], tg_box.add_const(3))
     tg_box.set_outputs(out=pair)
 
     def check_inlined(graph: TierkreisGraph) -> bool:
@@ -228,7 +228,7 @@ def test_inline_boxes():
         )
 
     tg = TierkreisGraph()
-    box = tg.add_box(tg_box, inp="word")
+    box = tg.add_box(tg_box, inp=tg.add_const("word"))
     tg.set_outputs(tg_out=box["out"])
 
     assert check_inlined(tg.inline_boxes())

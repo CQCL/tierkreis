@@ -16,7 +16,7 @@ def _loop_graph() -> TierkreisGraph:
     elg.set_outputs(
         value=elg.add_tag(
             Labels.CONTINUE,
-            value=elg.add_func("builtin/iadd", a=elg.input["x"], b=1),
+            value=elg.add_func("builtin/iadd", a=elg.input["x"], b=elg.add_const(1)),
         )
     )
 
@@ -27,9 +27,9 @@ def _loop_graph() -> TierkreisGraph:
             "builtin/eval",
             thunk=tg.add_func(
                 "builtin/switch",
-                pred=tg.add_func("builtin/igt", a=v1, b=5),
-                if_true=ifg,
-                if_false=elg,
+                pred=tg.add_func("builtin/igt", a=v1, b=tg.add_const(5)),
+                if_true=tg.add_const(ifg),
+                if_false=tg.add_const(elg),
             ),
             x=v2,
         )["value"]
@@ -53,11 +53,13 @@ def sample_graph() -> TierkreisGraph:
 
     tg = TierkreisGraph()
     tg.set_outputs(
-        out=tg.input["in"],
-        b=tg.add_func("builtin/iadd", a=1, b=3),
-        tag=tg.add_tag("boo", value="world"),
-        add=tg.add_func("python_nodes/python_add", a=23, b=123),
-        _and=tg.add_func("builtin/and", a=True, b=False),
+        out=tg.input["inp"],
+        b=tg.add_func("builtin/iadd", a=tg.add_const(1), b=tg.add_const(3)),
+        tag=tg.add_tag("boo", value=tg.add_const("world")),
+        add=tg.add_func(
+            "python_nodes/python_add", a=tg.add_const(23), b=tg.add_const(123)
+        ),
+        _and=tg.add_func("builtin/and", a=tg.add_const(True), b=tg.add_const(False)),
         result=tg.add_func(
             "builtin/eval",
             thunk=tg.add_match(
@@ -65,9 +67,11 @@ def sample_graph() -> TierkreisGraph:
                 one=tg.add_const(one_graph),
                 many=tg.add_const(many_graph),
             )["thunk"],
-            other=2,
+            other=tg.add_const(2),
         ),
-        loop_out=tg.add_func("builtin/loop", body=_loop_graph(), value=2)["value"],
+        loop_out=tg.add_func(
+            "builtin/loop", body=tg.add_const(_loop_graph()), value=tg.add_const(2)
+        )["value"],
     )
     return tg
 
@@ -77,7 +81,7 @@ async def test_run_graph(
     server_client: ServerRuntime, sample_graph: TierkreisGraph, pyruntime: PyRuntime
 ):
 
-    ins = {"in": "hello", "vv": VariantValue("one", TierkreisValue.from_python(1))}
+    ins = {"inp": "hello", "vv": VariantValue("one", TierkreisValue.from_python(1))}
     out_py = await pyruntime.run_graph(
         sample_graph,
         **ins,
@@ -89,7 +93,7 @@ async def test_run_graph(
 
 @pytest.mark.asyncio
 async def test_callback(sample_graph: TierkreisGraph, pyruntime: PyRuntime):
-    ins = {"in": "world", "vv": VariantValue("many", TierkreisValue.from_python(2))}
+    ins = {"inp": "world", "vv": VariantValue("many", TierkreisValue.from_python(2))}
 
     cache = {}
 

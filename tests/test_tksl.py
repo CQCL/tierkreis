@@ -14,6 +14,7 @@ from tierkreis.core.types import (
     TierkreisTypeErrors,
     VecType,
 )
+from tierkreis.core.utils import map_vals
 from tierkreis.core.values import (
     BoolValue,
     FloatValue,
@@ -72,8 +73,11 @@ def _vecs_graph() -> TierkreisGraph:
 
 def _structs_graph() -> TierkreisGraph:
     tg = TierkreisGraph()
-    sturct = tg.add_func("builtin/make_struct", name="hello", age=23, height=12.3)
-    sturct = tg.add_func("builtin/unpack_struct", struct=sturct["struct"])
+    factory = tg.add_func(
+        "builtin/make_struct",
+        **map_vals(dict(height=12.3, name="hello", age=23), tg.add_const),
+    )
+    sturct = tg.add_func("builtin/unpack_struct", struct=factory["struct"])
 
     tg.set_outputs(age=sturct["age"])
     tg.annotate_output("age", IntType())
@@ -82,8 +86,12 @@ def _structs_graph() -> TierkreisGraph:
 
 def _maps_graph() -> TierkreisGraph:
     tg = TierkreisGraph()
-    mp_val = tg.add_func("builtin/remove_key", map=tg.input["mp"], key=3)
-    ins = tg.add_func("builtin/insert_key", map=mp_val["map"], key=5, val="bar")
+    mp_val = tg.add_func("builtin/remove_key", map=tg.input["mp"], key=tg.add_const(3))
+    ins = tg.add_func(
+        "builtin/insert_key",
+        map=mp_val["map"],
+        **map_vals(dict(key=5, val="bar"), tg.add_const),
+    )
 
     tg.set_outputs(mp=ins["map"], vl=mp_val["val"])
     tg.annotate_input("mp", MapType(IntType(), StringType()))
@@ -98,7 +106,7 @@ def _tag_match_graph() -> TierkreisGraph:
     id_graph.set_outputs(value=id_graph.input[Labels.VALUE])
 
     tg = TierkreisGraph()
-    in_v = tg.add_tag("foo", value=4)
+    in_v = tg.add_tag("foo", value=tg.add_const(4))
     m = tg.add_match(in_v, foo=tg.add_const(id_graph))
     e = tg.add_func("builtin/eval", thunk=m[Labels.THUNK])
     tg.set_outputs(res=e[Labels.VALUE])
@@ -112,9 +120,9 @@ def _tag_match_graph() -> TierkreisGraph:
     "source,expected_gen,rename_map",
     [
         ("vecs", _vecs_graph, {}),
-        ("structs", _structs_graph, {1: 0, 2: 1, 3: 2, 0: 3}),
-        ("maps", _maps_graph, {0: 1, 1: 0, 2: 4, 4: 3, 3: 2}),
-        ("tag_match", _tag_match_graph, {0: 1, 1: 0, 2: 3, 3: 2}),
+        ("structs", _structs_graph, {0: 2, 1: 0, 2: 1}),
+        ("maps", _maps_graph, {}),
+        ("tag_match", _tag_match_graph, {}),
     ],
 )
 async def test_parse_sample(

@@ -3,9 +3,10 @@
 import copy
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import count, dropwhile
 from typing import (
+    TYPE_CHECKING,
     Any,
     Dict,
     Iterable,
@@ -25,6 +26,9 @@ import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue
+
+if TYPE_CHECKING:
+    from tierkreis.frontend.builder import Unpack
 
 FunctionID = str
 PortID = str
@@ -118,19 +122,39 @@ class MatchNode(TierkreisNode):
 
 
 @dataclass(frozen=True)
-class NodeRef:
+class NodeRef(Iterable):
     name: str
     graph: "TierkreisGraph"
+    outports: Optional[list[str]] = field(default=None, compare=False)
+
+    def default_nodeport(self, create: bool = True) -> "NodePort":
+        if self.outports:
+            if len(self.outports) != 1:
+                raise ValueError(f"Cannot choose one outport from {self.outports}")
+            return self[self.outports[0]]
+        return self["value"]
 
     def __getitem__(self, key: str) -> "NodePort":
         # syntactic sugar for creating references to output ports from node
         return NodePort(self, key)
+
+    def __len__(self) -> int:
+        return len(self.outports or [])
+
+    def __iter__(self) -> Iterator["NodePort"]:
+        return (self[p] for p in (self.outports or []))
 
 
 @dataclass(frozen=True)
 class NodePort:
     node_ref: NodeRef
     port: PortID
+
+    def __getitem__(self, field_name: str) -> "Unpack":
+        raise NotImplementedError(
+            "Import tierkreis.frontend.builder to get"
+            "automatic unpacking of structs using the [<field>] syntax. "
+        )
 
 
 @dataclass(frozen=True)
@@ -157,8 +181,13 @@ class TierkreisEdge:
         )
 
 
-# allow specifying input as a port, node with single output, or constant value
-IncomingWireType = Union[NodePort, NodeRef, Any]
+# allow specifying input as a port, node with single output
+IncomingWireType = Union[NodePort, NodeRef]
+
+
+def to_nodeport(n: IncomingWireType) -> NodePort:
+    return n if isinstance(n, NodePort) else n.default_nodeport()
+
 
 _EdgeData = Tuple[str, str, Tuple[str, str]]
 
@@ -216,18 +245,6 @@ class TierkreisGraph:
             )
         )
 
-    def _to_nodeport(self, source: IncomingWireType) -> NodePort:
-        if not isinstance(source, (NodePort, NodeRef)):
-            try:
-                source = self.add_const(source)
-            except ValueError as err:
-                raise ValueError(
-                    "Incoming wire must be a NodePort, "
-                    "a NodeRef to a node with a single output 'value', "
-                    "or a constant value to be added as a ConstNode."
-                ) from err
-        return source if isinstance(source, NodePort) else source["value"]
-
     def add_node(
         self,
         _tk_node: TierkreisNode,
@@ -244,7 +261,7 @@ class TierkreisGraph:
 
         self._graph.add_node(node_ref.name, node_info=_tk_node)
         for target_port_name, source in incoming_wires.items():
-            self.add_edge(self._to_nodeport(source), node_ref[target_port_name])
+            self.add_edge(source, node_ref[target_port_name])
 
         return node_ref
 
@@ -422,34 +439,25 @@ class TierkreisGraph:
 
     def add_edge(
         self,
-        node_port_from: NodePort,
+        source: IncomingWireType,
         node_port_to: NodePort,
         edge_type: Optional[Union[Type, TierkreisType]] = None,
     ) -> TierkreisEdge:
         tk_type = _to_tierkreis_type(edge_type)
-
+        node_port_from = to_nodeport(source)
         if node_port_from.node_ref.graph is not self:
             raise MismatchedGraphs(self, node_port_from.node_ref)
         if node_port_to.node_ref.graph is not self:
             raise MismatchedGraphs(self, node_port_to.node_ref)
 
         # if port is currently connected to discard, replace that edge
-        existing_edges = [
-            out_edge
-            for out_edge in self.out_edges(node_port_from.node_ref)
-            if out_edge.source.port == node_port_from.port
-        ]
-        assert len(existing_edges) <= 1
-        if len(existing_edges) > 0:
-            (existing_edge,) = existing_edges
-            if self[existing_edge.target.node_ref].is_discard_node():
-                # Removal of the node also removes the incoming edge
-                self._graph.remove_node(existing_edge.target.node_ref.name)
-            else:
-                raise ValueError(
-                    f"Already an edge from {node_port_from}"
-                    " to {existing_edge.target}"
-                )
+        existing_edge = self._out_edge_from_port(node_port_from)
+        if isinstance(existing_edge, TierkreisType):
+            tk_type = existing_edge
+        elif existing_edge is not None:
+            raise ValueError(
+                f"Already an edge from {node_port_from} to {existing_edge.target}"
+            )
         edge_data = (
             node_port_from.node_ref.name,
             node_port_to.node_ref.name,
@@ -499,7 +507,7 @@ class TierkreisGraph:
 
     def set_outputs(self, **kwargs: IncomingWireType) -> None:
         for out_name, port in kwargs.items():
-            self.add_edge(self._to_nodeport(port), self.output[out_name])
+            self.add_edge(port, self.output[out_name])
 
     def _to_tkedge(self, handle: _EdgeData) -> TierkreisEdge:
         src, tgt, (src_port, tgt_port) = handle
@@ -558,6 +566,35 @@ class TierkreisGraph:
         copy_n = self.add_func("builtin/copy", value=value)
 
         return copy_n["value_0"], copy_n["value_1"]
+
+    def out_edge_from_port(self, source: NodePort) -> Optional[TierkreisEdge]:
+        e = self._out_edge_from_port(source)
+        # If edge was to discard node, ignore type and treat as equivalent to no edge
+        if isinstance(e, TierkreisType):
+            return None
+        return e
+
+    def _out_edge_from_port(
+        self, source: NodePort
+    ) -> Union[TierkreisEdge, TierkreisType, None]:
+        """
+        If there is an edge at port, return it, else None.
+        If the edge is to a discard node, rather than returning it, instead
+            remove the discard node and return the type on that edge.
+        """
+        out_edges = [
+            out_edge
+            for out_edge in self.out_edges(source.node_ref)
+            if out_edge.source.port == source.port
+        ]
+        if len(out_edges) == 0:
+            return None
+        (out_edge,) = out_edges
+        if self[out_edge.target.node_ref].is_discard_node():
+            # Removing the discard deletes any edges to it
+            self._graph.remove_node(out_edge.target.node_ref.name)
+            return out_edge.type_
+        return out_edge
 
     def to_proto(self) -> pg.Graph:
         pg_graph = pg.Graph()

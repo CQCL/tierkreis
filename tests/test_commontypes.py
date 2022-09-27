@@ -1,5 +1,5 @@
 import pytest
-from pytket import Circuit, Qubit
+from pytket.circuit import Circuit, Qubit  # type: ignore
 from pytket.partition import MeasurementBitMap, MeasurementSetup  # type: ignore
 from pytket.pauli import Pauli, QubitPauliString  # type: ignore
 

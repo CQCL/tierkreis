@@ -18,6 +18,7 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisEdge,
     TierkreisGraph,
 )
+from tierkreis.core.utils import map_vals
 from tierkreis.core.values import StructValue, TierkreisValue, VariantValue
 from tierkreis.frontend import python_builtin
 from tierkreis.frontend.runtime_client import (
@@ -101,10 +102,7 @@ class PyRuntime(RuntimeClient):
             if isinstance(tk_node, OutputNode):
                 return {}
             if isinstance(tk_node, InputNode):
-                return {
-                    key: TierkreisValue.from_python(val)
-                    for key, val in py_inputs.items()
-                }
+                return map_vals(py_inputs, TierkreisValue.from_python)
 
             if isinstance(tk_node, ConstNode):
                 return {Labels.VALUE: tk_node.value}
@@ -244,7 +242,7 @@ class PyRuntime(RuntimeClient):
         boxinps: dict[str, IncomingWireType] = {
             inp: newg.input[inp] for inp in thunk.inputs()
         }
-        boxinps[Labels.VALUE] = variant.value
+        boxinps[Labels.VALUE] = newg.add_const(variant.value)
         box = newg.add_box(thunk, **boxinps)
         newg.set_outputs(**{out: box[out] for out in thunk.outputs()})
         return {Labels.THUNK: GraphValue(newg)}
@@ -253,12 +251,14 @@ class PyRuntime(RuntimeClient):
         return self._get_signature()
 
     def _get_signature(self) -> RuntimeSignature:
-        return {
-            name: NamespaceDefs(
-                {fn: tkfun.declaration for fn, tkfun in ns.functions.items()}, {}
+        return RuntimeSignature(
+            map_vals(
+                self.namespaces,
+                lambda ns: NamespaceDefs(
+                    map_vals(ns.functions, lambda f: f.declaration), {}
+                ),
             )
-            for name, ns in self.namespaces.items()
-        }
+        )
 
     async def type_check_graph(self, tg) -> TierkreisGraph:
         return infer_graph_types(tg, await self.get_signature())

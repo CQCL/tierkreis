@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from pathlib import Path
 from time import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type
 
 import pytest
 
@@ -32,6 +32,9 @@ from tierkreis.frontend.type_inference import infer_graph_types
 from tierkreis.worker.exceptions import NodeExecutionError
 
 from . import REASON, release_tests
+
+if TYPE_CHECKING:
+    from tierkreis.core.tierkreis_graph import NodePort, NodeRef
 
 
 def nint_adder(number: int) -> TierkreisGraph:
@@ -108,7 +111,9 @@ async def test_nint_adder(client: RuntimeClient):
 def add_n_graph(increment: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
-    add_func = tk_g.add_func("builtin/iadd", a=increment, b=tk_g.input["number"])
+    add_func = tk_g.add_func(
+        "builtin/iadd", a=tk_g.add_const(increment), b=tk_g.input["number"]
+    )
     tk_g.set_outputs(output=add_func)
 
     return tk_g
@@ -147,7 +152,9 @@ async def test_match(client: RuntimeClient):
     # Test a variant type < one: Float | many: Vec<Float> >
     one_graph = TierkreisGraph()
     one_graph.set_outputs(
-        value=one_graph.add_func("builtin/fadd", a=one_graph.input["value"], b=3.14)
+        value=one_graph.add_func(
+            "builtin/fadd", a=one_graph.input["value"], b=one_graph.add_const(3.14)
+        )
     )
     many_graph = TierkreisGraph()
     many_graph.set_outputs(
@@ -158,7 +165,7 @@ async def test_match(client: RuntimeClient):
     match_graph.set_outputs(
         result=match_graph.add_func(
             "python_nodes/id_delay",
-            wait=1,
+            wait=match_graph.add_const(1),
             value=match_graph.add_func(
                 "builtin/eval",
                 thunk=match_graph.add_match(
@@ -166,7 +173,7 @@ async def test_match(client: RuntimeClient):
                     one=match_graph.add_const(one_graph),
                     many=match_graph.add_func(
                         "python_nodes/id_delay",
-                        wait=1,
+                        wait=match_graph.add_const(1),
                         value=match_graph.add_const(many_graph),
                     ),
                 )["thunk"],
@@ -255,7 +262,7 @@ async def test_idpy(client: RuntimeClient):
 async def test_infer(client: RuntimeClient) -> None:
     # test when built with client types are auto inferred
     tg = TierkreisGraph()
-    _, val1 = tg.copy_value(3)
+    _, val1 = tg.copy_value(tg.add_const(3))
     tg.set_outputs(out=val1)
     tg = await client.type_check_graph(tg)
     assert any(node.is_discard_node() for node in tg.nodes().values())
@@ -369,7 +376,7 @@ async def test_runtime_worker(
 @pytest.mark.asyncio
 async def test_callback(server_client: ServerRuntime):
     tg = TierkreisGraph()
-    idnode = tg.add_func("python_nodes/id_with_callback", value=2)
+    idnode = tg.add_func("python_nodes/id_with_callback", value=tg.add_const(2))
     tg.set_outputs(out=idnode)
 
     assert (await server_client.run_graph(tg))["out"].try_autopython() == 2
@@ -397,12 +404,16 @@ async def test_reports_error(server_client: ServerRuntime):
     pow_g.set_outputs(
         value=pow_g.add_tag(
             Labels.BREAK,
-            value=pow_g.add_func("builtin/ipow", a=2, b=pow_g.input["value"]),
+            value=pow_g.add_func(
+                "builtin/ipow", a=pow_g.add_const(2), b=pow_g.input["value"]
+            ),
         )
     )
     loop_g = TierkreisGraph()
     loop_g.set_outputs(
-        value=loop_g.add_func("builtin/loop", body=pow_g, value=loop_g.input["value"])
+        value=loop_g.add_func(
+            "builtin/loop", body=loop_g.add_const(pow_g), value=loop_g.input["value"]
+        )
     )
 
     # Sanity check the graph does execute ipow
@@ -431,7 +442,7 @@ _foo_func = TierkreisFunction(
 
 def test_infer_graph_types():
     tg = TierkreisGraph()
-    foo = tg.add_func("foo", value=3)
+    foo = tg.add_func("foo", value=tg.add_const(3))
     tg.set_outputs(out=foo["res"])
     with pytest.raises(TierkreisTypeErrors, match="unknown function 'foo'"):
         infer_graph_types(tg, [])
@@ -447,7 +458,9 @@ async def test_infer_graph_types_with_sig(client: RuntimeClient):
 
     tg = TierkreisGraph()
     mkp = tg.add_func(
-        sigs["builtin"].functions["make_pair"], first=tg.input["in"], second=3
+        sigs["builtin"].functions["make_pair"],
+        first=tg.input["in"],
+        second=tg.add_const(3),
     )
     tg.set_outputs(val=mkp["pair"])
 
@@ -471,13 +484,13 @@ async def test_infer_graph_types_with_inputs(client: RuntimeClient):
 
     tg2 = deepcopy(tg)
 
-    inputs = StructValue({"inp": FloatValue(3.14)})
+    inputs: StructValue = StructValue({"inp": FloatValue(3.14)})
     tg, inputs_ = infer_graph_types(tg, funcs, inputs)
     assert inputs_ == inputs
     out_type = tg.get_edge(NodePort(foo, "res"), NodePort(tg.output, "out")).type_
     assert out_type == PairType(FloatType(), IntType())
 
-    graph_inputs = StructValue({"inp": GraphValue(idpy_graph())})
+    graph_inputs: StructValue = StructValue({"inp": GraphValue(idpy_graph())})
     with pytest.raises(TierkreisTypeErrors):
         # Pass an argument inconsistent with the annotations now on tg
         infer_graph_types(tg, funcs, graph_inputs)

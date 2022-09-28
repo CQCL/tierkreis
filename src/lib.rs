@@ -29,7 +29,7 @@ fn infer2(req: &PyBytes) -> Result<ps::infer_graph_types_response::Response, Con
             graph: graph,
             inputs: sv.try_into()?,
         };
-        Ok(match gwi.infer_type(sigs) {
+        Ok(match gwi.infer_type(&sigs) {
             Ok((_, typed_gwi)) => {
                 ps::infer_graph_types_response::Response::Success(ps::GraphWithInputs {
                     graph: Some(typed_gwi.graph.into()),
@@ -39,7 +39,7 @@ fn infer2(req: &PyBytes) -> Result<ps::infer_graph_types_response::Response, Con
             Err(errors) => ps::infer_graph_types_response::Response::Error(errors.into()),
         })
     } else {
-        Ok(match graph.infer_type(sigs) {
+        Ok(match graph.infer_type(&sigs) {
             Ok((_, typed_graph)) => {
                 ps::infer_graph_types_response::Response::Success(ps::GraphWithInputs {
                     graph: Some(typed_graph.into()),

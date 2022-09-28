@@ -64,7 +64,7 @@ _HTML_LABEL_TEMPLATE = """
         <TD>
             <TABLE BORDER="0" CELLBORDER="0">
                 <TR>
-                    <TD><FONT POINT-SIZE="11.0" FACE="{fontface}" COLOR="{label_color}"><B>{node_label}</B></FONT></TD>
+                    <TD><FONT POINT-SIZE="{fontsize}" FACE="{fontface}" COLOR="{label_color}"><B>{node_label}</B></FONT></TD>
                 </TR>
             </TABLE>
         </TD>
@@ -85,6 +85,7 @@ def _format_html_label(**kwargs):
         "border_colour": _COLOURS["port_border"],
         "border_width": "1",
         "fontface": _FONTFACE,
+        "fontsize": 11.0,
     }
     return _HTML_LABEL_TEMPLATE.format(**{**_HTML_LABEL_DEFAULTS, **kwargs})
 
@@ -217,6 +218,15 @@ def tierkreis_to_graphviz(
         "margin": "0",
         "bgcolor": _COLOURS["background"],
     }
+    if tk_graph.name:
+        graph_label = _format_html_label(
+            node_label=tk_graph.name,
+            fontsize=13.0,
+            border_width=2.0,
+            node_back_color=_COLOURS["background"],
+        )
+        graph_atrr["label"] = f"<{graph_label}>"
+        graph_atrr["labelloc"] = "t"
     gv_graph.attr(**graph_atrr)
 
     unboxed_nodes = set()

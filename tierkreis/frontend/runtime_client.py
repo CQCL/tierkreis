@@ -135,7 +135,9 @@ class ServerRuntime(RuntimeClient):
         return self._stub_gen("type", ps.TypeInferenceStub)
 
     async def get_signature(self) -> RuntimeSignature:
-        return signature_from_proto(await self._signature_stub.list_functions())
+        return signature_from_proto(
+            await self._signature_stub.list_functions(ps.ListFunctionsRequest())
+        )
 
     async def start_task(
         self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
@@ -157,8 +159,10 @@ class ServerRuntime(RuntimeClient):
                 raise InputConversionError(key, val) from err
 
         decoded = await self._runtime_stub.run_task(
-            graph=graph.to_proto(),
-            inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
+            pr.RunTaskRequest(
+                graph=graph.to_proto(),
+                inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
+            )
         )
         name, _ = betterproto.which_one_of(decoded, "result")
 
@@ -173,7 +177,7 @@ class ServerRuntime(RuntimeClient):
         List the id and status for every task on the server.
         """
 
-        decoded = await self._runtime_stub.list_tasks()
+        decoded = await self._runtime_stub.list_tasks(pr.ListTasksRequest())
         result = {}
 
         for task in decoded.tasks:
@@ -194,7 +198,9 @@ class ServerRuntime(RuntimeClient):
         :return: The result of the task.
         """
 
-        decoded = await self._runtime_stub.await_task(id=task.task_id)
+        decoded = await self._runtime_stub.await_task(
+            pr.AwaitTaskRequest(id=task.task_id)
+        )
         status, status_value = betterproto.which_one_of(decoded.task, "status")
 
         if status != "success":
@@ -208,7 +214,7 @@ class ServerRuntime(RuntimeClient):
 
         :param task: The id of the task to delete.
         """
-        await self._runtime_stub.delete_task(id=task.task_id)
+        await self._runtime_stub.delete_task(pr.DeleteTaskRequest(id=task.task_id))
 
     async def run_graph(
         self,
@@ -245,7 +251,7 @@ class ServerRuntime(RuntimeClient):
     async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
         value = TierkreisValue.from_python(graph).to_proto()
 
-        response = await self._type_stub.infer_type(value=value)
+        response = await self._type_stub.infer_type(ps.InferTypeRequest(value=value))
         name, message = betterproto.which_one_of(response, "response")
 
         if name == "success":

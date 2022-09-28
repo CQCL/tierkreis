@@ -18,6 +18,7 @@ from opentelemetry.semconv.trace import SpanAttributes
 
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
+import tierkreis.core.protos.tierkreis.worker as pw
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
 from tierkreis.core.types import TypeScheme
 from tierkreis.core.values import StructValue
@@ -188,8 +189,11 @@ class WorkerServerImpl(WorkerBase):
         self.worker = worker
 
     async def run_function(
-        self, function: str, inputs: "pg.StructValue"
+        self,
+        run_function_request: pw.RunFunctionRequest,
     ) -> "RunFunctionResponse":
+        function = run_function_request.function
+        inputs = run_function_request.inputs
         try:
             inputs_struct = StructValue.from_proto_dict(inputs.map)
             outputs_struct = await self.worker.run(function, inputs_struct)
@@ -228,7 +232,9 @@ class SignatureServerImpl(ps.SignatureBase):
     def __init__(self, worker: Worker):
         self.worker = worker
 
-    async def list_functions(self) -> "ps.ListFunctionsResponse":
+    async def list_functions(
+        self, _: ps.ListFunctionsRequest
+    ) -> ps.ListFunctionsResponse:
         functions = {
             function_name: function.declaration.to_proto()
             for (function_name, function) in self.worker.functions.items()

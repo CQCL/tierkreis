@@ -12,7 +12,7 @@ authors = [
 
 requires-python = ">=3.9,<3.11"
 dependencies = [
-    "betterproto==2.0.0b4",
+    "betterproto @ https://github.com/danielgtaylor/python-betterproto/archive/bfc0fac7544bbdf4e0e2beabd45482a4958af514.zip",
     "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with opentelemetry
     "grpclib>=0.4.3rc,<0.5", # pre-release to support python 3.10
     "networkx>=2.6.3,<3",
@@ -134,7 +134,7 @@ ignore-long-lines='(#\w*pylint: disable.*|# type: ignore.*|https?://\S+>?)$'
 # (or pip install). However there is no facility for installing non-python-packages,
 # so the Tierkreis developer will need cargo/rustc and protoc on their system first.
 requires = [
-    "betterproto[compiler]==2.0.0b4",
+    "betterproto[compiler] @ https://github.com/danielgtaylor/python-betterproto/archive/bfc0fac7544bbdf4e0e2beabd45482a4958af514.zip",
     "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with betterproto
     "markupsafe<2.1.0",
     "maturin==0.12.9",

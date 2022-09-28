@@ -138,6 +138,14 @@ def _trim_str(instr: str, max_len: int = 10) -> str:
     return instr
 
 
+def _thunk_name(thunk: TierkreisGraph) -> str:
+    name = "thunk"
+    if thunk.name:
+        name += f"\n<BR/><I>{thunk.name}</I>"
+
+    return name
+
+
 def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
     """Calculate node label (first) and colour (second)."""
 
@@ -153,7 +161,13 @@ def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
         if node_label:
             node_label += "\n<BR/>"
         fillcolor = _COLOURS["const"]
-        node_label += _trim_str(node.value.to_tksl(), 15)
+        value = node.value
+        if isinstance(value, GraphValue):
+            fillcolor = _COLOURS["edge"]
+            node_label += _thunk_name(value.value)
+        else:
+            const_str = node.value.to_tksl()
+            node_label += _trim_str(const_str, 15)
     elif isinstance(node, MatchNode):
         if node_label:
             node_label += "\n<BR/>"
@@ -208,6 +222,7 @@ def tierkreis_to_graphviz(
     unboxed_nodes = set()
     unthunked_nodes = set()
     discard_nodes = set()
+    no_outport_nodes = set()
     for node_name, node in tk_graph.nodes().items():
         node_identifier = prefix + node_name
         if node.is_discard_node():
@@ -255,7 +270,7 @@ def tierkreis_to_graphviz(
                 if isgraphconst:
                     html_label = _format_html_label(
                         node_back_color=_COLOURS["edge"],
-                        node_label="thunk",
+                        node_label=_thunk_name(subgraph),
                         border_colour=_COLOURS["port_border"],
                     )
                     c.node(
@@ -280,6 +295,11 @@ def tierkreis_to_graphviz(
                     color=(_COLOURS["const"], _COLOURS["edge"])[unbox_level % 2],
                 )
             continue
+
+        if isinstance(node, ConstNode):
+            # unecessary "value" port for constants
+            no_outport_nodes.add(node_identifier)
+            out_ports = []
 
         html_label = _format_html_label(
             node_back_color=fillcolor,
@@ -312,11 +332,21 @@ def tierkreis_to_graphviz(
         if src_node in unboxed_nodes:
             src_node = src_node + "output"
             # box output node only has input ports
-            src_nodeport = f"{src_node}:{_INPUT_PREFIX}{edge.source.port}"
+            outport_str = (
+                ""
+                if src_node in no_outport_nodes
+                else f":{_INPUT_PREFIX}{edge.source.port}"
+            )
+            src_nodeport = f"{src_node}{outport_str}"
         elif src_node in unthunked_nodes:
             src_nodeport = src_node + "thunk"
         else:
-            src_nodeport = f"{src_node}:{_OUTPUT_PREFIX}{edge.source.port}"
+            outport_str = (
+                ""
+                if src_node in no_outport_nodes
+                else f":{_OUTPUT_PREFIX}{edge.source.port}"
+            )
+            src_nodeport = f"{src_node}{outport_str}"
 
         if tgt_node in unboxed_nodes:
             tgt_node = tgt_node + "input"

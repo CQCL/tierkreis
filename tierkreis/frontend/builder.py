@@ -471,7 +471,7 @@ def closure(
     return decorator_graph
 
 
-def loop(sig: OptSig = None):
+def loop(name: Optional[str] = None, sig: OptSig = None):
     def decorator_graph(f: _GraphDef):
         in_types, out_types = _get_edge_annotations(f)
         if len(in_types) != 1:
@@ -480,10 +480,11 @@ def loop(sig: OptSig = None):
         # the loop node has input port "value"
         # allow body definitions to use any input names and map it
         in_types = {Labels.VALUE: in_types.popitem()[1]}
+        graph_name = name or getattr(f, "__name__")
 
         @wraps(f)
         def wrapper(initial: ValueSource) -> NodePort:
-            gb = GraphBuilder(in_types, out_types)
+            gb = GraphBuilder(in_types, out_types, name=graph_name)
             if sig:
                 gb = gb.with_type_check(sig)
             with gb as sub_build:
@@ -504,12 +505,14 @@ def loop(sig: OptSig = None):
 class If(GraphBuilder):
     def __init__(self) -> None:
         super().__init__()
+        self.graph.name = "if"
         Match._add_handler("if", self)
 
 
 class Else(GraphBuilder):
     def __init__(self) -> None:
         super().__init__()
+        self.graph.name = "else"
         Match._add_handler("else", self)
 
 
@@ -610,6 +613,7 @@ class Case(GraphBuilder):
 
     def __init__(self, tag: str) -> None:
         super().__init__()
+        self.graph.name = tag
         Match._add_handler(tag, self)
 
         self.var_value = self.graph.input[Labels.VALUE]

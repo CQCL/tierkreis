@@ -2,7 +2,7 @@ import inspect
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from functools import update_wrapper, wraps
 from itertools import count
 from types import TracebackType
@@ -266,14 +266,24 @@ class Const(NodePort):
 
 
 @dataclass(frozen=True)
-class Box:
+class _CallAddNode:
+    node: TierkreisNode
+    input_order: list[str]
+    output_order: list[str]
+
+    def __call__(self, *args: ValueSource, **kwds: ValueSource) -> NodeRef:
+        bg = current_builder()
+        kwds = _combine_args_with_kwargs(self.input_order, *args, **kwds)
+        n = bg.add_node_to_graph(self.node, **kwds)
+        return NodeRef(n.name, n.graph, self.output_order)
+
+
+class Box(_CallAddNode):
     graph: TierkreisGraph
 
-    def __call__(self, *args: ValueSource, **kwargs: ValueSource) -> NodeRef:
-        bg = current_builder()
-        kwargs = _combine_args_with_kwargs(self.graph.inputs(), *args, **kwargs)
-
-        return bg.add_node_to_graph(BoxNode(self.graph), **kwargs)
+    def __init__(self, graph: TierkreisGraph):
+        self.graph = graph
+        super().__init__(BoxNode(graph), list(graph.inputs()), list(graph.outputs()))
 
 
 def Tag(tag: str, value: ValueSource) -> NodePort:
@@ -424,23 +434,22 @@ def graph(name: Optional[str] = None, sig: OptSig = None) -> _GraphDecoratorType
     return decorator_graph
 
 
-@dataclass(frozen=True)
-class Thunk:
-    graph_src: NodePort
-    inputs: list[str]
-    outputs: list[str]
+class Thunk(_CallAddNode):
+    graph_src: ValueSource
+
+    def __init__(
+        self, graph_src: ValueSource, input_order: list[str], output_order: list[str]
+    ):
+        self.graph_src = graph_src
+        super().__init__(FunctionNode("builtin/eval"), input_order, output_order)
 
     def __call__(self, *args: ValueSource, **kwargs: ValueSource) -> NodeRef:
-        bg = current_builder()
-        kwargs = _combine_args_with_kwargs(self.inputs, *args, **kwargs)
-
-        nr = bg.add_node_to_graph(
-            FunctionNode("builtin/eval"), thunk=self.graph_src, **kwargs
-        )
-        return NodeRef(nr.name, nr.graph, list(self.outputs))
+        assert "thunk" not in kwargs
+        return super().__call__(*args, thunk=self.graph_src, **kwargs)
 
     def copyable(self) -> "Thunk":
-        return replace(self, graph_src=Copyable(self.graph_src))
+        self.graph_src = Copyable(self.graph_src)
+        return self
 
 
 def closure(
@@ -766,15 +775,12 @@ def _func_sig(name: str, func: "TierkreisFunction"):
     )
 
 
-@dataclass(frozen=True)
-class Function:
+class Function(_CallAddNode):
     f: TierkreisFunction
 
-    def __call__(self, *args: ValueSource, **kwds: ValueSource) -> NodeRef:
-        bg = current_builder()
-        kwds = _combine_args_with_kwargs(self.f.input_order, *args, **kwds)
-        n = bg.add_node_to_graph(FunctionNode(self.f.name), **kwds)
-        return NodeRef(n.name, bg.graph, list(self.f.output_order))
+    def __init__(self, f: TierkreisFunction):
+        self.f = f
+        super().__init__(FunctionNode(f.name), f.input_order, f.output_order)
 
     def signature_string(self) -> str:
         return _func_sig(self.f.name, self.f)

@@ -4,7 +4,7 @@ from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
 from dataclasses import dataclass, field, replace
 from functools import update_wrapper, wraps
-from itertools import count, filterfalse
+from itertools import count
 from types import TracebackType
 from typing import (
     TYPE_CHECKING,
@@ -120,6 +120,10 @@ def _reset_state(tok: Token["GraphBuilder"]):
     return __state.reset(tok)
 
 
+def _capture_label(idx: int) -> PortID:
+    return f"_c{idx}"
+
+
 class GraphBuilder(AbstractContextManager):
     graph: TierkreisGraph
     inputs: dict[str, Optional["TierkreisType"]]
@@ -176,7 +180,7 @@ class GraphBuilder(AbstractContextManager):
         if incoming in self.captured and not allow_existing:
             # This would generate two wires from the same NodePort
             raise ValueError(f"Already captured {incoming} as input to {self.graph}")
-        in_name = self.captured.setdefault(incoming, f"__captured_{len(self.captured)}")
+        in_name = self.captured.setdefault(incoming, _capture_label(len(self.captured)))
         return self.graph.input[in_name]
 
     def add_node_to_graph(
@@ -646,7 +650,7 @@ def _combine_captures(thunks: list[GraphBuilder]) -> dict[ValueSource, PortID]:
     inputs to all graphs, discarding any unused."""
     old_names = frozenset([v for bg in thunks for v in bg.captured.values()])
     # Generate a sparsely numbered list of names that won't conflict:
-    names = filterfalse(old_names.__contains__, (f"__captured_{i}" for i in count()))
+    names = filter(lambda x: x not in old_names, map(_capture_label, count()))
     # Assign new names in deterministic order of thunks and captures in each
     combined_inputs: dict[ValueSource, str] = {
         vs: next(names) for bg in thunks for vs in bg.captured

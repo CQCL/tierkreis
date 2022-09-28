@@ -307,7 +307,7 @@ def tierkreis_to_graphviz(
             continue
 
         if isinstance(node, ConstNode):
-            # unecessary "value" port for constants
+            # unnecessary "value" port for constants
             no_outport_nodes.add(node_identifier)
             out_ports = []
 

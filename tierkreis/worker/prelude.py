@@ -7,13 +7,13 @@ import argparse
 import asyncio
 import os
 
-import opentelemetry.trace  # type: ignore
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (  # type: ignore
+import opentelemetry.trace
+from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
 )
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource  # type: ignore
-from opentelemetry.sdk.trace import TracerProvider  # type: ignore
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor  # type: ignore
+from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 from .namespace import Namespace
 from .worker import Worker

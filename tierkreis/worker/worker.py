@@ -8,13 +8,13 @@ import grpclib
 import grpclib.events
 import grpclib.server
 import keyring
-import opentelemetry.context  # type: ignore
-import opentelemetry.propagate  # type: ignore
-import opentelemetry.trace  # type: ignore
+import opentelemetry.context
+import opentelemetry.propagate
+import opentelemetry.trace
 from grpclib.const import Status as StatusCode
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
-from opentelemetry.semconv.trace import SpanAttributes  # type: ignore
+from opentelemetry.semconv.trace import SpanAttributes
 
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps

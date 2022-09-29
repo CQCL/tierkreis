@@ -7,9 +7,9 @@ from functools import wraps
 from inspect import getdoc, isclass
 from typing import Awaitable, Callable, Dict, List, Optional, Type, Union, cast
 
-import opentelemetry.context  # type: ignore
-import opentelemetry.propagate  # type: ignore
-import opentelemetry.trace  # type: ignore
+import opentelemetry.context
+import opentelemetry.propagate
+import opentelemetry.trace
 
 from tierkreis.core.function import TierkreisFunction
 from tierkreis.core.tierkreis_struct import TierkreisStruct

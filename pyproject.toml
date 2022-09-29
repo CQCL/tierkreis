@@ -41,7 +41,7 @@ commontypes = [
 ]
 lint = [
     "black>=22.1,<23",
-    "mypy>=0.931,<0.932",
+    "mypy>=0.981,<0.982",
     "pylint~=2.13,!=2.13.6",
     "isort~=5.10",
     "types-setuptools>=57.4.2,<58",
@@ -64,6 +64,7 @@ exclude = [
     '^build/'
 ]
 warn_unused_ignores = true
+namespace_packages = true
 
 [[tool.mypy.overrides]]
 module = "tierkreis.core.protos.*"

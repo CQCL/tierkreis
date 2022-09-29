@@ -13,7 +13,7 @@ authors = [
 requires-python = ">=3.9,<3.11"
 dependencies = [
     "betterproto==2.0.0b4",
-    "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with betterproto
+    "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with opentelemetry
     "grpclib>=0.4.3rc,<0.5", # pre-release to support python 3.10
     "networkx>=2.6.3,<3",
     "graphviz>=0.18,<0.19",

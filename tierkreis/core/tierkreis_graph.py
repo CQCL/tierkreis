@@ -70,6 +70,9 @@ class TierkreisNode(ABC):
         """Delete nodes have some special behaviour, check for it."""
         return getattr(self, "function_name", "") == "builtin/discard"
 
+    def is_copy_node(self) -> bool:
+        return getattr(self, "function_name", "") == "builtin/copy"
+
 
 @dataclass(frozen=True)
 class InputNode(TierkreisNode):

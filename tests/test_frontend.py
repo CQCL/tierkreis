@@ -11,6 +11,7 @@ import pytest
 from tierkreis import TierkreisGraph
 from tierkreis.core import Labels
 from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.graphviz import _merge_copies
 from tierkreis.core.tierkreis_graph import FunctionNode, GraphValue, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
@@ -505,3 +506,21 @@ async def test_infer_graph_types_with_inputs(client: RuntimeClient):
     assert len(argtypes.content) == len(restypes.content) == 1
     assert argtypes.content["id_in"] == restypes.content["id_out"]
     assert isinstance(argtypes.content["id_in"], VarType)
+
+
+def test_merge_copies():
+    tg = TierkreisGraph()
+    x1, x2 = tg.copy_value(tg.input["x"])
+    x3, x4 = tg.copy_value(x1)
+    y1, y2 = tg.copy_value(x3)
+    z1, z2 = tg.copy_value(x4)
+
+    tg.set_outputs(x2=x2, y1=y1, y2=y2, z1=z1, z2=z2)
+
+    assert tg.n_nodes == 6
+    assert sum(1 for _ in tg.edges()) == 9
+
+    tg = _merge_copies(tg)
+
+    assert tg.n_nodes == 3
+    assert sum(1 for _ in tg.edges()) == 6

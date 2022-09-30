@@ -1,5 +1,5 @@
 """Visualise TierkreisGraph using graphviz."""
-from typing import Iterable, Optional, Tuple, cast
+from typing import Iterable, NewType, Optional, Tuple, cast
 
 import graphviz as gv  # type: ignore
 
@@ -195,7 +195,8 @@ def tierkreis_to_graphviz(
     tk_graph: TierkreisGraph,
     initial_graph: Optional[gv.Digraph] = None,
     prefix: str = "",
-    unbox_level=0,
+    unbox_level: int = 0,
+    merge_copies: bool = True,
 ) -> gv.Digraph:
     """
     Return a visual representation of the TierkreisGraph as a graphviz object.
@@ -203,6 +204,8 @@ def tierkreis_to_graphviz(
     :returns:   Representation of the TierkreisGraph
     :rtype:     graphviz.DiGraph
     """
+    if merge_copies:
+        tk_graph = _merge_copies(tk_graph)
     gv_graph = (
         gv.Digraph(
             tk_graph.name or "Tierkreis",
@@ -221,7 +224,7 @@ def tierkreis_to_graphviz(
     if tk_graph.name:
         graph_label = _format_html_label(
             node_label=tk_graph.name,
-            fontsize=13.0,
+            fontsize=11.0,
             border_width=2.0,
             node_back_color=_COLOURS["background"],
         )
@@ -232,6 +235,7 @@ def tierkreis_to_graphviz(
     unboxed_nodes = set()
     unthunked_nodes = set()
     discard_nodes = set()
+    copy_nodes = set()
     no_outport_nodes = set()
     for node_name, node in tk_graph.nodes().items():
         node_identifier = prefix + node_name
@@ -244,6 +248,16 @@ def tierkreis_to_graphviz(
                 width="0.1",
             )
             discard_nodes.add(node_identifier)
+            continue
+        if node.is_copy_node():
+            gv_graph.node(
+                node_identifier,
+                label="",
+                shape="point",
+                color=_COLOURS["edge"],
+                width="0.1",
+            )
+            copy_nodes.add(node_identifier)
             continue
 
         node_label, fillcolor = _node_features(node_name, node)
@@ -350,6 +364,8 @@ def tierkreis_to_graphviz(
             src_nodeport = f"{src_node}{outport_str}"
         elif src_node in unthunked_nodes:
             src_nodeport = src_node + "thunk"
+        elif src_node in copy_nodes:
+            src_nodeport = src_node
         else:
             outport_str = (
                 ""
@@ -362,8 +378,8 @@ def tierkreis_to_graphviz(
             tgt_node = tgt_node + "input"
             # box input node only has output ports
             tgt_nodeport = f"{tgt_node}:{_OUTPUT_PREFIX}{edge.target.port}"
-        elif tgt_node in discard_nodes:
-            # discard nodes don't have ports (not HTML labels)
+        elif tgt_node in discard_nodes or tgt_node in copy_nodes:
+            # discard/copy nodes don't have ports (not HTML labels)
             tgt_nodeport = tgt_node
         else:
             tgt_nodeport = f"{tgt_node}:{_INPUT_PREFIX}{edge.target.port}"
@@ -394,3 +410,42 @@ def render_graph(
     gv_graph = tierkreis_to_graphviz(graph, **kwargs)
 
     gv_graph.render(filename, format=format_st)
+
+
+# Merging copies produces invalid graphs
+_CopyMergedGraph = NewType("_CopyMergedGraph", TierkreisGraph)
+
+
+def _merge_copies(g: TierkreisGraph) -> _CopyMergedGraph:
+    """Merge adjacent copy nodes - adds extra ports to copy nodes so won't pass
+    type check."""
+    candidates = {name for name, node in g.nodes().items() if node.is_copy_node()}
+    while candidates:
+        node_name = candidates.pop()
+        copy_children = (
+            n.name
+            for e in g.out_edges(node_name)
+            if g[(n := e.target.node_ref)].is_copy_node()
+        )
+
+        if (copy_child := next(copy_children, None)) is None:
+            continue
+
+        # this node is going to merge with child - check it again
+        candidates.add(node_name)
+
+        eds = list(g.out_edges(copy_child))
+
+        # remove child and all connected edges
+        g._graph.remove_node(copy_child)
+        # remove from candidates if still a candidate
+        if copy_child in candidates:
+            candidates.remove(copy_child)
+
+        for e in eds:
+            # source port is not valid - this graph will not type check
+            g._graph.add_edge(
+                node_name, e.target.node_ref.name, ("", e.target.port), type=e.type_
+            )
+
+    return _CopyMergedGraph(g)

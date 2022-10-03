@@ -136,7 +136,7 @@ class GraphBuilder(AbstractContextManager):
         self,
         inputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
         outputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
-        name: Optional[str] = None,
+        name: str = "",
     ) -> None:
         self.graph = TierkreisGraph(name)
         self.inputs = inputs or {}

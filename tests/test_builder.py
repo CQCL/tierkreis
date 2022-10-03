@@ -71,6 +71,8 @@ def _compare_graphs(
 ) -> None:
     f_proto = first.to_proto()
     s_proto = second.to_proto()
+
+    assert f_proto.name == s_proto.name
     if node_map:
         new_nodes = {
             node_map.get(name, name): node for name, node in s_proto.nodes.items()
@@ -94,7 +96,7 @@ def _compare_graphs(
 
 
 def _vecs_graph() -> TierkreisGraph:
-    tg = TierkreisGraph()
+    tg = TierkreisGraph("g")
     con = tg.add_const([2, 4])
     tg.set_outputs(value=con)
     tg.annotate_output(Labels.VALUE, VecType(IntType()))
@@ -112,7 +114,7 @@ def _vecs_graph_builder() -> TierkreisGraph:
 
 
 def _structs_graph() -> TierkreisGraph:
-    tg = TierkreisGraph()
+    tg = TierkreisGraph("g")
     factory = tg.add_func(
         "builtin/make_struct",
         **map_vals(dict(height=12.3, name="hello", age=23), tg.add_const),
@@ -135,7 +137,7 @@ def _structs_graph_builder(bi) -> TierkreisGraph:
 
 
 def _maps_graph() -> TierkreisGraph:
-    tg = TierkreisGraph()
+    tg = TierkreisGraph("g")
     mp_val = tg.add_func("builtin/remove_key", map=tg.input["mp"], key=tg.add_const(3))
     ins = tg.add_func(
         "builtin/insert_key",
@@ -167,10 +169,10 @@ def _maps_graph_builder(bi) -> TierkreisGraph:
 
 
 def _tag_match_graph() -> TierkreisGraph:
-    id_graph = TierkreisGraph()
+    id_graph = TierkreisGraph("foo")
     id_graph.set_outputs(value=id_graph.input[Labels.VALUE])
 
-    tg = TierkreisGraph()
+    tg = TierkreisGraph("g")
     in_v = tg.add_tag("foo", value=tg.add_const(4))
     m = tg.add_match(in_v, foo=tg.add_const(id_graph))
     e = tg.add_func("builtin/eval", thunk=m[Labels.THUNK])

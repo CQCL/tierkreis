@@ -224,7 +224,7 @@ class TierkreisGraph:
         source: NodePort
         target: NodePort
 
-    def __init__(self, name: Optional[str] = None) -> None:
+    def __init__(self, name: str = "") -> None:
         self.name = name
         self._graph = nx.MultiDiGraph()
         self.input = self.add_node(InputNode(), self.input_node_name)
@@ -605,11 +605,13 @@ class TierkreisGraph:
             node_name: node.to_proto() for node_name, node in self.nodes().items()
         }
         pg_graph.edges = [e.to_proto() for e in self.edges()]
+        pg_graph.name = self.name
         return pg_graph
 
     @classmethod
     def from_proto(cls, pg_graph: pg.Graph) -> "TierkreisGraph":
         tk_graph = cls()
+        tk_graph.name = pg_graph.name
         for node_name, pg_node in pg_graph.nodes.items():
             if node_name in {tk_graph.input_node_name, tk_graph.output_node_name}:
                 continue

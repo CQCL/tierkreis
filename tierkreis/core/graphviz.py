@@ -1,4 +1,5 @@
 """Visualise TierkreisGraph using graphviz."""
+import textwrap
 from typing import Iterable, NewType, Optional, Tuple, cast
 
 import graphviz as gv  # type: ignore
@@ -133,10 +134,7 @@ def _html_ports(ports: Iterable[str], id_prefix: str) -> str:
 
 
 def _trim_str(instr: str, max_len: int = 10) -> str:
-    if len(instr) > max_len:
-        instr = instr[:max_len] + "..."
-
-    return instr
+    return textwrap.shorten(instr, width=max_len, placeholder="...")
 
 
 def _thunk_name(thunk: TierkreisGraph) -> str:
@@ -384,10 +382,15 @@ def tierkreis_to_graphviz(
         else:
             tgt_nodeport = f"{tgt_node}:{_INPUT_PREFIX}{edge.target.port}"
 
+        if src_node in copy_nodes or edge.type_ is None:
+            # copy edge output types can be seen from the input
+            edge_label = ""
+        else:
+            edge_label = textwrap.fill(str(edge.type_), 20)
         gv_graph.edge(
             src_nodeport,
             tgt_nodeport,
-            label=_trim_str(str(edge.type_ or ""), 20),
+            label=edge_label,
             **edge_attr,
         )
 

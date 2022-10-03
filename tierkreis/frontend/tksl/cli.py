@@ -8,9 +8,9 @@ from signal import SIGINT, SIGTERM
 from typing import TYPE_CHECKING, AsyncContextManager, Dict, List, Optional, cast
 
 import click
-from antlr4.error.Errors import ParseCancellationException  # type: ignore
 from yachalk import chalk
 
+import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
@@ -21,9 +21,6 @@ from tierkreis.frontend.builder import _func_sig
 from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
-
-from . import load_tksl_file
-from .parse_tksl import parse_struct_fields
 
 if TYPE_CHECKING:
     from tierkreis.core.function import TierkreisFunction
@@ -41,49 +38,28 @@ def coro(f):
 
 
 def _inputs(source: str) -> Dict[str, TierkreisValue]:
-    source = source.strip()
     if source == "":
         return {}
-    try:
-        v: StructValue = parse_struct_fields(source)
+    path = Path(source)
+    with open(path, "rb") as f:
+        v: StructValue = StructValue.from_proto(pg.StructValue().parse(f.read()))
         return v.values
-    except ParseCancellationException as _parse_err:
-        print(chalk.red(f"Parse error in inputs: {_parse_err}"), file=sys.stderr)
-        sys.exit(1)
 
 
-async def _parse(
-    source: Path, client: ServerRuntime, proto=False, **kwargs
-) -> TierkreisGraph:
-    if proto:
-        if source.suffix == ".tksl":
-            print(
-                chalk.red(
-                    "Warning: The source file ends in"
-                    " .tksl but the proto flag is specified."
-                    " Check you intend the input to be parsed as protobuf binary."
-                )
-            )
-        with open(source, "rb") as f:
-            return TierkreisGraph.from_proto(ProtoGraph().parse(f.read()))
-    try:
-        return load_tksl_file(source, signature=await client.get_signature(), **kwargs)
-    except ParseCancellationException as _parse_err:
-        print(chalk.red(f"Parse error: {str(_parse_err)}"), file=sys.stderr)
-        sys.exit(1)
+async def _parse(source: Path) -> TierkreisGraph:
+    with open(source, "rb") as f:
+        return TierkreisGraph.from_proto(ProtoGraph().parse(f.read()))
 
 
 async def _check_graph(
     source_path: Path,
     client_manager: AsyncContextManager[ServerRuntime],
-    proto=False,
-    **kwargs,
 ) -> TierkreisGraph:
     async with client_manager as client:
-        tkg = await _parse(source_path, client, proto=proto, **kwargs)
+        tkg = await _parse(source_path)
         try:
             tkg = await client.type_check_graph(tkg)
-        except TierkreisTypeErrors as _errs:
+        except TierkreisTypeErrors:
             _print_typeerrs(traceback.format_exc(0))
             sys.exit(1)
         return tkg
@@ -216,13 +192,8 @@ def docker(
     "-p",
     help="Runtime port, default=8090 if runtime is localhost, else 443",
 )
-@click.option(
-    "--proto",
-    help="Provide a protobuf binary instead of tksl source.",
-    is_flag=True,
-)
 @coro
-async def cli(ctx: click.Context, runtime: str, port: Optional[int], proto: bool):
+async def cli(ctx: click.Context, runtime: str, port: Optional[int]):
     local = runtime == "localhost"
     if port is None:
         port = 8090 if local else 443
@@ -231,53 +202,22 @@ async def cli(ctx: click.Context, runtime: str, port: Optional[int], proto: bool
     client_manager = myqos_runtime(runtime, port, local_debug=local)
     asyncio.get_event_loop()
     ctx.obj["client_manager"] = client_manager
-    ctx.obj["proto"] = proto
 
 
 @cli.command()
-@click.argument("source", type=click.Path(exists=True))
-@click.option(
-    "--target",
-    type=click.Path(exists=False),
-    help="target file to write protobuf binary to.",
-)
+@click.argument("proto", type=click.Path(exists=True))
 @click.pass_context
 @coro
-async def build(ctx: click.Context, source: str, target: Optional[str]):
-    """Build protobuf binary from tksl SOURCE and write to TARGET"""
-    if ctx.obj["proto"]:
-        raise RuntimeError(
-            "Protobuf binary source is invalid input to build command."
-            + "Check --proto flag."
-        )
-    source_path = Path(source)
-    if target:
-        target_path = Path(target)
-    else:
-        assert source_path.suffix == ".tksl"
-        target_path = source_path.with_suffix(".bin")
+async def check(ctx: click.Context, proto: str) -> TierkreisGraph:
+    """Type check PROTO binary file against runtime signature."""
+    source_path = Path(proto)
     tkg = await _check_graph(source_path, ctx.obj["client_manager"])
-
-    with open(target_path, "wb") as f:
-        f.write(bytes(tkg.to_proto()))
-
-
-@cli.command()
-@click.argument("source", type=click.Path(exists=True))
-@click.pass_context
-@coro
-async def check(ctx: click.Context, source: str) -> TierkreisGraph:
-    """Type check tksl SOURCE  file against runtime signature."""
-    source_path = Path(source)
-    tkg = await _check_graph(
-        source_path, ctx.obj["client_manager"], proto=ctx.obj["proto"]
-    )
     print(chalk.bold.green("Success: graph type check complete."))
     return tkg
 
 
 @cli.command()
-@click.argument("source", type=click.Path(exists=True))
+@click.argument("proto", type=click.Path(exists=True))
 @click.argument(
     "view_path",
     type=click.Path(exists=False),
@@ -288,35 +228,24 @@ async def check(ctx: click.Context, source: str) -> TierkreisGraph:
     default=0,
     help="Nesting level to which boxes and thunks should be unthunked, default=0.",
 )
-@click.option(
-    "--function",
-    default="main",
-    help="The name of the graph to visualise, default is main",
-)
 @click.pass_context
 @coro
 async def view(
     ctx: click.Context,
-    source: str,
+    proto: str,
     view_path: str,
     check: bool,
     unbox_level: int,
-    function: str,
 ):
-    """Visualise tksl SOURCE as tksl graph and output to VIEW_PATH."""
-    source_path = Path(source)
+    """Visualise PROTO binary as graph and output to VIEW_PATH."""
+    source_path = Path(proto)
     if check:
         tkg = await _check_graph(
             source_path,
             ctx.obj["client_manager"],
-            proto=ctx.obj["proto"],
-            function_name=function,
         )
     else:
-        async with ctx.obj["client_manager"] as client:
-            tkg = await _parse(
-                source_path, client, proto=ctx.obj["proto"], function_name=function
-            )
+        tkg = await _parse(source_path)
 
     tkg.name = source_path.stem
     view_p = Path(view_path)
@@ -329,7 +258,7 @@ async def view(
 def _print_outputs(outputs: dict[str, TierkreisValue]):
     print(
         "\n".join(
-            f"{chalk.bold.yellow(key)}: {val.to_tksl()}" for key, val in outputs.items()
+            f"{chalk.bold.yellow(key)}: {val.viz_str()}" for key, val in outputs.items()
         )
     )
 
@@ -339,39 +268,39 @@ def _print_typeerrs(errs: str):
 
 
 @cli.command()
-@click.argument("source", type=click.Path(exists=True))
+@click.argument("proto", type=click.Path(exists=True))
 @click.argument("inputs", default="")
 @click.pass_context
 @coro
-async def run(ctx: click.Context, source: Path, inputs: str):
-    """Run SOURCE on runtime with optional INPUTS and output to console."""
+async def run(ctx: click.Context, proto: Path, inputs: str):
+    """Run PROTO binary on runtime with optional INPUTS and output to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(ServerRuntime, client)
-        tkg = await _parse(source, client)
+        tkg = await _parse(proto)
         py_inputs = _inputs(inputs)
         try:
             outputs = await client.run_graph(tkg, **py_inputs)
             _print_outputs(outputs)
-        except TierkreisTypeErrors as _errs:
+        except TierkreisTypeErrors:
             _print_typeerrs(traceback.format_exc(0))
             sys.exit(1)
 
 
 @cli.command()
-@click.argument("source", type=click.Path(exists=True))
+@click.argument("proto", type=click.Path(exists=True))
 @click.argument("inputs", default="")
 @click.pass_context
 @coro
-async def submit(ctx: click.Context, source: Path, inputs: str):
-    """Submit SOURCE and optional INPUTS to runtime and print task id to console."""
+async def submit(ctx: click.Context, proto: Path, inputs: str):
+    """Submit PROTO binary and optional INPUTS to runtime and print task id to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(ServerRuntime, client)
-        tkg = await _parse(source, client)
+        tkg = await _parse(proto)
         py_inputs = _inputs(inputs)
         try:
             task_handle = await client.start_task(tkg, py_inputs)
             print(chalk.bold.yellow("Task id:"), task_handle.task_id)
-        except TierkreisTypeErrors as _errs:
+        except TierkreisTypeErrors:
             _print_typeerrs(traceback.format_exc(0))
             sys.exit(1)
 

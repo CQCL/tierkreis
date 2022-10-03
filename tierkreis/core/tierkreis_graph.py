@@ -685,7 +685,7 @@ class GraphValue(TierkreisValue):
     def __str__(self) -> str:
         return "GraphValue"
 
-    def to_tksl(self) -> str:
+    def viz_str(self) -> str:
         return "Graph"
 
 

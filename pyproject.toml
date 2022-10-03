@@ -28,7 +28,6 @@ tksl-start = 'tierkreis.frontend.tksl.cli:start'
 [project.optional-dependencies]
 frontend = [ "docker>=5,<6", "yachalk>=0.1.4,<0.2",]
 tksl = [
-    "antlr4-python3-runtime>=4.9.2,<4.10",
     "click>=8.0.3,<9",
     "tierkreis[frontend]"
 ]
@@ -55,9 +54,6 @@ test = [
     "tierkreis[runtime]"
 ]
 
-[tool.black]
-exclude = '/tksl/antlr/'
-
 [tool.isort]
 profile = "black"
 skip_gitignore = true
@@ -65,7 +61,6 @@ skip_gitignore = true
 
 [tool.mypy]
 exclude = [
-    '/tksl/antlr/',
     '^build/'
 ]
 warn_unused_ignores = true
@@ -76,7 +71,7 @@ ignore_errors = true
 
 [tool.pylint.messages_control]
 recursive="yes"
-ignore-paths='^tierkreis/core/protos/.*$,^tierkreis/frontend/tksl/antlr/.*$'
+ignore-paths='^tierkreis/core/protos/.*$'
 max-line-length=88
 output-format="colorized"
 score="no"

@@ -2,7 +2,6 @@
 from contextlib import AbstractAsyncContextManager
 from copy import deepcopy
 from dataclasses import dataclass
-from pathlib import Path
 from time import time
 from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type
 
@@ -28,43 +27,14 @@ from tierkreis.core.types import (
 from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
 from tierkreis.frontend import RuntimeClient, ServerRuntime
 from tierkreis.frontend.python_runtime import PyRuntime
-from tierkreis.frontend.tksl import load_tksl_file
 from tierkreis.frontend.type_inference import infer_graph_types
 from tierkreis.worker.exceptions import NodeExecutionError
 
 from . import REASON, release_tests
+from .utils import nint_adder
 
 if TYPE_CHECKING:
-    from tierkreis.core.tierkreis_graph import NodePort, NodeRef
-
-
-def nint_adder(number: int) -> TierkreisGraph:
-    tk_g = TierkreisGraph()
-    current_outputs = tk_g.vec_last_n_elems(tk_g.input["array"], number)
-
-    while len(current_outputs) > 1:
-        next_outputs = []
-        n_even = len(current_outputs) & ~1
-
-        for i in range(0, n_even, 2):
-            nod = tk_g.add_func(
-                "builtin/iadd",
-                a=current_outputs[i],
-                b=current_outputs[i + 1],
-            )
-            next_outputs.append(nod["value"])
-        if len(current_outputs) > n_even:
-            nod = tk_g.add_func(
-                "builtin/iadd",
-                a=next_outputs[-1],
-                b=current_outputs[n_even],
-            )
-            next_outputs[-1] = nod["value"]
-        current_outputs = next_outputs
-
-    tk_g.set_outputs(out=current_outputs[0])
-
-    return tk_g
+    from tierkreis.core.tierkreis_graph import NodePort
 
 
 @pytest.mark.asyncio
@@ -95,18 +65,10 @@ async def test_mistyped_op_nochecks(
 @pytest.mark.asyncio
 async def test_nint_adder(client: RuntimeClient):
 
-    tksl_g = load_tksl_file(
-        Path(__file__).parent / "tksl_samples/nint_adder.tksl",
-        signature=await client.get_signature(),
-    )
-
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list))
         outputs = await client.run_graph(tk_g, array=in_list)
         assert outputs["out"].try_autopython() == sum(in_list)
-
-        tksl_outs = await client.run_graph(tksl_g, array=in_list, len=len(in_list))
-        assert tksl_outs["out"].try_autopython() == sum(in_list)
 
 
 def add_n_graph(increment: int) -> TierkreisGraph:

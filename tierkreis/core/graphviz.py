@@ -167,7 +167,7 @@ def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
             fillcolor = _COLOURS["edge"]
             node_label += _thunk_name(value.value)
         else:
-            const_str = node.value.to_tksl()
+            const_str = node.value.viz_str()
             node_label += _trim_str(const_str, 15)
     elif isinstance(node, MatchNode):
         if node_label:

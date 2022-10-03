@@ -76,7 +76,7 @@ class TierkreisValue(ABC):
         pass
 
     @abstractmethod
-    def to_tksl(self) -> str:
+    def viz_str(self) -> str:
         pass
 
     @classmethod
@@ -184,7 +184,7 @@ class BoolValue(TierkreisValue):
     def __str__(self) -> str:
         return f"Bool({self.value})"
 
-    def to_tksl(self) -> str:
+    def viz_str(self) -> str:
         return "true" if self.value else "false"
 
 
@@ -217,7 +217,7 @@ class StringValue(TierkreisValue):
     def __str__(self) -> str:
         return f"String({repr(self.value)})"
 
-    def to_tksl(self) -> str:
+    def viz_str(self) -> str:
         return f'"{self.value}"'
 
 
@@ -252,7 +252,7 @@ class IntValue(TierkreisValue):
     def __str__(self) -> str:
         return f"Int({self.value})"
 
-    def to_tksl(self) -> str:
+    def viz_str(self) -> str:
         return str(self.value)
 
 
@@ -284,7 +284,7 @@ class FloatValue(TierkreisValue):
     def __str__(self) -> str:
         return f"Float({self.value})"
 
-    def to_tksl(self) -> str:
+    def viz_str(self) -> str:
         return str(self.value)
 
 
@@ -336,8 +336,8 @@ class PairValue(Generic[TKVal1, TKVal2], TierkreisValue):
     def __str__(self) -> str:
         return f"Pair({str(self.first)}, {str(self.second)})"
 
-    def to_tksl(self) -> str:
-        return f"({self.first.to_tksl()}, {self.second.to_tksl()})"
+    def viz_str(self) -> str:
+        return f"({self.first.viz_str()}, {self.second.viz_str()})"
 
 
 @dataclass(frozen=True)
@@ -384,8 +384,8 @@ class VecValue(Generic[TKVal1], TierkreisValue):
     def __str__(self) -> str:
         return f"Vec({','.join(map(str, self.values))})"
 
-    def to_tksl(self) -> str:
-        return f"[{', '.join(val.to_tksl() for val in self.values)}]"
+    def viz_str(self) -> str:
+        return f"[{', '.join(val.viz_str() for val in self.values)}]"
 
 
 @dataclass(frozen=True)
@@ -451,9 +451,9 @@ class MapValue(Generic[TKVal1, TKVal2], TierkreisValue):
     def __str__(self) -> str:
         return f"Map({', '.join(f'{key}: {val}' for key, val in self.values.items())})"
 
-    def to_tksl(self) -> str:
+    def viz_str(self) -> str:
         entries = (
-            f"{key.to_tksl()}: {val.to_tksl()}" for key, val in self.values.items()
+            f"{key.viz_str()}: {val.viz_str()}" for key, val in self.values.items()
         )
         return f"{{{', '.join(entries)})}}"
 
@@ -542,8 +542,8 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         key_vals = (f"{key}: {str(val)}" for key, val in self.values.items())
         return f"Struct{{{', '.join(key_vals)}}}"
 
-    def to_tksl(self) -> str:
-        key_vals = (f"{key}: {val.to_tksl()}" for key, val in self.values.items())
+    def viz_str(self) -> str:
+        key_vals = (f"{key}: {val.viz_str()}" for key, val in self.values.items())
 
         return f"Struct{{{', '.join(key_vals)}}}"
 
@@ -589,8 +589,8 @@ class VariantValue(Generic[RowStruct], TierkreisValue):
             return cast(T, self.value.to_python(inner_t))
         raise ToPythonFailure(self)
 
-    def to_tksl(self) -> str:
-        return f"Variant{{{self.tag}: {self.value.to_tksl()}}}"
+    def viz_str(self) -> str:
+        return f"Variant{{{self.tag}: {self.value.viz_str()}}}"
 
     @classmethod
     def from_python(cls, value: TierkreisVariant) -> "TierkreisValue":

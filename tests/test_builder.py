@@ -1,5 +1,5 @@
 from dataclasses import astuple, dataclass
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, no_type_check
+from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, cast, no_type_check
 
 import pytest
 
@@ -7,7 +7,12 @@ from tierkreis import TierkreisGraph
 from tierkreis.core import Labels
 from tierkreis.core.protos.tierkreis.graph import Graph
 from tierkreis.core.signature import Signature
-from tierkreis.core.tierkreis_graph import ConstNode, GraphValue, TierkreisGraph
+from tierkreis.core.tierkreis_graph import (
+    BoxNode,
+    ConstNode,
+    GraphValue,
+    TierkreisGraph,
+)
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, MapType, StringType, VecType
 from tierkreis.core.utils import map_vals
@@ -786,3 +791,42 @@ async def test_bad_annotations(graph_dec: _GraphDecoratorType) -> None:
         @graph_dec
         def foo4(arg: Input[float]) -> Output:
             return Output(out=arg)
+
+
+@pytest.mark.asyncio
+async def test_box_order(bi: Namespace, graph_dec: _GraphDecoratorType) -> None:
+    @dataclass
+    class TestOut(TierkreisStruct):
+        first: IntValue
+        lst: VecValue[PairValue[IntValue, StringValue]]
+
+    @graph_dec
+    def push_pair(lst, first, second) -> Output[TestOut]:
+        first = Copyable(first)
+        pair = bi.make_pair(first, second)
+        return Output(lst=bi.push(lst, pair), first=first)
+
+    push_pair_box = Box(push_pair())
+    assert push_pair_box.input_order == ["lst", "first", "second"]
+    assert push_pair_box.output_order == ["first", "lst"]
+
+    @graph_dec
+    def test_g() -> Output:
+        i, lst = push_pair_box(Const([]), Const(3), Const("hello"))
+        return Output(one=lst, two=i)
+
+    g = test_g()
+    box_n_name = next(n for n in g.nodes() if isinstance(g[n], BoxNode))
+    box_ins = {p2: n1 for n1, _, (_, p2) in g._graph.in_edges(box_n_name, keys=True)}
+    assert len(box_ins) == 3
+
+    assert all(isinstance(g[n], ConstNode) for n in box_ins.values())
+    assert isinstance(cast(ConstNode, g[box_ins["lst"]]).value, VecValue)
+    assert isinstance(cast(ConstNode, g[box_ins["first"]]).value, IntValue)
+    assert isinstance(cast(ConstNode, g[box_ins["second"]]).value, StringValue)
+
+    box_outs = tuple(ports for _, _, ports in g._graph.out_edges(box_n_name, keys=True))
+    assert len(box_outs) == 2
+
+    assert ("first", "two") in box_outs
+    assert ("lst", "one") in box_outs

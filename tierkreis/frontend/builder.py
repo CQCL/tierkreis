@@ -147,6 +147,7 @@ class GraphBuilder(AbstractContextManager):
         for i, it in self.inputs.items():
             self.graph.discard(self.graph.input[i])
             self.graph.annotate_input(i, it)
+            self.graph.input_order.append(i)
 
     def input(self, name: str) -> NodePort:
         if name in self.inputs:
@@ -282,7 +283,7 @@ class Box(_CallAddNode):
 
     def __init__(self, graph: TierkreisGraph):
         self.graph = graph
-        super().__init__(BoxNode(graph), list(graph.inputs()), list(graph.outputs()))
+        super().__init__(BoxNode(graph), graph.input_order, graph.output_order)
 
 
 def Tag(tag: str, value: ValueSource) -> NodePort:
@@ -300,6 +301,10 @@ class Output(NodeRef, Generic[OutAnnotation]):
         s = current_builder()
 
         g = s.graph
+
+        for o in s.outputs:
+            g.output_order.append(o)
+
         if len(args) == 1 and len(kwargs) == 0:
             kwargs = {Labels.VALUE: args[0]}
         else:

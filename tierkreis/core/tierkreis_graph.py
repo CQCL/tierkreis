@@ -243,6 +243,9 @@ class TierkreisGraph:
         self.input = self.add_node(InputNode(), self.input_node_name)
         self.output = self.add_node(OutputNode(), self.output_node_name)
 
+        self.input_order: list[str] = []
+        self.output_order: list[str] = []
+
     def inputs(self) -> List[str]:
         return [edge.source.port for edge in self.out_edges(self.input)]
 
@@ -617,12 +620,16 @@ class TierkreisGraph:
         }
         pg_graph.edges = [e.to_proto() for e in self.edges()]
         pg_graph.name = self.name
+        pg_graph.input_order = self.input_order
+        pg_graph.output_order = self.output_order
         return pg_graph
 
     @classmethod
     def from_proto(cls, pg_graph: pg.Graph) -> "TierkreisGraph":
         tk_graph = cls()
         tk_graph.name = pg_graph.name
+        tk_graph.input_order = pg_graph.input_order
+        tk_graph.output_order = pg_graph.output_order
         for node_name, pg_node in pg_graph.nodes.items():
             if node_name in {tk_graph.input_node_name, tk_graph.output_node_name}:
                 continue

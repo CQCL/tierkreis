@@ -195,6 +195,7 @@ def tierkreis_to_graphviz(
     prefix: str = "",
     unbox_level: int = 0,
     merge_copies: bool = True,
+    unbox_graph_names: Optional[set[str]] = None,
 ) -> gv.Digraph:
     """
     Return a visual representation of the TierkreisGraph as a graphviz object.
@@ -265,14 +266,24 @@ def tierkreis_to_graphviz(
         # second row is table containing single cell of node_label
         # third row is single cell containing a single row table of outputs
 
-        isbox = isinstance(node, BoxNode)
-        isgraphconst = isinstance(node, ConstNode) and isinstance(
-            node.value, GraphValue
-        )
-
         in_ports = [edge.target.port for edge in tk_graph.in_edges(node_name)]
         out_ports = [edge.source.port for edge in tk_graph.out_edges(node_name)]
-        if unbox_level > 0 and (isbox or isgraphconst):
+        subgraph = None
+        isbox = False
+        isgraphconst = False
+        if isinstance(node, BoxNode):
+            isbox = True
+            subgraph = node.graph
+        if isinstance(node, ConstNode):
+            val = node.value
+            if isinstance(val, GraphValue):
+                subgraph = val.value
+                isgraphconst = True
+        if (
+            unbox_level > 0
+            and subgraph is not None
+            and (not unbox_graph_names or subgraph.name in unbox_graph_names)
+        ):
             cluster_name = "cluster" + node_identifier
             if isbox:
                 unboxed_nodes.add(node_identifier)

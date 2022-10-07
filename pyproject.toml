@@ -37,7 +37,8 @@ runtime = [
 ]
 
 commontypes = [
-    "mushroom-dataclasses>=0.36.0,<0.37"
+    "mushroom-dataclasses>=0.36.0,<0.37",
+    "pytket>=1.0"
 ]
 lint = [
     "black>=22.1,<23",
@@ -45,13 +46,16 @@ lint = [
     "pylint~=2.13,!=2.13.6",
     "isort~=5.10",
     "types-setuptools>=57.4.2,<58",
-    "types-python-dateutil>=2.8.2,<3"
+    "types-python-dateutil>=2.8.2,<3",
+    "tierkreis[sc22_example]"
 ]
 test = [
     "pytest>=6.2,<7",
     "pytest-asyncio>=0.16,<0.17",
-    "pytket>=1.0",
-    "tierkreis[runtime]"
+]
+sc22_example = [
+    "numpy>=1.20,<2",
+    "pytket>=1.0"
 ]
 
 [tool.isort]

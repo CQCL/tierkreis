@@ -68,7 +68,7 @@ async def _check_graph(
 async def main_coro(manager: AsyncContextManager):
     async with manager as runtime:
         try:
-            print(runtime.socket_address())
+            print(runtime.socket_address(), flush=True)
             await asyncio.sleep(10000000000000)
         except asyncio.CancelledError:
             print("\nShutting Down")

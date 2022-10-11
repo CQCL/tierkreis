@@ -57,7 +57,7 @@ if TYPE_CHECKING:
 
 
 def _auto_name_map(index_map: dict[int, int]) -> dict[str, str]:
-    return {f"NewNode({key})": f"NewNode({val})" for key, val in index_map.items()}
+    return {f"NewNode{key}": f"NewNode{val}" for key, val in index_map.items()}
 
 
 def _compare_graphs(

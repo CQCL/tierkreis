@@ -1,9 +1,9 @@
 use prost::Message;
 use pyo3::prelude::*;
 use pyo3::types::PyBytes;
-use std::convert::TryInto;
 use tierkreis_core::builtins;
 use tierkreis_core::namespace::{FunctionDeclaration, Namespace};
+use tierkreis_core::prelude::TryInto;
 use tierkreis_core::type_checker::{GraphWithInputs, Signature, Typeable};
 use tierkreis_proto::signature as ps;
 use tierkreis_proto::ConvertError;

@@ -257,7 +257,7 @@ class TierkreisGraph:
         return next(
             dropwhile(
                 lambda name: name in self._graph,
-                map(lambda i: f"NewNode({i})", count(0)),
+                map(lambda i: f"NewNode{i}", count(0)),
             )
         )
 

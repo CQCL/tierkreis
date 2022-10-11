@@ -54,7 +54,7 @@ class TierkreisType(ABC):
         except AttributeError as _e:
             type_name = str(type_)
 
-        visited_types[type_] = VarType(f"CyclicType({type_name})")
+        visited_types[type_] = VarType(f"CyclicType_{type_name}")
         type_origin = typing.get_origin(type_)
         result: TierkreisType
 

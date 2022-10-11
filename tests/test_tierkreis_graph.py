@@ -92,7 +92,7 @@ def test_insert_subgraph() -> None:
             subgraph, "subgraph::", one=main_g.input["newin1"], two=main_g.add_const(4)
         )
 
-    assert e.value.name == "subgraph::NewNode(0)"
+    assert e.value.name == "subgraph::NewNode0"
 
 
 def test_value_topython():

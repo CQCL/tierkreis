@@ -152,10 +152,9 @@ def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
     node_label = "" if node_name.startswith("NewNode") else node_name
     if isinstance(node, FunctionNode):
         f_name = node.function_name
-        f_name = f_name.replace("builtin/", "")
         if node_label:
             node_label += "\n<BR/>"
-        node_label += f_name
+        node_label += str(f_name)
     elif isinstance(node, ConstNode):
         if node_label:
             node_label += "\n<BR/>"

@@ -11,14 +11,14 @@ def nint_adder(number: int) -> TierkreisGraph:
 
         for i in range(0, n_even, 2):
             nod = tk_g.add_func(
-                "builtin/iadd",
+                "iadd",
                 a=current_outputs[i],
                 b=current_outputs[i + 1],
             )
             next_outputs.append(nod["value"])
         if len(current_outputs) > n_even:
             nod = tk_g.add_func(
-                "builtin/iadd",
+                "iadd",
                 a=next_outputs[-1],
                 b=current_outputs[n_even],
             )

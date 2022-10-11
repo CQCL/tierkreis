@@ -1,9 +1,9 @@
 use prost::Message;
 use pyo3::prelude::*;
-use pyo3::types::{PyBytes, PyList};
+use pyo3::types::PyBytes;
 use std::convert::TryInto;
 use tierkreis_core::builtins;
-use tierkreis_core::graph::FunctionDeclaration;
+use tierkreis_core::namespace::{FunctionDeclaration, Namespace};
 use tierkreis_core::type_checker::{GraphWithInputs, Signature, Typeable};
 use tierkreis_proto::signature as ps;
 use tierkreis_proto::ConvertError;
@@ -14,19 +14,13 @@ fn infer2(req: &PyBytes) -> Result<ps::infer_graph_types_response::Response, Con
     let gwi = req.gwi.ok_or(ConvertError::ProtoError)?;
     let graph = gwi.graph.ok_or(ConvertError::ProtoError)?.try_into()?;
     // The client can pass signatures (inc builtins) from a running server if desired.
-    let sigs: Signature = req
-        .functions
-        .into_iter()
-        .map::<Result<_, ConvertError>, _>(|(n, fd)| {
-            assert_eq!(n, fd.name);
-            let fd: FunctionDeclaration = fd.try_into()?;
-            Ok((n.clone().into(), fd.type_scheme))
-        })
-        .collect::<Result<Signature, _>>()?;
+    let nmspc: Namespace<FunctionDeclaration> =
+        req.functions.ok_or(ConvertError::ProtoError)?.try_into()?;
+    let sigs: Signature = nmspc.map(|x| x.type_scheme);
 
     if let Some(sv) = gwi.inputs {
         let gwi = GraphWithInputs {
-            graph: graph,
+            graph,
             inputs: sv.try_into()?,
         };
         Ok(match gwi.infer_type(&sigs) {
@@ -66,14 +60,9 @@ fn infer_graph_types(py: Python, req: &PyBytes) -> PyObject {
 
 #[pyfunction]
 fn builtin_namespace(py: Python) -> PyObject {
-    PyList::new(
-        py,
-        builtins::namespace().map(|(_, v)| {
-            let fd: ps::FunctionDeclaration = v.into();
-            PyBytes::new(py, fd.encode_to_vec().as_slice()).to_object(py)
-        }),
-    )
-    .to_object(py)
+    let res: ps::Namespace = builtins::namespace().into();
+
+    PyBytes::new(py, res.encode_to_vec().as_slice()).to_object(py)
 }
 
 #[pymodule]

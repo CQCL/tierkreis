@@ -19,8 +19,8 @@ from opentelemetry.semconv.trace import SpanAttributes
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
 import tierkreis.core.protos.tierkreis.worker as pw
+from tierkreis.core.function import FunctionName
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
-from tierkreis.core.types import TypeScheme
 from tierkreis.core.values import StructValue
 
 from .exceptions import (
@@ -29,7 +29,7 @@ from .exceptions import (
     FunctionNotFound,
     NodeExecutionError,
 )
-from .namespace import Function
+from .namespace import Namespace
 
 if TYPE_CHECKING:
     from .namespace import Namespace
@@ -93,14 +93,12 @@ _KEYRING_SERVICE = "tierkreis_extracted"
 class Worker:
     """Worker server."""
 
-    functions: dict[str, Function]
-    aliases: dict[str, TypeScheme]
+    root: Namespace
     server: Server
     callback: Optional[tuple[str, int]] = None
 
     def __init__(self):
-        self.functions = {}
-        self.aliases = {}
+        self.root = Namespace("_root")
         self.server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
 
         # Attach event listener for tracing
@@ -112,21 +110,15 @@ class Worker:
 
     def add_namespace(self, namespace: "Namespace"):
         """Add namespace of functions to workspace."""
-        for (name, function) in namespace.functions.items():
-            newname = f"{namespace.name}/{name}"
-            function.declaration.name = newname
-            self.functions[newname] = function
+        self.root.add_subspace(namespace)
 
-        for (name, type_) in namespace.aliases.items():
-            newname = f"{namespace.name}/{name}"
-            self.aliases[newname] = type_
-
-    def run(self, function: str, inputs: StructValue) -> Awaitable[StructValue]:
+    def run(
+        self, function: FunctionName, inputs: StructValue
+    ) -> Awaitable[StructValue]:
         """Run function."""
-        if function not in self.functions:
+        func = self.root.get_function(function)
+        if func is None:
             raise FunctionNotFound(function)
-
-        func = self.functions[function]
 
         # See https://github.com/python/mypy/issues/5485
         return cast(Any, func).run(inputs)
@@ -191,12 +183,13 @@ class WorkerServerImpl(WorkerBase):
     async def run_function(
         self,
         run_function_request: pw.RunFunctionRequest,
-    ) -> "RunFunctionResponse":
+    ) -> RunFunctionResponse:
         function = run_function_request.function
         inputs = run_function_request.inputs
         try:
+            function_name = FunctionName.from_proto(function)
             inputs_struct = StructValue.from_proto_dict(inputs.map)
-            outputs_struct = await self.worker.run(function, inputs_struct)
+            outputs_struct = await self.worker.run(function_name, inputs_struct)
             with tracer.start_as_current_span(
                 "encoding python type in RunFunctionResponse proto"
             ):
@@ -235,14 +228,6 @@ class SignatureServerImpl(ps.SignatureBase):
     async def list_functions(
         self, _: ps.ListFunctionsRequest
     ) -> ps.ListFunctionsResponse:
-        functions = {
-            function_name: function.declaration.to_proto()
-            for (function_name, function) in self.worker.functions.items()
-        }
+        signature = self.worker.root.extract_signature()
 
-        aliases = {
-            alias_name: type_scheme.to_proto()
-            for (alias_name, type_scheme) in self.worker.aliases.items()
-        }
-
-        return ps.ListFunctionsResponse(functions=functions, aliases=aliases)
+        return signature.to_proto()

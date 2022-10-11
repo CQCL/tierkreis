@@ -9,8 +9,9 @@ import pytest
 
 from tierkreis import TierkreisGraph
 from tierkreis.core import Labels
-from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.graphviz import _merge_copies
+from tierkreis.core.signature import Namespace, Signature
 from tierkreis.core.tierkreis_graph import FunctionNode, GraphValue, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
@@ -40,7 +41,7 @@ if TYPE_CHECKING:
 @pytest.mark.asyncio
 async def test_mistyped_op(server_client: ServerRuntime):
     tk_g = TierkreisGraph()
-    nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
+    nod = tk_g.add_func("python_nodes::mistyped_op", inp=tk_g.input["testinp"])
     tk_g.set_outputs(out=nod)
     with pytest.raises(RuntimeError, match="Type mismatch"):
         await server_client.run_graph(tk_g, testinp=3)
@@ -56,7 +57,7 @@ async def test_mistyped_op_nochecks(
         runtime_type_checking="disabled",
     ) as server:
         tk_g = TierkreisGraph()
-        nod = tk_g.add_func("python_nodes/mistyped_op", inp=tk_g.input["testinp"])
+        nod = tk_g.add_func("python_nodes::mistyped_op", inp=tk_g.input["testinp"])
         tk_g.set_outputs(out=nod)
         res = await server.run_graph(tk_g, testinp=3)
         assert res["out"].try_autopython() == 4.1
@@ -75,7 +76,7 @@ def add_n_graph(increment: int) -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
     add_func = tk_g.add_func(
-        "builtin/iadd", a=tk_g.add_const(increment), b=tk_g.input["number"]
+        "iadd", a=tk_g.add_const(increment), b=tk_g.input["number"]
     )
     tk_g.set_outputs(output=add_func)
 
@@ -87,18 +88,15 @@ async def test_switch(client: RuntimeClient):
     add_2_g = add_n_graph(2)
     add_3_g = add_n_graph(3)
     tk_g = TierkreisGraph()
-    sig = await client.get_signature()
 
     switch = tk_g.add_func(
-        sig["builtin"].functions["switch"],
+        "switch",
         if_true=tk_g.add_const(add_2_g),
         if_false=tk_g.add_const(add_3_g),
         pred=tk_g.input["flag"],
     )
 
-    eval_node = tk_g.add_func(
-        sig["builtin"].functions["eval"], thunk=switch, number=tk_g.input["number"]
-    )
+    eval_node = tk_g.add_func("eval", thunk=switch, number=tk_g.input["number"])
 
     tk_g.set_outputs(out=eval_node["output"])
 
@@ -116,26 +114,26 @@ async def test_match(client: RuntimeClient):
     one_graph = TierkreisGraph()
     one_graph.set_outputs(
         value=one_graph.add_func(
-            "builtin/fadd", a=one_graph.input["value"], b=one_graph.add_const(3.14)
+            "fadd", a=one_graph.input["value"], b=one_graph.add_const(3.14)
         )
     )
     many_graph = TierkreisGraph()
     many_graph.set_outputs(
-        value=many_graph.add_func("builtin/pop", vec=many_graph.input["value"])["item"]
+        value=many_graph.add_func("pop", vec=many_graph.input["value"])["item"]
     )
 
     match_graph = TierkreisGraph()
     match_graph.set_outputs(
         result=match_graph.add_func(
-            "python_nodes/id_delay",
+            "python_nodes::id_delay",
             wait=match_graph.add_const(1),
             value=match_graph.add_func(
-                "builtin/eval",
+                "eval",
                 thunk=match_graph.add_match(
                     match_graph.input["vv"],
                     one=match_graph.add_const(one_graph),
                     many=match_graph.add_func(
-                        "python_nodes/id_delay",
+                        "python_nodes::id_delay",
                         wait=match_graph.add_const(1),
                         value=match_graph.add_const(many_graph),
                     ),
@@ -189,7 +187,7 @@ class TstStruct(TierkreisStruct):
 def idpy_graph() -> TierkreisGraph:
     tk_g = TierkreisGraph()
 
-    id_node = tk_g.add_func("python_nodes/id_py", value=tk_g.input["id_in"])
+    id_node = tk_g.add_func("python_nodes::id_py", value=tk_g.input["id_in"])
     tk_g.set_outputs(id_out=id_node)
 
     return tk_g
@@ -266,7 +264,7 @@ async def test_infer_errors_when_running(server_client: ServerRuntime) -> None:
 @pytest.mark.asyncio
 async def test_fail_node(client: RuntimeClient) -> None:
     tg = TierkreisGraph()
-    tg.add_func("python_nodes/fail")
+    tg.add_func("python_nodes::fail")
 
     exception: Type[Exception] = (
         NodeExecutionError if isinstance(client, PyRuntime) else RuntimeError
@@ -277,11 +275,11 @@ async def test_fail_node(client: RuntimeClient) -> None:
     assert "fail node was run" in str(err.value)
 
 
-def graph_from_func(func: TierkreisFunction) -> TierkreisGraph:
+def graph_from_func(name: str, func: FunctionDeclaration) -> TierkreisGraph:
     # build a graph with a single function node, with the same interface as that
     # function
     tg = TierkreisGraph()
-    node = tg.add_func(func.name, **{port: tg.input[port] for port in func.input_order})
+    node = tg.add_func(name, **{port: tg.input[port] for port in func.input_order})
     tg.set_outputs(**{port: node[port] for port in func.output_order})
     return tg
 
@@ -289,10 +287,10 @@ def graph_from_func(func: TierkreisFunction) -> TierkreisGraph:
 @pytest.mark.asyncio
 async def test_vec_sequence(client: RuntimeClient) -> None:
     sig = await client.get_signature()
-    pop_g = graph_from_func(sig["builtin"].functions["pop"])
-    push_g = graph_from_func(sig["builtin"].functions["push"])
+    pop_g = graph_from_func("pop", sig.root.functions["pop"])
+    push_g = graph_from_func("push", sig.root.functions["push"])
 
-    seq_g = graph_from_func(sig["builtin"].functions["sequence"])
+    seq_g = graph_from_func("sequence", sig.root.functions["sequence"])
 
     outputs = await client.run_graph(seq_g, first=pop_g, second=push_g)
 
@@ -300,11 +298,11 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
 
     # check composition is succesful
     functions = {
-        node.function_name
+        node.function_name.name
         for node in sequenced_g.nodes().values()
         if isinstance(node, FunctionNode)
     }
-    assert {"builtin/push", "builtin/pop"}.issubset(functions)
+    assert {"push", "pop"}.issubset(functions)
 
     # check composition evaluates
     vec_in = ["foo", "bar", "bang"]
@@ -339,7 +337,7 @@ async def test_runtime_worker(
 @pytest.mark.asyncio
 async def test_callback(server_client: ServerRuntime):
     tg = TierkreisGraph()
-    idnode = tg.add_func("python_nodes/id_with_callback", value=tg.add_const(2))
+    idnode = tg.add_func("python_nodes::id_with_callback", value=tg.add_const(2))
     tg.set_outputs(out=idnode)
 
     assert (await server_client.run_graph(tg))["out"].try_autopython() == 2
@@ -352,7 +350,7 @@ async def test_do_callback(server_client: ServerRuntime):
 
     tk_g2 = TierkreisGraph()
     callbacknode = tk_g2.add_func(
-        "python_nodes/do_callback",
+        "python_nodes::do_callback",
         graph=tk_g2.input["in_graph"],
         value=tk_g2.input["in_value"],
     )
@@ -367,15 +365,13 @@ async def test_reports_error(server_client: ServerRuntime):
     pow_g.set_outputs(
         value=pow_g.add_tag(
             Labels.BREAK,
-            value=pow_g.add_func(
-                "builtin/ipow", a=pow_g.add_const(2), b=pow_g.input["value"]
-            ),
+            value=pow_g.add_func("ipow", a=pow_g.add_const(2), b=pow_g.input["value"]),
         )
     )
     loop_g = TierkreisGraph()
     loop_g.set_outputs(
         value=loop_g.add_func(
-            "builtin/loop", body=loop_g.add_const(pow_g), value=loop_g.input["value"]
+            "loop", body=loop_g.add_const(pow_g), value=loop_g.input["value"]
         )
     )
 
@@ -387,8 +383,7 @@ async def test_reports_error(server_client: ServerRuntime):
         await server_client.run_graph(loop_g, value=-1)
 
 
-_foo_func = TierkreisFunction(
-    "foo",
+_foo_func = FunctionDeclaration(
     TypeScheme(
         {"a": StarKind()},
         [],
@@ -396,7 +391,7 @@ _foo_func = TierkreisFunction(
             inputs=Row({"value": VarType("a")}, None),
             outputs=Row({"res": PairType(VarType("a"), IntType())}, None),
         ),
-    ),
+    ).to_proto(),
     "no docs",
     ["value"],
     ["res"],
@@ -408,8 +403,13 @@ def test_infer_graph_types():
     foo = tg.add_func("foo", value=tg.add_const(3))
     tg.set_outputs(out=foo["res"])
     with pytest.raises(TierkreisTypeErrors, match="unknown function 'foo'"):
-        infer_graph_types(tg, [])
-    tg = infer_graph_types(tg, [_foo_func])
+        infer_graph_types(tg, Signature.empty())
+    sig = Signature(
+        root=Namespace(
+            functions={"foo": _foo_func},
+        ),
+    )
+    tg = infer_graph_types(tg, sig)
     out_type = tg.get_edge(NodePort(foo, "res"), NodePort(tg.output, "out")).type_
     assert out_type == PairType(IntType(), IntType())
 
@@ -421,7 +421,7 @@ async def test_infer_graph_types_with_sig(client: RuntimeClient):
 
     tg = TierkreisGraph()
     mkp = tg.add_func(
-        sigs["builtin"].functions["make_pair"],
+        "make_pair",
         first=tg.input["in"],
         second=tg.add_const(3),
     )
@@ -437,10 +437,17 @@ async def test_infer_graph_types_with_sig(client: RuntimeClient):
 
 @pytest.mark.asyncio
 async def test_infer_graph_types_with_inputs(client: RuntimeClient):
-    funcs = [
-        (await client.get_signature())["python_nodes"].functions["id_py"],
-        _foo_func,
-    ]
+    ns = Namespace(
+        functions={"foo": _foo_func},
+        subspaces={
+            "python_nodes": (await client.get_signature()).root.subspaces[
+                "python_nodes"
+            ]
+        },
+    )
+    funcs = Signature(
+        root=ns,
+    )
     tg = TierkreisGraph()
     foo = tg.add_func("foo", value=tg.input["inp"])
     tg.set_outputs(out=foo["res"])
@@ -486,3 +493,18 @@ def test_merge_copies():
 
     assert tg.n_nodes == 3
     assert sum(1 for _ in tg.edges()) == 6
+
+
+@pytest.mark.asyncio
+async def test_subspaces(server_client: ServerRuntime):
+    tg = TierkreisGraph()
+    idnode = tg.add_func("python_nodes::subspace::increment", value=tg.add_const(0))
+    tg.set_outputs(out=idnode)
+
+    assert (await server_client.run_graph(tg))["out"].try_autopython() == 2
+
+    tg = TierkreisGraph()
+    idnode = tg.add_func("python_nodes::increment", value=tg.add_const(0))
+    tg.set_outputs(out=idnode)
+
+    assert (await server_client.run_graph(tg))["out"].try_autopython() == 1

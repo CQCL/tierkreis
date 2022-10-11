@@ -2,6 +2,6 @@
 # (InferGraphTypesRequest and InferGraphTypesResponse)
 def infer_graph_types(req: bytes) -> bytes: ...
 
-# Outputs are serialized protobufs
-# List of FunctionDeclaration
-def builtin_namespace() -> list[bytes]: ...
+# Output is serialized protobuf
+# Namespace
+def builtin_namespace() -> bytes: ...

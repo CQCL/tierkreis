@@ -23,12 +23,15 @@ from typing import (
     get_args,
     get_origin,
     get_type_hints,
+    overload,
 )
 
 from yachalk import chalk
 
 from tierkreis.core import Labels
-from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.function import FunctionDeclaration, FunctionName
+from tierkreis.core.signature import Namespace as SigNamespace
+from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
     FunctionNode,
@@ -44,10 +47,9 @@ from tierkreis.core.tierkreis_graph import (
     to_nodeport,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import TierkreisTypeErrors
+from tierkreis.core.types import TierkreisTypeErrors, TypeScheme
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import TierkreisValue, TKVal1, tkvalue_to_tktype
-from tierkreis.frontend.runtime_client import NamespaceDefs, RuntimeSignature
 from tierkreis.frontend.type_inference import infer_graph_types
 
 if TYPE_CHECKING:
@@ -90,10 +92,6 @@ def _source_graph(s: ValueSource) -> TierkreisGraph:
     )
 
 
-Sig = Union[RuntimeSignature, Iterable[TierkreisFunction]]
-OptSig = Optional[Sig]
-
-
 __state: ContextVar["GraphBuilder"] = ContextVar("state")
 
 
@@ -124,6 +122,9 @@ def _capture_label(idx: int) -> PortID:
     return f"_c{idx}"
 
 
+OptSig = Optional[Signature]
+
+
 class GraphBuilder(AbstractContextManager):
     graph: TierkreisGraph
     inputs: dict[str, Optional["TierkreisType"]]
@@ -152,9 +153,7 @@ class GraphBuilder(AbstractContextManager):
             return self.graph.input[name]
         raise RuntimeError("Input not declared.")
 
-    def with_type_check(
-        self, signatures: Union[RuntimeSignature, Iterable[TierkreisFunction]]
-    ) -> "GraphBuilder":
+    def with_type_check(self, signatures: Signature) -> "GraphBuilder":
         self.sig = signatures
         return self
 
@@ -228,7 +227,7 @@ def _partial_thunk(
         thunk = bg.graph.add_const(thunk.graph)[Labels.VALUE]
     if captured:
         return bg.add_node_to_graph(
-            FunctionNode("builtin/partial"),
+            FunctionNode(FunctionName("partial")),
             thunk=thunk,
             **{k: v for v, k in captured.items()},
         )[Labels.VALUE]
@@ -441,7 +440,7 @@ class Thunk(_CallAddNode):
         self, graph_src: ValueSource, input_order: list[str], output_order: list[str]
     ):
         self.graph_src = graph_src
-        super().__init__(FunctionNode("builtin/eval"), input_order, output_order)
+        super().__init__(FunctionNode(FunctionName("eval")), input_order, output_order)
 
     def __call__(self, *args: ValueSource, **kwargs: ValueSource) -> NodeRef:
         assert "thunk" not in kwargs
@@ -500,7 +499,7 @@ def loop(name: Optional[str] = None, sig: OptSig = None):
                 f(Input(Labels.VALUE))
 
             loop_node = current_builder().add_node_to_graph(
-                FunctionNode("builtin/loop"),
+                FunctionNode(FunctionName("loop")),
                 body=_partial_thunk(sub_build, sub_build.captured),
                 value=initial,
             )
@@ -589,7 +588,7 @@ class _CaseScope(GraphBuilder, ABC):
             thunk_port = _partial_thunk(thunk_port, partial_inps)
 
             self.nref = current_builder().add_node_to_graph(
-                FunctionNode("builtin/eval"), thunk=thunk_port
+                FunctionNode(FunctionName("eval")), thunk=thunk_port
             )
         self.__variant_handlers.reset(self._token)
 
@@ -643,7 +642,7 @@ class IfElse(_CaseScope):
         assert len(handlers) == 2
         bg = current_builder()
         return bg.add_node_to_graph(
-            FunctionNode("builtin/switch"),
+            FunctionNode(FunctionName("switch")),
             False,
             pred=self.predicate,
             if_true=bg.graph.add_const(handlers["if"].graph),
@@ -733,17 +732,14 @@ class Unpack(StablePortFunc):
         existing_edge = g.out_edge_from_port(np)
         if existing_edge is not None:
             target_node = g[existing_edge.target.node_ref]
-            if not (
-                isinstance(target_node, FunctionNode)
-                and target_node.function_name == "builtin/unpack_struct"
-            ):
+            if not target_node.is_unpack_node():
                 raise ValueError(
                     "Cannot unpack port wired to something "
                     f" other than an unpack_struct: {target_node}"
                 )
             unpack_node = existing_edge.target.node_ref
         else:
-            unpack_node = g.add_func("builtin/unpack_struct", struct=np)
+            unpack_node = g.add_func("unpack_struct", struct=np)
         return unpack_node[self.field_name]
 
     def source_graph(self) -> "TierkreisGraph":
@@ -762,8 +758,8 @@ def _arg_str(args: Dict[str, "TierkreisType"], order: Iterable[str]) -> str:
 
 
 # can be inlined inside Function when tksl removed
-def _func_sig(name: str, func: "TierkreisFunction"):
-    graph_type = cast("GraphType", func.type_scheme.body)
+def _func_sig(name: str, func: FunctionDeclaration):
+    graph_type = cast("GraphType", TypeScheme.from_proto(func.type_scheme).body)
     irest = graph_type.inputs.rest
     orest = graph_type.outputs.rest
     irest = f", {chalk.yellow('#')}: {irest}" if irest else ""
@@ -776,33 +772,53 @@ def _func_sig(name: str, func: "TierkreisFunction"):
 
 
 class Function(_CallAddNode):
-    f: TierkreisFunction
+    f: FunctionDeclaration
+    name: FunctionName
 
-    def __init__(self, f: TierkreisFunction):
+    def __init__(self, f: FunctionDeclaration, name: FunctionName):
         self.f = f
-        super().__init__(FunctionNode(f.name), f.input_order, f.output_order)
+        self.name = name
+        super().__init__(FunctionNode(name), f.input_order, f.output_order)
 
     def signature_string(self) -> str:
-        return _func_sig(self.f.name, self.f)
+        return _func_sig(self.name.name, self.f)
 
 
-class Namespace(Mapping[str, Function]):
-    def __init__(self, defs: NamespaceDefs) -> None:
-        self.__defs = defs
-        for name, ndef in defs.functions.items():
+class Namespace(Mapping[str, "Namespace"]):
+    @overload
+    def __init__(self, args: Signature, /):
+        ...
+
+    @overload
+    def __init__(self, args: SigNamespace, *, _prefix: list[str]):
+        """For internal use only."""
+        ...
+
+    def __init__(self, args: Union[Signature, SigNamespace], **kwargs: list[str]):
+        if isinstance(args, Signature):
+            namespace = args.root
+            prefix = []
+        else:
+            namespace = args
+            prefix = kwargs["_prefix"]
+        for name, ndef in namespace.functions.items():
             # allows auto completion of function names in Jupyter environment
-            setattr(self, name, Function(ndef))
+            setattr(self, name, Function(ndef, FunctionName(name, prefix)))
+        self.__subspaces: Mapping[str, "Namespace"] = {
+            name: Namespace(ns, _prefix=prefix + [name])
+            for name, ns in namespace.subspaces.items()
+        }
 
     def __getattr__(
         self, attr_name: str
     ) -> Function:  # This is here just to placate mypy
         raise AttributeError(attr_name)
 
-    def __getitem__(self, __k: str) -> Function:
-        return Function(self.__defs.functions[__k])
+    def __getitem__(self, __k: str) -> "Namespace":
+        return self.__subspaces[__k]
 
     def __len__(self) -> int:
-        return self.__defs.functions.__len__()
+        return self.__subspaces.__len__()
 
     def __iter__(self) -> Iterator[str]:
-        return self.__defs.functions.__iter__()
+        return self.__subspaces.__iter__()

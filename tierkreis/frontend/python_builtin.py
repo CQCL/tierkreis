@@ -13,7 +13,7 @@ from tierkreis.frontend.type_inference import builtin_namespace
 from tierkreis.worker import Namespace, Worker
 from tierkreis.worker.namespace import Function
 
-namespace = Namespace("builtin")
+namespace = Namespace("_root")
 _builtin_defs = builtin_namespace()
 worker = Worker()
 

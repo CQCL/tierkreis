@@ -12,6 +12,8 @@ from tierkreis.worker import Namespace, Worker
 from tierkreis.worker.prelude import start_worker_server
 
 namespace = Namespace("python_nodes")
+subspace = Namespace("subspace")
+namespace.add_subspace(subspace)
 worker = Worker()
 
 A = TypeVar("A")
@@ -21,6 +23,18 @@ A = TypeVar("A")
 async def id_py(value: A) -> A:
     "Identity function which passes on the value on port 'value'."
     return value
+
+
+@namespace.function()
+async def increment(value: int) -> int:
+    return value + 1
+
+
+@subspace.function(name="increment")
+async def increment_subspace(value: int) -> int:
+    # Intentionally give a different definition in the subspace
+    # to check names are being resolved correctly
+    return value + 2
 
 
 # This deliberately has the wrong python type annotation because

@@ -23,14 +23,13 @@ import betterproto
 import networkx as nx  # type: ignore
 
 import tierkreis.core.protos.tierkreis.graph as pg
-from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.function import FunctionName
 from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue
 
 if TYPE_CHECKING:
     from tierkreis.frontend.builder import Unpack
 
-FunctionID = str
 PortID = str
 
 
@@ -49,7 +48,9 @@ class TierkreisNode(ABC):
         elif name == "box":
             result = BoxNode(TierkreisGraph.from_proto(cast(pg.Graph, out_node)))
         elif name == "function":
-            result = FunctionNode(cast(FunctionID, out_node))
+            result = FunctionNode(
+                FunctionName.from_proto(cast(pg.FunctionName, out_node))
+            )
         elif name == "input":
             result = InputNode()
         elif name == "output":
@@ -68,10 +69,13 @@ class TierkreisNode(ABC):
 
     def is_discard_node(self) -> bool:
         """Delete nodes have some special behaviour, check for it."""
-        return getattr(self, "function_name", "") == "builtin/discard"
+        return False
 
     def is_copy_node(self) -> bool:
-        return getattr(self, "function_name", "") == "builtin/copy"
+        return False
+
+    def is_unpack_node(self) -> bool:
+        return False
 
 
 @dataclass(frozen=True)
@@ -104,10 +108,19 @@ class BoxNode(TierkreisNode):
 
 @dataclass(frozen=True)
 class FunctionNode(TierkreisNode):
-    function_name: str
+    function_name: FunctionName
 
     def to_proto(self) -> pg.Node:
-        return pg.Node(function=self.function_name)
+        return pg.Node(function=self.function_name.to_proto())
+
+    def is_discard_node(self) -> bool:
+        return self.function_name == FunctionName("discard")
+
+    def is_copy_node(self) -> bool:
+        return self.function_name == FunctionName("copy")
+
+    def is_unpack_node(self) -> bool:
+        return self.function_name == FunctionName("unpack_struct")
 
 
 @dataclass(frozen=True)
@@ -270,14 +283,14 @@ class TierkreisGraph:
 
     def add_func(
         self,
-        _tk_function: Union[str, TierkreisFunction],
+        _tk_function: Union[str, FunctionName],
         _tk_node_name: Optional[str] = None,
         /,
         **kwargs: IncomingWireType,
     ) -> NodeRef:
-        f_name = (
-            _tk_function.name
-            if isinstance(_tk_function, TierkreisFunction)
+        f_name: FunctionName = (
+            FunctionName.parse(_tk_function)
+            if isinstance(_tk_function, str)
             else _tk_function
         )
 
@@ -534,25 +547,23 @@ class TierkreisGraph:
         )
 
     def discard(self, out_port: NodePort) -> None:
-        _ = self.add_func("builtin/discard", value=out_port)
+        _ = self.add_func("discard", value=out_port)
 
     def make_pair(
         self, first_port: IncomingWireType, second_port: IncomingWireType
     ) -> NodePort:
-        make_n = self.add_func(
-            "builtin/make_pair", first=first_port, second=second_port
-        )
+        make_n = self.add_func("make_pair", first=first_port, second=second_port)
         return make_n["pair"]
 
     def unpack_pair(self, pair_port: IncomingWireType) -> Tuple[NodePort, NodePort]:
-        unp_n = self.add_func("builtin/unpack_pair", pair=pair_port)
+        unp_n = self.add_func("unpack_pair", pair=pair_port)
         return unp_n["first"], unp_n["second"]
 
     def make_vec(self, element_ports: List[IncomingWireType]) -> NodePort:
         vec_port = self.add_const(list())["value"]
 
         for port in element_ports:
-            vec_port = self.add_func("builtin/push", vec=vec_port, item=port)["vec"]
+            vec_port = self.add_func("push", vec=vec_port, item=port)["vec"]
 
         return vec_port
 
@@ -560,13 +571,13 @@ class TierkreisGraph:
         curr_arr = vec_port
         outports: List[NodePort] = []
         for _ in range(n_elements):
-            pop = self.add_func("builtin/pop", vec=curr_arr)
+            pop = self.add_func("pop", vec=curr_arr)
             curr_arr = pop["vec"]
             outports.insert(0, pop["item"])
         return outports
 
     def copy_value(self, value: IncomingWireType) -> Tuple[NodePort, NodePort]:
-        copy_n = self.add_func("builtin/copy", value=value)
+        copy_n = self.add_func("copy", value=value)
 
         return copy_n["value_0"], copy_n["value_1"]
 

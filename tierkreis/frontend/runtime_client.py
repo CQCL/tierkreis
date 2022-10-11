@@ -24,9 +24,9 @@ from grpclib.events import SendRequest, listen
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
-from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import TierkreisGraph
-from tierkreis.core.types import TierkreisTypeErrors, TypeScheme
+from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
 
 if TYPE_CHECKING:
@@ -49,19 +49,6 @@ class RuntimeHTTPError(Exception):
             f" failed with code {self.code}"
             f" and content '{self.content}'."
         )
-
-
-T = TypeVar("T")
-
-
-@dataclass
-class NamespaceDefs:
-    functions: Dict[str, TierkreisFunction]
-    aliases: Dict[str, TypeScheme]
-
-
-# Namespaces and functions available from a runtime signature
-RuntimeSignature = dict[str, NamespaceDefs]
 
 
 @dataclass(frozen=True)
@@ -88,7 +75,7 @@ StubType = TypeVar("StubType", bound="ServiceStub")
 
 class RuntimeClient(ABC):
     @abstractmethod
-    async def get_signature(self) -> RuntimeSignature:
+    async def get_signature(self) -> Signature:
         ...
 
     @abstractmethod
@@ -134,8 +121,8 @@ class ServerRuntime(RuntimeClient):
     def _type_stub(self) -> ps.TypeInferenceStub:
         return self._stub_gen("type", ps.TypeInferenceStub)
 
-    async def get_signature(self) -> RuntimeSignature:
-        return signature_from_proto(
+    async def get_signature(self) -> Signature:
+        return Signature.from_proto(
             await self._signature_stub.list_functions(ps.ListFunctionsRequest())
         )
 
@@ -299,23 +286,6 @@ def with_runtime_client(worker: "Worker") -> Callable:
         return wrapped_func
 
     return decorator
-
-
-def signature_from_proto(pr_sig: ps.ListFunctionsResponse) -> RuntimeSignature:
-    sig: RuntimeSignature = {}
-    for name, entry in pr_sig.functions.items():
-        namespace, fname = name.split("/", 2)
-        func = TierkreisFunction.from_proto(entry)
-        ns = sig.setdefault(namespace, NamespaceDefs({}, {}))
-        ns.functions[fname] = func
-
-    for name, type_proto in pr_sig.aliases.items():
-        namespace, alias_name = name.split("/", 2)
-        type_ = TypeScheme.from_proto(type_proto)
-        ns = sig.setdefault(namespace, NamespaceDefs({}, {}))
-        ns.aliases[alias_name] = type_
-
-    return sig
 
 
 class RuntimeLaunchFailed(Exception):

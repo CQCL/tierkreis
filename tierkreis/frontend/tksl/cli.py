@@ -14,16 +14,22 @@ import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis import TierkreisGraph
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
-from tierkreis.core.types import StructType, TierkreisTypeErrors
+from tierkreis.core.signature import Signature
+from tierkreis.core.types import (
+    GraphType,
+    StructType,
+    TierkreisType,
+    TierkreisTypeErrors,
+)
 from tierkreis.core.values import StructValue, TierkreisValue
 from tierkreis.frontend import ServerRuntime, local_runtime
 from tierkreis.frontend.builder import _func_sig
 from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
-from tierkreis.frontend.runtime_client import RuntimeSignature, TaskHandle
+from tierkreis.frontend.runtime_client import TaskHandle
 
 if TYPE_CHECKING:
-    from tierkreis.core.function import TierkreisFunction
+    from tierkreis.core.function import FunctionDeclaration
 
 LOCAL_SERVER_PATH = Path(__file__).parent / "../../../../target/debug/tierkreis-server"
 RUNTIME_LABELS = ["docker", "local", "myqos"]
@@ -365,12 +371,19 @@ async def status(ctx: click.Context, task: Optional[str]):
 PORT_RE = re.compile(r"([\w]+):")
 
 
-def print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[str]):
-    print(chalk.bold(f"Namespace: {namespace}"))
+def _print_namespace(sig: Signature, namespace: List[str], function: Optional[str]):
+    namespace_str = "::".join(namespace)
+    root = "_root"
+
+    print(chalk.bold(f"Namespace: {root if namespace == [] else namespace_str}"))
     print()
     print(chalk.bold(f"Aliases and Struct definitions"))
 
-    for alias, type_scheme in sig[namespace].aliases.items():
+    for alias, type_scheme in sig.aliases.items():
+        prefix = f"{namespace_str}::"
+        if not alias.startswith(prefix):
+            continue
+        alias = alias[len(prefix) :]
         type_ = type_scheme.body
         if isinstance(type_, StructType):
             alias_string = type_.anon_name()
@@ -384,17 +397,17 @@ def print_namespace(sig: RuntimeSignature, namespace: str, function: Optional[st
     print()
     print(chalk.bold(f"Functions"))
 
-    names_dict = sig[namespace].functions
+    names_dict = sig.root.get(namespace).functions
     func_names = [function] if function else list(names_dict.keys())
     for name in sorted(func_names):
         _print_func(name, names_dict[name])
         print()
 
 
-def _print_func(name: str, func: "TierkreisFunction"):
+def _print_func(name: str, func: "FunctionDeclaration"):
     print(_func_sig(name, func))
-    if func.docs:
-        print(chalk.green(func.docs))
+    if func.description:
+        print(chalk.green(func.description))
 
 
 @cli.command()
@@ -414,8 +427,10 @@ async def signature(
         print(chalk.bold(f"Runtime: {label}"))
         print()
         sig = await client.get_signature()
-        namespaces = [namespace] if namespace else list(sig.keys())
+        namespaces: list[list[str]] = (
+            [namespace.split("::")] if namespace else sig.root.all_namespaces()
+        )
 
-        for namespace in namespaces:
-            print_namespace(sig, namespace, function)
+        for ns in namespaces:
+            _print_namespace(sig, ns, function)
             print()

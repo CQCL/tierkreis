@@ -16,7 +16,7 @@ def _loop_graph() -> TierkreisGraph:
     elg.set_outputs(
         value=elg.add_tag(
             Labels.CONTINUE,
-            value=elg.add_func("builtin/iadd", a=elg.input["x"], b=elg.add_const(1)),
+            value=elg.add_func("iadd", a=elg.input["x"], b=elg.add_const(1)),
         )
     )
 
@@ -24,10 +24,10 @@ def _loop_graph() -> TierkreisGraph:
     v1, v2 = tg.copy_value(tg.input["value"])
     tg.set_outputs(
         value=tg.add_func(
-            "builtin/eval",
+            "eval",
             thunk=tg.add_func(
-                "builtin/switch",
-                pred=tg.add_func("builtin/igt", a=v1, b=tg.add_const(5)),
+                "switch",
+                pred=tg.add_func("igt", a=v1, b=tg.add_const(5)),
                 if_true=tg.add_const(ifg),
                 if_false=tg.add_const(elg),
             ),
@@ -42,26 +42,26 @@ def sample_graph() -> TierkreisGraph:
     one_graph = TierkreisGraph()
     one_graph.set_outputs(
         value=one_graph.add_func(
-            "builtin/iadd", a=one_graph.input["value"], b=one_graph.input["other"]
+            "iadd", a=one_graph.input["value"], b=one_graph.input["other"]
         )
     )
     many_graph = TierkreisGraph()
     many_graph.discard(many_graph.input["other"])
     many_graph.set_outputs(
-        value=many_graph.add_func("builtin/id", value=many_graph.input["value"])
+        value=many_graph.add_func("id", value=many_graph.input["value"])
     )
 
     tg = TierkreisGraph()
     tg.set_outputs(
         out=tg.input["inp"],
-        b=tg.add_func("builtin/iadd", a=tg.add_const(1), b=tg.add_const(3)),
+        b=tg.add_func("iadd", a=tg.add_const(1), b=tg.add_const(3)),
         tag=tg.add_tag("boo", value=tg.add_const("world")),
         add=tg.add_func(
-            "python_nodes/python_add", a=tg.add_const(23), b=tg.add_const(123)
+            "python_nodes::python_add", a=tg.add_const(23), b=tg.add_const(123)
         ),
-        _and=tg.add_func("builtin/and", a=tg.add_const(True), b=tg.add_const(False)),
+        _and=tg.add_func("and", a=tg.add_const(True), b=tg.add_const(False)),
         result=tg.add_func(
-            "builtin/eval",
+            "eval",
             thunk=tg.add_match(
                 tg.input["vv"],
                 one=tg.add_const(one_graph),
@@ -70,7 +70,7 @@ def sample_graph() -> TierkreisGraph:
             other=tg.add_const(2),
         ),
         loop_out=tg.add_func(
-            "builtin/loop", body=tg.add_const(_loop_graph()), value=tg.add_const(2)
+            "loop", body=tg.add_const(_loop_graph()), value=tg.add_const(2)
         )["value"],
     )
     return tg
@@ -109,7 +109,7 @@ async def test_callback(sample_graph: TierkreisGraph, pyruntime: PyRuntime):
 @pytest.mark.asyncio
 async def test_builtin_signature(server_client: ServerRuntime):
     # TODO test all the implementations as well!
-    remote_ns = (await server_client.get_signature())["builtin"].functions
+    remote_ns = (await server_client.get_signature()).root.functions
     assert remote_ns.keys() == python_builtin.namespace.functions.keys()
     for f, tkfunc in python_builtin.namespace.functions.items():
         remote_func = remote_ns[f]

@@ -1,10 +1,13 @@
 """Implementation of simple python-only runtime."""
 import asyncio
+from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, cast
 
 import networkx as nx  # type: ignore
 
 from tierkreis.core import Labels
+from tierkreis.core.function import FunctionName
+from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
     ConstNode,
@@ -21,11 +24,7 @@ from tierkreis.core.tierkreis_graph import (
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import StructValue, TierkreisValue, VariantValue
 from tierkreis.frontend import python_builtin
-from tierkreis.frontend.runtime_client import (
-    NamespaceDefs,
-    RuntimeClient,
-    RuntimeSignature,
-)
+from tierkreis.frontend.runtime_client import RuntimeClient
 from tierkreis.frontend.type_inference import infer_graph_types
 
 if TYPE_CHECKING:
@@ -47,20 +46,12 @@ class InputNotFound(_ValueNotFound):
     """Node input expected but not found."""
 
 
-class NamespaceNotFound(Exception):
-    """Namespace expected but not found."""
-
-    def __init__(self, ns: str) -> None:
-        self.namespace = ns
-        super().__init__(f"Namespace {ns} not found in runtime.")
-
-
 class FunctionNotFound(Exception):
     """Function expected but not found."""
 
-    def __init__(self, ns: str) -> None:
-        self.function = ns
-        super().__init__(f"Function {ns} not found in namespace.")
+    def __init__(self, fname: FunctionName) -> None:
+        self.function = fname
+        super().__init__(f"Function {fname} not found in namespace.")
 
 
 class PyRuntime(RuntimeClient):
@@ -70,8 +61,8 @@ class PyRuntime(RuntimeClient):
     def __init__(self, namespaces: Iterable["Namespace"], num_workers: int = 1):
         """Initialise with locally available namespaces, and the number of
         workers (asyncio tasks) to use in execution."""
-        self.namespaces = {ns.name: ns for ns in namespaces}
-        self.namespaces["builtin"] = python_builtin.namespace
+        self.root = deepcopy(python_builtin.namespace)
+        self.root.subspaces = {ns.name: ns for ns in namespaces}
         self.num_workers = num_workers
         self.callback: Callable[[TierkreisEdge, TierkreisValue], None]
         self.set_callback(None)
@@ -123,20 +114,15 @@ class PyRuntime(RuntimeClient):
 
             inps = {e.target.port: val for e, val in in_values}
             if isinstance(tk_node, FunctionNode):
-                ns, fnam = tk_node.function_name.split("/", 2)
-                if ns == "builtin" and fnam == "eval":
+                fname = tk_node.function_name
+                if fname.namespaces == [] and fname.name == "eval":
                     return await self._run_eval(inps)
-                elif ns == "builtin" and fnam == "loop":
+                elif fname.namespaces == [] and fname.name == "loop":
                     return await self._run_loop(inps)
                 else:
-                    try:
-                        namespace = self.namespaces[ns]
-                    except KeyError as e:
-                        raise NamespaceNotFound(ns) from e
-                    try:
-                        function = namespace.functions[fnam]
-                    except KeyError as e:
-                        raise FunctionNotFound(fnam) from e
+                    function = self.root.get_function(fname)
+                    if function is None:
+                        raise FunctionNotFound(fname)
                     return (await function.run(StructValue(inps))).values
 
             elif isinstance(tk_node, BoxNode):
@@ -247,18 +233,8 @@ class PyRuntime(RuntimeClient):
         newg.set_outputs(**{out: box[out] for out in thunk.outputs()})
         return {Labels.THUNK: GraphValue(newg)}
 
-    async def get_signature(self) -> RuntimeSignature:
-        return self._get_signature()
-
-    def _get_signature(self) -> RuntimeSignature:
-        return RuntimeSignature(
-            map_vals(
-                self.namespaces,
-                lambda ns: NamespaceDefs(
-                    map_vals(ns.functions, lambda f: f.declaration), {}
-                ),
-            )
-        )
+    async def get_signature(self) -> Signature:
+        return self.root.extract_signature()
 
     async def type_check_graph(self, tg) -> TierkreisGraph:
         return infer_graph_types(tg, await self.get_signature())

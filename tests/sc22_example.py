@@ -66,11 +66,12 @@ def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
 
 async def run_test(cl: RuntimeClient):
     sig = await cl.get_signature()
+    root = Namespace(sig)
     bi, pt, sc, qm = (
-        Namespace(sig["builtin"]),
-        Namespace(sig["pytket"]),
-        Namespace(sig["sc22"]),
-        Namespace(sig["qermit"]),
+        root["builtin"],
+        root["pytket"],
+        root["sc22"],
+        root["qermit"],
     )
 
     def duplicate(n: int, np):

@@ -11,7 +11,9 @@ import opentelemetry.context
 import opentelemetry.propagate
 import opentelemetry.trace
 
-from tierkreis.core.function import TierkreisFunction
+from tierkreis.core.function import FunctionDeclaration, FunctionName
+from tierkreis.core.signature import Namespace as SigNamespace
+from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
     Constraint,
@@ -42,7 +44,7 @@ class Function:
     """Registered python function."""
 
     run: Callable[[StructValue], Awaitable[StructValue]]
-    declaration: TierkreisFunction
+    declaration: FunctionDeclaration
 
 
 def _snake_to_pascal(name: str) -> str:
@@ -79,15 +81,20 @@ class Namespace:
     name: str
     functions: dict[str, Function]
     aliases: dict[str, TypeScheme]
+    subspaces: dict[str, "Namespace"]
 
     def __init__(self, name: str):
         self.name = name
         self.functions = {}
         self.aliases = {}
+        self.subspaces = {}
 
     def add_alias(self, name, type_: Type) -> Type:
         self.aliases[name] = TypeScheme({}, [], TierkreisType.from_python(type_))
         return type_
+
+    def add_subspace(self, namespace: "Namespace"):
+        self.subspaces[namespace.name] = namespace
 
     def add_named_struct(self, name, type_: Type) -> Type:
         register_struct_convertible(type_)
@@ -97,6 +104,34 @@ class Namespace:
         tk_type.name = name
         self.aliases[name] = TypeScheme({}, [], tk_type)
         return type_
+
+    def extract_contents(self) -> SigNamespace:
+        return SigNamespace(
+            functions={k: v.declaration for k, v in self.functions.items()},
+            subspaces={k: v.extract_contents() for k, v in self.subspaces.items()},
+        )
+
+    def extract_aliases(self) -> dict[str, TypeScheme]:
+        return self.aliases | {
+            f"{name}::{k}": v
+            for name, ns in self.subspaces.items()
+            for k, v in ns.extract_aliases().items()
+        }
+
+    def extract_signature(self) -> Signature:
+        return Signature(
+            root=self.extract_contents(),
+            aliases=self.extract_aliases(),
+        )
+
+    def get_function(self, name: FunctionName) -> Optional[Function]:
+        ns = self
+        for x in name.namespaces:
+            if subns := ns.subspaces.get(x):
+                ns = subns
+            else:
+                return None
+        return ns.functions.get(name.name)
 
     def function(
         self,
@@ -200,10 +235,9 @@ class Namespace:
 
             self.functions[func_name] = Function(
                 run=wrapped_func,
-                declaration=TierkreisFunction(
-                    f"{self.name}/{func_name}",
-                    type_scheme=type_scheme,
-                    docs=getdoc(func) or "",
+                declaration=FunctionDeclaration(
+                    type_scheme=type_scheme.to_proto(),
+                    description=getdoc(func) or "",
                     input_order=_get_ordered_names(hint_inputs),
                     output_order=_get_ordered_names(hint_outputs),
                 ),

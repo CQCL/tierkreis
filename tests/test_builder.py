@@ -6,12 +6,8 @@ import pytest
 from tierkreis import TierkreisGraph
 from tierkreis.core import Labels
 from tierkreis.core.protos.tierkreis.graph import Graph
-from tierkreis.core.tierkreis_graph import (
-    ConstNode,
-    FunctionNode,
-    GraphValue,
-    TierkreisGraph,
-)
+from tierkreis.core.signature import Signature
+from tierkreis.core.tierkreis_graph import ConstNode, GraphValue, TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import IntType, MapType, StringType, VecType
 from tierkreis.core.utils import map_vals
@@ -50,7 +46,7 @@ from tierkreis.frontend.builder import (
     graph,
     loop,
 )
-from tierkreis.frontend.runtime_client import RuntimeClient, RuntimeSignature
+from tierkreis.frontend.runtime_client import RuntimeClient
 
 if TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import NodePort, NodeRef
@@ -116,10 +112,10 @@ def _vecs_graph_builder() -> TierkreisGraph:
 def _structs_graph() -> TierkreisGraph:
     tg = TierkreisGraph("g")
     factory = tg.add_func(
-        "builtin/make_struct",
+        "make_struct",
         **map_vals(dict(height=12.3, name="hello", age=23), tg.add_const),
     )
-    sturct = tg.add_func("builtin/unpack_struct", struct=factory["struct"])
+    sturct = tg.add_func("unpack_struct", struct=factory["struct"])
 
     tg.set_outputs(value=sturct["age"])
     tg.annotate_output("value", IntType())
@@ -138,9 +134,9 @@ def _structs_graph_builder(bi) -> TierkreisGraph:
 
 def _maps_graph() -> TierkreisGraph:
     tg = TierkreisGraph("g")
-    mp_val = tg.add_func("builtin/remove_key", map=tg.input["mp"], key=tg.add_const(3))
+    mp_val = tg.add_func("remove_key", map=tg.input["mp"], key=tg.add_const(3))
     ins = tg.add_func(
-        "builtin/insert_key",
+        "insert_key",
         map=mp_val["map"],
         **map_vals(dict(key=5, val="bar"), tg.add_const),
     )
@@ -175,7 +171,7 @@ def _tag_match_graph() -> TierkreisGraph:
     tg = TierkreisGraph("g")
     in_v = tg.add_tag("foo", value=tg.add_const(4))
     m = tg.add_match(in_v, foo=tg.add_const(id_graph))
-    e = tg.add_func("builtin/eval", thunk=m[Labels.THUNK])
+    e = tg.add_func("eval", thunk=m[Labels.THUNK])
     tg.set_outputs(value=e[Labels.VALUE])
     tg.annotate_output("value", IntType())
 
@@ -284,7 +280,7 @@ async def test_bigexample(client: RuntimeClient, bi) -> None:
 
 
 @pytest.fixture()
-async def sig(client: RuntimeClient) -> RuntimeSignature:
+async def sig(client: RuntimeClient) -> Signature:
     return await client.get_signature()
 
 
@@ -294,14 +290,14 @@ def dec_checks_types(request) -> bool:
 
 
 @pytest.fixture()
-def graph_dec(dec_checks_types: bool, sig: RuntimeSignature) -> _GraphDecoratorType:
+def graph_dec(dec_checks_types: bool, sig: Signature) -> _GraphDecoratorType:
     # provide decorators with and without incremental type checking
     return graph(sig=sig) if dec_checks_types else graph()
 
 
 @pytest.fixture()
-def bi(sig: RuntimeSignature) -> Namespace:
-    return Namespace(sig["builtin"])
+def bi(sig: Signature) -> Namespace:
+    return Namespace(sig)
 
 
 def double(bi) -> TierkreisGraph:
@@ -330,7 +326,7 @@ async def test_copy(
 
     @graph_dec
     def copy_graph(y: Input[IntValue]) -> Output[CopyOut]:
-        return Output(*bi["copy"](y))
+        return Output(*bi.copy(y))
 
     out = await client.run_graph(copy_graph(), y=10)
     assert out == {"a": IntValue(10), "b": IntValue(10)}
@@ -364,10 +360,10 @@ async def test_ifelse(
 
 
 def num_copies_discards(g: TierkreisGraph) -> Tuple[int, int]:
-    nodefuncs = [
-        n.function_name for n in g.nodes().values() if isinstance(n, FunctionNode)
-    ]
-    return nodefuncs.count("builtin/copy"), nodefuncs.count("builtin/discard")
+    return (
+        sum(1 for n in g.nodes().values() if n.is_copy_node()),
+        sum(1 for n in g.nodes().values() if n.is_discard_node()),
+    )
 
 
 def constant_subgraphs(g: TierkreisGraph) -> list[TierkreisGraph]:
@@ -512,7 +508,7 @@ async def test_match(
 
 
 @pytest.fixture()
-def _pair_builder(bi: Namespace, sig: RuntimeSignature) -> TierkreisGraph:
+def _pair_builder(bi: Namespace, sig: Signature) -> TierkreisGraph:
     @dataclass
     class Pair(TierkreisStruct):
         first: IntValue
@@ -526,7 +522,7 @@ def _pair_builder(bi: Namespace, sig: RuntimeSignature) -> TierkreisGraph:
 
 
 @pytest.fixture()
-def _if_no_inputs(bi: Namespace, sig: RuntimeSignature) -> TierkreisGraph:
+def _if_no_inputs(bi: Namespace, sig: Signature) -> TierkreisGraph:
     @graph(sig=sig)
     def main(pred: Input[BoolValue]) -> Output[IntValue]:
         with IfElse(pred) as ifelse:
@@ -622,17 +618,17 @@ async def test_Copyable(
 async def test_unpacking(
     bi,
     client: RuntimeClient,
-    sig: RuntimeSignature,
+    sig: Signature,
     graph_dec: _GraphDecoratorType,
     dec_checks_types: bool,
 ) -> None:
     def num_unpacks_discards() -> Tuple[int, int]:
-        funcs = [
-            getattr(n, "function_name", "") for n in current_graph().nodes().values()
-        ]
-        return funcs.count("builtin/unpack_struct"), funcs.count("builtin/discard")
+        return (
+            sum(1 for n in current_graph().nodes().values() if n.is_unpack_node()),
+            sum(1 for n in current_graph().nodes().values() if n.is_discard_node()),
+        )
 
-    pn = Namespace(sig["python_nodes"])
+    pn = bi["python_nodes"]
     ins_disc = int(dec_checks_types)
 
     @graph_dec
@@ -671,8 +667,10 @@ async def test_unpacking(
 
 
 def num_copies_unpacks() -> Tuple[int, int]:
-    funcs = [getattr(n, "function_name", "") for n in current_graph().nodes().values()]
-    return funcs.count("builtin/copy"), funcs.count("builtin/unpack_struct")
+    return (
+        sum(1 for n in current_graph().nodes().values() if n.is_copy_node()),
+        sum(1 for n in current_graph().nodes().values() if n.is_unpack_node()),
+    )
 
 
 def test_cant_unpack_original_after_copy(bi, graph_dec: _GraphDecoratorType) -> None:

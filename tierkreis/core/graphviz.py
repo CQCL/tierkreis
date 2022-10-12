@@ -396,7 +396,9 @@ def tierkreis_to_graphviz(
             # copy edge output types can be seen from the input
             edge_label = ""
         else:
-            edge_label = textwrap.fill(str(edge.type_), 20)
+            edge_label = textwrap.fill(
+                str(edge.type_), 20, fix_sentence_endings=True, break_long_words=False
+            )
         gv_graph.edge(
             src_nodeport,
             tgt_nodeport,

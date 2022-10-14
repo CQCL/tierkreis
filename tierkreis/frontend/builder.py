@@ -2,7 +2,7 @@ import inspect
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from functools import update_wrapper, wraps
 from itertools import count
 from types import TracebackType
@@ -122,6 +122,20 @@ def _capture_label(idx: int) -> PortID:
     return f"_c{idx}"
 
 
+@dataclass(frozen=True)
+class CaptureOutwards:
+    source_graph: TierkreisGraph
+    ref: NodeRef
+    contained: Optional["CaptureOutwards"] = None
+
+    def capture(self, incoming: ValueSource) -> ValueSource:
+        if self.contained is not None:
+            incoming = self.contained.capture(incoming)
+        new_name = _capture_label(len(self.source_graph.outputs()))
+        self.source_graph.set_outputs(**{new_name: _resolve(incoming)})
+        return self.ref[new_name]
+
+
 OptSig = Optional[Signature]
 
 
@@ -130,6 +144,7 @@ class GraphBuilder(AbstractContextManager):
     inputs: dict[str, Optional["TierkreisType"]]
     outputs: dict[str, Optional["TierkreisType"]]
     captured: dict[ValueSource, PortID]
+    inner_scopes: dict[TierkreisGraph, CaptureOutwards]
     sig: OptSig = None
     _state_token: Token["GraphBuilder"]
 
@@ -143,6 +158,7 @@ class GraphBuilder(AbstractContextManager):
         self.inputs = inputs or {}
         self.outputs = outputs or {}
         self.captured = {}
+        self.inner_scopes = {}
         self.sig = None
         for i, it in self.inputs.items():
             self.graph.discard(self.graph.input[i])
@@ -175,8 +191,12 @@ class GraphBuilder(AbstractContextManager):
     def capture(
         self, incoming: ValueSource, allow_existing: bool = False
     ) -> ValueSource:
-        if _source_graph(incoming) is self.graph:
+        source_graph = _source_graph(incoming)
+        if source_graph is self.graph:
             return incoming
+        inner_scope = self.inner_scopes.get(source_graph)
+        if inner_scope is not None:
+            return inner_scope.capture(incoming)
         if incoming in self.captured and not allow_existing:
             # This would generate two wires from the same NodePort
             raise ValueError(f"Already captured {incoming} as input to {self.graph}")
@@ -213,7 +233,7 @@ class GraphBuilder(AbstractContextManager):
         if self.sig is None:
             return
         try:
-            self.graph._graph = infer_graph_types(self.graph, self.sig)._graph
+            self.graph.update_graph(infer_graph_types(self.graph, self.sig))
         except TierkreisTypeErrors as te:
             raise IncrementalTypeError("Builder expression caused type error.") from te
             # TODO remove final entry in traceback?
@@ -284,6 +304,27 @@ class Box(_CallAddNode):
     def __init__(self, graph: TierkreisGraph):
         self.graph = graph
         super().__init__(BoxNode(graph), graph.input_order, graph.output_order)
+
+
+class Scope(GraphBuilder, ABC):
+    def __exit__(
+        self,
+        __exc_type: Optional[Type[BaseException]],
+        __exc_value: Optional[BaseException],
+        __traceback: Optional[TracebackType],
+    ) -> None:
+        super().__exit__(__exc_type, __exc_value, __traceback)
+
+        if not any((__exc_type, __exc_value, __traceback)):
+            graph = self.graph
+            box = Box(graph)
+            inputs = {v: k for k, v in self.captured.items()}
+            node_ref = box(**inputs)
+            for inner_graph, captured in self.inner_scopes.items():
+                current_builder().inner_scopes[inner_graph] = CaptureOutwards(
+                    graph, node_ref, captured
+                )
+            current_builder().inner_scopes[graph] = CaptureOutwards(graph, node_ref)
 
 
 def Tag(tag: str, value: ValueSource) -> NodePort:
@@ -695,35 +736,40 @@ def _combine_args_with_kwargs(
     return kwargs
 
 
-@dataclass(frozen=True)
 class Copyable(PortFunc):
     """Inserts a copy of an underlying ValueSource whenever an outgoing edge is added
     unless there are *no* existing uses of the underlying ValueSource
     (=> the wire is routed from the underlying ValueSource)
     """
 
-    src: ValueSource
-    target_builder: GraphBuilder = field(default_factory=current_builder, init=False)
+    np: NodePort
+
+    def __init__(self, src: ValueSource):
+        builder = current_builder()
+        while isinstance(src, Copyable) and _source_graph(src) == builder.graph:
+            # Simplify if we call Copyable on a ValueSource twice
+            self = src
+        self.np = _resolve(builder.capture(src, allow_existing=True))
+        existing_edge = self.source_graph().out_edge_from_port(self.np)
+        if existing_edge is None:
+            # If copyable is used on an unused value source, we should discard it
+            # This will be removed if we use the Copyable
+            # It is needed for typechecking
+            # See test_copyable_dont_use
+            builder.graph.discard(self.np)
 
     def resolve(self) -> NodePort:
-        src = self.src
-        while isinstance(src, Copyable) and src.target_builder == self.target_builder:
-            src = src.src  # Canonicalize a bit
-        # Get a nodeport in our target graph, so copies will go there
-        np = self.target_builder.capture(_resolve(src), allow_existing=True)
-        assert isinstance(np, NodePort)
-        g = np.node_ref.graph
-        assert g is self.target_builder.graph
-        existing_edge = g.out_edge_from_port(np)
+        g = self.source_graph()
+        existing_edge = g.out_edge_from_port(self.np)
         if existing_edge is None:
-            return np
+            return self.np
         g._graph.remove_edge(*existing_edge.to_edge_handle())
-        c1, c2 = g.copy_value(np)
+        c1, c2 = g.copy_value(self.np)
         g.add_edge(c1, existing_edge.target, existing_edge.type_)
         return c2
 
     def source_graph(self) -> "TierkreisGraph":
-        return self.target_builder.graph
+        return self.np.node_ref.graph
 
 
 @dataclass(frozen=True)

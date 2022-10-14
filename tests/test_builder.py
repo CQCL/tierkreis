@@ -43,10 +43,12 @@ from tierkreis.frontend.builder import (
     Match,
     Namespace,
     Output,
+    Scope,
     Tag,
     ValueSource,
     _GraphDecoratorType,
     closure,
+    current_builder,
     current_graph,
     graph,
     loop,
@@ -830,3 +832,248 @@ async def test_box_order(bi: Namespace, graph_dec: _GraphDecoratorType) -> None:
 
     assert ("first", "two") in box_outs
     assert ("lst", "one") in box_outs
+
+
+@pytest.mark.asyncio
+async def test_scope(bi, client: RuntimeClient, graph_dec: _GraphDecoratorType) -> None:
+    @graph_dec
+    def graph() -> Output:
+        with Scope():
+            bi.discard(Const(3))
+        assert len(current_builder().inner_scopes.values()) == 1
+        return Output()
+
+    tc_graph = await client.type_check_graph(graph())
+    assert tc_graph.n_nodes == 3
+    n = cast(
+        BoxNode,
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+    )
+    assert any([x.is_discard_node() for x in n.graph.nodes().values()])
+    assert n.graph.inputs() == []
+    assert n.graph.outputs() == []
+
+
+@pytest.mark.asyncio
+async def test_scope_capture_in(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def graph() -> Output:
+        a = Const(3)
+        with Scope():
+            bi.discard(a)
+        assert len(current_builder().inner_scopes.values()) == 1
+        return Output()
+
+    tc_graph = await client.type_check_graph(graph())
+    assert tc_graph.n_nodes == 4
+    n = cast(
+        BoxNode,
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+    )
+    assert any([x.is_discard_node() for x in n.graph.nodes().values()])
+    assert n.graph.inputs() == ["_c0"]
+    assert n.graph.outputs() == []
+
+
+@pytest.mark.asyncio
+async def test_scope_capture_out(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        with Scope():
+            a = Const(3)
+        assert len(current_builder().inner_scopes.values()) == 1
+        bi.discard(a)
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 4
+    n = cast(
+        BoxNode,
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+    )
+    assert not any([x.is_discard_node() for x in n.graph.nodes().values()])
+    assert n.graph.inputs() == []
+    assert n.graph.outputs() == ["_c0"]
+
+
+@pytest.mark.asyncio
+async def test_nested_scopes(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        a = Const(3)
+        with Scope():
+            b = Const(2)
+            c = bi.iadd(a, b)
+            with Scope():
+                d, e = bi.copy(c)
+            assert len(current_builder().inner_scopes.values()) == 1
+            with Scope():
+                f = bi.iadd(d, Const(1))
+                assert len(current_builder().inner_scopes.values()) == 0
+            assert len(current_builder().inner_scopes.values()) == 2
+        assert len(current_builder().inner_scopes.values()) == 3
+        assert e.node_ref.graph in current_builder().inner_scopes
+        h = bi.iadd(e, f)
+
+        return Output(value=h)
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 5
+    n = cast(
+        BoxNode,
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+    )
+    assert any([isinstance(x, BoxNode) for x in n.graph.nodes().values()])
+    assert n.graph.inputs() == ["_c0"]
+    assert sorted(n.graph.outputs()) == ["_c0", "_c1"]
+
+
+@pytest.mark.asyncio
+async def test_run_scoped_program(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        a = Const(3)
+        with Scope():
+            b = Copyable(Const(2))
+            with Scope():
+                c = bi.iadd(a, b)
+            d = bi.iadd(c, b)
+        e = bi.iadd(d, Const(1))
+        return Output(value=e)
+
+    outputs = await client.run_graph(g())
+    assert g().n_nodes == 6
+    assert outputs["value"].try_autopython() == 8
+    assert any([isinstance(n, BoxNode) for n in g().nodes().values()])
+
+
+@pytest.mark.asyncio
+async def test_copyable_capture_in(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        a = Copyable(Const(3))
+        with Scope():
+            bi.discard(a)
+        with Scope():
+            bi.discard(a)
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 6
+    assert any([n.is_copy_node() for n in tc_graph.nodes().values()])
+
+
+@pytest.mark.asyncio
+async def test_copyable_capture_out_once(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        with Scope():
+            a = Copyable(Const(3))
+        bi.discard(a)
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 4
+    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+
+
+@pytest.mark.asyncio
+async def test_copyable_capture_out_copied(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        with Scope():
+            a = Copyable(Const(3))
+            bi.discard(a)
+        bi.discard(a)
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 4
+    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+
+
+@pytest.mark.asyncio
+async def test_copyable_on_captured_input(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        a = Const(3)
+        with Scope():
+            b = Copyable(a)
+            bi.discard(b)
+        bi.discard(b)
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 5
+    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+
+
+@pytest.mark.asyncio
+async def test_copyable_dont_use(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        a = Const(3)
+        with Scope():
+            b = Copyable(a)
+        bi.discard(b)
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 5
+    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+
+
+@pytest.mark.asyncio
+async def test_unpack_capture_in(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        a = Const(StructValue({"a": IntValue(1), "b": StringValue("hello")}))
+        with Scope():
+            bi.discard(a["a"])
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 6
+    assert any([n.is_unpack_node() for n in tc_graph.nodes().values()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+
+
+@pytest.mark.asyncio
+async def test_unpack_capture_out(
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
+) -> None:
+    @graph_dec
+    def g() -> Output:
+        with Scope():
+            a = Const(StructValue({"a": IntValue(1), "b": StringValue("hello")}))
+        bi.discard(a["a"])
+        return Output()
+
+    tc_graph = await client.type_check_graph(g())
+    assert tc_graph.n_nodes == 4
+    assert not any([n.is_unpack_node() for n in tc_graph.nodes().values()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])

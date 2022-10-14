@@ -444,6 +444,17 @@ class TierkreisGraph:
 
         return graph
 
+    def update_graph(self, graph: "TierkreisGraph"):
+        """Change the object into the given graph,
+        while preserving node references in the graph and boxes
+        """
+        for name, node in self.nodes().items():
+            other = graph[name]
+            if isinstance(node, BoxNode) and isinstance(other, BoxNode):
+                node.graph.update_graph(other.graph)
+
+        self._graph = graph._graph
+
     def nodes(self) -> Dict[str, TierkreisNode]:
         return {
             name: self._graph.nodes[name]["node_info"] for name in self._graph.nodes

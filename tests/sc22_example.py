@@ -1,7 +1,6 @@
 import asyncio
 import json
 import sys
-from functools import reduce
 from pathlib import Path
 from typing import Any, Optional
 
@@ -10,7 +9,6 @@ from pytket import Circuit
 from sympy import symbols
 
 # from tierkreis.core.graphviz import render_graph, tierkreis_to_graphviz
-from tierkreis.core.tierkreis_graph import NodeRef, TierkreisGraph
 from tierkreis.frontend.builder import (
     Box,
     Break,
@@ -46,13 +44,11 @@ def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
         print("Importing 2", workers_dir)
         sys.path.append(str(workers_dir))
         import pytket_worker.main  # type: ignore
-        import qermit_worker.main  # type: ignore
 
         return PyRuntime(
             [
                 sc22_worker.main.namespace,
                 pytket_worker.main.namespace,
-                qermit_worker.main.namespace,
             ]
         )
     elif len(args) == 1:
@@ -67,60 +63,11 @@ def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
 async def run_test(cl: RuntimeClient):
     sig = await cl.get_signature()
     root = Namespace(sig)
-    bi, pt, sc, qm = (
+    bi, pt, sc = (
         root["builtin"],
         root["pytket"],
         root["sc22"],
-        root["qermit"],
     )
-
-    def duplicate(n: int, np):
-        outs = []
-        for _ in range(n - 1):
-            np, cpy = bi.copy(np)
-            outs.append(cpy)
-
-        outs.append(np)
-        return outs
-
-    def make_list_graph(n: int) -> TierkreisGraph:
-        @graph(f"make_list({n})")
-        def make_list() -> Output:
-            c: NodeRef = Const([]).node_ref
-            return Output(reduce(lambda ls, i: bi.push(ls, Input(f"{i}")), range(n), c))
-
-        return make_list()
-
-    def gen_zne(n_fold: int):
-        @graph()
-        def zne(
-            circuit: Input,
-            paulis: Input,
-            shots: Input,
-            runner: Input,
-        ) -> Output:
-            st = bi.make_struct(
-                circuit=circuit, paulis=paulis, shots=shots, runner=runner
-            )
-            duplicates = duplicate(n_fold, st)
-
-            folds = {
-                str(i): qm.zne_folded_experiment(Const(2 * i + 1), duplicates[i])
-                for i in range(n_fold)
-            }
-
-            results = Box(make_list_graph(n_fold))(**folds)
-
-            return Output(
-                qm.zne_collate(Const([2 * i + 1 for i in range(n_fold)]), results)
-            )
-
-        return zne()
-
-    _zng = gen_zne(3)
-    # await cl.type_check_graph(_zng)
-    # render_graph(zng, "../../figs/zne", "pdf")
-    # _zng
 
     a, b = symbols("a b")
     ansatz = Circuit(2)

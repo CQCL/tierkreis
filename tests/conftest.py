@@ -34,6 +34,17 @@ def pytest_addoption(parser):
         action="store_true",
         help="Whether to attempt to print server logs (for debugging).",
     )
+    parser.addoption(
+        "--pytket",
+        action="store_true",
+        default=False,
+        help="Run pytket integration tests",
+    )
+
+
+def pytest_configure(config):
+    if not config.option.pytket:
+        setattr(config.option, "markexpr", "not pytket")
 
 
 @pytest.fixture(scope="session")

@@ -17,7 +17,7 @@ name = "tierkreis"
 crate-type = ["cdylib"]
 
 [dependencies]
-pyo3 = "0.15.1"
+pyo3 = "0.16.5"
 tierkreis-core = { path = "../tierkreis-core" }
 tierkreis-proto = { path = "../tierkreis-proto" }
 prost = "0.8.0"

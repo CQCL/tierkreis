@@ -214,11 +214,33 @@ class ServerRuntime(RuntimeClient):
 
         :param gb: Graph to run.
         :param inputs: Inputs to graph as map from label to value.
+        :param type_check: Whether to type check the graph.
         :return: Outputs as map from label to value.
         """
-        task = await self.start_task(graph, py_inputs)
-        outputs = await self.await_task(task)
-        return outputs
+        inputs = {}
+        for key, val in py_inputs.items():
+            try:
+                inputs[key] = TierkreisValue.from_python(val)
+            except IncompatiblePyType as err:
+                raise InputConversionError(key, val) from err
+
+        decoded = await self._runtime_stub.run_graph(
+            pr.RunGraphRequest(
+                graph=graph.to_proto(),
+                inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
+                type_check=True,
+            )
+        )
+
+        status, status_value = betterproto.which_one_of(decoded, "result")
+        assert status_value is not None
+        if status == "type_errors":
+            raise TierkreisTypeErrors.from_proto(status_value)
+        if status == "error":
+            raise RuntimeError(
+                f"Run_graph execution failed with message:\n{status_value}"
+            )
+        return StructValue.from_proto_dict(status_value.map).values
 
     def run_graph_block(
         self,

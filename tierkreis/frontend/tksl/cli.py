@@ -123,7 +123,7 @@ def local(
 
     e.g.
     >> tksl-start local ../target/debug/tierkreis-server -w
-       ../workers/pytket_worker --remote-worker http://localhost:8050"""
+       pytket:../workers/pytket_worker --remote-worker http://localhost:8050"""
 
     worker_locations = [
         (s[0], Path(s[1])) for s in map(lambda v: v.split(":", 1), worker)

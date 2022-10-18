@@ -4,11 +4,12 @@ from typing import TypeVar
 
 import numpy as np
 
-from tierkreis.worker import Namespace, Worker
+from tierkreis.worker import Namespace
 from tierkreis.worker.prelude import start_worker_server
 
+root = Namespace("_root")
 namespace = Namespace("sc22")
-worker = Worker()
+root.add_subspace(namespace)
 
 A = TypeVar("A")
 
@@ -54,4 +55,4 @@ async def converged(prev: list[CandRecord]) -> bool:
 
 
 if __name__ == "__main__":
-    start_worker_server(worker, "sc22_worker", [namespace])
+    start_worker_server("sc22_worker", root)

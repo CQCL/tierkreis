@@ -10,12 +10,11 @@ from tierkreis.core.types import StarKind
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import MapValue, StructValue
 from tierkreis.frontend.type_inference import builtin_namespace
-from tierkreis.worker import Namespace, Worker
+from tierkreis.worker import Namespace
 from tierkreis.worker.namespace import Function
 
 namespace = Namespace("_root")
 _builtin_defs = builtin_namespace()
-worker = Worker()
 
 a = TypeVar("a")
 b = TypeVar("b")

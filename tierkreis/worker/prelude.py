@@ -7,6 +7,8 @@ import argparse
 import asyncio
 import os
 
+from typing import Optional
+
 import opentelemetry.trace
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
     OTLPSpanExporter,
@@ -16,7 +18,7 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 from .namespace import Namespace
-from .worker import Worker
+from .worker import Worker, CallbackHook
 
 parser = argparse.ArgumentParser(description="Parse worker server cli.")
 parser.add_argument(
@@ -46,16 +48,19 @@ def setup_tracing(service_name: str):
     opentelemetry.trace.set_tracer_provider(tracer_provider)
 
 
-def start_worker_server(worker: Worker, worker_name: str, namespaces: list[Namespace]):
+def start_worker_server(
+    worker_name: str, namespace: Namespace, callback: Optional[CallbackHook] = None
+):
     """Set up tracing and run the worker server with the provided namespaces.
     Expects a port specified on the command line, and reports succesful start to
     stdout"""
 
+    cb_hook = callback or CallbackHook()
+
     async def main():
         args = parser.parse_args()
         setup_tracing(worker_name)
-        for namespace in namespaces:
-            worker.add_namespace(namespace)
+        worker = Worker(cb_hook, namespace)
         await worker.start(args.port)
 
     loop = asyncio.get_event_loop()

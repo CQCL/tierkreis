@@ -28,6 +28,7 @@ from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
+from tierkreis.worker.worker import CallbackHook
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
@@ -280,17 +281,17 @@ def _gen_auth_injector(login: str, pwd: str) -> Callable[["SendRequest"], Corout
     return _inject_auth
 
 
-def with_runtime_client(worker: "Worker") -> Callable:
+def with_runtime_client(callback: CallbackHook) -> Callable:
     from tierkreis.worker.worker import _KEYRING_SERVICE
 
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         async def wrapped_func(*args, **kwargs):
-            if worker.callback is None:
+            if callback.callback is None:
                 raise RuntimeError(
                     "Callback address has not been extracted from request."
                 )
-            async with Channel(*worker.callback) as channel:
+            async with Channel(*callback.callback) as channel:
                 _token = keyring.get_password(_KEYRING_SERVICE, "token")
                 _key = keyring.get_password(_KEYRING_SERVICE, "key")
                 if not (_token is None or _key is None):

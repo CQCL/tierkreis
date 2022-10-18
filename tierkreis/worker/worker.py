@@ -90,15 +90,20 @@ async def _event_recv_request(request: grpclib.events.RecvRequest):
 _KEYRING_SERVICE = "tierkreis_extracted"
 
 
+class CallbackHook:
+    callback: Optional[tuple[str, int]] = None
+
+
 class Worker:
     """Worker server."""
 
     root: Namespace
     server: Server
-    callback: Optional[tuple[str, int]] = None
+    callback_hook: CallbackHook
 
-    def __init__(self):
-        self.root = Namespace("_root")
+    def __init__(self, callback_hook, root_namespace):
+        self.root = root_namespace
+        self.callback_hook = callback_hook
         self.server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
 
         # Attach event listener for tracing
@@ -107,10 +112,6 @@ class Worker:
         self._add_request_listener(self._extract_callback)
         # Attach event listener to extract auth credentials
         self._add_request_listener(self._extract_auth)
-
-    def add_namespace(self, namespace: "Namespace"):
-        """Add namespace of functions to workspace."""
-        self.root.add_subspace(namespace)
 
     def run(
         self, function: FunctionName, inputs: StructValue
@@ -124,11 +125,11 @@ class Worker:
         return cast(Any, func).run(inputs)
 
     async def _extract_callback(self, request: grpclib.events.RecvRequest):
-        if self.callback is None:
+        if self.callback_hook.callback is None:
             callback_host = str(request.metadata.get("tierkreis_callback_host"))
             callback_port = int(request.metadata.get("tierkreis_callback_port"))  # type: ignore
 
-            self.callback = (callback_host, callback_port)
+            self.callback_hook.callback = (callback_host, callback_port)
 
     async def _extract_auth(self, request: grpclib.events.RecvRequest) -> None:
         if keyring.get_password(_KEYRING_SERVICE, "token") is None:

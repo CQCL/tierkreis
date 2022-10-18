@@ -39,6 +39,7 @@ def _wait_for_print(proc_out: IO[bytes], content: str):
 async def local_runtime(
     executable: Path,
     workers: List[tuple[str, Path]],
+    worker_uris: List[tuple[str, str]],
     grpc_port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
@@ -49,8 +50,10 @@ async def local_runtime(
 
     :param executable: Path to server binary
     :type executable: Path
-    :param workers: Paths of worker servers
-    :type workers: List[Path]
+    :param workers: List of Locations with Path of worker server
+    :type workers: List[str, Path]
+    :param worker_uris: List of Locations with Uri of remote worker
+    :type worker_uris: List[str, str]
     :param grpc_port: Localhost grpc port, defaults to "8080"
     :type grpc_port: str, optional
     :param show_output: Show server tracing/errors, defaults to False
@@ -65,6 +68,9 @@ async def local_runtime(
     command: List[Union[str, Path]] = [executable]
     for (location, worker) in workers:
         command.extend(["--worker-path", location + ":" + str(worker)])
+
+    for (location, uri) in worker_uris:
+        command.extend(["--worker-remote", location + ":" + uri])
 
     proc_env = os.environ.copy()
     if env_vars:

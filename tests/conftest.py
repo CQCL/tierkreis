@@ -116,6 +116,7 @@ def local_runtime_launcher(request) -> Callable:
     async def foo(**kwarg_overrides: Any) -> AsyncIterator[ServerRuntime]:
         kwargs = {
             "workers": [("python", Path(__file__).parent / "test_worker")],
+            "worker_uris": [],
             "show_output": logs,
             **kwarg_overrides,
         }

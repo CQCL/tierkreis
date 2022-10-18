@@ -820,7 +820,6 @@ def _arg_str(args: Dict[str, "TierkreisType"], order: Iterable[str]) -> str:
     return ", ".join(f"{chalk.yellow(port)}: {args[port]}" for port in order)
 
 
-# can be inlined inside Function when tksl removed
 def _func_sig(name: str, func: FunctionDeclaration):
     graph_type = cast("GraphType", TypeScheme.from_proto(func.type_scheme).body)
     irest = graph_type.inputs.rest

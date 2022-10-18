@@ -62,12 +62,8 @@ def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
 
 async def run_test(cl: RuntimeClient):
     sig = await cl.get_signature()
-    root = Namespace(sig)
-    bi, pt, sc = (
-        root["builtin"],
-        root["pytket"],
-        root["sc22"],
-    )
+    bi = Namespace(sig)
+    pt, sc = (bi["pytket"], bi["sc22"])
 
     a, b = symbols("a b")
     ansatz = Circuit(2)
@@ -142,7 +138,7 @@ async def main():
         print(f"Usage: {__file__} [<host>:<port>]")
         sys.exit(-1)
     else:
-        res = run_test(cl)
+        res = await run_test(cl)
         print(res)
 
 

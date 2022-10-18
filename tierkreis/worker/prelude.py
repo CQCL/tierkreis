@@ -18,7 +18,8 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
 from .namespace import Namespace
-from .worker import Worker, CallbackHook
+from .worker import Worker
+from .callback import CallbackHook
 
 parser = argparse.ArgumentParser(description="Parse worker server cli.")
 parser.add_argument(

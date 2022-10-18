@@ -21,3 +21,13 @@ class EncodeOutputError(Exception):
 @dataclass
 class NodeExecutionError(Exception):
     base_exception: Exception
+
+
+@dataclass(frozen=True)
+class NamespaceClash(Exception):
+    namespace: list[str]
+    functions: set[str]
+
+    def __str__(self) -> str:
+        return f"""Clash in namespace {'::'.join(self.namespace)} of functions\n
+        {self.functions}"""

@@ -28,12 +28,10 @@ from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
-from tierkreis.worker.worker import CallbackHook
+from tierkreis.worker import CallbackHook
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
-
-    from tierkreis.worker.worker import Worker
 
 
 @dataclass

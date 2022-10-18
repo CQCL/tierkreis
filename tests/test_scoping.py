@@ -80,3 +80,15 @@ async def test_remote_scopes_are_actually_remote(local_runtime_launcher, bi):
             with pytest.raises(RuntimeError) as err:
                 await outer.run_graph(g())
             assert "unknown function python_nodes::id_py" in str(err)
+
+
+@pytest.mark.asyncio
+async def test_worker_scopes(server_client: ServerRuntime, bi):
+    @graph()
+    def g() -> Output:
+        with Scope("python"):
+            x = bi["python_nodes"].id_py(Const(1))
+        return Output(value=x)
+
+    outputs = await server_client.run_graph(g())
+    assert outputs["value"].try_autopython() == 1

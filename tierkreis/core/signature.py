@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.function import FunctionDeclaration
+from tierkreis.core.tierkreis_graph import Location
 from tierkreis.core.types import TypeScheme
 from tierkreis.core.utils import map_vals
 
@@ -48,19 +49,21 @@ class Namespace:
 class Signature:
     root: Namespace
     aliases: dict[str, TypeScheme] = field(default_factory=dict)
+    scopes: list[Location] = field(default_factory=list)
 
     @classmethod
     def from_proto(cls, ps_entry: ps.ListFunctionsResponse) -> "Signature":
         return cls(
             Namespace.from_proto(ps_entry.root),
             {k: TypeScheme.from_proto(v) for k, v in ps_entry.aliases.items()},
+            ps_entry.scopes,
         )
 
     def to_proto(self) -> ps.ListFunctionsResponse:
         return ps.ListFunctionsResponse(
             root=self.root.to_proto(),
             aliases=map_vals(self.aliases, lambda v: v.to_proto()),
-            scopes=[],
+            scopes=self.scopes,
         )
 
     @classmethod

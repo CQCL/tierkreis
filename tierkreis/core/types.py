@@ -513,6 +513,9 @@ class TierkreisTypeError:
     def from_proto(cls, proto: ps.TierkreisTypeError) -> "TierkreisTypeError":
         return cls(message=proto.msg, location=proto.location)
 
+    def to_proto(self) -> ps.TierkreisTypeError:
+        return ps.TierkreisTypeError(msg=self.message, location=self.location)
+
     def __str__(self) -> str:
         context = "\n".join(f" - {loc}" for loc in self.location)
         return f"{self.message}\n\nIn context:\n\n{context}"
@@ -527,6 +530,9 @@ class TierkreisTypeErrors(Exception):
         return cls(
             errors=[TierkreisTypeError.from_proto(error) for error in proto.errors]
         )
+
+    def to_proto(self) -> ps.TypeErrors:
+        return ps.TypeErrors(errors=[x.to_proto() for x in self.errors])
 
     def __str__(self) -> str:
         separator = "\n\n" + ("─" * 80) + "\n\n"

@@ -14,6 +14,7 @@ import opentelemetry.trace
 from tierkreis.core.function import FunctionDeclaration, FunctionName
 from tierkreis.core.signature import Namespace as SigNamespace
 from tierkreis.core.signature import Signature
+from tierkreis.core.tierkreis_graph import Location
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
     Constraint,
@@ -33,6 +34,7 @@ from tierkreis.core.values import (
 from tierkreis.worker.exceptions import (
     DecodeInputError,
     EncodeOutputError,
+    NamespaceClash,
     NodeExecutionError,
 )
 
@@ -73,16 +75,6 @@ def _check_tkstruct_hint(hint: Type) -> bool:
     return (
         tk_cls is not None and isclass(tk_cls) and issubclass(tk_cls, TierkreisStruct)
     )
-
-
-@dataclass(frozen=True)
-class NamespaceClash(Exception):
-    namespace: list[str]
-    functions: set[str]
-
-    def __str__(self) -> str:
-        return f"""Clash in namespace {'::'.join(self.namespace)} of functions\n
-        {self.functions}"""
 
 
 class Namespace(Mapping[str, "Namespace"]):
@@ -147,10 +139,11 @@ class Namespace(Mapping[str, "Namespace"]):
             for k, v in ns.extract_aliases().items()
         }
 
-    def extract_signature(self) -> Signature:
+    def extract_signature(self, can_scope: bool) -> Signature:
         return Signature(
             root=self.extract_contents(),
             aliases=self.extract_aliases(),
+            scopes=[Location([])] if can_scope else [],
         )
 
     def get_function(self, name: FunctionName) -> Optional[Function]:

@@ -2,7 +2,7 @@
 
 import sys
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Coroutine, Optional, cast
+from typing import Any, Awaitable, Callable, Coroutine, Optional, cast
 
 import grpclib
 import grpclib.events
@@ -17,12 +17,17 @@ from grpclib.server import Server
 from opentelemetry.semconv.trace import SpanAttributes
 
 import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
 import tierkreis.core.protos.tierkreis.worker as pw
 from tierkreis.core.function import FunctionName
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
+from tierkreis.core.tierkreis_graph import TierkreisGraph
+from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
+from tierkreis.frontend.python_runtime import PyRuntime
 
+from .callback import CallbackHook
 from .exceptions import (
     DecodeInputError,
     EncodeOutputError,
@@ -30,9 +35,6 @@ from .exceptions import (
     NodeExecutionError,
 )
 from .namespace import Namespace
-
-if TYPE_CHECKING:
-    from .namespace import Namespace
 
 tracer = opentelemetry.trace.get_tracer(__name__)
 
@@ -90,21 +92,21 @@ async def _event_recv_request(request: grpclib.events.RecvRequest):
 _KEYRING_SERVICE = "tierkreis_extracted"
 
 
-class CallbackHook:
-    callback: Optional[tuple[str, int]] = None
-
-
 class Worker:
     """Worker server."""
 
     root: Namespace
     server: Server
     callback_hook: CallbackHook
+    pyruntime: PyRuntime
 
     def __init__(self, callback_hook, root_namespace):
         self.root = root_namespace
         self.callback_hook = callback_hook
-        self.server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
+        self.pyruntime = PyRuntime([root_namespace])
+        self.server = Server(
+            [SignatureServerImpl(self), WorkerServerImpl(self), RuntimeServerImpl(self)]
+        )
 
         # Attach event listener for tracing
         self._add_request_listener(_event_recv_request)
@@ -229,6 +231,32 @@ class SignatureServerImpl(ps.SignatureBase):
     async def list_functions(
         self, _: ps.ListFunctionsRequest
     ) -> ps.ListFunctionsResponse:
-        signature = self.worker.root.extract_signature()
+        signature = self.worker.root.extract_signature(True)
 
         return signature.to_proto()
+
+
+class RuntimeServerImpl(pr.RuntimeBase):
+    worker: Worker
+
+    def __init__(self, worker: Worker):
+        self.worker = worker
+
+    async def run_graph(
+        self, run_graph_request: pr.RunGraphRequest
+    ) -> pr.RunGraphResponse:
+        graph = TierkreisGraph.from_proto(run_graph_request.graph)
+        inputs = StructValue.from_proto_dict(run_graph_request.inputs.map)
+        try:
+            if run_graph_request.type_check:
+                # Should really type check inputs here
+                graph = await self.worker.pyruntime.type_check_graph(graph)
+
+            outputs = await self.worker.pyruntime.run_graph(graph, **inputs.values)
+            return pr.RunGraphResponse(
+                success=pg.StructValue(map=StructValue(outputs).to_proto_dict())
+            )
+        except TierkreisTypeErrors as err:
+            return pr.RunGraphResponse(type_errors=err.to_proto())
+        except Exception as err:
+            return pr.RunGraphResponse(error=str(err))

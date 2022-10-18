@@ -235,7 +235,7 @@ class PyRuntime(RuntimeClient):
         return {Labels.THUNK: GraphValue(newg)}
 
     async def get_signature(self) -> Signature:
-        return self.root.extract_signature()
+        return self.root.extract_signature(True)
 
     async def type_check_graph(self, tg) -> TierkreisGraph:
         return infer_graph_types(tg, await self.get_signature())

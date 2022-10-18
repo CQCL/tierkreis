@@ -36,6 +36,7 @@ from tierkreis.core.tierkreis_graph import (
     BoxNode,
     FunctionNode,
     IncomingWireType,
+    Location,
     MatchNode,
     NodePort,
     NodeRef,
@@ -301,12 +302,23 @@ class _CallAddNode:
 class Box(_CallAddNode):
     graph: TierkreisGraph
 
-    def __init__(self, graph: TierkreisGraph):
+    def __init__(self, graph: TierkreisGraph, location: Location = Location([])):
         self.graph = graph
-        super().__init__(BoxNode(graph), graph.input_order, graph.output_order)
+        super().__init__(
+            BoxNode(graph, location=location), graph.input_order, graph.output_order
+        )
 
 
 class Scope(GraphBuilder, ABC):
+    location: Location
+
+    def __init__(self, location: Union[str, Location] = Location([])):
+        if isinstance(location, str):
+            self.location = Location(location.split("/"))
+        else:
+            self.location = location
+        super().__init__()
+
     def __exit__(
         self,
         __exc_type: Optional[Type[BaseException]],
@@ -317,7 +329,7 @@ class Scope(GraphBuilder, ABC):
 
         if not any((__exc_type, __exc_value, __traceback)):
             graph = self.graph
-            box = Box(graph)
+            box = Box(graph, self.location)
             inputs = {v: k for k, v in self.captured.items()}
             node_ref = box(**inputs)
             for inner_graph, captured in self.inner_scopes.items():

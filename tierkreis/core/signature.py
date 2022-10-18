@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.types import TypeScheme
@@ -23,7 +24,7 @@ class Namespace:
             functions=map_vals(
                 self.functions,
                 lambda v: ps.NamespaceItem(
-                    decl=v, locations=[ps.Location(location=[])]
+                    decl=v, locations=[pg.Location(location=[])]
                 ),
             ),
             subspaces=map_vals(self.subspaces, lambda v: v.to_proto()),
@@ -59,6 +60,7 @@ class Signature:
         return ps.ListFunctionsResponse(
             root=self.root.to_proto(),
             aliases=map_vals(self.aliases, lambda v: v.to_proto()),
+            scopes=[],
         )
 
     @classmethod

@@ -286,11 +286,6 @@ async def test_bigexample(client: RuntimeClient, bi) -> None:
         assert pyouts == {"o2": 103, "o1": 536 + (2 if flag else 5)}
 
 
-@pytest.fixture()
-async def sig(client: RuntimeClient) -> Signature:
-    return await client.get_signature()
-
-
 @pytest.fixture(params=[False, True])
 def dec_checks_types(request) -> bool:
     return request.param
@@ -300,11 +295,6 @@ def dec_checks_types(request) -> bool:
 def graph_dec(dec_checks_types: bool, sig: Signature) -> _GraphDecoratorType:
     # provide decorators with and without incremental type checking
     return graph(sig=sig) if dec_checks_types else graph()
-
-
-@pytest.fixture()
-def bi(sig: Signature) -> Namespace:
-    return Namespace(sig)
 
 
 def double(bi) -> TierkreisGraph:
@@ -932,27 +922,6 @@ async def test_nested_scopes(
     assert any([isinstance(x, BoxNode) for x in n.graph.nodes().values()])
     assert n.graph.inputs() == ["_c0"]
     assert sorted(n.graph.outputs()) == ["_c0", "_c1"]
-
-
-@pytest.mark.asyncio
-async def test_run_scoped_program(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
-    def g() -> Output:
-        a = Const(3)
-        with Scope():
-            b = Copyable(Const(2))
-            with Scope():
-                c = bi.iadd(a, b)
-            d = bi.iadd(c, b)
-        e = bi.iadd(d, Const(1))
-        return Output(value=e)
-
-    outputs = await client.run_graph(g())
-    assert g().n_nodes == 6
-    assert outputs["value"].try_autopython() == 8
-    assert any([isinstance(n, BoxNode) for n in g().nodes().values()])
 
 
 @pytest.mark.asyncio

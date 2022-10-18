@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from tierkreis.frontend.builder import Unpack
 
 PortID = str
+Location = pg.Location
 
 
 class TierkreisNode(ABC):
@@ -46,7 +47,10 @@ class TierkreisNode(ABC):
         if name == "const":
             result = ConstNode(TierkreisValue.from_proto(cast(pg.Value, out_node)))
         elif name == "box":
-            result = BoxNode(TierkreisGraph.from_proto(cast(pg.Graph, out_node)))
+            box_node = cast(pg.BoxNode, out_node)
+            result = BoxNode(
+                graph=TierkreisGraph.from_proto(box_node.graph), location=box_node.loc
+            )
         elif name == "function":
             result = FunctionNode(
                 FunctionName.from_proto(cast(pg.FunctionName, out_node))
@@ -101,9 +105,10 @@ class ConstNode(TierkreisNode):
 @dataclass(frozen=True)
 class BoxNode(TierkreisNode):
     graph: "TierkreisGraph"
+    location: Location
 
     def to_proto(self) -> pg.Node:
-        return pg.Node(box=self.graph.to_proto())
+        return pg.Node(box=pg.BoxNode(loc=self.location, graph=self.graph.to_proto()))
 
 
 @dataclass(frozen=True)
@@ -310,7 +315,7 @@ class TierkreisGraph:
         **kwargs: IncomingWireType,
     ) -> NodeRef:
         # TODO restrict to graph i/o
-        return self.add_node(BoxNode(graph), name, **kwargs)
+        return self.add_node(BoxNode(graph, Location([])), name, **kwargs)
 
     def add_match(
         self,

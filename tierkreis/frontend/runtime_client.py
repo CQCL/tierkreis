@@ -25,7 +25,7 @@ import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.signature import Signature
-from tierkreis.core.tierkreis_graph import TierkreisGraph
+from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
 from tierkreis.worker.worker import CallbackHook
@@ -230,6 +230,7 @@ class ServerRuntime(RuntimeClient):
                 graph=graph.to_proto(),
                 inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
                 type_check=True,
+                loc=Location([]),
             )
         )
 

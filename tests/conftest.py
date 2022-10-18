@@ -5,7 +5,9 @@ from typing import Any, AsyncIterator, Callable
 
 import pytest
 
+from tierkreis.core.signature import Signature
 from tierkreis.frontend import docker_runtime, local_runtime, myqos_runtime
+from tierkreis.frontend.builder import Namespace
 from tierkreis.frontend.python_runtime import PyRuntime
 from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 
@@ -124,3 +126,13 @@ def local_runtime_launcher(request) -> Callable:
             yield client
 
     return foo
+
+
+@pytest.fixture()
+async def sig(client: RuntimeClient) -> Signature:
+    return await client.get_signature()
+
+
+@pytest.fixture()
+def bi(sig: Signature) -> Namespace:
+    return Namespace(sig)

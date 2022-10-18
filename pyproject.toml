@@ -62,6 +62,8 @@ sc22_example = [
 profile = "black"
 skip_gitignore = true
 
+[tool.pytest.ini_options]
+markers = [ "pytket" ]
 
 [tool.mypy]
 exclude = [

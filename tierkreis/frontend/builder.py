@@ -139,12 +139,13 @@ class CaptureOutwards:
 
 OptSig = Optional[Signature]
 
+TGBuilder = TypeVar("TGBuilder", bound="GraphBuilder")
+
 
 class GraphBuilder(AbstractContextManager):
     graph: TierkreisGraph
     inputs: dict[str, Optional["TierkreisType"]]
     outputs: dict[str, Optional["TierkreisType"]]
-    captured: dict[ValueSource, PortID]
     inner_scopes: dict[TierkreisGraph, CaptureOutwards]
     sig: OptSig = None
     _state_token: Token["GraphBuilder"]
@@ -158,7 +159,6 @@ class GraphBuilder(AbstractContextManager):
         self.graph = TierkreisGraph(name)
         self.inputs = inputs or {}
         self.outputs = outputs or {}
-        self.captured = {}
         self.inner_scopes = {}
         self.sig = None
         for i, it in self.inputs.items():
@@ -171,11 +171,11 @@ class GraphBuilder(AbstractContextManager):
             return self.graph.input[name]
         raise RuntimeError("Input not declared.")
 
-    def with_type_check(self, signatures: Signature) -> "GraphBuilder":
+    def with_type_check(self: TGBuilder, signatures: Signature) -> TGBuilder:
         self.sig = signatures
         return self
 
-    def __enter__(self) -> "GraphBuilder":
+    def __enter__(self: TGBuilder) -> TGBuilder:
         self._state_token = _set_state(self)
         return self
 
@@ -189,20 +189,23 @@ class GraphBuilder(AbstractContextManager):
         _reset_state(self._state_token)
         return super().__exit__(__exc_type, __exc_value, __traceback)
 
-    def capture(
-        self, incoming: ValueSource, allow_existing: bool = False
-    ) -> ValueSource:
+    def _inner_capture(self, incoming: ValueSource) -> Optional[ValueSource]:
         source_graph = _source_graph(incoming)
         if source_graph is self.graph:
             return incoming
         inner_scope = self.inner_scopes.get(source_graph)
         if inner_scope is not None:
             return inner_scope.capture(incoming)
-        if incoming in self.captured and not allow_existing:
-            # This would generate two wires from the same NodePort
-            raise ValueError(f"Already captured {incoming} as input to {self.graph}")
-        in_name = self.captured.setdefault(incoming, _capture_label(len(self.captured)))
-        return self.graph.input[in_name]
+        return None
+
+    def capture(
+        self, incoming: ValueSource, allow_existing: bool = False
+    ) -> ValueSource:
+        if (ret_val := self._inner_capture(incoming)) is None:
+            raise InvalidContext(
+                f"ValueSource {incoming} does not belong to current graph."
+            )
+        return ret_val
 
     def add_node_to_graph(
         self,
@@ -238,6 +241,31 @@ class GraphBuilder(AbstractContextManager):
         except TierkreisTypeErrors as te:
             raise IncrementalTypeError("Builder expression caused type error.") from te
             # TODO remove final entry in traceback?
+
+
+class CaptureBuilder(GraphBuilder):
+    captured: dict[ValueSource, PortID]
+
+    def __init__(
+        self,
+        inputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
+        outputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
+        name: str = "",
+    ) -> None:
+        super().__init__(inputs, outputs, name)
+
+        self.captured = {}
+
+    def capture(
+        self, incoming: ValueSource, allow_existing: bool = False
+    ) -> ValueSource:
+        if (valsrc := self._inner_capture(incoming)) is not None:
+            return valsrc
+        if incoming in self.captured and not allow_existing:
+            # This would generate two wires from the same NodePort
+            raise ValueError(f"Already captured {incoming} as input to {self.graph}")
+        in_name = self.captured.setdefault(incoming, _capture_label(len(self.captured)))
+        return self.graph.input[in_name]
 
 
 def _partial_thunk(
@@ -309,7 +337,7 @@ class Box(_CallAddNode):
         )
 
 
-class Scope(GraphBuilder, ABC):
+class Scope(CaptureBuilder, ABC):
     location: Location
 
     def __init__(self, location: Union[str, Location] = Location([])):
@@ -478,11 +506,7 @@ def graph(name: Optional[str] = None, sig: OptSig = None) -> _GraphDecoratorType
                 gb = gb.with_type_check(sig)
             with gb as sub_build:
                 f(*(Input(port) for port in in_types))
-            if sub_build.captured:
-                raise CapturedError(
-                    "Graph contains inputs captured from other graphs. "
-                    "Use @closure if appropriate."
-                )
+
             return sub_build.graph
 
         wrapper.__annotations__ = {}
@@ -518,7 +542,7 @@ def closure(
         graph_name = name or getattr(f, "__name__")
         # graph_name = name or f.__name__  # type: ignore  # the alternative
 
-        gb = GraphBuilder(in_types, out_types, name=graph_name)
+        gb = CaptureBuilder(in_types, out_types, name=graph_name)
         if sig:
             gb = gb.with_type_check(sig)
         with gb as sub_build:
@@ -550,7 +574,7 @@ def loop(name: Optional[str] = None, sig: OptSig = None):
 
         @wraps(f)
         def wrapper(initial: ValueSource) -> NodePort:
-            gb = GraphBuilder(in_types, out_types, name=graph_name)
+            gb = CaptureBuilder(in_types, out_types, name=graph_name)
             if sig:
                 gb = gb.with_type_check(sig)
             with gb as sub_build:
@@ -568,14 +592,14 @@ def loop(name: Optional[str] = None, sig: OptSig = None):
     return decorator_graph
 
 
-class If(GraphBuilder):
+class If(CaptureBuilder):
     def __init__(self) -> None:
         super().__init__()
         self.graph.name = "if"
         Match._add_handler("if", self)
 
 
-class Else(GraphBuilder):
+class Else(CaptureBuilder):
     def __init__(self) -> None:
         super().__init__()
         self.graph.name = "else"
@@ -593,15 +617,15 @@ class IntermediateNodes(Exception):
 
 
 class _CaseScope(GraphBuilder, ABC):
-    __variant_handlers: ContextVar[dict[str, GraphBuilder]] = ContextVar(
+    __variant_handlers: ContextVar[dict[str, CaptureBuilder]] = ContextVar(
         "variant_handlers"
     )
 
-    _token: Token[dict[str, GraphBuilder]]
+    _token: Token[dict[str, CaptureBuilder]]
     nref: NodeRef
 
     @classmethod
-    def _get_handlers(cls) -> dict[str, GraphBuilder]:
+    def _get_handlers(cls) -> dict[str, CaptureBuilder]:
         return cls.__variant_handlers.get()
 
     def __enter__(self) -> "_CaseScope":
@@ -610,7 +634,7 @@ class _CaseScope(GraphBuilder, ABC):
         return self
 
     @classmethod
-    def _add_handler(cls, tag: str, handler: GraphBuilder):
+    def _add_handler(cls, tag: str, handler: CaptureBuilder):
         handlers = cls.__variant_handlers.get()
         if tag in handlers:
             raise DuplicateBlock(tag)
@@ -674,7 +698,7 @@ class Match(_CaseScope):
         )
 
 
-class Case(GraphBuilder):
+class Case(CaptureBuilder):
     var_value: NodePort
 
     def __init__(self, tag: str) -> None:
@@ -714,7 +738,7 @@ class IfElse(_CaseScope):
         )
 
 
-def _combine_captures(thunks: list[GraphBuilder]) -> dict[ValueSource, PortID]:
+def _combine_captures(thunks: list[CaptureBuilder]) -> dict[ValueSource, PortID]:
     """Given a list of thunks with captured inputs, remove their existing input
     names, common up any shared sources (up to == equality), and add all those
     inputs to all graphs, discarding any unused."""

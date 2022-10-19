@@ -58,7 +58,7 @@ def event_loop(request):
 
 @pytest.fixture(scope="session")
 def pyruntime():
-    return PyRuntime([main.namespace])
+    return PyRuntime([main.root])
 
 
 @pytest.fixture(scope="session", params=[False, True])

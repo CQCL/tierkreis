@@ -5,7 +5,7 @@ import typing
 from dataclasses import dataclass, make_dataclass
 from functools import wraps
 from inspect import getdoc, isclass
-from typing import Awaitable, Callable, Dict, List, Optional, Type, Union, cast
+from typing import Awaitable, Callable, Dict, List, Mapping, Optional, Type, Union, cast
 
 import opentelemetry.context
 import opentelemetry.propagate
@@ -75,26 +75,55 @@ def _check_tkstruct_hint(hint: Type) -> bool:
     )
 
 
-class Namespace:
+@dataclass(frozen=True)
+class NamespaceClash(Exception):
+    namespace: list[str]
+    functions: set[str]
+
+    def __str__(self) -> str:
+        return f"""Clash in namespace {'::'.join(self.namespace)} of functions\n
+        {self.functions}"""
+
+
+class Namespace(Mapping[str, "Namespace"]):
     """Namespace containing Tierkreis Functions"""
 
-    name: str
     functions: dict[str, Function]
     aliases: dict[str, TypeScheme]
     subspaces: dict[str, "Namespace"]
 
-    def __init__(self, name: str):
-        self.name = name
+    def __init__(self):
         self.functions = {}
         self.aliases = {}
         self.subspaces = {}
 
+    def __getitem__(self, __k: str) -> "Namespace":
+        return self.subspaces.setdefault(__k, Namespace())
+
+    def __iter__(self):
+        return self.subspaces.__iter__()
+
+    def __len__(self):
+        return self.subspaces.__len__()
+
+    def merge_namespace(self, other: "Namespace"):
+        self._merge_namespace(other, [])
+
+    def _merge_namespace(self, other: "Namespace", prefix: list[str]):
+        """Merges other namespace into self"""
+        intersect = self.functions.keys() & other.functions.keys()
+        if intersect:
+            raise NamespaceClash(prefix, intersect)
+        self.functions = other.functions | self.functions
+        for (k, v) in other.subspaces.items():
+            if (x := self.subspaces.get(k)) is None:
+                self.subspaces[k] = v
+            else:
+                x._merge_namespace(v, prefix + ["k"])
+
     def add_alias(self, name, type_: Type) -> Type:
         self.aliases[name] = TypeScheme({}, [], TierkreisType.from_python(type_))
         return type_
-
-    def add_subspace(self, namespace: "Namespace"):
-        self.subspaces[namespace.name] = namespace
 
     def add_named_struct(self, name, type_: Type) -> Type:
         register_struct_convertible(type_)
@@ -127,10 +156,9 @@ class Namespace:
     def get_function(self, name: FunctionName) -> Optional[Function]:
         ns = self
         for x in name.namespaces:
-            if subns := ns.subspaces.get(x):
-                ns = subns
-            else:
+            if (subns := ns.subspaces.get(x)) is None:
                 return None
+            ns = subns
         return ns.functions.get(name.name)
 
     def function(

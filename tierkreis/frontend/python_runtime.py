@@ -58,11 +58,12 @@ class PyRuntime(RuntimeClient):
     """A simplified python-only Tierkreis runtime. Can be used with builtin
     operations and python only namespaces that are locally available."""
 
-    def __init__(self, namespaces: Iterable["Namespace"], num_workers: int = 1):
+    def __init__(self, roots: Iterable["Namespace"], num_workers: int = 1):
         """Initialise with locally available namespaces, and the number of
         workers (asyncio tasks) to use in execution."""
         self.root = deepcopy(python_builtin.namespace)
-        self.root.subspaces = {ns.name: ns for ns in namespaces}
+        for root in roots:
+            self.root.merge_namespace(root)
         self.num_workers = num_workers
         self.callback: Callable[[TierkreisEdge, TierkreisValue], None]
         self.set_callback(None)

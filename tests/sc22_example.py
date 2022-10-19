@@ -47,8 +47,8 @@ def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
 
         return PyRuntime(
             [
-                sc22_worker.main.namespace,
-                pytket_worker.main.namespace,
+                sc22_worker.main.root,
+                pytket_worker.main.root,
             ]
         )
     elif len(args) == 1:

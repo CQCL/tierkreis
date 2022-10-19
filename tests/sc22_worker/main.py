@@ -7,9 +7,8 @@ import numpy as np
 from tierkreis.worker import Namespace
 from tierkreis.worker.prelude import start_worker_server
 
-root = Namespace("_root")
-namespace = Namespace("sc22")
-root.add_subspace(namespace)
+root = Namespace()
+namespace = root["sc22"]
 
 A = TypeVar("A")
 

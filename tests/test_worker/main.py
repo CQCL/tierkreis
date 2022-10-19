@@ -11,11 +11,9 @@ from tierkreis.frontend.runtime_client import RuntimeClient, with_runtime_client
 from tierkreis.worker import CallbackHook, Namespace
 from tierkreis.worker.prelude import start_worker_server
 
-root = Namespace("_root")
-namespace = Namespace("python_nodes")
-root.add_subspace(namespace)
-subspace = Namespace("subspace")
-namespace.add_subspace(subspace)
+root = Namespace()
+namespace = root["python_nodes"]
+subspace = namespace["subspace"]
 callback = CallbackHook()
 
 A = TypeVar("A")

@@ -26,7 +26,7 @@ def pytket_pyruntime():
     sys.path.append(str(Path(__file__).parent.parent.parent / "workers"))
     import pytket_worker.main  # type: ignore
 
-    return PyRuntime([pytket_worker.main.namespace])
+    return PyRuntime([pytket_worker.main.root])
 
 
 @pytest.mark.asyncio

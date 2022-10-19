@@ -488,15 +488,15 @@ def test_merge_copies():
 
 
 @pytest.mark.asyncio
-async def test_subspaces(server_client: ServerRuntime):
+async def test_subspaces(client: RuntimeClient):
     tg = TierkreisGraph()
     idnode = tg.add_func("python_nodes::subspace::increment", value=tg.add_const(0))
     tg.set_outputs(out=idnode)
 
-    assert (await server_client.run_graph(tg))["out"].try_autopython() == 2
+    assert (await client.run_graph(tg))["out"].try_autopython() == 2
 
     tg = TierkreisGraph()
     idnode = tg.add_func("python_nodes::increment", value=tg.add_const(0))
     tg.set_outputs(out=idnode)
 
-    assert (await server_client.run_graph(tg))["out"].try_autopython() == 1
+    assert (await client.run_graph(tg))["out"].try_autopython() == 1

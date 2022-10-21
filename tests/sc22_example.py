@@ -33,17 +33,14 @@ from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 
 def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
     if len(args) == 0:
+        import pytket_worker.main  # type: ignore
+
         from tierkreis.frontend.python_runtime import PyRuntime
 
         tests_dir = Path(__file__).parent
         print("Importing", tests_dir)
         sys.path.append(str(tests_dir))
         import sc22_worker.main  # type: ignore
-
-        workers_dir = tests_dir.parent.parent / "workers"
-        print("Importing 2", workers_dir)
-        sys.path.append(str(workers_dir))
-        import pytket_worker.main  # type: ignore
 
         return PyRuntime(
             [

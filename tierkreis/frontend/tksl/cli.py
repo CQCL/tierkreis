@@ -125,7 +125,7 @@ def local(
 
     e.g.
     >> tksl-start local ../target/debug/tierkreis-server -w
-       pytket:../workers/pytket_worker --wr remote:http://localhost:8050"""
+       pytket:../pytket_worker --wr remote:http://localhost:8050"""
 
     worker_locations = [
         (s[0], Path(s[1])) for s in map(lambda v: v.split(":", 1), worker)
@@ -173,9 +173,7 @@ def docker(
 
     e.g.
     >> tksl-start docker cqc/tierkreis
-     -d cqc/tierkreis-workers:/root/workers/pytket_worker
-     -d cqc/tierkreis-workers:/root/workers/qermit_worker
-     -w ../workers/myqos_worker
+     -d cqc/tierkreis-workers:/root/pytket_worker
      --remote-worker http://localhost:8050"""
 
     image_worker_gen = (worker_str.split(":", 2) for worker_str in docker_worker)

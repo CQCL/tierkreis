@@ -1,5 +1,3 @@
-import sys
-from pathlib import Path
 from typing import cast
 
 import pytest
@@ -23,7 +21,6 @@ def bell_circuit() -> str:
 
 @pytest.fixture
 def pytket_pyruntime():
-    sys.path.append(str(Path(__file__).parent.parent.parent / "workers"))
     import pytket_worker.main  # type: ignore
 
     return PyRuntime([pytket_worker.main.root])

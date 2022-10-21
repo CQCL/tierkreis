@@ -6,13 +6,8 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Dict, Tuple
 
-try:
-    from mushroom_dataclasses.circuit import Circuit as CircStruct
-    from mushroom_dataclasses.circuit import Register as UnitID
-except ImportError as e:
-    raise ImportError(
-        "Make sure tierkreis is installed with the 'commontypes' feature"
-    ) from e
+from .circuit import Circuit as CircStruct
+from .circuit import UnitID
 
 if TYPE_CHECKING:
     from pytket.backends.backendresult import BackendResult
@@ -35,7 +30,7 @@ def _try_pytket_import(mod: str, obj: str) -> Any:
     return loaded
 
 
-@dataclass
+@dataclass(frozen=True)
 class SampledDistribution:
     distribution: Distribution
     n_samples: int
@@ -98,7 +93,7 @@ def _qps_from_pytket(tkqps: "PytketQubitPauliString") -> QubitPauliString:
     return [(UnitID.from_serializable(qb), pauli) for qb, pauli in lst]
 
 
-@dataclass
+@dataclass(frozen=True)
 class MeasurementBitMap:
     circ_index: int
     bits: list[int]
@@ -115,7 +110,7 @@ class MeasurementBitMap:
         return cls(py_map.circ_index, py_map.bits, py_map.invert)
 
 
-@dataclass
+@dataclass(frozen=True)
 class MeasurementSetup:
     measurement_circs: list[CircStruct]
     results: list[tuple[QubitPauliString, list[MeasurementBitMap]]]

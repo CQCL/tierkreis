@@ -2,7 +2,7 @@ import inspect
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from functools import update_wrapper, wraps
 from itertools import count
 from types import TracebackType
@@ -142,6 +142,19 @@ OptSig = Optional[Signature]
 TGBuilder = TypeVar("TGBuilder", bound="GraphBuilder")
 
 
+def _update_graph(old_graph: TierkreisGraph, new_graph: TierkreisGraph):
+    """Change the object into the given graph,
+    while preserving node references in the graph and boxes
+    """
+    for name, node in old_graph.nodes().items():
+        other = new_graph[name]
+        if isinstance(node, BoxNode) and isinstance(other, BoxNode):
+            _update_graph(node.graph, other.graph)
+            new_graph[name] = replace(other, graph=node.graph)
+
+    old_graph._graph = new_graph._graph
+
+
 class GraphBuilder(AbstractContextManager):
     graph: TierkreisGraph
     inputs: dict[str, Optional["TierkreisType"]]
@@ -219,7 +232,7 @@ class GraphBuilder(AbstractContextManager):
         for tgt_port, vs in incoming_wires.items():
             self.graph.add_edge(_resolve(self.capture(vs)), nr[tgt_port])
         if _type_check:
-            self.type_check()
+            self.type_check_and_update()
         return nr
 
     def set_graph_outputs(self, **incoming_wires: ValueSource) -> None:
@@ -233,11 +246,11 @@ class GraphBuilder(AbstractContextManager):
             **incoming_wires,
         )
 
-    def type_check(self):
+    def type_check_and_update(self):
         if self.sig is None:
             return
         try:
-            self.graph.update_graph(infer_graph_types(self.graph, self.sig))
+            _update_graph(self.graph, infer_graph_types(self.graph, self.sig))
         except TierkreisTypeErrors as te:
             raise IncrementalTypeError("Builder expression caused type error.") from te
             # TODO remove final entry in traceback?

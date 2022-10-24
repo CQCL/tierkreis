@@ -1,7 +1,7 @@
 """Implementation of simple python-only runtime."""
 import asyncio
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, cast
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, cast
 
 import networkx as nx  # type: ignore
 
@@ -239,3 +239,8 @@ class PyRuntime(RuntimeClient):
 
     async def type_check_graph(self, tg) -> TierkreisGraph:
         return infer_graph_types(tg, await self.get_signature())
+
+    async def type_check_graph_with_inputs(
+        self, tg, inputs: StructValue
+    ) -> Tuple[TierkreisGraph, StructValue]:
+        return infer_graph_types(tg, await self.get_signature(), inputs)

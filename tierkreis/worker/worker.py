@@ -249,8 +249,12 @@ class RuntimeServerImpl(pr.RuntimeBase):
         inputs = StructValue.from_proto_dict(run_graph_request.inputs.map)
         try:
             if run_graph_request.type_check:
-                # Should really type check inputs here
-                graph = await self.worker.pyruntime.type_check_graph(graph)
+                (
+                    graph,
+                    inputs,
+                ) = await self.worker.pyruntime.type_check_graph_with_inputs(
+                    graph, inputs
+                )
 
             outputs = await self.worker.pyruntime.run_graph(graph, **inputs.values)
             return pr.RunGraphResponse(

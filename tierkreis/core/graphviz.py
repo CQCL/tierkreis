@@ -10,6 +10,7 @@ from tierkreis.core.tierkreis_graph import (
     FunctionNode,
     GraphValue,
     InputNode,
+    Location,
     MatchNode,
     OutputNode,
     TagNode,
@@ -145,6 +146,12 @@ def _thunk_name(thunk: TierkreisGraph) -> str:
     return name
 
 
+def _print_location(loc: Location) -> str:
+    if loc.location == []:
+        return ""
+    return "@" + "/".join(loc.location)
+
+
 def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
     """Calculate node label (first) and colour (second)."""
 
@@ -176,7 +183,7 @@ def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
         node_label += "Tag: " + node.tag_name
     elif isinstance(node, BoxNode):
         if not node_label:
-            node_label = "Box"
+            node_label = f"Box{_print_location(node.location)}"
             name = cast(BoxNode, node).graph.name
             if name:
                 node_label += f": {name}"

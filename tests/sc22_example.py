@@ -25,7 +25,8 @@ from tierkreis.builder import (
     graph,
     loop,
 )
-from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
+from tierkreis.client.runtime_client import RuntimeClient
+from tierkreis.client.server_client import ServerRuntime
 
 # This avoids errors on every call to a decorated _GraphDef
 # pylint: disable=no-value-for-parameter

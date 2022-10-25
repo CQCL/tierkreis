@@ -10,7 +10,7 @@ from tierkreis.core.values import IntValue, StructValue, VecValue
 from .utils import nint_adder
 
 if TYPE_CHECKING:
-    from tierkreis.frontend import ServerRuntime
+    from tierkreis.client import ServerRuntime
 
 
 @pytest.mark.asyncio

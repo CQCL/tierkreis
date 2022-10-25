@@ -13,14 +13,14 @@ from yachalk import chalk
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis import TierkreisGraph
 from tierkreis.builder import _func_sig
+from tierkreis.client import ServerRuntime, local_runtime
+from tierkreis.client.myqos_client import myqos_runtime
+from tierkreis.client.server_client import TaskHandle
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
 from tierkreis.core.signature import Signature
 from tierkreis.core.types import StructType, TierkreisTypeErrors
 from tierkreis.core.values import StructValue, TierkreisValue
-from tierkreis.frontend import ServerRuntime, local_runtime
-from tierkreis.frontend.myqos_client import myqos_runtime
-from tierkreis.frontend.runtime_client import TaskHandle
 
 if TYPE_CHECKING:
     from tierkreis.core.function import FunctionDeclaration
@@ -175,7 +175,7 @@ def docker(
      -d cqc/tierkreis-workers:/root/pytket_worker
      --remote-worker http://localhost:8050"""
     # import may raise error if docker feature not installed
-    from tierkreis.frontend.docker_manager import docker_runtime
+    from tierkreis.client.docker_manager import docker_runtime
 
     image_worker_gen = (worker_str.split(":", 2) for worker_str in docker_worker)
     image_workers = [(img, pth) for img, pth in image_worker_gen]

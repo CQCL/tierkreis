@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Ty
 import pytest
 
 from tierkreis import TierkreisGraph
+from tierkreis.client import RuntimeClient, ServerRuntime
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.graphviz import _merge_copies
@@ -27,7 +28,6 @@ from tierkreis.core.types import (
     VarType,
 )
 from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
-from tierkreis.frontend import RuntimeClient, ServerRuntime
 from tierkreis.pyruntime import PyRuntime
 from tierkreis.worker.exceptions import NodeExecutionError
 

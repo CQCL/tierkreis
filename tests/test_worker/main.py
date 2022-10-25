@@ -4,10 +4,10 @@ from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar, cast
 
 from tierkreis import TierkreisGraph
+from tierkreis.client.server_client import RuntimeClient, with_runtime_client
 from tierkreis.core.python import RuntimeGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import StarKind
-from tierkreis.frontend.runtime_client import RuntimeClient, with_runtime_client
 from tierkreis.worker import CallbackHook, Namespace
 from tierkreis.worker.prelude import start_worker_server
 

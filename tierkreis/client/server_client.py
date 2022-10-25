@@ -23,7 +23,7 @@ from grpclib.events import SendRequest, listen
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
-from tierkreis.core.runtime_client import RuntimeClient
+from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors

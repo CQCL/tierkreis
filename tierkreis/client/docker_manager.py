@@ -22,7 +22,7 @@ from typing import (
 from grpclib.client import Channel
 
 from .myqos_client import _get_myqos_creds
-from .runtime_client import RuntimeLaunchFailed, ServerRuntime
+from .server_client import RuntimeLaunchFailed, ServerRuntime
 
 try:
     from docker import DockerClient  # type: ignore

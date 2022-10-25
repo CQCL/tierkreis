@@ -1,9 +1,9 @@
 import pytest
 
+from tierkreis.client.server_client import ServerRuntime
 from tierkreis.core import Labels
 from tierkreis.core.tierkreis_graph import TierkreisEdge, TierkreisGraph
 from tierkreis.core.values import TierkreisValue, VariantValue
-from tierkreis.frontend.runtime_client import ServerRuntime
 from tierkreis.pyruntime import PyRuntime, python_builtin
 
 

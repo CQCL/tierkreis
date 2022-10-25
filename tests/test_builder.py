@@ -28,6 +28,7 @@ from tierkreis.builder import (
     graph,
     loop,
 )
+from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core import Labels
 from tierkreis.core.protos.tierkreis.graph import Graph
 from tierkreis.core.signature import Signature
@@ -53,7 +54,6 @@ from tierkreis.core.values import (
     VariantValue,
     VecValue,
 )
-from tierkreis.frontend.runtime_client import RuntimeClient
 
 if TYPE_CHECKING:
     from tierkreis.builder import StablePortFunc

@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, cast
 
 import networkx as nx  # type: ignore
 
+from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
-from tierkreis.core.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,

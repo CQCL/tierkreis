@@ -5,7 +5,7 @@ import keyring
 from grpclib.client import Channel
 from grpclib.events import SendRequest, listen
 
-from .runtime_client import ServerRuntime, _gen_auth_injector
+from .server_client import ServerRuntime, _gen_auth_injector
 
 
 def _get_myqos_creds(staging: bool = False) -> Tuple[Optional[str], Optional[str]]:

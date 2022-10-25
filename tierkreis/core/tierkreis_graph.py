@@ -173,7 +173,7 @@ class NodePort:
 
     def __getitem__(self, field_name: str) -> "Unpack":
         raise NotImplementedError(
-            "Import tierkreis.frontend.builder to get"
+            "Import tierkreis.builder to get"
             "automatic unpacking of structs using the [<field>] syntax. "
         )
 

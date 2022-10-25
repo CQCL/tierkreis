@@ -3,7 +3,7 @@ from typing import AsyncIterator
 import pytest
 
 from tierkreis.builder import Const, Copyable, Output, Scope, graph
-from tierkreis.frontend import RuntimeClient, ServerRuntime
+from tierkreis.client import RuntimeClient, ServerRuntime
 
 
 @pytest.mark.asyncio

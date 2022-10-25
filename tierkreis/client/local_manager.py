@@ -13,7 +13,7 @@ from typing import IO, AsyncIterator, List, Mapping, Optional, Union, cast
 from grpclib.client import Channel
 
 from .myqos_client import _get_myqos_creds
-from .runtime_client import RuntimeLaunchFailed, ServerRuntime
+from .server_client import RuntimeLaunchFailed, ServerRuntime
 
 
 def echo_thread(src: IO[bytes], dest: Union[int, str]):

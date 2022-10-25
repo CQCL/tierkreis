@@ -24,8 +24,8 @@ dependencies = [
 ]
 
 [project.scripts]
-tksl = 'tierkreis.frontend.tksl.cli:cli'
-tksl-start = 'tierkreis.frontend.tksl.cli:start'
+tksl = 'tierkreis.cli:cli'
+tksl-start = 'tierkreis.cli:start'
 
 [project.optional-dependencies]
 docker = [ "docker>=5,<6"]

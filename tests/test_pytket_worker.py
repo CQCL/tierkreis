@@ -3,8 +3,8 @@ from typing import cast
 import pytest
 
 from tierkreis import TierkreisGraph
-from tierkreis.core.python_runtime import PyRuntime
 from tierkreis.core.values import StructValue, VecValue
+from tierkreis.pyruntime import PyRuntime
 
 
 @pytest.fixture

@@ -11,7 +11,6 @@ from tierkreis import TierkreisGraph
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.graphviz import _merge_copies
-from tierkreis.core.python_runtime import PyRuntime
 from tierkreis.core.signature import Namespace, Signature
 from tierkreis.core.tierkreis_graph import FunctionNode, GraphValue, NodePort
 from tierkreis.core.tierkreis_struct import TierkreisStruct
@@ -29,6 +28,7 @@ from tierkreis.core.types import (
 )
 from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
 from tierkreis.frontend import RuntimeClient, ServerRuntime
+from tierkreis.pyruntime import PyRuntime
 from tierkreis.worker.exceptions import NodeExecutionError
 
 from . import REASON, release_tests

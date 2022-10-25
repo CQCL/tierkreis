@@ -1,25 +1,15 @@
 """Prelude definitions and functions for server executable scripts.
-
-isort:skip_file
 """
 
 import argparse
 import asyncio
 import os
-
 from typing import Optional
 
-import opentelemetry.trace
-from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
-    OTLPSpanExporter,
-)
-from opentelemetry.sdk.resources import SERVICE_NAME, Resource
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import SimpleSpanProcessor
-
-from .namespace import Namespace
-from .worker import Worker
 from .callback import CallbackHook
+from .namespace import Namespace
+from .tracing import _TRACING
+from .worker import Worker
 
 parser = argparse.ArgumentParser(description="Parse worker server cli.")
 parser.add_argument(
@@ -30,23 +20,30 @@ profile_worker: bool
 
 
 def setup_tracing(service_name: str):
-
     endpoint = os.environ.get("TIERKREIS_OTLP")
     global profile_worker
     profile_worker = bool(os.environ.get("TIERKREIS_PROFILE_WORKER"))
 
     if endpoint is None:
         return
+    if _TRACING:
+        import opentelemetry.trace
+        from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import (
+            OTLPSpanExporter,
+        )
+        from opentelemetry.sdk.resources import SERVICE_NAME, Resource
+        from opentelemetry.sdk.trace import TracerProvider
+        from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 
-    tracer_provider = TracerProvider(
-        resource=Resource.create({SERVICE_NAME: service_name})
-    )
+        tracer_provider = TracerProvider(
+            resource=Resource.create({SERVICE_NAME: service_name})
+        )
 
-    span_exporter = OTLPSpanExporter(endpoint=endpoint)
+        span_exporter = OTLPSpanExporter(endpoint=endpoint)
 
-    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+        tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
 
-    opentelemetry.trace.set_tracer_provider(tracer_provider)
+        opentelemetry.trace.set_tracer_provider(tracer_provider)
 
 
 def start_worker_server(

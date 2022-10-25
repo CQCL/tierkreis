@@ -19,11 +19,18 @@ from typing import (
     cast,
 )
 
-from docker import DockerClient  # type: ignore
 from grpclib.client import Channel
 
 from .myqos_client import _get_myqos_creds
 from .runtime_client import RuntimeLaunchFailed, ServerRuntime
+
+try:
+    from docker import DockerClient  # type: ignore
+except ImportError as e:
+    raise ImportError(
+        "docker not found,"
+        " tierkreis may need to be installed with the 'docker' feature flag."
+    ) from e
 
 if TYPE_CHECKING:
     from docker.models.containers import Container  # type: ignore

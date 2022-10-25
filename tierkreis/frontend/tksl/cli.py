@@ -19,7 +19,6 @@ from tierkreis.core.types import StructType, TierkreisTypeErrors
 from tierkreis.core.values import StructValue, TierkreisValue
 from tierkreis.frontend import ServerRuntime, local_runtime
 from tierkreis.frontend.builder import _func_sig
-from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import TaskHandle
 
@@ -175,6 +174,8 @@ def docker(
     >> tksl-start docker cqc/tierkreis
      -d cqc/tierkreis-workers:/root/pytket_worker
      --remote-worker http://localhost:8050"""
+    # import may raise error if docker feature not installed
+    from tierkreis.frontend.docker_manager import docker_runtime
 
     image_worker_gen = (worker_str.split(":", 2) for worker_str in docker_worker)
     image_workers = [(img, pth) for img, pth in image_worker_gen]

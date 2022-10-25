@@ -7,10 +7,6 @@ from functools import wraps
 from inspect import getdoc, isclass
 from typing import Awaitable, Callable, Dict, List, Mapping, Optional, Type, Union, cast
 
-import opentelemetry.context
-import opentelemetry.propagate
-import opentelemetry.trace
-
 from tierkreis.core.function import FunctionDeclaration, FunctionName
 from tierkreis.core.signature import Namespace as SigNamespace
 from tierkreis.core.signature import Signature
@@ -38,7 +34,9 @@ from tierkreis.worker.exceptions import (
     NodeExecutionError,
 )
 
-tracer = opentelemetry.trace.get_tracer(__name__)
+from .tracing import get_tracer, span
+
+tracer = get_tracer(__name__)
 
 
 @dataclass
@@ -201,7 +199,7 @@ class Namespace(Mapping[str, "Namespace"]):
             @wraps(func)
             async def wrapped_func(inputs: StructValue) -> StructValue:
                 try:
-                    with tracer.start_as_current_span("decoding inputs to python type"):
+                    with span(tracer, name="decoding inputs to python type"):
                         python_inputs = (
                             {"inputs": inputs.to_python(hint_inputs)}
                             if struct_input
@@ -219,9 +217,7 @@ class Namespace(Mapping[str, "Namespace"]):
                     raise NodeExecutionError(error) from error
 
                 try:
-                    with tracer.start_as_current_span(
-                        "encoding outputs from python type"
-                    ):
+                    with span(tracer, name="encoding outputs from python type"):
                         outputs = TierkreisValue.from_python(python_outputs)
                 except Exception as error:
                     raise EncodeOutputError(str(error)) from error

@@ -8,13 +8,9 @@ import grpclib
 import grpclib.events
 import grpclib.server
 import keyring
-import opentelemetry.context
-import opentelemetry.propagate
-import opentelemetry.trace
 from grpclib.const import Status as StatusCode
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
-from opentelemetry.semconv.trace import SpanAttributes
 
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
@@ -35,31 +31,37 @@ from .exceptions import (
     NodeExecutionError,
 )
 from .namespace import Namespace
+from .tracing import _TRACING, context_token, get_tracer, span
 
-tracer = opentelemetry.trace.get_tracer(__name__)
+if _TRACING:
+    import opentelemetry.context
+    import opentelemetry.propagate
+    import opentelemetry.trace
+    from opentelemetry.semconv.trace import SpanAttributes
+
+
+tracer = get_tracer(__name__)
 
 
 async def _event_recv_request(request: grpclib.events.RecvRequest):
     method_func = request.method_func
-    context = opentelemetry.propagate.extract(request.metadata)
-
     service, method = request.method_name.lstrip("/").split("/", 1)
-
-    attributes = {
-        SpanAttributes.RPC_SYSTEM: "grpc",
-        SpanAttributes.RPC_SERVICE: service,
-        SpanAttributes.RPC_METHOD: method,
-    }
+    kwargs: dict[str, Any] = dict(name=f"GRPC: {request.method_name}")
+    if _TRACING:
+        context = opentelemetry.propagate.extract(request.metadata)
+        attributes = {
+            SpanAttributes.RPC_SYSTEM: "grpc",
+            SpanAttributes.RPC_SERVICE: service,
+            SpanAttributes.RPC_METHOD: method,
+        }
+        kwargs["kind"] = opentelemetry.trace.SpanKind.SERVER
+        kwargs["attributes"] = attributes
+    else:
+        context = None
 
     async def wrapped(stream: grpclib.server.Stream):
-        token = opentelemetry.context.attach(context)
-        try:
-            span = tracer.start_as_current_span(
-                name=f"GRPC: {request.method_name}",
-                kind=opentelemetry.trace.SpanKind.SERVER,
-                attributes=attributes,
-            )
-            with span as s:
+        with context_token(context):
+            with span(tracer, **kwargs) as s:
                 from .prelude import profile_worker  # avoid cyclic import
 
                 if profile_worker:
@@ -82,9 +84,6 @@ async def _event_recv_request(request: grpclib.events.RecvRequest):
                     s.set_attribute("profile_results", render_results.read())
                 else:
                     await method_func(stream)
-
-        finally:
-            opentelemetry.context.detach(token)
 
     request.method_func = wrapped
 
@@ -193,9 +192,7 @@ class WorkerServerImpl(WorkerBase):
             function_name = FunctionName.from_proto(function)
             inputs_struct = StructValue.from_proto_dict(inputs.map)
             outputs_struct = await self.worker.run(function_name, inputs_struct)
-            with tracer.start_as_current_span(
-                "encoding python type in RunFunctionResponse proto"
-            ):
+            with span(tracer, name="encoding python type in RunFunctionResponse proto"):
                 res = RunFunctionResponse(
                     outputs=pg.StructValue(outputs_struct.to_proto_dict())
                 )

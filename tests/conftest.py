@@ -7,8 +7,9 @@ import pytest
 
 from tierkreis.core.python_runtime import PyRuntime
 from tierkreis.core.signature import Signature
-from tierkreis.frontend import docker_runtime, local_runtime, myqos_runtime
+from tierkreis.frontend import local_runtime, myqos_runtime
 from tierkreis.frontend.builder import Namespace
+from tierkreis.frontend.docker_manager import docker_runtime
 from tierkreis.frontend.runtime_client import RuntimeClient, ServerRuntime
 
 from . import LOCAL_SERVER_PATH

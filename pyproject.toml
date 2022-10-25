@@ -18,7 +18,9 @@ dependencies = [
     "networkx>=2.6.3,<3",
     "graphviz>=0.18,<0.19",
     "keyring==23.2",
-    "keyrings.alt==4.1"
+    "keyrings.alt==4.1",
+    "click>=8.0.3,<9",
+    "yachalk>=0.1.4,<0.2",
 ]
 
 [project.scripts]
@@ -26,12 +28,9 @@ tksl = 'tierkreis.frontend.tksl.cli:cli'
 tksl-start = 'tierkreis.frontend.tksl.cli:start'
 
 [project.optional-dependencies]
-frontend = [ "docker>=5,<6", "yachalk>=0.1.4,<0.2",]
-tksl = [
-    "click>=8.0.3,<9",
-    "tierkreis[frontend]"
-]
-runtime = [
+docker = [ "docker>=5,<6"]
+
+telemetry = [
     "opentelemetry-sdk>=1.5.0,<2",
     "opentelemetry-exporter-otlp>=1.5.0,<2",
 ]
@@ -46,7 +45,7 @@ lint = [
     "isort~=5.10",
     "types-setuptools>=57.4.2,<58",
     "types-python-dateutil>=2.8.2,<3",
-    "tierkreis[sc22_example]"
+    "tierkreis[sc22_example,telemetry,docker]"
 ]
 test = [
     "pytest>=6.2,<7",

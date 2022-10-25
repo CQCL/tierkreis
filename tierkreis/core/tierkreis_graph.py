@@ -28,7 +28,7 @@ from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue
 
 if TYPE_CHECKING:
-    from tierkreis.frontend.builder import Unpack
+    from tierkreis.builder import Unpack
 
 PortID = str
 Location = pg.Location

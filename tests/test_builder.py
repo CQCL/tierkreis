@@ -4,6 +4,30 @@ from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, cast, no_type_
 import pytest
 
 from tierkreis import TierkreisGraph
+from tierkreis.builder import (
+    Box,
+    Break,
+    Case,
+    Const,
+    Continue,
+    Copyable,
+    Else,
+    If,
+    IfElse,
+    Input,
+    Match,
+    Namespace,
+    Output,
+    Scope,
+    Tag,
+    ValueSource,
+    _GraphDecoratorType,
+    closure,
+    current_builder,
+    current_graph,
+    graph,
+    loop,
+)
 from tierkreis.core import Labels
 from tierkreis.core.protos.tierkreis.graph import Graph
 from tierkreis.core.signature import Signature
@@ -29,35 +53,11 @@ from tierkreis.core.values import (
     VariantValue,
     VecValue,
 )
-from tierkreis.frontend.builder import (
-    Box,
-    Break,
-    Case,
-    Const,
-    Continue,
-    Copyable,
-    Else,
-    If,
-    IfElse,
-    Input,
-    Match,
-    Namespace,
-    Output,
-    Scope,
-    Tag,
-    ValueSource,
-    _GraphDecoratorType,
-    closure,
-    current_builder,
-    current_graph,
-    graph,
-    loop,
-)
 from tierkreis.frontend.runtime_client import RuntimeClient
 
 if TYPE_CHECKING:
+    from tierkreis.builder import StablePortFunc
     from tierkreis.core.tierkreis_graph import NodePort, NodeRef
-    from tierkreis.frontend.builder import StablePortFunc
 
 # This avoids errors on every call to a decorated _GraphDef
 # pylint: disable=no-value-for-parameter

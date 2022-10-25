@@ -12,13 +12,13 @@ from yachalk import chalk
 
 import tierkreis.core.protos.tierkreis.graph as pg
 from tierkreis import TierkreisGraph
+from tierkreis.builder import _func_sig
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
 from tierkreis.core.signature import Signature
 from tierkreis.core.types import StructType, TierkreisTypeErrors
 from tierkreis.core.values import StructValue, TierkreisValue
 from tierkreis.frontend import ServerRuntime, local_runtime
-from tierkreis.frontend.builder import _func_sig
 from tierkreis.frontend.myqos_client import myqos_runtime
 from tierkreis.frontend.runtime_client import TaskHandle
 

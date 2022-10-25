@@ -9,7 +9,7 @@ from pytket import Circuit
 from sympy import symbols
 
 # from tierkreis.core.graphviz import render_graph, tierkreis_to_graphviz
-from tierkreis.frontend.builder import (
+from tierkreis.builder import (
     Box,
     Break,
     Const,

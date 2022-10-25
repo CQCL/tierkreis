@@ -5,8 +5,9 @@ from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, cast
 
 import networkx as nx  # type: ignore
 
-from tierkreis.core import Labels
+from tierkreis.core import Labels, python_builtin
 from tierkreis.core.function import FunctionName
+from tierkreis.core.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
@@ -21,11 +22,9 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisEdge,
     TierkreisGraph,
 )
+from tierkreis.core.type_inference import infer_graph_types
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import StructValue, TierkreisValue, VariantValue
-from tierkreis.frontend import python_builtin
-from tierkreis.frontend.runtime_client import RuntimeClient
-from tierkreis.frontend.type_inference import infer_graph_types
 
 if TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import _EdgeData

@@ -22,10 +22,10 @@ import tierkreis.core.protos.tierkreis.signature as ps
 import tierkreis.core.protos.tierkreis.worker as pw
 from tierkreis.core.function import FunctionName
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
+from tierkreis.core.python_runtime import PyRuntime
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
-from tierkreis.frontend.python_runtime import PyRuntime
 
 from .callback import CallbackHook
 from .exceptions import (

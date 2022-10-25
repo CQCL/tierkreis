@@ -1,6 +1,5 @@
 """Send requests to tierkreis server to execute a graph."""
 import asyncio
-from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
@@ -24,6 +23,7 @@ from grpclib.events import SendRequest, listen
 import tierkreis.core.protos.tierkreis.graph as pg
 import tierkreis.core.protos.tierkreis.runtime as pr
 import tierkreis.core.protos.tierkreis.signature as ps
+from tierkreis.core.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
 from tierkreis.core.types import TierkreisTypeErrors
@@ -70,25 +70,6 @@ class InputConversionError(Exception):
 
 
 StubType = TypeVar("StubType", bound="ServiceStub")
-
-
-class RuntimeClient(ABC):
-    @abstractmethod
-    async def get_signature(self) -> Signature:
-        ...
-
-    @abstractmethod
-    async def run_graph(
-        self,
-        graph: TierkreisGraph,
-        /,
-        **py_inputs: Any,
-    ) -> Dict[str, TierkreisValue]:
-        ...
-
-    @abstractmethod
-    async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
-        ...
 
 
 class ServerRuntime(RuntimeClient):

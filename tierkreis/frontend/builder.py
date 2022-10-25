@@ -48,10 +48,10 @@ from tierkreis.core.tierkreis_graph import (
     to_nodeport,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.type_inference import infer_graph_types
 from tierkreis.core.types import TierkreisTypeErrors, TypeScheme
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import TierkreisValue, TKVal1, tkvalue_to_tktype
-from tierkreis.frontend.type_inference import infer_graph_types
 
 if TYPE_CHECKING:
     from tierkreis.core.types import GraphType, TierkreisType

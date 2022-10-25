@@ -35,7 +35,7 @@ def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
     if len(args) == 0:
         import pytket_worker.main  # type: ignore
 
-        from tierkreis.frontend.python_runtime import PyRuntime
+        from tierkreis.core.python_runtime import PyRuntime
 
         tests_dir = Path(__file__).parent
         print("Importing", tests_dir)

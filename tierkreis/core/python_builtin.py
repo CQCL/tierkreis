@@ -6,10 +6,10 @@ from typing import Generic, TypeVar, cast
 
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.type_inference import builtin_namespace
 from tierkreis.core.types import StarKind
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import MapValue, StructValue
-from tierkreis.frontend.type_inference import builtin_namespace
 from tierkreis.worker.namespace import Function, Namespace
 
 namespace = Namespace()

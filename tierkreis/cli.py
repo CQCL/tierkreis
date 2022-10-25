@@ -304,7 +304,8 @@ async def run(ctx: click.Context, proto: Path, inputs: str):
 @click.pass_context
 @coro
 async def submit(ctx: click.Context, proto: Path, inputs: str):
-    """Submit PROTO binary and optional INPUTS to runtime and print task id to console."""
+    """Submit PROTO binary and optional
+    INPUTS to runtime and print task id to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(ServerRuntime, client)
         tkg = await _parse(proto)

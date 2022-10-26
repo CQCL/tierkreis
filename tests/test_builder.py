@@ -21,7 +21,6 @@ from tierkreis.builder import (
     Scope,
     Tag,
     ValueSource,
-    _GraphDecoratorType,
     closure,
     current_builder,
     current_graph,
@@ -290,12 +289,6 @@ def dec_checks_types(request) -> bool:
     return request.param
 
 
-@pytest.fixture()
-def graph_dec(dec_checks_types: bool, sig: Signature) -> _GraphDecoratorType:
-    # provide decorators with and without incremental type checking
-    return graph(sig=sig) if dec_checks_types else graph()
-
-
 def double(bi) -> TierkreisGraph:
     @graph()
     def _double(value: Input[IntValue]) -> Output[IntValue]:
@@ -312,15 +305,13 @@ async def test_double(client: RuntimeClient, bi: Namespace):
 
 
 @pytest.mark.asyncio
-async def test_copy(
-    client: RuntimeClient, bi: Namespace, graph_dec: _GraphDecoratorType
-):
+async def test_copy(client: RuntimeClient, bi: Namespace):
     @dataclass
     class CopyOut(TierkreisStruct):
         a: Any
         b: IntValue
 
-    @graph_dec
+    @graph()
     def copy_graph(y: Input[IntValue]) -> Output[CopyOut]:
         return Output(*bi.copy(y))
 
@@ -329,15 +320,13 @@ async def test_copy(
 
 
 @pytest.mark.asyncio
-async def test_ifelse(
-    client: RuntimeClient, bi: Namespace, graph_dec: _GraphDecoratorType
-):
+async def test_ifelse(client: RuntimeClient, bi: Namespace):
     # some graph type annotations are missing here to test this scenario
-    @graph_dec
+    @graph()
     def triple(y: Input[IntValue]):
         return Output(bi.imul(y, Const(3)))
 
-    @graph_dec
+    @graph()
     def ifelse(x: Input, flag) -> Output:
         bias = Const(1)
         with IfElse(flag) as sw:
@@ -371,9 +360,8 @@ def constant_subgraphs(g: TierkreisGraph) -> list[TierkreisGraph]:
 async def test_ifelse_copying(
     client: RuntimeClient,
     bi: Namespace,
-    graph_dec: _GraphDecoratorType,
 ):
-    @graph_dec
+    @graph()
     def ifelse(x: Input[IntValue]) -> Output[IntValue]:
         pred = bi.eq(bi.imod(x, Const(2)), Const(0))
         x2 = Copyable(x)
@@ -398,10 +386,8 @@ async def test_ifelse_copying(
 
 
 @pytest.mark.asyncio
-async def test_copy_twice_inside_if(
-    client: RuntimeClient, bi: Namespace, graph_dec: _GraphDecoratorType
-):
-    @graph_dec
+async def test_copy_twice_inside_if(client: RuntimeClient, bi: Namespace):
+    @graph()
     def ifelse(x: Input[IntValue], flag: Input[BoolValue]) -> Output[IntValue]:
         with IfElse(flag) as sw:
             with If():
@@ -421,10 +407,8 @@ async def test_copy_twice_inside_if(
 
 
 @pytest.mark.asyncio
-async def test_copy_twice_from_outside_if(
-    client: RuntimeClient, bi: Namespace, graph_dec: _GraphDecoratorType
-):
-    @graph_dec
+async def test_copy_twice_from_outside_if(client: RuntimeClient, bi: Namespace):
+    @graph()
     def ifelse(x: Input[IntValue], flag: Input[BoolValue]) -> Output[IntValue]:
         c = Copyable(x)  # This can only copy in outer graph
         with IfElse(flag) as sw:
@@ -440,10 +424,8 @@ async def test_copy_twice_from_outside_if(
 
 
 @pytest.mark.asyncio
-async def test_loop(
-    client: RuntimeClient, bi: Namespace, graph_dec: _GraphDecoratorType
-):
-    @graph_dec
+async def test_loop(client: RuntimeClient, bi: Namespace):
+    @graph()
     def loopyg() -> Output[FloatValue]:
         incr = Const(1)
 
@@ -468,15 +450,13 @@ async def test_loop(
 
 
 @pytest.mark.asyncio
-async def test_match(
-    client: RuntimeClient, bi: Namespace, graph_dec: _GraphDecoratorType
-):
+async def test_match(client: RuntimeClient, bi: Namespace):
     @dataclass
     class _Vdict(TierkreisStruct):
         list: VecValue[FloatValue]
         pair: PairValue[FloatValue, FloatValue]
 
-    @graph_dec
+    @graph()
     def match(var: Input[VariantValue[_Vdict]]) -> Output:
         factor = Const(2.0)
         with Match(var) as match:
@@ -505,7 +485,7 @@ def _pair_builder(bi: Namespace, sig: Signature) -> TierkreisGraph:
         first: IntValue
         second: StringValue
 
-    @graph(sig=sig)
+    @graph()
     def main() -> Output[Pair]:
         return Output(*bi.unpack_pair(Const((2, "asdf"))))
 
@@ -514,7 +494,7 @@ def _pair_builder(bi: Namespace, sig: Signature) -> TierkreisGraph:
 
 @pytest.fixture()
 def _if_no_inputs(bi: Namespace, sig: Signature) -> TierkreisGraph:
-    @graph(sig=sig)
+    @graph()
     def main(pred: Input[BoolValue]) -> Output[IntValue]:
         with IfElse(pred) as ifelse:
             with If():
@@ -581,10 +561,8 @@ async def test_run_sample(
 
 
 @pytest.mark.asyncio
-async def test_Copyable(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_Copyable(bi, client: RuntimeClient) -> None:
+    @graph()
     def foo(a: Input[IntValue], b: Input[IntValue]) -> Output:
         assert num_copies(current_graph()) == 0
 
@@ -608,14 +586,13 @@ async def test_unpacking(
     bi,
     client: RuntimeClient,
     sig: Signature,
-    graph_dec: _GraphDecoratorType,
 ) -> None:
     def num_unpacks() -> int:
         return sum(1 for n in current_graph().nodes().values() if n.is_unpack_node())
 
     pn = bi["python_nodes"]
 
-    @graph_dec
+    @graph()
     def foo(a: Input[FloatValue], b: Input[IntValue]) -> Output:
         f = bi.make_struct(foo=a, bar=b)
         id_: "NodeRef" = pn.id_py(value=f["struct"])
@@ -651,8 +628,8 @@ def num_copies_unpacks() -> Tuple[int, int]:
     )
 
 
-def test_cant_unpack_original_after_copy(bi, graph_dec: _GraphDecoratorType) -> None:
-    @graph_dec
+def test_cant_unpack_original_after_copy(bi) -> None:
+    @graph()
     def foo(a: Input[StringValue], b: Input[FloatValue]) -> Output:
         sturct: NodePort = bi.make_struct(foo=a, bar=b)["struct"]
 
@@ -675,10 +652,8 @@ def test_cant_unpack_original_after_copy(bi, graph_dec: _GraphDecoratorType) -> 
 
 
 @pytest.mark.asyncio
-async def test_can_unpack_copy_with_resolve(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_can_unpack_copy_with_resolve(bi, client: RuntimeClient) -> None:
+    @graph()
     def foo(a: Input[IntValue], b: Input[IntValue]) -> Output:
         sturct = bi.make_struct(foo=a, bar=b)["struct"]
 
@@ -696,10 +671,8 @@ async def test_can_unpack_copy_with_resolve(
 
 
 @pytest.mark.asyncio
-async def test_Copyable_fields(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_Copyable_fields(bi, client: RuntimeClient) -> None:
+    @graph()
     def foo(a: Input[IntValue], b: Input[IntValue]) -> Output:
         sturct = bi.make_struct(foo=a, bar=b)["struct"]
 
@@ -716,10 +689,8 @@ async def test_Copyable_fields(
 
 
 @pytest.mark.asyncio
-async def test_unpacking_nested(
-    client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_unpacking_nested(client: RuntimeClient) -> None:
+    @graph()
     def foo(arg: Input[Any]) -> Output:
         return Output(out=arg["outer"]["inner"])
 
@@ -734,46 +705,46 @@ async def test_unpacking_nested(
 
 
 @pytest.mark.asyncio
-async def test_bad_annotations(graph_dec: _GraphDecoratorType) -> None:
+async def test_bad_annotations() -> None:
     # each case should also generate a static type error without
     # the `no_type_check` decorator
     with pytest.raises(TypeError, match="return type"):
 
         @no_type_check
-        @graph_dec
+        @graph()
         def foo1(arg: Input[Any]) -> int:
             return Output(out=arg)
 
     with pytest.raises(TypeError, match="return type"):
 
         @no_type_check
-        @graph_dec
+        @graph()
         def foo2(arg: Input[Any]) -> Output[int]:
             return Output(out=arg)
 
     with pytest.raises(TypeError, match="Graph builder function arguments"):
 
         @no_type_check
-        @graph_dec
+        @graph()
         def foo3(arg: float) -> Output:
             return Output(out=arg)
 
     with pytest.raises(ValueError, match="Cannot convert"):
 
         @no_type_check
-        @graph_dec
+        @graph()
         def foo4(arg: Input[float]) -> Output:
             return Output(out=arg)
 
 
 @pytest.mark.asyncio
-async def test_box_order(bi: Namespace, graph_dec: _GraphDecoratorType) -> None:
+async def test_box_order(bi: Namespace) -> None:
     @dataclass
     class TestOut(TierkreisStruct):
         first: IntValue
         lst: VecValue[PairValue[IntValue, StringValue]]
 
-    @graph_dec
+    @graph()
     def push_pair(lst, first, second) -> Output[TestOut]:
         first = Copyable(first)
         pair = bi.make_pair(first, second)
@@ -783,7 +754,7 @@ async def test_box_order(bi: Namespace, graph_dec: _GraphDecoratorType) -> None:
     assert push_pair_box.input_order == ["lst", "first", "second"]
     assert push_pair_box.output_order == ["first", "lst"]
 
-    @graph_dec
+    @graph()
     def test_g() -> Output:
         i, lst = push_pair_box(Const([]), Const(3), Const("hello"))
         return Output(one=lst, two=i)
@@ -806,15 +777,15 @@ async def test_box_order(bi: Namespace, graph_dec: _GraphDecoratorType) -> None:
 
 
 @pytest.mark.asyncio
-async def test_scope(bi, client: RuntimeClient, graph_dec: _GraphDecoratorType) -> None:
-    @graph_dec
-    def graph() -> Output:
+async def test_scope(bi, client: RuntimeClient) -> None:
+    @graph()
+    def g() -> Output:
         with Scope():
             bi.discard(Const(3))
         assert len(current_builder().inner_scopes.values()) == 1
         return Output()
 
-    tc_graph = await client.type_check_graph(graph())
+    tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 3
     n = cast(
         BoxNode,
@@ -826,18 +797,16 @@ async def test_scope(bi, client: RuntimeClient, graph_dec: _GraphDecoratorType) 
 
 
 @pytest.mark.asyncio
-async def test_scope_capture_in(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
-    def graph() -> Output:
+async def test_scope_capture_in(bi, client: RuntimeClient) -> None:
+    @graph()
+    def g() -> Output:
         a = Const(3)
         with Scope():
             bi.discard(a)
         assert len(current_builder().inner_scopes.values()) == 1
         return Output()
 
-    tc_graph = await client.type_check_graph(graph())
+    tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
     n = cast(
         BoxNode,
@@ -849,10 +818,8 @@ async def test_scope_capture_in(
 
 
 @pytest.mark.asyncio
-async def test_scope_capture_out(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_scope_capture_out(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         with Scope():
             a = Const(3)
@@ -872,10 +839,8 @@ async def test_scope_capture_out(
 
 
 @pytest.mark.asyncio
-async def test_nested_scopes(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_nested_scopes(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         a = Const(3)
         with Scope():
@@ -906,10 +871,8 @@ async def test_nested_scopes(
 
 
 @pytest.mark.asyncio
-async def test_copyable_capture_in(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_copyable_capture_in(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         a = Copyable(Const(3))
         with Scope():
@@ -924,10 +887,8 @@ async def test_copyable_capture_in(
 
 
 @pytest.mark.asyncio
-async def test_copyable_capture_out_once(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_copyable_capture_out_once(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         with Scope():
             a = Copyable(Const(3))
@@ -941,10 +902,8 @@ async def test_copyable_capture_out_once(
 
 
 @pytest.mark.asyncio
-async def test_copyable_capture_out_copied(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_copyable_capture_out_copied(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         with Scope():
             a = Copyable(Const(3))
@@ -959,10 +918,8 @@ async def test_copyable_capture_out_copied(
 
 
 @pytest.mark.asyncio
-async def test_copyable_on_captured_input(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_copyable_on_captured_input(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         a = Const(3)
         with Scope():
@@ -994,10 +951,8 @@ async def test_copyable_dont_use(bi, client: RuntimeClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_unpack_capture_in(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_unpack_capture_in(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         a = Const(StructValue({"a": IntValue(1), "b": StringValue("hello")}))
         with Scope():
@@ -1011,10 +966,8 @@ async def test_unpack_capture_in(
 
 
 @pytest.mark.asyncio
-async def test_unpack_capture_out(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         with Scope():
             a = Const(StructValue({"a": IntValue(1), "b": StringValue("hello")}))

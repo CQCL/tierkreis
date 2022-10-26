@@ -69,7 +69,7 @@ async def run_test(cl: RuntimeClient):
         -0.5 + a, 1
     ).measure_all()
 
-    @graph(sig=sig)
+    @graph()
     def initial(run) -> Output:
         init_params = Copyable(Const([0.2, 0.2]))
         init_score = bi.eval(run, params=init_params)

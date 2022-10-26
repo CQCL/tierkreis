@@ -146,7 +146,6 @@ class GraphBuilder(AbstractContextManager):
     inputs: dict[str, Optional["TierkreisType"]]
     outputs: dict[str, Optional["TierkreisType"]]
     inner_scopes: dict[TierkreisGraph, CaptureOutwards]
-    sig: OptSig = None
     _state_token: Token["GraphBuilder"]
 
     def __init__(
@@ -159,17 +158,12 @@ class GraphBuilder(AbstractContextManager):
         self.inputs = inputs or {}
         self.outputs = outputs or {}
         self.inner_scopes = {}
-        self.sig = None
         self.graph.input_order.extend(self.inputs.keys())
 
     def input(self, name: str) -> NodePort:
         if name in self.inputs:
             return self.graph.input[name]
         raise RuntimeError("Input not declared.")
-
-    def with_type_check(self: TGBuilder, signatures: Signature) -> TGBuilder:
-        self.sig = signatures
-        return self
 
     def __enter__(self: TGBuilder) -> TGBuilder:
         self._state_token = _set_state(self)
@@ -206,7 +200,6 @@ class GraphBuilder(AbstractContextManager):
     def _add_edges(
         self,
         nr: NodeRef,
-        _type_check: bool = True,
         /,
         **incoming_wires: ValueSource,
     ) -> None:
@@ -217,31 +210,26 @@ class GraphBuilder(AbstractContextManager):
                 inp_typ := self.inputs.get(src.port, None)
             ):
                 self.graph.annotate_input(src.port, inp_typ)
-        if _type_check:
-            self.type_check()
 
     def add_node_to_graph(
         self,
         _tk_node: TierkreisNode,
-        _type_check: bool = True,
         _tk_node_name: Optional[str] = None,
         /,
         **incoming_wires: ValueSource,
     ) -> NodeRef:
         nr = self.graph.add_node(_tk_node, _tk_node_name)
-        self._add_edges(nr, _type_check, **incoming_wires)
+        self._add_edges(nr, **incoming_wires)
         return nr
 
     def set_graph_outputs(self, **incoming_wires: ValueSource) -> None:
         if len(self.graph.outputs()) != 0:
             raise RuntimeError("Outputs set multiple times for same graph.")
-        self._add_edges(self.graph.output, True, **incoming_wires)
+        self._add_edges(self.graph.output, **incoming_wires)
 
-    def type_check(self) -> TierkreisGraph:
-        if self.sig is None:
-            return self.graph
+    def type_check(self, sig: Signature) -> TierkreisGraph:
         try:
-            return infer_graph_types(self.graph, self.sig)
+            return infer_graph_types(self.graph, sig)
         except TierkreisTypeErrors as te:
             raise IncrementalTypeError("Builder expression caused type error.") from te
             # TODO remove final entry in traceback?
@@ -496,7 +484,7 @@ class CapturedError(Exception):
     pass
 
 
-def graph(name: Optional[str] = None, sig: OptSig = None) -> _GraphDecoratorType:
+def graph(name: Optional[str] = None) -> _GraphDecoratorType:
     def decorator_graph(f: _GraphDef) -> Callable[[], TierkreisGraph]:
         in_types, out_types = _get_edge_annotations(f)
         # Use getattr as _GraphDef doesn't specify that it has a __name__
@@ -506,8 +494,6 @@ def graph(name: Optional[str] = None, sig: OptSig = None) -> _GraphDecoratorType
         @wraps(f)
         def wrapper() -> TierkreisGraph:
             gb = GraphBuilder(in_types, out_types, name=graph_name)
-            if sig:
-                gb = gb.with_type_check(sig)
             with gb as sub_build:
                 f(*(Input(port) for port in in_types))
 
@@ -537,9 +523,7 @@ class Thunk(_CallAddNode):
         return self
 
 
-def closure(
-    name: Optional[str] = None, sig: OptSig = None
-) -> Callable[[_GraphDef], Thunk]:
+def closure(name: Optional[str] = None) -> Callable[[_GraphDef], Thunk]:
     def decorator_graph(f: _GraphDef) -> Thunk:
         in_types, out_types = _get_edge_annotations(f)
         # Use getattr as _GraphDef doesn't specify that it has a __name__
@@ -547,8 +531,7 @@ def closure(
         # graph_name = name or f.__name__  # type: ignore  # the alternative
 
         gb = CaptureBuilder(in_types, out_types, name=graph_name)
-        if sig:
-            gb = gb.with_type_check(sig)
+
         with gb as sub_build:
             f(*(Input(port) for port in in_types))
         # Copy docstring, etc., onto the TierkreisGraph.
@@ -565,7 +548,7 @@ def closure(
     return decorator_graph
 
 
-def loop(name: Optional[str] = None, sig: OptSig = None):
+def loop(name: Optional[str] = None):
     def decorator_graph(f: _GraphDef):
         in_types, out_types = _get_edge_annotations(f)
         if len(in_types) != 1:
@@ -579,8 +562,6 @@ def loop(name: Optional[str] = None, sig: OptSig = None):
         @wraps(f)
         def wrapper(initial: ValueSource) -> NodePort:
             gb = CaptureBuilder(in_types, out_types, name=graph_name)
-            if sig:
-                gb = gb.with_type_check(sig)
             with gb as sub_build:
                 f(Input(Labels.VALUE))
 
@@ -691,7 +672,6 @@ class Match(_CaseScope):
         bg = current_builder()
         return bg.add_node_to_graph(
             MatchNode(),
-            False,
             variant_value=self.variant_value,
             **map_vals(handlers, lambda x: bg.graph.add_const(x.graph)),
         )[Labels.THUNK]
@@ -729,7 +709,6 @@ class IfElse(_CaseScope):
         bg = current_builder()
         return bg.add_node_to_graph(
             FunctionNode(FunctionName("switch")),
-            False,
             pred=self.predicate,
             if_true=bg.graph.add_const(handlers["if"].graph),
             if_false=bg.graph.add_const(handlers["else"].graph),

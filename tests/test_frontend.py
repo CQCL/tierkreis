@@ -53,7 +53,7 @@ async def test_mistyped_op_nochecks(
     local_runtime_launcher: Callable[..., AbstractAsyncContextManager[RuntimeClient]]
 ):
     async with local_runtime_launcher(
-        grpc_port=9090,
+        grpc_port=9091,
         runtime_type_checking="disabled",
     ) as server:
         tk_g = TierkreisGraph()
@@ -317,7 +317,7 @@ async def test_runtime_worker(
     server_client: ServerRuntime, local_runtime_launcher
 ) -> None:
     bar = local_runtime_launcher(
-        grpc_port=9090,
+        grpc_port=9091,
         worker_uris=[("inner", "http://" + server_client.socket_address())],
         # make sure it has to talk to the other server for the test worker functions
         workers=[],

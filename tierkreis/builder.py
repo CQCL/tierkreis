@@ -2,7 +2,7 @@ import inspect
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from functools import update_wrapper, wraps
 from itertools import count
 from types import TracebackType
@@ -40,7 +40,6 @@ from tierkreis.core.tierkreis_graph import (
     MatchNode,
     NodePort,
     NodeRef,
-    OutputNode,
     PortID,
     TagNode,
     TierkreisGraph,
@@ -142,19 +141,6 @@ OptSig = Optional[Signature]
 TGBuilder = TypeVar("TGBuilder", bound="GraphBuilder")
 
 
-def _update_graph(old_graph: TierkreisGraph, new_graph: TierkreisGraph):
-    """Change the object into the given graph,
-    while preserving node references in the graph and boxes
-    """
-    for name, node in old_graph.nodes().items():
-        other = new_graph[name]
-        if isinstance(node, BoxNode) and isinstance(other, BoxNode):
-            _update_graph(node.graph, other.graph)
-            new_graph[name] = replace(other, graph=node.graph)
-
-    old_graph._graph = new_graph._graph
-
-
 class GraphBuilder(AbstractContextManager):
     graph: TierkreisGraph
     inputs: dict[str, Optional["TierkreisType"]]
@@ -174,10 +160,7 @@ class GraphBuilder(AbstractContextManager):
         self.outputs = outputs or {}
         self.inner_scopes = {}
         self.sig = None
-        for i, it in self.inputs.items():
-            self.graph.discard(self.graph.input[i])
-            self.graph.annotate_input(i, it)
-            self.graph.input_order.append(i)
+        self.graph.input_order.extend(self.inputs.keys())
 
     def input(self, name: str) -> NodePort:
         if name in self.inputs:
@@ -220,6 +203,23 @@ class GraphBuilder(AbstractContextManager):
             )
         return ret_val
 
+    def _add_edges(
+        self,
+        nr: NodeRef,
+        _type_check: bool = True,
+        /,
+        **incoming_wires: ValueSource,
+    ) -> None:
+        for tgt_port, vs in incoming_wires.items():
+            src = _resolve(self.capture(vs))
+            self.graph.add_edge(src, nr[tgt_port])
+            if src.node_ref == self.graph.input and (
+                inp_typ := self.inputs.get(src.port, None)
+            ):
+                self.graph.annotate_input(src.port, inp_typ)
+        if _type_check:
+            self.type_check()
+
     def add_node_to_graph(
         self,
         _tk_node: TierkreisNode,
@@ -229,28 +229,19 @@ class GraphBuilder(AbstractContextManager):
         **incoming_wires: ValueSource,
     ) -> NodeRef:
         nr = self.graph.add_node(_tk_node, _tk_node_name)
-        for tgt_port, vs in incoming_wires.items():
-            self.graph.add_edge(_resolve(self.capture(vs)), nr[tgt_port])
-        if _type_check:
-            self.type_check_and_update()
+        self._add_edges(nr, _type_check, **incoming_wires)
         return nr
 
     def set_graph_outputs(self, **incoming_wires: ValueSource) -> None:
         if len(self.graph.outputs()) != 0:
             raise RuntimeError("Outputs set multiple times for same graph.")
-        self.graph._graph.remove_node(self.graph.output_node_name)
-        self.add_node_to_graph(
-            OutputNode(),
-            True,
-            self.graph.output_node_name,
-            **incoming_wires,
-        )
+        self._add_edges(self.graph.output, True, **incoming_wires)
 
-    def type_check_and_update(self):
+    def type_check(self) -> TierkreisGraph:
         if self.sig is None:
-            return
+            return self.graph
         try:
-            _update_graph(self.graph, infer_graph_types(self.graph, self.sig))
+            return infer_graph_types(self.graph, self.sig)
         except TierkreisTypeErrors as te:
             raise IncrementalTypeError("Builder expression caused type error.") from te
             # TODO remove final entry in traceback?
@@ -799,13 +790,6 @@ class Copyable(PortFunc):
             # Simplify if we call Copyable on a ValueSource twice
             self = src
         self.np = _resolve(builder.capture(src, allow_existing=True))
-        existing_edge = self.source_graph().out_edge_from_port(self.np)
-        if existing_edge is None:
-            # If copyable is used on an unused value source, we should discard it
-            # This will be removed if we use the Copyable
-            # It is needed for typechecking
-            # See test_copyable_dont_use
-            builder.graph.discard(self.np)
 
     def resolve(self) -> NodePort:
         g = self.source_graph()

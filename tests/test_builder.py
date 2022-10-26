@@ -199,25 +199,24 @@ def _tag_match_graph_builder(bi) -> TierkreisGraph:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    "builder,expected_gen,rename_map",
+    "builder,expected_gen",
     [
-        ("_vecs_graph_builder", _vecs_graph, {}),
-        ("_structs_graph_builder", _structs_graph, {}),
-        ("_maps_graph_builder", _maps_graph, {1: 2, 0: 1, 2: 0}),
-        ("_tag_match_graph_builder", _tag_match_graph, {}),
+        ("_vecs_graph_builder", _vecs_graph),
+        ("_structs_graph_builder", _structs_graph),
+        ("_maps_graph_builder", _maps_graph),
+        ("_tag_match_graph_builder", _tag_match_graph),
     ],
 )
 async def test_builder_sample(
     builder: str,
     expected_gen: Callable[[], TierkreisGraph],
-    rename_map: dict[int, int],
     client: RuntimeClient,
     bi,  # for some reason fails without this
     request,
 ) -> None:
     tg = request.getfixturevalue(builder)
 
-    _compare_graphs(tg, expected_gen(), _auto_name_map(rename_map))
+    _compare_graphs(tg, expected_gen(), {})
 
     tg = await client.type_check_graph(tg)
 
@@ -356,11 +355,8 @@ async def test_ifelse(
     assert outs[1] == {"value": IntValue(2)}
 
 
-def num_copies_discards(g: TierkreisGraph) -> Tuple[int, int]:
-    return (
-        sum(1 for n in g.nodes().values() if n.is_copy_node()),
-        sum(1 for n in g.nodes().values() if n.is_discard_node()),
-    )
+def num_copies(g: TierkreisGraph) -> int:
+    return sum(1 for n in g.nodes().values() if n.is_copy_node())
 
 
 def constant_subgraphs(g: TierkreisGraph) -> list[TierkreisGraph]:
@@ -389,11 +385,11 @@ async def test_ifelse_copying(
         return Output(sw.nref)
 
     tg = ifelse()
-    assert num_copies_discards(tg) == (1, 0)
+    assert num_copies(tg) == 1
     subgraphs = constant_subgraphs(tg)
     assert len(subgraphs) == 2
     for g in subgraphs:
-        assert num_copies_discards(g) == (0, 0)
+        assert num_copies(g) == 0
 
     outs = await client.run_graph(tg, x=10)
     assert outs == {"value": IntValue(5)}
@@ -416,10 +412,8 @@ async def test_copy_twice_inside_if(
         return Output(sw.nref)
 
     tg = ifelse()
-    assert num_copies_discards(tg) == (0, 0)
-    assert sorted(num_copies_discards(g) for g in constant_subgraphs(tg)) == sorted(
-        [(1, 0), (0, 0)]
-    )
+    assert num_copies(tg) == 0
+    assert sorted(num_copies(g) for g in constant_subgraphs(tg)) == sorted([1, 0])
 
     outs = {b: await client.run_graph(tg, x=3, flag=b) for b in [True, False]}
     assert outs[True] == {"value": IntValue(12)}
@@ -588,23 +582,21 @@ async def test_run_sample(
 
 @pytest.mark.asyncio
 async def test_Copyable(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType, dec_checks_types: bool
+    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
 ) -> None:
-    ins_disc = int(dec_checks_types)
-
     @graph_dec
     def foo(a: Input[IntValue], b: Input[IntValue]) -> Output:
-        assert num_copies_discards(current_graph()) == (0, 2)
+        assert num_copies(current_graph()) == 0
 
         # Even without an explicit Copy, discards should be removed
         f = bi.iadd(a=a, b=b)
-        assert num_copies_discards(current_graph()) == (0, ins_disc)
+        assert num_copies(current_graph()) == 0
 
         a_squared_plus_ab = bi.imul(a=Copyable(a), b=f)
-        assert num_copies_discards(current_graph()) == (1, ins_disc)
+        assert num_copies(current_graph()) == 1
 
         b_plus_2a = bi.iadd(a=Copyable(a), b=Copyable(f))
-        assert num_copies_discards(current_graph()) == (3, 2 * ins_disc)
+        assert num_copies(current_graph()) == 3
         return Output(out=a_squared_plus_ab, res=b_plus_2a)
 
     outputs = await client.run_graph(foo(), a=2, b=3)
@@ -617,38 +609,27 @@ async def test_unpacking(
     client: RuntimeClient,
     sig: Signature,
     graph_dec: _GraphDecoratorType,
-    dec_checks_types: bool,
 ) -> None:
-    def num_unpacks_discards() -> Tuple[int, int]:
-        return (
-            sum(1 for n in current_graph().nodes().values() if n.is_unpack_node()),
-            sum(1 for n in current_graph().nodes().values() if n.is_discard_node()),
-        )
+    def num_unpacks() -> int:
+        return sum(1 for n in current_graph().nodes().values() if n.is_unpack_node())
 
     pn = bi["python_nodes"]
-    ins_disc = int(dec_checks_types)
 
     @graph_dec
     def foo(a: Input[FloatValue], b: Input[IntValue]) -> Output:
         f = bi.make_struct(foo=a, bar=b)
         id_: "NodeRef" = pn.id_py(value=f["struct"])
         sturct: "NodePort" = id_["value"]
-        bi.discard(sturct)
         old_proto = current_graph().to_proto()
 
         foo: "StablePortFunc" = sturct["foo"]
-        assert num_unpacks_discards() == (0, 1)
+        assert num_unpacks() == 0
         assert current_graph().to_proto() == old_proto  # Nothing changed yet
 
         first = bi.id(foo)
-        # Discard should be removed, but unpack node should be generated
-        assert num_unpacks_discards() == (1, 2 * ins_disc)
-        # Typechecking will add a discard on the other port of the unpack
-        # assert num_unpacks_discards(
-        #    await client.type_check_graph(current_graph())) == (1, 1)
-        # Second struct component (bar) reuses same unpack node
+        assert num_unpacks() == 1
         second = bi.iadd(a=sturct["bar"], b=Const(1))
-        assert num_unpacks_discards() == (1, 2 * ins_disc)
+        assert num_unpacks() == 1
 
         # Repeated uses of the same struct member need an explicit copy
         proto = current_graph().to_proto()
@@ -997,10 +978,8 @@ async def test_copyable_on_captured_input(
 
 
 @pytest.mark.asyncio
-async def test_copyable_dont_use(
-    bi, client: RuntimeClient, graph_dec: _GraphDecoratorType
-) -> None:
-    @graph_dec
+async def test_copyable_dont_use(bi, client: RuntimeClient) -> None:
+    @graph()
     def g() -> Output:
         a = Const(3)
         with Scope():

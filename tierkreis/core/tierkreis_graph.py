@@ -600,13 +600,9 @@ class TierkreisGraph:
             return None
         return e
 
-    def _out_edge_from_port(
-        self, source: NodePort
-    ) -> Union[TierkreisEdge, TierkreisType, None]:
+    def _out_edge_from_port(self, source: NodePort) -> Optional[TierkreisEdge]:
         """
         If there is an edge at port, return it, else None.
-        If the edge is to a discard node, rather than returning it, instead
-            remove the discard node and return the type on that edge.
         """
         out_edges = [
             out_edge
@@ -616,10 +612,6 @@ class TierkreisGraph:
         if len(out_edges) == 0:
             return None
         (out_edge,) = out_edges
-        if self[out_edge.target.node_ref].is_discard_node():
-            # Removing the discard deletes any edges to it
-            self._graph.remove_node(out_edge.target.node_ref.name)
-            return out_edge.type_
         return out_edge
 
     def to_proto(self) -> pg.Graph:

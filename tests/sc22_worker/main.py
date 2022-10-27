@@ -44,8 +44,11 @@ async def new_params(
 
 @namespace.function()
 async def converged(prev: list[CandRecord]) -> bool:
+    prev_len = len(prev)
+    if prev_len > 50:
+        return True
     n = 5
-    if len(prev) >= n:
+    if prev_len >= n:
         last_n = np.array([x[1] for x in prev[-n:]])
         moving_av = sum((last_n - last_n.mean()) ** 2)
         return bool(moving_av < 1e-5)

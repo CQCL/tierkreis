@@ -1,6 +1,7 @@
 """Context manager for a local tierkreis server
  when the binary is available on the system."""
 import asyncio
+import json
 import os
 import signal
 import subprocess
@@ -8,7 +9,7 @@ import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Thread
-from typing import IO, AsyncIterator, List, Mapping, Optional, Union, cast
+from typing import IO, Any, AsyncIterator, List, Optional, Union, cast
 
 from grpclib.client import Channel
 
@@ -43,8 +44,9 @@ async def local_runtime(
     grpc_port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
+    myqos_auth_token: Optional[str] = None,
+    myqos_auth_key: Optional[str] = None,
     runtime_type_checking: Optional[str] = None,
-    env_vars: Optional[Mapping[str, str]] = None,
 ) -> AsyncIterator[ServerRuntime]:
     """Provide a context for a local runtime running in a subprocess.
 
@@ -65,37 +67,36 @@ async def local_runtime(
     :rtype: Iterator[RuntimeClient]
     """
 
-    command: List[Union[str, Path]] = [executable]
-    for (location, worker) in workers:
-        command.extend(["--worker-path", location + ":" + str(worker)])
+    command: List[Union[str, Path]] = [executable, "-c"]
 
-    for (location, uri) in worker_uris:
-        command.extend(["--worker-remote", location + ":" + uri])
+    config: dict[str, Any] = {}
 
-    proc_env = os.environ.copy()
-    if env_vars:
-        proc_env.update(env_vars)
+    config["worker_path"] = [{"location": x, "path": str(y)} for x, y in workers]
+    config["worker_uri"] = [{"location": x, "uri": str(y)} for x, y in worker_uris]
 
     if myqos_worker:
         # place mushroom authentication in environment if present
         log, pwd = _get_myqos_creds()
+        log = myqos_auth_token if log is None else log
+        pwd = myqos_auth_key if pwd is None else pwd
         if log:
-            proc_env["TIERKREIS_MYQOS_TOKEN"] = log
+            config["myqos_auth_token"] = log
         if pwd:
-            proc_env["TIERKREIS_MYQOS_KEY"] = pwd
+            config["myqos_auth_key"] = pwd
 
-        command.extend(["--myqos-worker", myqos_worker])
+        config["myqos_worker"] = myqos_worker
     if grpc_port:
-        proc_env["TIERKREIS_GRPC_PORT"] = str(grpc_port)
+        config["grpc_port"] = grpc_port
 
     if runtime_type_checking:
-        command.extend(["--runtime-type-checking", runtime_type_checking])
+        config["runtime_type_checking"] = runtime_type_checking
+
+    command.append(str(json.dumps(config)))
 
     proc = subprocess.Popen(
         command,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE if show_output else subprocess.DEVNULL,
-        env=proc_env,
     )
 
     echo_threads = []

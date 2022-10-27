@@ -7,7 +7,6 @@ import pytest
 
 from tierkreis.builder import Namespace
 from tierkreis.client import local_runtime, myqos_runtime
-from tierkreis.client.docker_manager import docker_runtime
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.client.server_client import ServerRuntime
 from tierkreis.core.signature import Signature
@@ -90,6 +89,8 @@ async def server_client(
         pass
     if isdocker:
         # launch docker container and close at end
+        from tierkreis.client.docker_manager import docker_runtime
+
         async with docker_runtime(
             "cqc/tierkreis",
         ) as local_client:

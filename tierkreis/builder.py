@@ -482,7 +482,9 @@ class CapturedError(Exception):
     pass
 
 
-def graph(name: Optional[str] = None) -> _GraphDecoratorType:
+def graph(
+    name: Optional[str] = None, type_check_sig: Optional[Signature] = None
+) -> _GraphDecoratorType:
     def decorator_graph(f: _GraphDef) -> Callable[[], TierkreisGraph]:
         in_types, out_types = _get_edge_annotations(f)
         # Use getattr as _GraphDef doesn't specify that it has a __name__
@@ -495,7 +497,11 @@ def graph(name: Optional[str] = None) -> _GraphDecoratorType:
             with gb as sub_build:
                 f(*(Input(port) for port in in_types))
 
-            return sub_build.graph
+            return (
+                sub_build.graph
+                if type_check_sig is None
+                else sub_build.type_check(type_check_sig)
+            )
 
         wrapper.__annotations__ = {}
         return wrapper

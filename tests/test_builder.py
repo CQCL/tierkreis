@@ -284,7 +284,7 @@ async def test_bigexample(client: RuntimeClient, bi) -> None:
         assert pyouts == {"o2": 103, "o1": 536 + (2 if flag else 5)}
 
 
-def double(bi) -> TierkreisGraph:
+def double(bi: Namespace) -> TierkreisGraph:
     @graph()
     def _double(value: Input[IntValue]) -> Output[IntValue]:
         return Output(bi.iadd(*bi.copy(value)))
@@ -733,13 +733,13 @@ async def test_bad_annotations() -> None:
 
 
 @pytest.mark.asyncio
-async def test_box_order(bi: Namespace) -> None:
+async def test_box_order(bi: Namespace, sig: Signature) -> None:
     @dataclass
     class TestOut(TierkreisStruct):
         first: IntValue
         lst: VecValue[PairValue[IntValue, StringValue]]
 
-    @graph()
+    @graph(type_check_sig=sig)
     def push_pair(lst, first, second) -> Output[TestOut]:
         first = Copyable(first)
         pair = bi.make_pair(first, second)
@@ -749,7 +749,7 @@ async def test_box_order(bi: Namespace) -> None:
     assert push_pair_box.input_order == ["lst", "first", "second"]
     assert push_pair_box.output_order == ["first", "lst"]
 
-    @graph()
+    @graph(type_check_sig=sig)
     def test_g() -> Output:
         i, lst = push_pair_box(Const([]), Const(3), Const("hello"))
         return Output(one=lst, two=i)

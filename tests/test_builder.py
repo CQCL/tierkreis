@@ -284,11 +284,6 @@ async def test_bigexample(client: RuntimeClient, bi) -> None:
         assert pyouts == {"o2": 103, "o1": 536 + (2 if flag else 5)}
 
 
-@pytest.fixture(params=[False, True])
-def dec_checks_types(request) -> bool:
-    return request.param
-
-
 def double(bi) -> TierkreisGraph:
     @graph()
     def _double(value: Input[IntValue]) -> Output[IntValue]:

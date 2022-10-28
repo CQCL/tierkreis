@@ -136,8 +136,6 @@ class CaptureOutwards:
         return self.ref[new_name]
 
 
-OptSig = Optional[Signature]
-
 TGBuilder = TypeVar("TGBuilder", bound="GraphBuilder")
 
 
@@ -207,7 +205,7 @@ class GraphBuilder(AbstractContextManager):
             src = _resolve(self.capture(vs))
             self.graph.add_edge(src, nr[tgt_port])
             if src.node_ref == self.graph.input and (
-                inp_typ := self.inputs.get(src.port, None)
+                inp_typ := self.inputs.get(src.port)
             ):
                 self.graph.annotate_input(src.port, inp_typ)
 

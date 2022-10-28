@@ -479,7 +479,7 @@ class TierkreisGraph:
             raise MismatchedGraphs(self, node_port_to.node_ref)
 
         # if port is currently connected to discard, replace that edge
-        existing_edge = self._out_edge_from_port(node_port_from)
+        existing_edge = self.out_edge_from_port(node_port_from)
         if isinstance(existing_edge, TierkreisType):
             tk_type = existing_edge
         elif existing_edge is not None:
@@ -594,13 +594,6 @@ class TierkreisGraph:
         return copy_n["value_0"], copy_n["value_1"]
 
     def out_edge_from_port(self, source: NodePort) -> Optional[TierkreisEdge]:
-        e = self._out_edge_from_port(source)
-        # If edge was to discard node, ignore type and treat as equivalent to no edge
-        if isinstance(e, TierkreisType):
-            return None
-        return e
-
-    def _out_edge_from_port(self, source: NodePort) -> Optional[TierkreisEdge]:
         """
         If there is an edge at port, return it, else None.
         """

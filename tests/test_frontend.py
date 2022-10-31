@@ -226,7 +226,7 @@ async def test_infer(client: RuntimeClient) -> None:
     _, val1 = tg.copy_value(tg.add_const(3))
     tg.set_outputs(out=val1)
     tg = await client.type_check_graph(tg)
-    assert any(node.is_discard_node() for node in tg.nodes().values())
+    assert any(node.is_discard_node() for node in tg.nodes())
 
     assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
 
@@ -294,12 +294,14 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
 
     outputs = await client.run_graph(seq_g, first=pop_g, second=push_g)
 
-    sequenced_g = outputs["sequenced"].to_python(TierkreisGraph).inline_boxes()
+    sequenced_g: TierkreisGraph = (
+        outputs["sequenced"].to_python(TierkreisGraph).inline_boxes()
+    )
 
     # check composition is succesful
     functions = {
         node.function_name.name
-        for node in sequenced_g.nodes().values()
+        for node in sequenced_g.nodes()
         if isinstance(node, FunctionNode)
     }
     assert {"push", "pop"}.issubset(functions)

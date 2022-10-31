@@ -212,11 +212,10 @@ class GraphBuilder(AbstractContextManager):
     def add_node_to_graph(
         self,
         _tk_node: TierkreisNode,
-        _tk_node_name: Optional[str] = None,
         /,
         **incoming_wires: ValueSource,
     ) -> NodeRef:
-        nr = self.graph.add_node(_tk_node, _tk_node_name)
+        nr = self.graph.add_node(_tk_node)
         self._add_edges(nr, **incoming_wires)
         return nr
 
@@ -314,7 +313,7 @@ class _CallAddNode:
         bg = current_builder()
         kwds = _combine_args_with_kwargs(self.input_order, *args, **kwds)
         n = bg.add_node_to_graph(self.node, **kwds)
-        return NodeRef(n.name, n.graph, self.output_order)
+        return NodeRef(n.idx, n.graph, self.output_order)
 
 
 class Box(_CallAddNode):
@@ -386,7 +385,7 @@ class Output(NodeRef, Generic[OutAnnotation]):
             if ot := s.outputs.get(o):
                 g.annotate_output(o, ot)
 
-        super().__init__(g.output.name, g)
+        super().__init__(g.output.idx, g)
 
 
 class _LoopOutput(Output):
@@ -648,10 +647,7 @@ class _CaseScope(GraphBuilder, ABC):
         if not any((__exc_type, __exc_value, __traceback)):
             # do not perform graph building if error
 
-            if set(self.graph.nodes().keys()) != {
-                self.graph.input_node_name,
-                self.graph.output_node_name,
-            }:
+            if self.graph.n_nodes != 2:
                 raise self._intermediate_error()
             handlers = self.__variant_handlers.get()
             thunk_port = self._get_thunk()

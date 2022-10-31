@@ -1,5 +1,5 @@
-from dataclasses import astuple, dataclass
-from typing import TYPE_CHECKING, Any, Callable, Optional, Tuple, cast, no_type_check
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Callable, Tuple, cast, no_type_check
 
 import pytest
 
@@ -29,7 +29,6 @@ from tierkreis.builder import (
 )
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core import Labels
-from tierkreis.core.protos.tierkreis.graph import Graph
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
@@ -62,39 +61,11 @@ if TYPE_CHECKING:
 # pylint: disable=no-value-for-parameter
 
 
-def _auto_name_map(index_map: dict[int, int]) -> dict[str, str]:
-    return {f"NewNode{key}": f"NewNode{val}" for key, val in index_map.items()}
-
-
 def _compare_graphs(
     first: TierkreisGraph,
     second: TierkreisGraph,
-    node_map: Optional[dict[str, str]] = None,
 ) -> None:
-    f_proto = first.to_proto()
-    s_proto = second.to_proto()
-
-    assert f_proto.name == s_proto.name
-    if node_map:
-        new_nodes = {
-            node_map.get(name, name): node for name, node in s_proto.nodes.items()
-        }
-        new_edges = []
-        for edge in s_proto.edges:
-            edge.node_from = node_map.get(edge.node_from, edge.node_from)
-            edge.node_to = node_map.get(edge.node_to, edge.node_to)
-            new_edges.append(edge)
-        s_proto = Graph(new_nodes, new_edges)
-    assert f_proto.nodes == s_proto.nodes
-    # jsonify type annotations for ease of comparison
-    for proto in (f_proto, s_proto):
-        for e in proto.edges:
-            if e.edge_type is not None:
-                # hack, edge_type should be a TierkreisType
-                # but we are converting to string for compairson
-                e.edge_type = e.edge_type.to_json()  # type: ignore
-    edge_set = lambda edge_list: set(map(astuple, edge_list))
-    assert edge_set(f_proto.edges) == edge_set(s_proto.edges)
+    assert first.to_proto() == second.to_proto()
 
 
 def _vecs_graph() -> TierkreisGraph:
@@ -102,7 +73,7 @@ def _vecs_graph() -> TierkreisGraph:
     con = tg.add_const([2, 4])
     tg.set_outputs(value=con)
     tg.annotate_output(Labels.VALUE, VecType(IntType()))
-
+    tg.output_order = [Labels.VALUE]
     return tg
 
 
@@ -125,6 +96,8 @@ def _structs_graph() -> TierkreisGraph:
 
     tg.set_outputs(value=sturct["age"])
     tg.annotate_output("value", IntType())
+    tg.output_order = [Labels.VALUE]
+
     return tg
 
 
@@ -151,7 +124,8 @@ def _maps_graph() -> TierkreisGraph:
     tg.annotate_input("mp", MapType(IntType(), StringType()))
     tg.annotate_output("mp", MapType(IntType(), StringType()))
     tg.annotate_output("vl", StringType())
-
+    tg.input_order = ["mp"]
+    tg.output_order = ["mp", "vl"]
     return tg
 
 
@@ -180,6 +154,7 @@ def _tag_match_graph() -> TierkreisGraph:
     e = tg.add_func("eval", thunk=m[Labels.THUNK])
     tg.set_outputs(value=e[Labels.VALUE])
     tg.annotate_output("value", IntType())
+    tg.output_order = [Labels.VALUE]
 
     return tg
 
@@ -215,7 +190,7 @@ async def test_builder_sample(
 ) -> None:
     tg = request.getfixturevalue(builder)
 
-    _compare_graphs(tg, expected_gen(), {})
+    _compare_graphs(tg, expected_gen())
 
     tg = await client.type_check_graph(tg)
 
@@ -276,7 +251,7 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
 async def test_bigexample(client: RuntimeClient, bi) -> None:
     tg = _big_sample_builder(bi)
     tg = await client.type_check_graph(tg)
-    assert len(tg.nodes()) == 24
+    assert sum(1 for _ in tg.nodes()) == 24
     for flag in (True, False):
         outputs = await client.run_graph(tg, v1=67, v2=(45, flag))
         outputs = await client.run_graph(tg, v1=67, v2=(45, flag))
@@ -340,13 +315,13 @@ async def test_ifelse(client: RuntimeClient, bi: Namespace):
 
 
 def num_copies(g: TierkreisGraph) -> int:
-    return sum(1 for n in g.nodes().values() if n.is_copy_node())
+    return sum(1 for n in g.nodes() if n.is_copy_node())
 
 
 def constant_subgraphs(g: TierkreisGraph) -> list[TierkreisGraph]:
     return [
         n.value.value
-        for n in g.nodes().values()
+        for n in g.nodes()
         if isinstance(n, ConstNode) and isinstance(n.value, GraphValue)
     ]
 
@@ -583,7 +558,7 @@ async def test_unpacking(
     sig: Signature,
 ) -> None:
     def num_unpacks() -> int:
-        return sum(1 for n in current_graph().nodes().values() if n.is_unpack_node())
+        return sum(1 for n in current_graph().nodes() if n.is_unpack_node())
 
     pn = bi["python_nodes"]
 
@@ -618,8 +593,8 @@ async def test_unpacking(
 
 def num_copies_unpacks() -> Tuple[int, int]:
     return (
-        sum(1 for n in current_graph().nodes().values() if n.is_copy_node()),
-        sum(1 for n in current_graph().nodes().values() if n.is_unpack_node()),
+        sum(1 for n in current_graph().nodes() if n.is_copy_node()),
+        sum(1 for n in current_graph().nodes() if n.is_unpack_node()),
     )
 
 
@@ -755,7 +730,7 @@ async def test_box_order(bi: Namespace, sig: Signature) -> None:
         return Output(one=lst, two=i)
 
     g = test_g()
-    box_n_name = next(n for n in g.nodes() if isinstance(g[n], BoxNode))
+    box_n_name = next(n for n in range(g.n_nodes) if isinstance(g[n], BoxNode))
     box_ins = {p2: n1 for n1, _, (_, p2) in g._graph.in_edges(box_n_name, keys=True)}
     assert len(box_ins) == 3
 
@@ -784,9 +759,9 @@ async def test_scope(bi, client: RuntimeClient) -> None:
     assert tc_graph.n_nodes == 3
     n = cast(
         BoxNode,
-        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes())),
     )
-    assert any([x.is_discard_node() for x in n.graph.nodes().values()])
+    assert any([x.is_discard_node() for x in n.graph.nodes()])
     assert n.graph.inputs() == []
     assert n.graph.outputs() == []
 
@@ -805,9 +780,9 @@ async def test_scope_capture_in(bi, client: RuntimeClient) -> None:
     assert tc_graph.n_nodes == 4
     n = cast(
         BoxNode,
-        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes())),
     )
-    assert any([x.is_discard_node() for x in n.graph.nodes().values()])
+    assert any([x.is_discard_node() for x in n.graph.nodes()])
     assert n.graph.inputs() == ["_c0"]
     assert n.graph.outputs() == []
 
@@ -826,9 +801,9 @@ async def test_scope_capture_out(bi, client: RuntimeClient) -> None:
     assert tc_graph.n_nodes == 4
     n = cast(
         BoxNode,
-        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes())),
     )
-    assert not any([x.is_discard_node() for x in n.graph.nodes().values()])
+    assert not any([x.is_discard_node() for x in n.graph.nodes()])
     assert n.graph.inputs() == []
     assert n.graph.outputs() == ["_c0"]
 
@@ -858,9 +833,9 @@ async def test_nested_scopes(bi, client: RuntimeClient) -> None:
     assert tc_graph.n_nodes == 5
     n = cast(
         BoxNode,
-        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes().values())),
+        next(filter(lambda x: isinstance(x, BoxNode), tc_graph.nodes())),
     )
-    assert any([isinstance(x, BoxNode) for x in n.graph.nodes().values()])
+    assert any([isinstance(x, BoxNode) for x in n.graph.nodes()])
     assert n.graph.inputs() == ["_c0"]
     assert sorted(n.graph.outputs()) == ["_c0", "_c1"]
 
@@ -878,7 +853,7 @@ async def test_copyable_capture_in(bi, client: RuntimeClient) -> None:
 
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 6
-    assert any([n.is_copy_node() for n in tc_graph.nodes().values()])
+    assert any([n.is_copy_node() for n in tc_graph.nodes()])
 
 
 @pytest.mark.asyncio
@@ -892,8 +867,8 @@ async def test_copyable_capture_out_once(bi, client: RuntimeClient) -> None:
 
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
-    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
-    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+    assert not any([n.is_copy_node() for n in tc_graph.nodes()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
 
 
 @pytest.mark.asyncio
@@ -908,8 +883,8 @@ async def test_copyable_capture_out_copied(bi, client: RuntimeClient) -> None:
 
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
-    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
-    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+    assert not any([n.is_copy_node() for n in tc_graph.nodes()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
 
 
 @pytest.mark.asyncio
@@ -925,8 +900,8 @@ async def test_copyable_on_captured_input(bi, client: RuntimeClient) -> None:
 
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 5
-    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
-    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+    assert not any([n.is_copy_node() for n in tc_graph.nodes()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
 
 
 @pytest.mark.asyncio
@@ -941,8 +916,8 @@ async def test_copyable_dont_use(bi, client: RuntimeClient) -> None:
 
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 5
-    assert not any([n.is_copy_node() for n in tc_graph.nodes().values()])
-    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+    assert not any([n.is_copy_node() for n in tc_graph.nodes()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
 
 
 @pytest.mark.asyncio
@@ -956,8 +931,8 @@ async def test_unpack_capture_in(bi, client: RuntimeClient) -> None:
 
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 6
-    assert any([n.is_unpack_node() for n in tc_graph.nodes().values()])
-    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+    assert any([n.is_unpack_node() for n in tc_graph.nodes()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
 
 
 @pytest.mark.asyncio
@@ -971,5 +946,5 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
 
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
-    assert not any([n.is_unpack_node() for n in tc_graph.nodes().values()])
-    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes().values()])
+    assert not any([n.is_unpack_node() for n in tc_graph.nodes()])
+    assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])

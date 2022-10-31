@@ -57,7 +57,7 @@ def test_creation() -> None:
         assert graph.inputs() == ["input"]
         assert graph.outputs() == ["output"]
 
-        add_node = NodeRef(add.name, graph)
+        add_node = NodeRef(add.idx, graph)
         assert next(graph.out_edges(add)) == TierkreisEdge(
             add_node["value"], NodePort(graph.output, "output"), None
         )
@@ -72,13 +72,12 @@ def test_insert_subgraph() -> None:
     subgraph.set_outputs(sub_out=first_p)
 
     main_g = TierkreisGraph()
-    subgraph_outs = main_g.insert_graph(
-        subgraph, "subgraph::", one=main_g.input["in1"], two=main_g.add_const(3)
-    )
-    assert (
-        sum(node_name.startswith("subgraph::") for node_name in main_g.nodes())
-        == len(subgraph.nodes()) - 2
-    )
+    two = main_g.add_const(3)
+    main_nodes_before = main_g.n_nodes
+    sub_nodes_before = subgraph.n_nodes
+    subgraph_outs = main_g.insert_graph(subgraph, one=main_g.input["in1"], two=two)
+    assert main_g.n_nodes == (sub_nodes_before + main_nodes_before) - 2
+
     assert list(subgraph_outs.keys()) == ["sub_out"]
     make_p = main_g.make_pair(main_g.input["in2"], subgraph_outs["sub_out"])
 
@@ -86,13 +85,6 @@ def test_insert_subgraph() -> None:
 
     assert count(main_g.nodes()) == 7
     assert count(main_g.edges()) == 7
-
-    with pytest.raises(TierkreisGraph.DuplicateNodeName) as e:
-        _ = main_g.insert_graph(
-            subgraph, "subgraph::", one=main_g.input["newin1"], two=main_g.add_const(4)
-        )
-
-    assert e.value.name == "subgraph::NewNode0"
 
 
 def test_value_topython():
@@ -206,7 +198,7 @@ def test_inline_boxes():
     def check_inlined(graph: TierkreisGraph) -> bool:
         return any(
             isinstance(node, FunctionNode) and node.function_name.name == "make_pair"
-            for _, node in graph.nodes().items()
+            for node in graph.nodes()
         )
 
     tg = TierkreisGraph()

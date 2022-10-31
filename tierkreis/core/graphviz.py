@@ -152,45 +152,41 @@ def _print_location(loc: Location) -> str:
     return "@" + "/".join(loc.location)
 
 
-def _node_features(node_name: str, node: TierkreisNode) -> Tuple[str, str]:
+def _node_id(prefix: str, idx: int, sep: str = "//") -> str:
+    return f"{prefix}{sep}{idx}"
+
+
+def _node_features(node: TierkreisNode) -> Tuple[str, str]:
     """Calculate node label (first) and colour (second)."""
 
     fillcolor = _COLOURS["node"]
-    node_label = "" if node_name.startswith("NewNode") else node_name
     if isinstance(node, FunctionNode):
         f_name = node.function_name
-        if node_label:
-            node_label += "\n<BR/>"
-        node_label += str(f_name)
+        node_label = str(f_name)
     elif isinstance(node, ConstNode):
-        if node_label:
-            node_label += "\n<BR/>"
         fillcolor = _COLOURS["const"]
         value = node.value
         if isinstance(value, GraphValue):
             fillcolor = _COLOURS["edge"]
-            node_label += _thunk_name(value.value)
+            node_label = _thunk_name(value.value)
         else:
             const_str = node.value.viz_str()
-            node_label += _trim_str(const_str, 15)
+            node_label = _trim_str(const_str, 15)
     elif isinstance(node, MatchNode):
-        if node_label:
-            node_label += "\n<BR/>"
-        node_label += "Match"
+        node_label = "Match"
     elif isinstance(node, TagNode):
-        if node_label:
-            node_label += "\n<BR/>"
-        node_label += "Tag: " + node.tag_name
+        node_label = "Tag: " + node.tag_name
     elif isinstance(node, BoxNode):
-        if not node_label:
-            node_label = f"Box{_print_location(node.location)}"
-            name = cast(BoxNode, node).graph.name
-            if name:
-                node_label += f": {name}"
+        node_label = f"Box{_print_location(node.location)}"
+        name = cast(BoxNode, node).graph.name
+        if name:
+            node_label += f": {name}"
     elif isinstance(node, (InputNode, OutputNode)):
         # effectively only leave the ports visible
         fillcolor = _COLOURS["background"]
         node_label = " "
+    else:
+        node_label = ""
 
     return node_label, fillcolor
 
@@ -242,8 +238,8 @@ def tierkreis_to_graphviz(
     discard_nodes = set()
     copy_nodes = set()
     no_outport_nodes = set()
-    for node_name, node in tk_graph.nodes().items():
-        node_identifier = prefix + node_name
+    for node_idx, node in enumerate(tk_graph.nodes()):
+        node_identifier = _node_id(prefix, node_idx)
         if node.is_discard_node():
             gv_graph.node(
                 node_identifier,
@@ -265,15 +261,15 @@ def tierkreis_to_graphviz(
             copy_nodes.add(node_identifier)
             continue
 
-        node_label, fillcolor = _node_features(node_name, node)
+        node_label, fillcolor = _node_features(node)
 
         # node is a table
         # first row is a single cell containing a single row table of inputs
         # second row is table containing single cell of node_label
         # third row is single cell containing a single row table of outputs
 
-        in_ports = [edge.target.port for edge in tk_graph.in_edges(node_name)]
-        out_ports = [edge.source.port for edge in tk_graph.out_edges(node_name)]
+        in_ports = [edge.target.port for edge in tk_graph.in_edges(node_idx)]
+        out_ports = [edge.source.port for edge in tk_graph.out_edges(node_idx)]
         subgraph = None
         isbox = False
         isgraphconst = False
@@ -365,11 +361,11 @@ def tierkreis_to_graphviz(
         "fontcolor": "black",
     }
     for edge in tk_graph.edges():
-        src_node = prefix + edge.source.node_ref.name
-        tgt_node = prefix + edge.target.node_ref.name
+        src_node = _node_id(prefix, edge.source.node_ref.idx)
+        tgt_node = _node_id(prefix, edge.target.node_ref.idx)
 
         if src_node in unboxed_nodes:
-            src_node = src_node + "output"
+            src_node = _node_id(src_node, TierkreisGraph.output_node_idx)
             # box output node only has input ports
             outport_str = (
                 ""
@@ -390,7 +386,7 @@ def tierkreis_to_graphviz(
             src_nodeport = f"{src_node}{outport_str}"
 
         if tgt_node in unboxed_nodes:
-            tgt_node = tgt_node + "input"
+            tgt_node = _node_id(tgt_node, TierkreisGraph.input_node_idx)
             # box input node only has output ports
             tgt_nodeport = f"{tgt_node}:{_OUTPUT_PREFIX}{edge.target.port}"
         elif tgt_node in discard_nodes or tgt_node in copy_nodes:
@@ -441,11 +437,11 @@ _CopyMergedGraph = NewType("_CopyMergedGraph", TierkreisGraph)
 def _merge_copies(g: TierkreisGraph) -> _CopyMergedGraph:
     """Merge adjacent copy nodes - adds extra ports to copy nodes so won't pass
     type check."""
-    candidates = {name for name, node in g.nodes().items() if node.is_copy_node()}
+    candidates = {idx for idx, node in enumerate(g.nodes()) if node.is_copy_node()}
     while candidates:
         node_name = candidates.pop()
         copy_children = (
-            n.name
+            n.idx
             for e in g.out_edges(node_name)
             if g[(n := e.target.node_ref)].is_copy_node()
         )
@@ -467,7 +463,7 @@ def _merge_copies(g: TierkreisGraph) -> _CopyMergedGraph:
         for e in eds:
             # source port is not valid - this graph will not type check
             g._graph.add_edge(
-                node_name, e.target.node_ref.name, ("", e.target.port), type=e.type_
+                node_name, e.target.node_ref.idx, ("", e.target.port), type=e.type_
             )
 
     return _CopyMergedGraph(g)

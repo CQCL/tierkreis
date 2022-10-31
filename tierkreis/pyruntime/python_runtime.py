@@ -88,7 +88,7 @@ class PyRuntime(RuntimeClient):
         total_nodes = run_g._graph.number_of_nodes()
         runtime_state: dict["_EdgeData", TierkreisValue] = {}
 
-        async def run_node(node: str) -> dict[str, TierkreisValue]:
+        async def run_node(node: int) -> dict[str, TierkreisValue]:
             tk_node = run_g[node]
 
             if isinstance(tk_node, OutputNode):
@@ -143,7 +143,7 @@ class PyRuntime(RuntimeClient):
             else:
                 raise RuntimeError("Unknown node type.")
 
-        async def worker(queue: asyncio.Queue[str]):
+        async def worker(queue: asyncio.Queue[int]):
             # each worker gets the next node in the queue
             while True:
                 node = await queue.get()
@@ -163,7 +163,7 @@ class PyRuntime(RuntimeClient):
                 # signal this node is now done
                 queue.task_done()
 
-        que: asyncio.Queue[str] = asyncio.Queue(total_nodes)
+        que: asyncio.Queue[int] = asyncio.Queue(total_nodes)
         for node in nx.topological_sort(run_g._graph):
             # add all node names to the queue in topsort order
             # if there are fewer workers than nodes, and the queue is populated
@@ -193,7 +193,7 @@ class PyRuntime(RuntimeClient):
 
         return {
             e.target.port: runtime_state.pop(e.to_edge_handle())
-            for e in run_g.in_edges(run_g.output_node_name)
+            for e in run_g.in_edges(run_g.output_node_idx)
         }
 
     async def _run_eval(

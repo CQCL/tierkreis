@@ -436,14 +436,13 @@ class TierkreisGraph:
                     inserted_outputs[edge.source.port], edge.target, edge.type_
                 )
         if deleted_nodes:
-            all_nodes: list[int] = list(graph._graph.nodes())
             graph._graph.remove_nodes_from(deleted_nodes)
             # shift node indices to account for missing nodes
             # without this step indices will not be contiguous
-            for d in deleted_nodes:
-                all_nodes.remove(d)
             nx.relabel_nodes(
-                graph._graph, {n: i for i, n in enumerate(all_nodes)}, copy=False
+                graph._graph,
+                {n: i for i, n in enumerate(sorted(graph._graph.nodes()))},
+                copy=False,
             )
 
         return graph

@@ -2,7 +2,7 @@
 
 import sys
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Callable, Coroutine, Optional, cast
+from typing import Any, Awaitable, Callable, Coroutine, Optional
 
 import grpclib
 import grpclib.events
@@ -122,8 +122,7 @@ class Worker:
         if func is None:
             raise FunctionNotFound(function)
 
-        # See https://github.com/python/mypy/issues/5485
-        return cast(Any, func).run(inputs)
+        return func.run(inputs)
 
     async def _extract_callback(self, request: grpclib.events.RecvRequest):
         if self.callback_hook.callback is None:

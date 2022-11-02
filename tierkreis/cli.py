@@ -141,7 +141,7 @@ def local(
             workers=worker_locations,
             worker_uris=worker_uri_locations,
             myqos_worker=myqos_worker,
-            grpc_port=port,
+            port=port,
             show_output=server_logs,
         )
     )

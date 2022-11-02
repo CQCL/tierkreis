@@ -41,7 +41,7 @@ async def local_runtime(
     executable: Path,
     workers: List[tuple[str, Path]],
     worker_uris: List[tuple[str, str]],
-    grpc_port: int = 8080,
+    port: int = 8080,
     show_output: bool = False,
     myqos_worker: Optional[str] = None,
     myqos_auth_token: Optional[str] = None,
@@ -85,8 +85,8 @@ async def local_runtime(
             config["myqos_auth_key"] = pwd
 
         config["myqos_worker"] = myqos_worker
-    if grpc_port:
-        config["grpc_port"] = grpc_port
+    if port:
+        config["port"] = port
 
     if runtime_type_checking:
         config["runtime_type_checking"] = runtime_type_checking
@@ -120,7 +120,7 @@ async def local_runtime(
         raise RuntimeLaunchFailed()
 
     try:
-        async with Channel("localhost", grpc_port) as channel:
+        async with Channel("localhost", port) as channel:
             yield ServerRuntime(channel)
 
     finally:

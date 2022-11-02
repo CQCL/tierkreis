@@ -28,7 +28,7 @@ async def outer_server_client(
     local_runtime_launcher, server_client
 ) -> AsyncIterator[ServerRuntime]:
     async with local_runtime_launcher(
-        grpc_port=9090,
+        port=9090,
         worker_uris=[("inner", "http://" + server_client.socket_address())],
     ) as outer:
         yield outer
@@ -63,11 +63,11 @@ async def test_remote_scopes_are_actually_remote_control(outer_server_client, bi
 @pytest.mark.asyncio
 async def test_remote_scopes_are_actually_remote(local_runtime_launcher, bi):
     async with local_runtime_launcher(
-        grpc_port=8081,
+        port=8081,
         workers=[],
     ) as inner:
         async with local_runtime_launcher(
-            grpc_port=9091,
+            port=9091,
             worker_uris=[("inner", "http://" + inner.socket_address())],
         ) as outer:
 

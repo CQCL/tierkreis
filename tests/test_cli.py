@@ -85,4 +85,4 @@ def test_run_with_args(server_client: "ServerRuntime"):
             command_header + [nint_adder_file_2, fname], capture_output=True
         )
         assert p.returncode != 0
-        assert "Failed to unify types" in p.stderr.decode("utf-8")
+        assert "Expected type" in p.stderr.decode("utf-8")

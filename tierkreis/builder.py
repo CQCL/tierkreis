@@ -5,7 +5,7 @@ from contextvars import ContextVar, Token
 from dataclasses import dataclass
 from functools import update_wrapper, wraps
 from itertools import count
-from types import TracebackType
+from types import FrameType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -34,6 +34,7 @@ from tierkreis.core.signature import Namespace as SigNamespace
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
+    ConstNode,
     FunctionNode,
     IncomingWireType,
     Location,
@@ -47,8 +48,9 @@ from tierkreis.core.tierkreis_graph import (
     to_nodeport,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.type_inference import infer_graph_types
-from tierkreis.core.types import TierkreisTypeErrors, TypeScheme
+from tierkreis.core.types import TypeScheme
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import TierkreisValue, TKVal1, tkvalue_to_tktype
 
@@ -90,6 +92,19 @@ def _source_graph(s: ValueSource) -> TierkreisGraph:
     return (
         s.source_graph() if isinstance(s, PortFunc) else to_nodeport(s).node_ref.graph
     )
+
+
+def _debug_str() -> str:
+    # unroll current stack until out of this file
+    frm = cast(FrameType, inspect.currentframe())
+    while frm.f_code.co_filename == __file__ and frm.f_back is not None:
+        frm = cast(FrameType, frm.f_back)
+    try:
+        return f"Node added at: {frm.f_code.co_filename}:{frm.f_lineno}"
+    finally:
+        # as recommended in
+        # https://docs.python.org/3/library/inspect.html#the-interpreter-stack
+        del frm
 
 
 __state: ContextVar["GraphBuilder"] = ContextVar("state")
@@ -144,6 +159,7 @@ class GraphBuilder(AbstractContextManager):
     inputs: dict[str, Optional["TierkreisType"]]
     outputs: dict[str, Optional["TierkreisType"]]
     inner_scopes: dict[TierkreisGraph, CaptureOutwards]
+    debug_info: dict[NodeRef, str]
     _state_token: Token["GraphBuilder"]
 
     def __init__(
@@ -151,12 +167,14 @@ class GraphBuilder(AbstractContextManager):
         inputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
         outputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
         name: str = "",
+        debug: bool = True,
     ) -> None:
         self.graph = TierkreisGraph(name)
         self.inputs = inputs or {}
         self.outputs = outputs or {}
         self.inner_scopes = {}
         self.graph.input_order.extend(self.inputs.keys())
+        self.debug_info = {self.graph.input: _debug_str()} if debug else {}
 
     def input(self, name: str) -> NodePort:
         if name in self.inputs:
@@ -217,6 +235,8 @@ class GraphBuilder(AbstractContextManager):
     ) -> NodeRef:
         nr = self.graph.add_node(_tk_node)
         self._add_edges(nr, **incoming_wires)
+        if self.debug_info:
+            self.debug_info[nr] = _debug_str()
         return nr
 
     def set_graph_outputs(self, **incoming_wires: ValueSource) -> None:
@@ -228,8 +248,7 @@ class GraphBuilder(AbstractContextManager):
         try:
             return infer_graph_types(self.graph, sig)
         except TierkreisTypeErrors as te:
-            raise IncrementalTypeError("Builder expression caused type error.") from te
-            # TODO remove final entry in traceback?
+            raise te.with_debug(self.debug_info) from None
 
 
 class CaptureBuilder(GraphBuilder):
@@ -240,8 +259,10 @@ class CaptureBuilder(GraphBuilder):
         inputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
         outputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
         name: str = "",
+        debug: Optional[bool] = None,
     ) -> None:
-        super().__init__(inputs, outputs, name)
+        bool_debug = bool(current_builder().debug_info) if debug is None else debug
+        super().__init__(inputs, outputs, name, bool_debug)
 
         self.captured = {}
 
@@ -256,51 +277,54 @@ class CaptureBuilder(GraphBuilder):
         in_name = self.captured.setdefault(incoming, _capture_label(len(self.captured)))
         return self.graph.input[in_name]
 
+    def __exit__(
+        self,
+        __exc_type: Optional[Type[BaseException]],
+        __exc_value: Optional[BaseException],
+        __traceback: Optional[TracebackType],
+    ) -> Optional[bool]:
+        super().__exit__(__exc_type, __exc_value, __traceback)
+        if not any((__exc_type, __exc_value, __traceback)):
+            current_builder().debug_info.update(self.debug_info)
+        return None
+
 
 def _partial_thunk(
     thunk: Union[GraphBuilder, NodePort], captured: dict[ValueSource, PortID]
 ) -> NodePort:
     # add the thunk as constant to the current graph and partial up
     bg = current_builder()
-    if isinstance(thunk, GraphBuilder):
-        thunk = bg.graph.add_const(thunk.graph)[Labels.VALUE]
+    thunk_port: NodePort = (
+        Const(thunk.graph) if isinstance(thunk, GraphBuilder) else thunk
+    )
     if captured:
         return bg.add_node_to_graph(
             FunctionNode(FunctionName("partial")),
-            thunk=thunk,
+            thunk=thunk_port,
             **{k: v for v, k in captured.items()},
         )[Labels.VALUE]
-    return thunk
+    return thunk_port
 
 
 T = TypeVar("T")
 
 
-class IncrementalTypeError(Exception):
-    pass
-
-
-class Const(NodePort):
-    """"""
-
-    def __init__(
-        self,
-        val: Union[
-            int,
-            float,
-            bool,
-            str,
-            dict,
-            TierkreisStruct,
-            TierkreisValue,
-            TierkreisGraph,
-            tuple,
-            list,
-        ],
-    ):
-        bg = current_builder()
-        n = bg.graph.add_const(val)
-        super().__init__(n, Labels.VALUE)
+def Const(
+    val: Union[
+        int,
+        float,
+        bool,
+        str,
+        dict,
+        TierkreisStruct,
+        TierkreisValue,
+        TierkreisGraph,
+        tuple,
+        list,
+    ]
+) -> NodePort:
+    n = current_builder().add_node_to_graph(ConstNode(TierkreisValue.from_python(val)))
+    return n[Labels.VALUE]
 
 
 @dataclass(frozen=True)
@@ -312,6 +336,7 @@ class _CallAddNode:
     def __call__(self, *args: ValueSource, **kwds: ValueSource) -> NodeRef:
         bg = current_builder()
         kwds = _combine_args_with_kwargs(self.input_order, *args, **kwds)
+
         n = bg.add_node_to_graph(self.node, **kwds)
         return NodeRef(n.idx, n.graph, self.output_order)
 
@@ -322,7 +347,9 @@ class Box(_CallAddNode):
     def __init__(self, graph: TierkreisGraph, location: Location = Location([])):
         self.graph = graph
         super().__init__(
-            BoxNode(graph, location=location), graph.input_order, graph.output_order
+            BoxNode(graph, location=location),
+            graph.input_order,
+            graph.output_order,
         )
 
 
@@ -482,7 +509,9 @@ class CapturedError(Exception):
 
 
 def graph(
-    name: Optional[str] = None, type_check_sig: Optional[Signature] = None
+    name: Optional[str] = None,
+    type_check_sig: Optional[Signature] = None,
+    debug: bool = True,
 ) -> _GraphDecoratorType:
     def decorator_graph(f: _GraphDef) -> Callable[[], TierkreisGraph]:
         in_types, out_types = _get_edge_annotations(f)
@@ -492,7 +521,8 @@ def graph(
 
         @wraps(f)
         def wrapper() -> TierkreisGraph:
-            gb = GraphBuilder(in_types, out_types, name=graph_name)
+            gb = GraphBuilder(in_types, out_types, name=graph_name, debug=debug)
+
             with gb as sub_build:
                 f(*(Input(port) for port in in_types))
 
@@ -526,14 +556,16 @@ class Thunk(_CallAddNode):
         return self
 
 
-def closure(name: Optional[str] = None) -> Callable[[_GraphDef], Thunk]:
+def closure(
+    name: Optional[str] = None, debug: bool = True
+) -> Callable[[_GraphDef], Thunk]:
     def decorator_graph(f: _GraphDef) -> Thunk:
         in_types, out_types = _get_edge_annotations(f)
         # Use getattr as _GraphDef doesn't specify that it has a __name__
         graph_name = name or getattr(f, "__name__")
         # graph_name = name or f.__name__  # type: ignore  # the alternative
 
-        gb = CaptureBuilder(in_types, out_types, name=graph_name)
+        gb = CaptureBuilder(in_types, out_types, name=graph_name, debug=debug)
 
         with gb as sub_build:
             f(*(Input(port) for port in in_types))
@@ -551,7 +583,7 @@ def closure(name: Optional[str] = None) -> Callable[[_GraphDef], Thunk]:
     return decorator_graph
 
 
-def loop(name: Optional[str] = None):
+def loop(name: Optional[str] = None, debug: bool = True):
     def decorator_graph(f: _GraphDef):
         in_types, out_types = _get_edge_annotations(f)
         if len(in_types) != 1:
@@ -564,7 +596,7 @@ def loop(name: Optional[str] = None):
 
         @wraps(f)
         def wrapper(initial: ValueSource) -> NodePort:
-            gb = CaptureBuilder(in_types, out_types, name=graph_name)
+            gb = CaptureBuilder(in_types, out_types, name=graph_name, debug=debug)
             with gb as sub_build:
                 f(Input(Labels.VALUE))
 
@@ -650,12 +682,16 @@ class _CaseScope(GraphBuilder, ABC):
             if self.graph.n_nodes != 2:
                 raise self._intermediate_error()
             handlers = self.__variant_handlers.get()
+            for h in handlers.values():
+                current_builder().debug_info.update(h.debug_info)
+
             thunk_port = self._get_thunk()
             partial_inps = _combine_captures(list(handlers.values()))
             thunk_port = _partial_thunk(thunk_port, partial_inps)
 
             self.nref = current_builder().add_node_to_graph(
-                FunctionNode(FunctionName("eval")), thunk=thunk_port
+                FunctionNode(FunctionName("eval")),
+                thunk=thunk_port,
             )
         self.__variant_handlers.reset(self._token)
 
@@ -673,7 +709,7 @@ class Match(_CaseScope):
         return bg.add_node_to_graph(
             MatchNode(),
             variant_value=self.variant_value,
-            **map_vals(handlers, lambda x: bg.graph.add_const(x.graph)),
+            **map_vals(handlers, lambda x: Const(x.graph)),
         )[Labels.THUNK]
 
     def _intermediate_error(self) -> IntermediateNodes:
@@ -692,9 +728,6 @@ class Case(CaptureBuilder):
 
         self.var_value = self.graph.input[Labels.VALUE]
 
-    def __enter__(self) -> "Case":
-        return cast(Case, super().__enter__())
-
 
 class IfElse(_CaseScope):
     predicate: ValueSource
@@ -710,8 +743,8 @@ class IfElse(_CaseScope):
         return bg.add_node_to_graph(
             FunctionNode(FunctionName("switch")),
             pred=self.predicate,
-            if_true=bg.graph.add_const(handlers["if"].graph),
-            if_false=bg.graph.add_const(handlers["else"].graph),
+            if_true=Const(handlers["if"].graph),
+            if_false=Const(handlers["else"].graph),
         )[Labels.VALUE]
 
     def _intermediate_error(self) -> IntermediateNodes:

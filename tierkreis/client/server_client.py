@@ -26,7 +26,7 @@ import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
-from tierkreis.core.types import TierkreisTypeErrors
+from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
 from tierkreis.worker import CallbackHook
 
@@ -135,7 +135,7 @@ class ServerRuntime(RuntimeClient):
 
         if name == "task_id":
             return TaskHandle(decoded.task_id)
-        raise TierkreisTypeErrors.from_proto(decoded.type_errors)
+        raise TierkreisTypeErrors.from_proto(decoded.type_errors, graph)
 
     async def list_tasks(
         self,
@@ -216,7 +216,7 @@ class ServerRuntime(RuntimeClient):
         status, status_value = betterproto.which_one_of(decoded, "result")
         assert status_value is not None
         if status == "type_errors":
-            raise TierkreisTypeErrors.from_proto(status_value)
+            raise TierkreisTypeErrors.from_proto(status_value, graph)
         if status == "error":
             raise RuntimeError(
                 f"Run_graph execution failed with message:\n{status_value}"
@@ -250,7 +250,7 @@ class ServerRuntime(RuntimeClient):
             return TierkreisValue.from_proto(message.value).to_python(TierkreisGraph)
 
         errors = cast(ps.TypeErrors, message)
-        raise TierkreisTypeErrors.from_proto(errors)
+        raise TierkreisTypeErrors.from_proto(errors, graph)
 
 
 def _gen_auth_injector(login: str, pwd: str) -> Callable[["SendRequest"], Coroutine]:

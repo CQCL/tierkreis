@@ -8,7 +8,6 @@ from uuid import UUID
 import betterproto
 
 import tierkreis.core.protos.tierkreis.graph as pg
-import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
@@ -242,7 +241,7 @@ class PairType(TierkreisType):
         )
 
     def __str__(self) -> str:
-        return f"Pair<{str(self.first)}, {str(self.second)}>"
+        return f"Pair[{str(self.first)}, {str(self.second)}]"
 
     def children(self) -> list["TierkreisType"]:
         return [self.first, self.second]
@@ -256,7 +255,7 @@ class VecType(TierkreisType):
         return pg.Type(vec=self.element.to_proto())
 
     def __str__(self) -> str:
-        return f"Vector<{str(self.element)}>"
+        return f"Vector[{str(self.element)}]"
 
     def children(self) -> list["TierkreisType"]:
         return [self.element]
@@ -276,7 +275,7 @@ class MapType(TierkreisType):
         )
 
     def __str__(self) -> str:
-        return f"Map<{str(self.key)}, {str(self.value)}>"
+        return f"Map[{str(self.key)}, {str(self.value)}]"
 
     def children(self) -> list["TierkreisType"]:
         return [self.key, self.value]
@@ -375,7 +374,7 @@ class StructType(TierkreisType):
         return pg.Type(struct=struct_type)
 
     def anon_name(self) -> str:
-        return f"Struct<{self.shape.to_tksl()}>"
+        return f"Struct[{self.shape.to_tksl()}]"
 
     def __str__(self) -> str:
         return self.name or self.anon_name()
@@ -393,7 +392,7 @@ class VariantType(TierkreisType):
         return pg.Type(variant=row)
 
     def __str__(self) -> str:
-        return f"Variant<{self.shape.to_tksl()}>"
+        return f"Variant[{self.shape.to_tksl()}]"
 
     def children(self) -> list["TierkreisType"]:
         return self.shape.children()
@@ -502,44 +501,3 @@ class TypeScheme:
         ]
         body = TierkreisType.from_proto(proto_tg.body)
         return cls(variables, constraints, body)
-
-
-@dataclass(frozen=True)
-class TierkreisTypeError:
-    message: str
-    location: list[str]
-
-    @classmethod
-    def from_proto(cls, proto: ps.TierkreisTypeError) -> "TierkreisTypeError":
-        return cls(message=proto.msg, location=proto.location)
-
-    def to_proto(self) -> ps.TierkreisTypeError:
-        return ps.TierkreisTypeError(msg=self.message, location=self.location)
-
-    def __str__(self) -> str:
-        context = "\n".join(f" - {loc}" for loc in self.location)
-        return f"{self.message}\n\nIn context:\n\n{context}"
-
-
-@dataclass
-class TierkreisTypeErrors(Exception):
-    errors: list[TierkreisTypeError]
-
-    @classmethod
-    def from_proto(cls, proto: ps.TypeErrors) -> "TierkreisTypeErrors":
-        return cls(
-            errors=[TierkreisTypeError.from_proto(error) for error in proto.errors]
-        )
-
-    def to_proto(self) -> ps.TypeErrors:
-        return ps.TypeErrors(errors=[x.to_proto() for x in self.errors])
-
-    def __str__(self) -> str:
-        separator = "\n\n" + ("─" * 80) + "\n\n"
-        return separator.join(str(error) for error in self.errors)
-
-    def __getitem__(self, index: int) -> TierkreisTypeError:
-        return self.errors[index]
-
-    def __len__(self) -> int:
-        return len(self.errors)

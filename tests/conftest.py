@@ -8,8 +8,9 @@ import pytest
 from tierkreis.builder import Namespace
 from tierkreis.client import local_runtime, myqos_runtime
 from tierkreis.client.runtime_client import RuntimeClient
-from tierkreis.client.server_client import ServerRuntime
+from tierkreis.client.server_client import RuntimeClient, ServerRuntime
 from tierkreis.core.signature import Signature
+from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.pyruntime import PyRuntime
 
 from . import LOCAL_SERVER_PATH
@@ -139,3 +140,13 @@ async def sig(client: RuntimeClient) -> Signature:
 @pytest.fixture()
 def bi(sig: Signature) -> Namespace:
     return Namespace(sig)
+
+
+@pytest.fixture()
+def idpy_graph() -> TierkreisGraph:
+    tk_g = TierkreisGraph()
+
+    id_node = tk_g.add_func("python_nodes::id_py", value=tk_g.input["id_in"])
+    tk_g.set_outputs(id_out=id_node)
+
+    return tk_g

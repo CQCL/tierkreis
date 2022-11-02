@@ -19,7 +19,7 @@ import tierkreis.core.protos.tierkreis.worker as pw
 from tierkreis.core.function import FunctionName
 from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
 from tierkreis.core.tierkreis_graph import TierkreisGraph
-from tierkreis.core.types import TierkreisTypeErrors
+from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
 from tierkreis.pyruntime.python_runtime import PyRuntime
 

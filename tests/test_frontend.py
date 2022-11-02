@@ -1,9 +1,8 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
 from contextlib import AbstractAsyncContextManager
-from copy import deepcopy
 from dataclasses import dataclass
 from time import time
-from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type
 
 import pytest
 
@@ -12,30 +11,14 @@ from tierkreis.client import RuntimeClient, ServerRuntime
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.graphviz import _merge_copies
-from tierkreis.core.signature import Namespace, Signature
-from tierkreis.core.tierkreis_graph import FunctionNode, GraphValue, NodePort
+from tierkreis.core.tierkreis_graph import FunctionNode
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.type_inference import infer_graph_types
-from tierkreis.core.types import (
-    FloatType,
-    GraphType,
-    IntType,
-    PairType,
-    Row,
-    StarKind,
-    TierkreisTypeErrors,
-    TypeScheme,
-    VarType,
-)
-from tierkreis.core.values import FloatValue, IntValue, StructValue, VariantValue
-from tierkreis.pyruntime import PyRuntime
+from tierkreis.core.values import FloatValue, IntValue, VariantValue
+from tierkreis.pyruntime.python_runtime import PyRuntime
 from tierkreis.worker.exceptions import NodeExecutionError
 
 from . import REASON, release_tests
 from .utils import nint_adder
-
-if TYPE_CHECKING:
-    from tierkreis.core.tierkreis_graph import NodePort
 
 
 @pytest.mark.asyncio
@@ -184,20 +167,10 @@ class TstStruct(TierkreisStruct):
     n: NestedStruct
 
 
-def idpy_graph() -> TierkreisGraph:
-    tk_g = TierkreisGraph()
-
-    id_node = tk_g.add_func("python_nodes::id_py", value=tk_g.input["id_in"])
-    tk_g.set_outputs(id_out=id_node)
-
-    return tk_g
-
-
 @pytest.mark.asyncio
-async def test_idpy(client: RuntimeClient):
+async def test_idpy(client: RuntimeClient, idpy_graph: TierkreisGraph):
     async def assert_id_py(val: Any, typ: Type) -> bool:
-        tk_g = idpy_graph()
-        output = await client.run_graph(tk_g, id_in=val)
+        output = await client.run_graph(idpy_graph, id_in=val)
         val_decoded = output["id_out"].to_python(typ)
         return val_decoded == val
 
@@ -217,48 +190,6 @@ async def test_idpy(client: RuntimeClient):
     ]
     for val, typ in pairs:
         assert await assert_id_py(val, typ)
-
-
-@pytest.mark.asyncio
-async def test_infer(client: RuntimeClient) -> None:
-    # test when built with client types are auto inferred
-    tg = TierkreisGraph()
-    _, val1 = tg.copy_value(tg.add_const(3))
-    tg.set_outputs(out=val1)
-    tg = await client.type_check_graph(tg)
-    assert any(node.is_discard_node() for node in tg.nodes())
-
-    assert isinstance(tg.get_edge(val1, NodePort(tg.output, "out")).type_, IntType)
-
-
-@pytest.mark.asyncio
-async def test_infer_errors(client: RuntimeClient) -> None:
-    # build graph with two type errors
-    tg = TierkreisGraph()
-    node_0 = tg.add_const(0)
-    node_1 = tg.add_const(1)
-    tg.add_edge(node_0["value"], tg.input["illegal"])
-    tg.set_outputs(out=node_1["invalid"])
-
-    with pytest.raises(TierkreisTypeErrors) as err:
-        await client.type_check_graph(tg)
-
-    assert len(err.value) == 2
-
-
-@pytest.mark.asyncio
-async def test_infer_errors_when_running(server_client: ServerRuntime) -> None:
-    # build graph with two type errors
-    tg = TierkreisGraph()
-    node_0 = tg.add_const(0)
-    node_1 = tg.add_const(1)
-    tg.add_edge(node_0["value"], tg.input["illegal"])
-    tg.set_outputs(out=node_1["invalid"])
-
-    with pytest.raises(TierkreisTypeErrors) as err:
-        await server_client.run_graph(tg)
-
-    assert len(err.value) == 2
 
 
 @pytest.mark.asyncio
@@ -375,100 +306,6 @@ async def test_reports_error(server_client: ServerRuntime):
     expected_err_msg = "Input b to ipow must be positive integer"
     with pytest.raises(RuntimeError, match=expected_err_msg):
         await server_client.run_graph(loop_g, value=-1)
-
-
-_foo_func = FunctionDeclaration(
-    TypeScheme(
-        {"a": StarKind()},
-        [],
-        GraphType(
-            inputs=Row({"value": VarType("a")}, None),
-            outputs=Row({"res": PairType(VarType("a"), IntType())}, None),
-        ),
-    ).to_proto(),
-    "no docs",
-    ["value"],
-    ["res"],
-)
-
-
-def test_infer_graph_types():
-    tg = TierkreisGraph()
-    foo = tg.add_func("foo", value=tg.add_const(3))
-    tg.set_outputs(out=foo["res"])
-    with pytest.raises(TierkreisTypeErrors, match="unknown function 'foo'"):
-        infer_graph_types(tg, Signature.empty())
-    sig = Signature(
-        root=Namespace(
-            functions={"foo": _foo_func},
-        ),
-    )
-    tg = infer_graph_types(tg, sig)
-    out_type = tg.get_edge(NodePort(foo, "res"), NodePort(tg.output, "out")).type_
-    assert out_type == PairType(IntType(), IntType())
-
-
-@pytest.mark.asyncio
-async def test_infer_graph_types_with_sig(client: RuntimeClient):
-    # client is only used for signatures of builtins etc.
-    sigs = await client.get_signature()
-
-    tg = TierkreisGraph()
-    mkp = tg.add_func(
-        "make_pair",
-        first=tg.input["in"],
-        second=tg.add_const(3),
-    )
-    tg.set_outputs(val=mkp["pair"])
-
-    # updates the graph wrapped by tg inplace
-    tg._graph = infer_graph_types(tg, sigs)._graph
-    in_type = tg.get_edge(NodePort(tg.input, "in"), NodePort(mkp, "first")).type_
-    assert isinstance(in_type, VarType)
-    out_type = tg.get_edge(NodePort(mkp, "pair"), NodePort(tg.output, "val")).type_
-    assert out_type == PairType(in_type, IntType())
-
-
-@pytest.mark.asyncio
-async def test_infer_graph_types_with_inputs(client: RuntimeClient):
-    ns = Namespace(
-        functions={"foo": _foo_func},
-        subspaces={
-            "python_nodes": (await client.get_signature()).root.subspaces[
-                "python_nodes"
-            ]
-        },
-    )
-    funcs = Signature(
-        root=ns,
-    )
-    tg = TierkreisGraph()
-    foo = tg.add_func("foo", value=tg.input["inp"])
-    tg.set_outputs(out=foo["res"])
-
-    tg2 = deepcopy(tg)
-
-    inputs: StructValue = StructValue({"inp": FloatValue(3.14)})
-    tg, inputs_ = infer_graph_types(tg, funcs, inputs)
-    assert inputs_ == inputs
-    out_type = tg.get_edge(NodePort(foo, "res"), NodePort(tg.output, "out")).type_
-    assert out_type == PairType(FloatType(), IntType())
-
-    graph_inputs: StructValue = StructValue({"inp": GraphValue(idpy_graph())})
-    with pytest.raises(TierkreisTypeErrors):
-        # Pass an argument inconsistent with the annotations now on tg
-        infer_graph_types(tg, funcs, graph_inputs)
-
-    # deep copy (above) has no annotations yet, so ok
-    tg2, inputs_ = infer_graph_types(tg2, funcs, graph_inputs)
-    out_type = tg2.get_edge(NodePort(foo, "res"), NodePort(tg2.output, "out")).type_
-    assert isinstance(out_type, PairType) and out_type.second == IntType()
-    assert isinstance(out_type.first, GraphType)
-    argtypes, restypes = out_type.first.inputs, out_type.first.outputs
-    assert argtypes.rest is restypes.rest is None
-    assert len(argtypes.content) == len(restypes.content) == 1
-    assert argtypes.content["id_in"] == restypes.content["id_out"]
-    assert isinstance(argtypes.content["id_in"], VarType)
 
 
 def test_merge_copies():

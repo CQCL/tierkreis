@@ -19,7 +19,8 @@ from tierkreis.client.server_client import TaskHandle
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
 from tierkreis.core.signature import Signature
-from tierkreis.core.types import StructType, TierkreisTypeErrors
+from tierkreis.core.type_errors import TierkreisTypeErrors
+from tierkreis.core.types import StructType
 from tierkreis.core.values import StructValue, TierkreisValue
 
 if TYPE_CHECKING:

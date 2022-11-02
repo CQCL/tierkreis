@@ -9,7 +9,7 @@ import tierkreis.core.protos.tierkreis.signature as ps
 from tierkreis import TierkreisGraph
 from tierkreis import tierkreis as tierkreis_type_inference
 from tierkreis.core.signature import Namespace, Signature
-from tierkreis.core.types import TierkreisTypeErrors
+from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
 
 
@@ -56,7 +56,7 @@ def infer_graph_types(
             assert resp.success.inputs is None
             return g
         return (g, StructValue.from_proto(resp.success.inputs))
-    raise TierkreisTypeErrors.from_proto(resp.error)
+    raise TierkreisTypeErrors.from_proto(resp.error, g)
 
 
 def builtin_namespace() -> Namespace:

@@ -75,3 +75,31 @@ If you have the `typecheck` extension installed, you can replace `@graph` with `
 The type checked version of the graph above looks like:
 
 ![sum_pair graph](https://user-images.githubusercontent.com/12997250/199996763-e0431127-1e6d-402c-acde-7711e12eb0ee.svg)
+
+
+
+## Custom workers
+
+_Workers_ are standalone servers which implement a set of functions which can connect to a Tierkreis runtime to add extra primitives.
+They do this by implementing the `worker` gRPC services. The `tierkreis` python package makes it easy to do this by taking care of all the server logic, and the conversion to and from Tierkreis data types. Note that workers are intended to be deployed as part of remote Tierkreis runtimes, but we can use the PyRuntime to test and develop them without any networking code.
+
+For example, we could define a custom function to sum a list:
+
+```python
+from tierkreis.worker.namespace import Namespace as WorkerNS
+from tierkreis.builder import Const
+root = WorkerNS()
+custom_ns = root["custom"]
+
+@custom_ns.function()
+async def sum_list(lst: list[int]) -> int:
+    return sum(lst)
+
+cl = PyRuntime([root])
+ns = Namespace(await cl.get_signature())["custom"]
+
+@graph()
+def runsum() -> Output:
+    return Output(ns.sum_list(Const([1, 2, 3])))
+await cl.run_graph(runsum())
+```

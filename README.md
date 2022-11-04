@@ -77,6 +77,20 @@ The type checked version of the graph above looks like:
 ![sum_pair graph](https://user-images.githubusercontent.com/12997250/199996763-e0431127-1e6d-402c-acde-7711e12eb0ee.svg)
 
 
+### Run graph
+
+We can now run the graph using the client set up earlier:
+
+```python
+
+await cl.run_graph(sum_pair(), pair=(1, 2))
+```
+
+The inputs to the graph are provided via keywork argument, and most of the time you can just provide python values that are auto converted. Here the tuple of integers is automatically converted to the Tierkreis type `Pair[Int, Int]`. The output is given in Tierkreis form:
+```
+{'value': IntValue(value=3)}
+```
+
 
 ## Custom workers
 

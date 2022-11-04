@@ -90,6 +90,9 @@ The inputs to the graph are provided via keywork argument, and most of the time 
 ```
 {'value': IntValue(value=3)}
 ```
+## Examples
+
+For a more involved example see [variational.ipynb](examples/variational.ipynb)
 
 
 ## Custom workers

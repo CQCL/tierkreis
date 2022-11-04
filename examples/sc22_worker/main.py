@@ -3,6 +3,7 @@ import random
 from typing import TypeVar
 
 import numpy as np
+
 from tierkreis.worker import Namespace
 from tierkreis.worker.prelude import start_worker_server
 
@@ -44,7 +45,7 @@ async def new_params(
 @namespace.function()
 async def converged(prev: list[CandRecord]) -> bool:
     prev_len = len(prev)
-    if prev_len > 50:
+    if prev_len > 100:
         return True
     n = 5
     if prev_len >= n:

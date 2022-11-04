@@ -11,6 +11,12 @@ from typing import Callable, Dict, List
 
 import pytket.extensions
 import pytket.passes  # type: ignore
+from pytket.backends import Backend
+from pytket.circuit import Circuit  # type: ignore
+from pytket.qasm.qasm import circuit_from_qasm_str
+from sympy.core.symbol import Symbol  # type: ignore
+
+from tierkreis.common_types import SampledDistribution, backres_to_sampleddist
 from tierkreis.common_types.circuit import BitRegister, CircBox
 from tierkreis.common_types.circuit import Circuit as CircStruct
 from tierkreis.common_types.circuit import (
@@ -21,14 +27,8 @@ from tierkreis.common_types.circuit import (
     Permutation,
     UnitID,
 )
-from pytket.backends import Backend
-from pytket.circuit import Circuit  # type: ignore
-from pytket.qasm.qasm import circuit_from_qasm_str
-from sympy.core.symbol import Symbol  # type: ignore
-
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import TierkreisType
-from tierkreis.common_types import SampledDistribution, backres_to_sampleddist
 from tierkreis.worker.namespace import Namespace
 from tierkreis.worker.prelude import start_worker_server
 

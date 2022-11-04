@@ -1,42 +1,28 @@
 import asyncio
-from contextlib import asynccontextmanager
-from pathlib import Path
-from typing import Any, AsyncIterator, Callable
+from typing import AsyncIterator
 
 import pytest
+from grpclib.client import Channel
+from test_worker import main
 
 from tierkreis.builder import Namespace
-from tierkreis.client import local_runtime, myqos_runtime
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.client.server_client import RuntimeClient, ServerRuntime
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.pyruntime import PyRuntime
 
-from . import LOCAL_SERVER_PATH
-from .test_worker import main
-
 
 def pytest_addoption(parser):
     parser.addoption(
-        "--docker",
-        action="store_true",
-        help="Whether to use docker container for server rather than local binary",
+        "--host",
+        action="store",
+        help="Remote server host",
     )
     parser.addoption(
-        "--myqos",
-        action="store_true",
-        help="Whether to use the myqos runtime for testing",
-    )
-    parser.addoption(
-        "--myqos-staging",
-        action="store_true",
-        help="Use the myqos runtime from staging area (implies --myqos)",
-    )
-    parser.addoption(
-        "--server-logs",
-        action="store_true",
-        help="Whether to attempt to print server logs (for debugging).",
+        "--port",
+        action="store",
+        help="Server port",
     )
     parser.addoption(
         "--pytket",
@@ -44,6 +30,21 @@ def pytest_addoption(parser):
         default=False,
         help="Run pytket integration tests",
     )
+    parser.addoption(
+        "--client-only",
+        action="store_true",
+        default=False,
+        help="Only run tests that use the client fixture",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    if not config.getoption("--client-only"):
+        return
+    skip_non_client = pytest.mark.skip(reason="Doesn't use client fixture")
+    for item in items:
+        if "client" not in getattr(item, "fixturenames", ()):
+            item.add_marker(skip_non_client)
 
 
 def pytest_configure(config):
@@ -63,73 +64,16 @@ def pyruntime():
     return PyRuntime([main.root])
 
 
-@pytest.fixture(scope="session", params=[False, True])
-async def client(request, server_client, pyruntime) -> RuntimeClient:
-    # if parameter is true, return python runtime
-    if request.param:
-        return pyruntime
-    else:
-        return server_client
-
-
 @pytest.fixture(scope="session")
-async def server_client(
-    request, local_runtime_launcher
-) -> AsyncIterator[ServerRuntime]:
-    isdocker = False
-    ismyqos = False
-    ismyqos_staging = False
-    try:
-        isdocker = request.config.getoption("--docker") not in (None, False)
-        ismyqos = request.config.getoption("--myqos") not in (None, False)
-        ismyqos_staging = request.config.getoption("--myqos-staging") not in (
-            None,
-            False,
-        )
-    except Exception as _:
-        pass
-    if isdocker:
-        # launch docker container and close at end
-        from tierkreis.client.docker_manager import docker_runtime
+async def client(request, pyruntime) -> AsyncIterator[RuntimeClient]:
+    host = request.config.getoption("--host", "")
+    port = request.config.getoption("--port", "")
 
-        async with docker_runtime(
-            "cqc/tierkreis",
-        ) as local_client:
-            yield local_client
-    elif ismyqos_staging:
-        async with myqos_runtime(
-            "tierkreistrr595bx-pr.uksouth.cloudapp.azure.com",
-            staging_creds=True,
-        ) as myqos_client:
-            yield myqos_client
-    elif ismyqos:
-        async with myqos_runtime("tierkreis.myqos.com") as myqos_client:
-            yield myqos_client
+    if host and port:
+        async with Channel(host, int(port)) as c:
+            yield ServerRuntime(c)
     else:
-        # launch a local server for this test run and kill it at the end
-        async with local_runtime_launcher() as client:
-            yield client
-
-
-@pytest.fixture(scope="session")
-def local_runtime_launcher(request) -> Callable:
-    try:
-        logs = request.config.getoption("--server-logs") not in (None, False)
-    except Exception:
-        logs = False
-
-    @asynccontextmanager
-    async def foo(**kwarg_overrides: Any) -> AsyncIterator[ServerRuntime]:
-        kwargs = {
-            "workers": [("python", Path(__file__).parent / "test_worker")],
-            "worker_uris": [],
-            "show_output": logs,
-            **kwarg_overrides,
-        }
-        async with local_runtime(LOCAL_SERVER_PATH, **kwargs) as client:  # type: ignore
-            yield client
-
-    return foo
+        yield pyruntime
 
 
 @pytest.fixture()

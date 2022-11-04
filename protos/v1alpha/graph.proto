@@ -1,0 +1,174 @@
+syntax = "proto3";
+
+package tierkreis.v1alpha.graph;
+
+message Location {
+  repeated string location = 1;
+}
+
+message StructValue {
+  map<string, Value> map = 1;
+}
+
+message PairValue {
+  Value first = 1;
+  Value second = 2;
+}
+
+message MapValue {
+  repeated PairValue pairs = 1;
+}
+
+message VecValue {
+  repeated Value vec = 2;
+}
+
+message VariantValue {
+  string tag = 1;
+  Value value = 2;
+}
+
+message Value {
+  oneof value {
+    Graph graph = 1;
+
+    int64 integer = 2;
+    bool boolean = 3;
+
+    string str = 9;
+
+    double flt = 10;
+
+    // OptionValue option = 11;  // REMOVED
+
+    PairValue pair = 4;
+
+    VecValue vec = 5;
+
+    MapValue map = 7;
+    StructValue struct = 8;
+    VariantValue variant = 12;
+  }
+}
+
+message Type {
+  oneof type {
+    string var = 1;
+    Empty int = 2;
+    Empty bool = 3;
+    GraphType graph = 4;
+    PairType pair = 5;
+    Type vec = 6;
+    RowType row = 7;
+    PairType map = 9;
+    StructType struct = 10;
+    Empty str = 11;
+    Empty flt = 12;
+    // Type option = 13;  // REMOVED
+    RowType variant = 14;
+  }
+}
+
+message GraphType {
+  RowType inputs = 1;
+  RowType outputs = 2;
+}
+
+message PairType {
+  Type first = 1;
+  Type second = 2;
+}
+
+message RowType {
+  map<string, Type> content = 1;
+  string rest = 2;
+}
+
+message StructType {
+  RowType shape = 1;
+  oneof name_opt {
+    string name = 2;
+  }
+}
+
+message FunctionName {
+  repeated string namespaces = 1;
+  string name = 2;
+}
+
+message BoxNode {
+  Location loc = 1;
+  Graph graph = 2;
+}
+
+message Node {
+  oneof node {
+    Empty input = 1;
+    Empty output = 2;
+    Value const = 3;
+    BoxNode box = 4;
+    FunctionName function = 5;
+    Empty match = 6;
+    string tag = 7;
+  }
+}
+
+message Edge {
+  string port_from = 1;
+  string port_to = 2;
+  uint32 node_from = 3;
+  uint32 node_to = 4;
+  Type edge_type = 5;
+}
+
+message Graph {
+  repeated Node nodes = 1;
+  repeated Edge edges = 2;
+  string name = 3;
+  // below orderings are optional and used by graph builders if available
+  // listed ports will be reported and wired up in the listed order
+  // and before ports that are not listed
+  repeated string input_order = 4;
+  repeated string output_order = 5;
+}
+
+// This is supposed to be `google.protobuf.Empty` but unfortunately there is no
+// support for this in `betterproto` yet.
+message Empty {
+}
+
+message TypeScheme {
+    repeated TypeSchemeVar variables = 1;
+    repeated Constraint constraints = 2;
+    Type body = 3;
+}
+
+message TypeSchemeVar {
+    string name = 1;
+    Kind kind = 2;
+}
+
+message Constraint {
+    oneof constraint {
+        LacksConstraint lacks = 1;
+        PartitionConstraint partition = 2;
+    }
+}
+
+message PartitionConstraint {
+    Type left = 1;
+    Type right = 2;
+    Type union = 3;
+}
+
+message LacksConstraint {
+    Type row = 1;
+    string label = 2;
+}
+
+message Kind {
+    oneof kind {
+        Empty star = 1;
+        Empty row = 2;
+    }
+}

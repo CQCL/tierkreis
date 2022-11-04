@@ -1,6 +1,0 @@
-Graph main() -> (res: Int) {
-    in_v <- tag(foo: 4);
-    m <- match(in_v.value)
-        | foo {output(value: value);};
-    output(res: m.value);
-}

@@ -12,12 +12,15 @@ from grpclib.const import Status as StatusCode
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
 
-import tierkreis.core.protos.tierkreis.graph as pg
-import tierkreis.core.protos.tierkreis.runtime as pr
-import tierkreis.core.protos.tierkreis.signature as ps
-import tierkreis.core.protos.tierkreis.worker as pw
+import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha.runtime as pr
+import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
+import tierkreis.core.protos.tierkreis.v1alpha.worker as pw
 from tierkreis.core.function import FunctionName
-from tierkreis.core.protos.tierkreis.worker import RunFunctionResponse, WorkerBase
+from tierkreis.core.protos.tierkreis.v1alpha.worker import (
+    RunFunctionResponse,
+    WorkerBase,
+)
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import StructValue

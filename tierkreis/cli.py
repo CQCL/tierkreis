@@ -2,22 +2,23 @@ import asyncio
 import re
 import sys
 import traceback
+from contextlib import asynccontextmanager
 from functools import wraps
 from pathlib import Path
 from signal import SIGINT, SIGTERM
 from typing import TYPE_CHECKING, AsyncContextManager, Dict, List, Optional, cast
 
 import click
+from grpclib.client import Channel
 from yachalk import chalk
 
-import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis import TierkreisGraph
 from tierkreis.builder import _func_sig
-from tierkreis.client import ServerRuntime, local_runtime
-from tierkreis.client.myqos_client import myqos_runtime
+from tierkreis.client import ServerRuntime
 from tierkreis.client.server_client import TaskHandle
 from tierkreis.core.graphviz import tierkreis_to_graphviz
-from tierkreis.core.protos.tierkreis.graph import Graph as ProtoGraph
+from tierkreis.core.protos.tierkreis.v1alpha.graph import Graph as ProtoGraph
 from tierkreis.core.signature import Signature
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.types import StructType
@@ -26,8 +27,11 @@ from tierkreis.core.values import StructValue, TierkreisValue
 if TYPE_CHECKING:
     from tierkreis.core.function import FunctionDeclaration
 
-LOCAL_SERVER_PATH = Path(__file__).parent / "../../../../target/debug/tierkreis-server"
-RUNTIME_LABELS = ["docker", "local", "myqos"]
+
+@asynccontextmanager
+async def server_manager(host: str, port: int = 443):
+    async with Channel(host, port) as channel:
+        yield ServerRuntime(channel)
 
 
 def coro(f):
@@ -88,117 +92,12 @@ def run_with_signals(manager: AsyncContextManager):
 
 
 @click.group()
-def start():
-    """Start a tierkreis server on local host and print the address as
-    "localhost:<port>".
-    This can be passed to the tksl command, e.g.
-
-    >> tksl -r localhost -p 8090 signature
-
-    Start a local server binary:
-    >> tksl-start local
-
-    Start a local server from docker image:
-    >> tksl-start docker
-
-    See documentation of individual commands for more options.
-    """
-
-
-@start.command()
-@click.argument("executable", type=click.Path(exists=True), default=LOCAL_SERVER_PATH)
-@click.option("--worker", "-w", multiple=True, default=[])
-@click.option("--worker_uris", "-wr", multiple=True, default=[])
-@click.option("--port", "-p", default=8090)
-@click.option("--myqos-worker")
-@click.option("--server-logs", "-s", is_flag=True, default=False)
-def local(
-    executable: Path,
-    worker: List[str],
-    worker_uris: List[str],
-    port: int,
-    myqos_worker: Optional[str],
-    server_logs: bool,
-):
-    """Start a local server with EXECUTABLE, on PORT, connected to local workers WORKER
-    , remote workers WORKER_URIS, and myqos worker MYQOS_WORKER URI
-
-    e.g.
-    >> tksl-start local ../target/debug/tierkreis-server -w
-       pytket:../pytket_worker --wr remote:http://localhost:8050"""
-
-    worker_locations = [
-        (s[0], Path(s[1])) for s in map(lambda v: v.split(":", 1), worker)
-    ]
-
-    worker_uri_locations = [
-        (s[0], s[1]) for s in map(lambda v: v.split(":", 1), worker_uris)
-    ]
-
-    run_with_signals(
-        local_runtime(
-            executable,
-            workers=worker_locations,
-            worker_uris=worker_uri_locations,
-            myqos_worker=myqos_worker,
-            port=port,
-            show_output=server_logs,
-        )
-    )
-
-
-@start.command()
-@click.argument("image", default="cqcregistry.azurecr.io/cqc/tierkreis:latest")
-@click.option("--worker", "-w", multiple=True, default=[])
-@click.option(
-    "--docker-worker",
-    "-d",
-    multiple=True,
-    default=[],
-    help="worker in image in form image:path",
-)
-@click.option("--port", "-p", default=8090)
-@click.option("--remote-worker")
-@click.option("--server-logs", "-s", is_flag=True, default=False)
-def docker(
-    image: str,
-    worker: List[str],
-    docker_worker: List[str],
-    port: int,
-    remote_worker: Optional[str],
-    server_logs: bool,
-):
-    """Start a local server with IMAGE, on PORT, connected to local WORKERS,
-    DOCKER_WORKERs in images and REMOTE_WORKER URI
-
-    e.g.
-    >> tksl-start docker cqc/tierkreis
-     -d cqc/tierkreis-workers:/root/pytket_worker
-     --remote-worker http://localhost:8050"""
-    # import may raise error if docker feature not installed
-    from tierkreis.client.docker_manager import docker_runtime
-
-    image_worker_gen = (worker_str.split(":", 2) for worker_str in docker_worker)
-    image_workers = [(img, pth) for img, pth in image_worker_gen]
-    run_with_signals(
-        docker_runtime(
-            image,
-            grpc_port=port,
-            worker_images=image_workers,
-            host_workers=list(map(Path, worker)),
-            myqos_worker=remote_worker,
-            show_output=server_logs,
-        )
-    )
-
-
-@click.group()
 @click.pass_context
 @click.option(
     "--runtime",
     "-r",
-    default="tierkreis.myqos.com",
-    help="Choose runtime, default=tierkreis.myqos.com",
+    default="localhost",
+    help="Choose runtime, default=localhost",
 )
 @click.option(
     "--port",
@@ -212,7 +111,7 @@ async def cli(ctx: click.Context, runtime: str, port: Optional[int]):
         port = 8090 if local else 443
     ctx.ensure_object(dict)
     ctx.obj["runtime_label"] = runtime
-    client_manager = myqos_runtime(runtime, port, local_debug=local)
+    client_manager = server_manager(runtime, port)
     asyncio.get_event_loop()
     ctx.obj["client_manager"] = client_manager
 

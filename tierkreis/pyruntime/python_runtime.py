@@ -22,7 +22,7 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisEdge,
     TierkreisGraph,
 )
-from tierkreis.core.type_inference import infer_graph_types
+from tierkreis.core.type_inference import _TYPE_CHECK, infer_graph_types
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import StructValue, TierkreisValue, VariantValue
 from tierkreis.pyruntime import python_builtin
@@ -244,3 +244,7 @@ class PyRuntime(RuntimeClient):
         self, tg, inputs: StructValue
     ) -> Tuple[TierkreisGraph, StructValue]:
         return infer_graph_types(tg, await self.get_signature(), inputs)
+
+    @property
+    def can_type_check(self) -> bool:
+        return _TYPE_CHECK

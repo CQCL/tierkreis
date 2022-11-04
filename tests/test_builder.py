@@ -37,6 +37,7 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisGraph,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.type_inference import _TYPE_CHECK
 from tierkreis.core.types import IntType, MapType, StringType, VecType
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import (
@@ -191,8 +192,8 @@ async def test_builder_sample(
     tg = request.getfixturevalue(builder)
 
     _compare_graphs(tg, expected_gen())
-
-    tg = await client.type_check_graph(tg)
+    if client.can_type_check:
+        tg = await client.type_check_graph(tg)
 
 
 def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
@@ -250,6 +251,8 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
 @pytest.mark.asyncio
 async def test_bigexample(client: RuntimeClient, bi) -> None:
     tg = _big_sample_builder(bi)
+    if not client.can_type_check:
+        pytest.skip()
     tg = await client.type_check_graph(tg)
     assert sum(1 for _ in tg.nodes()) == 24
     for flag in (True, False):
@@ -707,6 +710,7 @@ async def test_bad_annotations() -> None:
             return Output(out=arg)
 
 
+@pytest.mark.skipif(not _TYPE_CHECK, reason="tierkreis_typecheck not installed.")
 @pytest.mark.asyncio
 async def test_box_order(bi: Namespace, sig: Signature) -> None:
     @dataclass
@@ -755,6 +759,8 @@ async def test_scope(bi, client: RuntimeClient) -> None:
         assert len(current_builder().inner_scopes.values()) == 1
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 3
     n = cast(
@@ -776,6 +782,8 @@ async def test_scope_capture_in(bi, client: RuntimeClient) -> None:
         assert len(current_builder().inner_scopes.values()) == 1
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
     n = cast(
@@ -797,6 +805,8 @@ async def test_scope_capture_out(bi, client: RuntimeClient) -> None:
         bi.discard(a)
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
     n = cast(
@@ -829,6 +839,8 @@ async def test_nested_scopes(bi, client: RuntimeClient) -> None:
 
         return Output(value=h)
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 5
     n = cast(
@@ -851,6 +863,8 @@ async def test_copyable_capture_in(bi, client: RuntimeClient) -> None:
             bi.discard(a)
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 6
     assert any([n.is_copy_node() for n in tc_graph.nodes()])
@@ -865,6 +879,8 @@ async def test_copyable_capture_out_once(bi, client: RuntimeClient) -> None:
         bi.discard(a)
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
@@ -881,6 +897,8 @@ async def test_copyable_capture_out_copied(bi, client: RuntimeClient) -> None:
         bi.discard(a)
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
@@ -898,6 +916,8 @@ async def test_copyable_on_captured_input(bi, client: RuntimeClient) -> None:
         bi.discard(b)
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 5
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
@@ -914,6 +934,8 @@ async def test_copyable_dont_use(bi, client: RuntimeClient) -> None:
         bi.discard(b)
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 5
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
@@ -929,6 +951,8 @@ async def test_unpack_capture_in(bi, client: RuntimeClient) -> None:
             bi.discard(a["a"])
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 6
     assert any([n.is_unpack_node() for n in tc_graph.nodes()])
@@ -944,6 +968,8 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
         bi.discard(a["a"])
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     tc_graph = await client.type_check_graph(g())
     assert tc_graph.n_nodes == 4
     assert not any([n.is_unpack_node() for n in tc_graph.nodes()])

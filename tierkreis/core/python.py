@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 from typing import Generic
 
-import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
 if typing.TYPE_CHECKING:

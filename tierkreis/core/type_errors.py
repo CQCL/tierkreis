@@ -3,8 +3,8 @@ from typing import TYPE_CHECKING, Any, Optional, cast
 
 import betterproto
 
-import tierkreis.core.protos.tierkreis.graph as pg
-import tierkreis.core.protos.tierkreis.signature as ps
+import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
 from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import (
     BoxNode,

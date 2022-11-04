@@ -1,6 +1,0 @@
-Graph main() -> (age: Int) {
-    sturct <- make_struct(name: "hello", age: 23, height: 12.3);
-    sturct <- unpack_struct(sturct);
-
-    output(age: sturct.age);
-}

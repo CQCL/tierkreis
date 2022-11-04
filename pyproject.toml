@@ -1,13 +1,12 @@
 [project]
 name = "tierkreis"
-# placeholder version, set by deployment workflows
-version = "0.0.0"
+dynamic = ["version", "readme"]
 description = "Python client and utilities for tierkreis."
 authors = [
-    {name = "Seyon Sivarajah", email = "seyon.sivarajah@cambridgequantum.com"},
-    {name = "Lukas Heidemann", email = "lukas.heidemann@cambridgequantum.com"},
-    {name = "John Children", email = "john.children@cambridgequantum.com"},
-    {name = "Alan Lawrence", email = "alan.lawrence@cambridgequantum.com"}
+    {name = "Seyon Sivarajah", email = "seyon.sivarajah@quantinuum.com"},
+    {name = "Lukas Heidemann", email = "lukas.heidemann@quantinuum.com"},
+    {name = "John Children", email = "john.children@quantinuum.com"},
+    {name = "Alan Lawrence", email = "alan.lawrence@quantinuum.com"}
 ]
 
 requires-python = ">=3.9,<3.11"
@@ -24,8 +23,7 @@ dependencies = [
 ]
 
 [project.scripts]
-tksl = 'tierkreis.cli:cli'
-tksl-start = 'tierkreis.cli:start'
+tkrs = 'tierkreis.cli:cli'
 
 [project.optional-dependencies]
 docker = [ "docker>=5,<6"]
@@ -55,6 +53,9 @@ sc22-example = [
     "numpy>=1.20,<2",
     "pytket>=1.0"
 ]
+
+typecheck = ["tierkreis_typecheck"]
+
 
 [tool.isort]
 profile = "black"
@@ -134,18 +135,16 @@ ignore-long-lines='(#\w*pylint: disable.*|# type: ignore.*|https?://\S+>?)$'
 
 
 [build-system]
-# PEP 518 says these *python packages* are installed when building an sdist/wheel
-# (or pip install). However there is no facility for installing non-python-packages,
-# so the Tierkreis developer will need cargo/rustc and protoc on their system first.
 requires = [
+    "setuptools>=65.5.0",
     "betterproto[compiler] @ https://github.com/danielgtaylor/python-betterproto/archive/bfc0fac7544bbdf4e0e2beabd45482a4958af514.zip",
-    "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with betterproto
-    "markupsafe<2.1.0",
-    "maturin==0.12.9",
-    "setuptools>=61.0"
 ]
-# Note maturin generates a warning:
-# `build-backend` in pyproject.toml is not set to `maturin`, packaging tools such as pip will not use maturin to build this project.
-# As maturin doesn't realize that our local_build_backend delegates to maturin.
-build-backend = "gen_python_srcs"
-backend-path = ["local_build_backend"]
+build-backend = "generate_protos"
+backend-path = ["tierkreis/_build"]
+
+[tool.setuptools.dynamic]
+version = { attr = "tierkreis._version.__version__" }
+readme = {file = ["README.md"]}
+
+[tool.setuptools.packages.find]
+include = ["tierkreis*"]

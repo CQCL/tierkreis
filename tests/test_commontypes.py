@@ -1,4 +1,7 @@
+# pylint: disable=wrong-import-order, wrong-import-position
 import pytest
+
+pytket = pytest.importorskip("pytket")
 from pytket.circuit import Circuit, Qubit  # type: ignore
 from pytket.partition import MeasurementBitMap, MeasurementSetup  # type: ignore
 from pytket.pauli import Pauli, QubitPauliString  # type: ignore

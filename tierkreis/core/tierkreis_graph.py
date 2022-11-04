@@ -21,7 +21,7 @@ from typing import (
 import betterproto
 import networkx as nx  # type: ignore
 
-import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core.function import FunctionName
 from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue

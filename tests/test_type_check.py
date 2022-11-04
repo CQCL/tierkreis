@@ -1,3 +1,4 @@
+import sys
 from copy import deepcopy
 from typing import TYPE_CHECKING, Iterator
 
@@ -23,7 +24,7 @@ from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.signature import Namespace, Signature
 from tierkreis.core.tierkreis_graph import GraphValue, NodePort
 from tierkreis.core.type_errors import TierkreisTypeErrors, UnifyError, UnknownFunction
-from tierkreis.core.type_inference import infer_graph_types
+from tierkreis.core.type_inference import _TYPE_CHECK, infer_graph_types
 from tierkreis.core.types import (
     FloatType,
     GraphType,
@@ -39,6 +40,8 @@ from tierkreis.core.values import FloatValue, StructValue
 if TYPE_CHECKING:
     from tierkreis.builder import Namespace as BuilderNS
 
+TYPE_CHECK_REASON = "tierkreis_typecheck not installed"
+
 
 @pytest.mark.asyncio
 async def test_infer(client: RuntimeClient) -> None:
@@ -46,6 +49,8 @@ async def test_infer(client: RuntimeClient) -> None:
     tg = TierkreisGraph()
     _, val1 = tg.copy_value(tg.add_const(3))
     tg.set_outputs(out=val1)
+    if not client.can_type_check:
+        pytest.skip()
     tg = await client.type_check_graph(tg)
     assert any(node.is_discard_node() for node in tg.nodes())
 
@@ -60,6 +65,9 @@ async def test_infer_errors(client: RuntimeClient) -> None:
     node_1 = tg.add_const(1)
     tg.add_edge(node_0["value"], tg.input["illegal"])
     tg.set_outputs(out=node_1["invalid"])
+
+    if not client.can_type_check:
+        pytest.skip()
 
     with pytest.raises(
         TierkreisTypeErrors, match="There are extra inputs: {'illegal'}"
@@ -100,6 +108,7 @@ _foo_func = FunctionDeclaration(
 )
 
 
+@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
 def test_infer_graph_types():
     tg = TierkreisGraph()
     foo = tg.add_func("foo", value=tg.add_const(3))
@@ -120,6 +129,7 @@ def test_infer_graph_types():
     assert out_type == PairType(IntType(), IntType())
 
 
+@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
 @pytest.mark.asyncio
 async def test_infer_graph_types_with_sig(client: RuntimeClient):
     # client is only used for signatures of builtins etc.
@@ -141,6 +151,7 @@ async def test_infer_graph_types_with_sig(client: RuntimeClient):
     assert out_type == PairType(in_type, IntType())
 
 
+@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
 @pytest.mark.asyncio
 async def test_infer_graph_types_with_inputs(
     client: RuntimeClient, idpy_graph: TierkreisGraph
@@ -204,6 +215,8 @@ async def test_deep_type_err(client: RuntimeClient, bi: "BuilderNS"):
                 pass
         return Output()
 
+    if not client.can_type_check:
+        pytest.skip()
     with pytest.raises(
         TierkreisTypeErrors,
         match=r"In: NodeRef\(3, Const\(Graph\(if\)\)\)\/NodeRef\(4, Function\(iadd\)\)"
@@ -223,6 +236,7 @@ def _extract_dbg_info(errstrings: str) -> Iterator[tuple[str, int]]:
             yield fname.strip(), int(linno.strip())
 
 
+@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
 @pytest.mark.asyncio
 async def test_builder_debug(bi: "BuilderNS", sig: Signature):
     # test debug string is correctly found
@@ -302,6 +316,9 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
     for g in (ifelse, lop, clos1, clos2, scop):
         with pytest.raises(TierkreisTypeErrors) as e:
             g()
+        if sys.platform.startswith("win"):
+            # string parsing doesn't work on windows
+            continue
         with open(__file__) as f:
             self_lines = f.readlines()
         for fil, linno in _extract_dbg_info(str(e.value)):

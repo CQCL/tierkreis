@@ -1,0 +1,123 @@
+syntax = "proto3";
+package tierkreis.v1alpha.signature;
+import "v1alpha/graph.proto";
+
+message FunctionDeclaration {
+  tierkreis.v1alpha.graph.TypeScheme type_scheme = 2;
+  string description = 3;
+  repeated string input_order = 4;
+  repeated string output_order = 5;
+}
+
+message ListFunctionsRequest {
+}
+
+message ListFunctionsResponse {
+  Namespace root = 1;
+  map<string, tierkreis.v1alpha.graph.TypeScheme> aliases = 2;
+  repeated tierkreis.v1alpha.graph.Location scopes = 3;
+}
+
+service Signature {
+  rpc ListFunctions (ListFunctionsRequest) returns (ListFunctionsResponse) {};
+}
+
+service TypeInference {
+  rpc InferType (InferTypeRequest) returns (InferTypeResponse) {};
+}
+
+message InferTypeRequest {
+  tierkreis.v1alpha.graph.Value value = 1;
+}
+
+message InferTypeResponse {
+  oneof response {
+    InferTypeSuccess success = 1;
+    TypeErrors error = 2;
+  }
+}
+
+message InferTypeSuccess {
+  tierkreis.v1alpha.graph.Value value = 1;
+  tierkreis.v1alpha.graph.TypeScheme type_scheme = 2;
+}
+
+message GraphWithInputs {
+  tierkreis.v1alpha.graph.Graph graph = 1;
+  optional tierkreis.v1alpha.graph.StructValue inputs = 2;
+}
+
+message InferGraphTypesRequest {
+  GraphWithInputs gwi = 1;
+  Namespace functions = 2;
+}
+
+message InferGraphTypesResponse {
+  oneof response {
+    GraphWithInputs success = 1;
+    TypeErrors error = 2;
+  }
+}
+
+// This is supposed to be `google.protobuf.Empty` but unfortunately there is no
+// support for this in `betterproto` yet.
+message Empty {
+}
+
+message GraphLocation {
+  oneof location {
+    Empty root = 1;
+    uint32 vec_index = 2;
+    uint32 node_idx = 4;
+    tierkreis.v1alpha.graph.Edge edge = 5;
+    Empty input = 6;
+    Empty output = 7;
+    string struct_field = 8;
+    Empty pair_first = 9;
+    Empty pair_second = 10;
+    Empty map_key = 11;
+    Empty map_value = 12;
+    string input_value = 13;
+  }
+}
+
+message TypeErrors {
+  repeated TierkreisTypeError errors = 1;
+}
+
+message UnifyError {
+  tierkreis.v1alpha.graph.Type expected = 1;
+  tierkreis.v1alpha.graph.Type found = 2;
+}
+
+message TypeVarError {
+  tierkreis.v1alpha.graph.TypeSchemeVar variable = 1;
+  tierkreis.v1alpha.graph.TypeScheme type_scheme = 2;
+}
+
+message ErrorVariant {
+  oneof error {
+    UnifyError unify = 1;
+    string kind = 2;
+    tierkreis.v1alpha.graph.FunctionName unknown_function = 3;
+    TypeVarError unknown_type_var = 4;
+    string bound = 5;
+  }
+}
+
+message TierkreisTypeError {
+  ErrorVariant variant = 1;
+  // locations go from outermost to innermost
+  // in nested const/box graphs
+  repeated GraphLocation location = 2;
+}
+
+message NamespaceItem {
+  FunctionDeclaration decl = 1;
+  repeated tierkreis.v1alpha.graph.Location locations = 2;
+}
+
+message Namespace {
+  map<string, NamespaceItem> functions = 1;
+  map<string, Namespace> subspaces = 2;
+}

@@ -1,49 +1,20 @@
 # pylint: disable=redefined-outer-name, missing-docstring, invalid-name
-from contextlib import AbstractAsyncContextManager
 from dataclasses import dataclass
 from time import time
-from typing import Any, Callable, Dict, List, Optional, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pytest
+from utils import nint_adder
 
 from tierkreis import TierkreisGraph
-from tierkreis.client import RuntimeClient, ServerRuntime
-from tierkreis.core import Labels
+from tierkreis.client import RuntimeClient
 from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.graphviz import _merge_copies
 from tierkreis.core.tierkreis_graph import FunctionNode
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.values import FloatValue, IntValue, VariantValue
-from tierkreis.pyruntime.python_runtime import PyRuntime
+from tierkreis.core.values import FloatValue, VariantValue
+from tierkreis.pyruntime import PyRuntime
 from tierkreis.worker.exceptions import NodeExecutionError
-
-from . import REASON, release_tests
-from .utils import nint_adder
-
-
-@pytest.mark.asyncio
-async def test_mistyped_op(server_client: ServerRuntime):
-    tk_g = TierkreisGraph()
-    nod = tk_g.add_func("python_nodes::mistyped_op", inp=tk_g.input["testinp"])
-    tk_g.set_outputs(out=nod)
-    with pytest.raises(RuntimeError, match="Type mismatch"):
-        await server_client.run_graph(tk_g, testinp=3)
-
-
-@pytest.mark.asyncio
-@pytest.mark.skipif(release_tests, reason=REASON)
-async def test_mistyped_op_nochecks(
-    local_runtime_launcher: Callable[..., AbstractAsyncContextManager[RuntimeClient]]
-):
-    async with local_runtime_launcher(
-        port=9091,
-        runtime_type_checking="disabled",
-    ) as server:
-        tk_g = TierkreisGraph()
-        nod = tk_g.add_func("python_nodes::mistyped_op", inp=tk_g.input["testinp"])
-        tk_g.set_outputs(out=nod)
-        res = await server.run_graph(tk_g, testinp=3)
-        assert res["out"].try_autopython() == 4.1
 
 
 @pytest.mark.asyncio
@@ -242,70 +213,6 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
     out = await client.run_graph(sequenced_g, vec=vec_in)
     vec_out = out["vec"].to_python(List[str])
     assert vec_in == vec_out
-
-
-@pytest.mark.asyncio
-@pytest.mark.skipif(release_tests, reason=REASON)
-async def test_runtime_worker(
-    server_client: ServerRuntime, local_runtime_launcher
-) -> None:
-    bar = local_runtime_launcher(
-        port=9091,
-        worker_uris=[("inner", "http://" + server_client.socket_address())],
-        # make sure it has to talk to the other server for the test worker functions
-        workers=[],
-    )
-    async with bar as runtime_server:
-        await test_nint_adder(runtime_server)
-
-
-@pytest.mark.asyncio
-async def test_callback(server_client: ServerRuntime):
-    tg = TierkreisGraph()
-    idnode = tg.add_func("python_nodes::id_with_callback", value=tg.add_const(2))
-    tg.set_outputs(out=idnode)
-
-    assert (await server_client.run_graph(tg))["out"].try_autopython() == 2
-
-
-@pytest.mark.asyncio
-async def test_do_callback(server_client: ServerRuntime):
-    tk_g = TierkreisGraph()
-    tk_g.set_outputs(value=tk_g.input["value"])
-
-    tk_g2 = TierkreisGraph()
-    callbacknode = tk_g2.add_func(
-        "python_nodes::do_callback",
-        graph=tk_g2.input["in_graph"],
-        value=tk_g2.input["in_value"],
-    )
-    tk_g2.set_outputs(out=callbacknode["value"])
-    out = await server_client.run_graph(tk_g2, in_value=3, in_graph=tk_g)
-    assert out["out"].try_autopython() == 3
-
-
-@pytest.mark.asyncio
-async def test_reports_error(server_client: ServerRuntime):
-    pow_g = TierkreisGraph()
-    pow_g.set_outputs(
-        value=pow_g.add_tag(
-            Labels.BREAK,
-            value=pow_g.add_func("ipow", a=pow_g.add_const(2), b=pow_g.input["value"]),
-        )
-    )
-    loop_g = TierkreisGraph()
-    loop_g.set_outputs(
-        value=loop_g.add_func(
-            "loop", body=loop_g.add_const(pow_g), value=loop_g.input["value"]
-        )
-    )
-
-    # Sanity check the graph does execute ipow
-    out = await server_client.run_graph(loop_g, value=0)
-    assert out == {"value": IntValue(1)}
-    expected_err_msg = "Input b to ipow must be positive integer"
-    with pytest.raises(RuntimeError, match=expected_err_msg):
-        await server_client.run_graph(loop_g, value=-1)
 
 
 def test_merge_copies():

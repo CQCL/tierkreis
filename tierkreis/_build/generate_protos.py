@@ -1,12 +1,13 @@
+# type: ignore
 import glob
 import os
 import subprocess
 
-import maturin as default_backend  # type: ignore
+from setuptools import build_meta as default_backend  # type : ignore
 
 # PEP 517 / 518 local (aka in-tree) backend for pip/build/etc.
 # We expect to be run from the project root, i.e. python/
-PROTO_INPUT_DIR = "../protos"
+PROTO_INPUT_DIR = "./protos"
 PROTO_OUTPUT_DIR = "./tierkreis/core/protos"
 
 
@@ -65,10 +66,3 @@ get_requires_for_build_editable = default_backend.get_requires_for_build_editabl
 prepare_metadata_for_build_editable = (
     default_backend.prepare_metadata_for_build_editable
 )
-
-if __name__ == "__main__":
-    # Also support handrunning to regenerate python code from protos and ANTLR in-tree.
-    path = os.path.dirname(os.path.dirname(__file__))
-    print("Switching to", path)
-    os.chdir(path)
-    generate_proto_code()

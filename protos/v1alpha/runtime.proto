@@ -1,0 +1,79 @@
+syntax = "proto3";
+import "v1alpha/graph.proto";
+import "v1alpha/signature.proto";
+package tierkreis.v1alpha.runtime;
+
+service Runtime {
+  rpc ListTasks (ListTasksRequest) returns (ListTasksResponse) {};
+  rpc RunTask (RunTaskRequest) returns (RunTaskResponse) {};
+  rpc GetTask (GetTaskRequest) returns (GetTaskResponse) {};
+  rpc AwaitTask (AwaitTaskRequest) returns (AwaitTaskResponse) {};
+  rpc DeleteTask (DeleteTaskRequest) returns (DeleteTaskResponse) {};
+  rpc RunGraph (RunGraphRequest) returns (RunGraphResponse) {};
+}
+
+message RunTaskRequest {
+  tierkreis.v1alpha.graph.Graph graph = 1;
+  tierkreis.v1alpha.graph.StructValue inputs = 2;
+}
+
+message RunTaskResponse {
+  oneof result {
+    string task_id = 1;
+    tierkreis.v1alpha.signature.TypeErrors type_errors = 2;
+  }
+}
+
+message ListTasksRequest {
+}
+
+message ListTasksResponse {
+  repeated Task tasks = 1;
+}
+
+message DeleteTaskRequest {
+  string id = 1;
+}
+
+message DeleteTaskResponse {
+}
+
+message GetTaskRequest {
+  string id = 1;
+}
+
+message GetTaskResponse {
+  Task task = 1;
+}
+
+message AwaitTaskRequest {
+  string id = 1;
+  uint64 timeout = 2;
+}
+
+message AwaitTaskResponse {
+  Task task = 1;
+}
+
+message Task {
+  string id = 1;
+  oneof status {
+    tierkreis.v1alpha.graph.StructValue success = 2;
+    string error = 3;
+  }
+}
+
+message RunGraphRequest {
+  tierkreis.v1alpha.graph.Graph graph = 1;
+  tierkreis.v1alpha.graph.StructValue inputs = 2;
+  bool type_check = 3;
+  tierkreis.v1alpha.graph.Location loc = 4;
+}
+
+message RunGraphResponse {
+  oneof result {
+    tierkreis.v1alpha.graph.StructValue success = 1;
+    string error = 2;
+    tierkreis.v1alpha.signature.TypeErrors type_errors = 3;
+  }
+}

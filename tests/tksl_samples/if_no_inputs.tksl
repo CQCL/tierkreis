@@ -1,4 +1,0 @@
-Graph main(pred: Bool) -> (res: Int) {
-    v <- if (pred) { output(value: 3); } else { output(value: 5); };
-    output(res: v.value);
-}

@@ -4,16 +4,28 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Generic, TypeVar, cast
 
+from tierkreis.core.protos.tierkreis.v1alpha.graph import (
+    Constraint,
+    Empty,
+    GraphType,
+    Kind,
+    PairType,
+    PartitionConstraint,
+    RowType,
+    StructType,
+    Type,
+    TypeScheme,
+    TypeSchemeVar,
+)
+from tierkreis.core.protos.tierkreis.v1alpha.signature import FunctionDeclaration
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.type_inference import builtin_namespace
 from tierkreis.core.types import StarKind
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import MapValue, StructValue
 from tierkreis.worker.namespace import Function, Namespace
 
 namespace = Namespace()
-_builtin_defs = builtin_namespace()
 
 a = TypeVar("a")
 b = TypeVar("b")
@@ -68,7 +80,33 @@ async def _eval(_x: StructValue) -> StructValue:
 
 
 namespace.functions["eval"] = Function(
-    run=_eval, declaration=_builtin_defs.functions["eval"]
+    run=_eval,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[
+                TypeSchemeVar(name="in", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="out", kind=Kind(row=Empty())),
+            ],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "thunk": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="in"),
+                                    outputs=RowType(rest="out"),
+                                )
+                            )
+                        },
+                        rest="in",
+                    ),
+                    outputs=RowType(rest="out"),
+                )
+            ),
+        ),
+        description="Evaluates a graph.",
+        input_order=["thunk"],
+    ),
 )
 
 
@@ -205,7 +243,43 @@ async def _insert_key(ins: StructValue) -> StructValue:
 
 
 namespace.functions["insert_key"] = Function(
-    run=_insert_key, declaration=_builtin_defs.functions["insert_key"]
+    run=_insert_key,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[
+                TypeSchemeVar(name="key", kind=Kind(star=Empty())),
+                TypeSchemeVar(name="val", kind=Kind(star=Empty())),
+            ],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "map": Type(
+                                map=PairType(
+                                    first=Type(var="key"), second=Type(var="val")
+                                )
+                            ),
+                            "val": Type(var="val"),
+                            "key": Type(var="key"),
+                        }
+                    ),
+                    outputs=RowType(
+                        content={
+                            "map": Type(
+                                map=PairType(
+                                    first=Type(var="key"), second=Type(var="val")
+                                )
+                            )
+                        }
+                    ),
+                )
+            ),
+        ),
+        description="Insert a key value pair in to a map."
+        " Existing keys will have their values replaced.",
+        input_order=["map", "key", "val"],
+        output_order=["map"],
+    ),
 )
 
 
@@ -234,7 +308,50 @@ async def _loop(_x: StructValue) -> StructValue:
 
 
 namespace.functions["loop"] = Function(
-    run=_loop, declaration=_builtin_defs.functions["loop"]
+    run=_loop,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[
+                TypeSchemeVar(name="loop_var", kind=Kind(star=Empty())),
+                TypeSchemeVar(name="result", kind=Kind(star=Empty())),
+            ],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "body": Type(
+                                graph=GraphType(
+                                    inputs=RowType(
+                                        content={"value": Type(var="loop_var")}
+                                    ),
+                                    outputs=RowType(
+                                        content={
+                                            "value": Type(
+                                                variant=RowType(
+                                                    content={
+                                                        "break": Type(var="result"),
+                                                        "continue": Type(
+                                                            var="loop_var"
+                                                        ),
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    ),
+                                )
+                            ),
+                            "value": Type(var="loop_var"),
+                        }
+                    ),
+                    outputs=RowType(content={"value": Type(var="result")}),
+                )
+            ),
+        ),
+        description="Run a looping thunk while it returns"
+        " `continue` i.e. until it returns `break`.",
+        input_order=["body", "value"],
+        output_order=["value"],
+    ),
 )
 
 
@@ -255,7 +372,26 @@ async def make_struct(ins: StructValue) -> StructValue:
 
 
 namespace.functions["make_struct"] = Function(
-    run=make_struct, declaration=_builtin_defs.functions["make_struct"]
+    run=make_struct,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[TypeSchemeVar(name="fields", kind=Kind(row=Empty()))],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(rest="fields"),
+                    outputs=RowType(
+                        content={
+                            "struct": Type(
+                                struct=StructType(shape=RowType(rest="fields"))
+                            )
+                        }
+                    ),
+                )
+            ),
+        ),
+        description="Construct a struct from incoming ports.",
+        output_order=["struct"],
+    ),
 )
 
 
@@ -285,7 +421,54 @@ async def _partial(inputs: StructValue) -> StructValue:
 
 namespace.functions["partial"] = Function(
     run=_partial,
-    declaration=_builtin_defs.functions["partial"],
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[
+                TypeSchemeVar(name="in_given", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="in_rest", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="in", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="outv", kind=Kind(row=Empty())),
+            ],
+            constraints=[
+                Constraint(
+                    partition=PartitionConstraint(
+                        left=Type(var="in_given"),
+                        right=Type(var="in_rest"),
+                        union=Type(var="in"),
+                    )
+                )
+            ],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "thunk": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="in"),
+                                    outputs=RowType(rest="outv"),
+                                )
+                            )
+                        },
+                        rest="in_given",
+                    ),
+                    outputs=RowType(
+                        content={
+                            "value": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="in_rest"),
+                                    outputs=RowType(rest="outv"),
+                                )
+                            )
+                        }
+                    ),
+                )
+            ),
+        ),
+        description="Partial application;"
+        " output a new graph with some input values injected as constants",
+        input_order=["thunk"],
+        output_order=["value"],
+    ),
 )
 
 
@@ -322,7 +505,42 @@ async def _remove_key(ins: StructValue) -> StructValue:
 
 
 namespace.functions["remove_key"] = Function(
-    run=_remove_key, declaration=_builtin_defs.functions["remove_key"]
+    run=_remove_key,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[
+                TypeSchemeVar(name="key", kind=Kind(star=Empty())),
+                TypeSchemeVar(name="val", kind=Kind(star=Empty())),
+            ],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "key": Type(var="key"),
+                            "map": Type(
+                                map=PairType(
+                                    first=Type(var="key"), second=Type(var="val")
+                                )
+                            ),
+                        }
+                    ),
+                    outputs=RowType(
+                        content={
+                            "val": Type(var="val"),
+                            "map": Type(
+                                map=PairType(
+                                    first=Type(var="key"), second=Type(var="val")
+                                )
+                            ),
+                        }
+                    ),
+                )
+            ),
+        ),
+        description="Remove a key value pair from a map and return the map and value.",
+        input_order=["map", "key"],
+        output_order=["map", "val"],
+    ),
 )
 
 
@@ -338,7 +556,50 @@ async def _sequence(inputs: StructValue) -> StructValue:
 
 
 namespace.functions["sequence"] = Function(
-    run=_sequence, declaration=_builtin_defs.functions["sequence"]
+    run=_sequence,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[
+                TypeSchemeVar(name="in", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="middle", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="out", kind=Kind(row=Empty())),
+            ],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "second": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="middle"),
+                                    outputs=RowType(rest="out"),
+                                )
+                            ),
+                            "first": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="in"),
+                                    outputs=RowType(rest="middle"),
+                                )
+                            ),
+                        }
+                    ),
+                    outputs=RowType(
+                        content={
+                            "sequenced": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="in"),
+                                    outputs=RowType(rest="out"),
+                                )
+                            )
+                        }
+                    ),
+                )
+            ),
+        ),
+        description="Sequence two graphs, where the"
+        " outputs of the first graph match the inputs of the second.",
+        input_order=["first", "second"],
+        output_order=["sequenced"],
+    ),
 )
 
 
@@ -358,7 +619,68 @@ async def _parallel(inputs: StructValue) -> StructValue:
 
 
 namespace.functions["parallel"] = Function(
-    run=_parallel, declaration=_builtin_defs.functions["parallel"]
+    run=_parallel,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[
+                TypeSchemeVar(name="left_in", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="left_out", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="right_in", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="right_out", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="value_in", kind=Kind(row=Empty())),
+                TypeSchemeVar(name="value_out", kind=Kind(row=Empty())),
+            ],
+            constraints=[
+                Constraint(
+                    partition=PartitionConstraint(
+                        left=Type(var="left_in"),
+                        right=Type(var="right_in"),
+                        union=Type(var="value_in"),
+                    )
+                ),
+                Constraint(
+                    partition=PartitionConstraint(
+                        left=Type(var="left_out"),
+                        right=Type(var="right_out"),
+                        union=Type(var="value_out"),
+                    )
+                ),
+            ],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "left": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="left_in"),
+                                    outputs=RowType(rest="left_out"),
+                                )
+                            ),
+                            "right": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="right_in"),
+                                    outputs=RowType(rest="right_out"),
+                                )
+                            ),
+                        }
+                    ),
+                    outputs=RowType(
+                        content={
+                            "value": Type(
+                                graph=GraphType(
+                                    inputs=RowType(rest="value_in"),
+                                    outputs=RowType(rest="value_out"),
+                                )
+                            )
+                        }
+                    ),
+                )
+            ),
+        ),
+        description="Compose two graphs in parallel.",
+        input_order=["left", "right"],
+        output_order=["value"],
+    ),
 )
 
 
@@ -385,7 +707,26 @@ async def _unpack_struct(ins: StructValue) -> StructValue:
 
 
 namespace.functions["unpack_struct"] = Function(
-    run=_unpack_struct, declaration=_builtin_defs.functions["unpack_struct"]
+    run=_unpack_struct,
+    declaration=FunctionDeclaration(
+        type_scheme=TypeScheme(
+            variables=[TypeSchemeVar(name="fields", kind=Kind(row=Empty()))],
+            body=Type(
+                graph=GraphType(
+                    inputs=RowType(
+                        content={
+                            "struct": Type(
+                                struct=StructType(shape=RowType(rest="fields"))
+                            )
+                        }
+                    ),
+                    outputs=RowType(rest="fields"),
+                )
+            ),
+        ),
+        description="Destructure a struct in to outgoing ports.",
+        input_order=["struct"],
+    ),
 )
 
 

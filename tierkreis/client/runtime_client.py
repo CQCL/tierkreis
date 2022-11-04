@@ -23,3 +23,7 @@ class RuntimeClient(ABC):
     @abstractmethod
     async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
         ...
+
+    @property
+    def can_type_check(self) -> bool:
+        return True

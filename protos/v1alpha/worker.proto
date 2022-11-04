@@ -1,0 +1,17 @@
+syntax = "proto3";
+import "v1alpha/graph.proto";
+package tierkreis.v1alpha.worker;
+
+message RunFunctionRequest {
+  tierkreis.v1alpha.graph.FunctionName function = 1;
+  tierkreis.v1alpha.graph.StructValue inputs = 2;
+  tierkreis.v1alpha.graph.Location loc = 3;
+}
+
+message RunFunctionResponse {
+    tierkreis.v1alpha.graph.StructValue outputs = 1;
+}
+
+service Worker {
+    rpc RunFunction (RunFunctionRequest) returns (RunFunctionResponse) {}
+}

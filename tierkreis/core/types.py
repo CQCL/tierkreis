@@ -7,7 +7,7 @@ from uuid import UUID
 
 import betterproto
 
-import tierkreis.core.protos.tierkreis.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 

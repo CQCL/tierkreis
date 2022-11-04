@@ -12,7 +12,7 @@ authors = [
 
 requires-python = ">=3.9,<3.11"
 dependencies = [
-    "betterproto @ https://github.com/danielgtaylor/python-betterproto/archive/bfc0fac7544bbdf4e0e2beabd45482a4958af514.zip",
+    "betterproto[compiler]==2.0.0b5",
     "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with opentelemetry
     "grpclib>=0.4.3rc,<0.5", # pre-release to support python 3.10
     "networkx>=2.6.3,<3",
@@ -139,7 +139,7 @@ ignore-long-lines='(#\w*pylint: disable.*|# type: ignore.*|https?://\S+>?)$'
 [build-system]
 requires = [
     "setuptools>=65.5.0",
-    "betterproto[compiler] @ https://github.com/danielgtaylor/python-betterproto/archive/bfc0fac7544bbdf4e0e2beabd45482a4958af514.zip",
+    "betterproto[compiler]==2.0.0b5",
 ]
 build-backend = "generate_protos"
 backend-path = ["tierkreis/_build"]

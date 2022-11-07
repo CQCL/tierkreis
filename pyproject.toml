@@ -10,7 +10,7 @@ authors = [
     {name = "Alan Lawrence", email = "alan.lawrence@quantinuum.com"}
 ]
 
-requires-python = ">=3.9,<3.11"
+requires-python = ">=3.9,<3.12"
 dependencies = [
     "betterproto[compiler]==2.0.0b5",
     "protobuf>=3.19,<4",  # Restrict version to maintain compatibility with opentelemetry

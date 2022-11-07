@@ -71,6 +71,7 @@ render_graph(sum_pair(), "filename", "pdf")
 ![sum_pair graph](https://user-images.githubusercontent.com/12997250/199997054-8cc815e2-39d3-4a9c-95d0-411510cb5465.svg )
 
 ### Type check
+
 If you have the `typecheck` extension installed, you can replace `@graph` with `@graph(type_check_sig=sig)`, providing the signature retrived from the client as above, and the graph will be type checked when you call the building function. A graph is well-typed if type annotations can be inferred for every edge of the graph. If type check fails, the error message will try to indicate the location of your error.
 
 The type checked version of the graph above looks like:
@@ -88,6 +89,7 @@ await cl.run_graph(sum_pair(), pair=(1, 2))
 ```
 
 The inputs to the graph are provided via keyword argument, and most of the time you can just provide python values that are auto converted. Here the tuple of integers is automatically converted to the Tierkreis type `Pair[Int, Int]`. The output is given in Tierkreis form:
+
 ```
 {'value': IntValue(value=3)}
 ```
@@ -99,6 +101,7 @@ For a more involved example see [variational.ipynb](examples/variational.ipynb)
 ## Custom workers
 
 _Workers_ are standalone servers which implement a set of functions which can connect to a Tierkreis runtime to add extra primitives.
+
 They do this by implementing the `worker` gRPC service. The `tierkreis` python package makes it easy to do this by taking care of all the server logic, and the conversion to and from Tierkreis data types. Note that workers are intended to be deployed as part of remote Tierkreis runtimes, but we can use the PyRuntime to test and develop them without any networking code.
 
 For example, we could define a custom function to sum a list:

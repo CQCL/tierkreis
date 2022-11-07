@@ -1,7 +1,8 @@
 [project]
 name = "tierkreis"
-dynamic = ["version", "readme"]
 description = "Python client and utilities for tierkreis."
+readme = "README.md"
+dynamic = ["version"]
 authors = [
     {name = "Seyon Sivarajah", email = "seyon.sivarajah@quantinuum.com"},
     {name = "Lukas Heidemann", email = "lukas.heidemann@quantinuum.com"},
@@ -145,7 +146,6 @@ backend-path = ["tierkreis/_build"]
 
 [tool.setuptools.dynamic]
 version = { attr = "tierkreis._version.__version__" }
-readme = {file = ["README.md"]}
 
 [tool.setuptools.packages.find]
 include = ["tierkreis*"]

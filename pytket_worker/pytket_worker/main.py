@@ -2,7 +2,6 @@
 "exec" "$(dirname $0)/../.venv/bin/python" "$0" "$@"
 from __future__ import annotations
 
-import asyncio
 import json
 import operator
 from dataclasses import dataclass

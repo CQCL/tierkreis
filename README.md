@@ -3,8 +3,8 @@
 Tierkreis is a higher-order dataflow graph program representation and runtime
 designed for compositional, quantum-classical hybrid algorithms.
 
-For a detailed introduction read the paper: [Tierkreis: a Dataflow Framework for
-Hybrid Quantum-Classical Computing](TODO_LINK).
+For a detailed introduction read the paper:
+ [Tierkreis: a Dataflow Framework for Hybrid Quantum-Classical Computing](https://arxiv.org/abs/2211.02350).
 
 This repository contains the source for the `tierkreis` python package, and the
 protocol buffer definitions for Tierkreis data types and gRPC services (in the `protos` directory) which define the protocols for the system.
@@ -26,7 +26,8 @@ pip install tierkreis[typecheck]
 
 You can now build a graph (Tierkreis program), optionally type check it and execute it. The recommended environment for this is a Jupyter notebook (especially given some operations are async).
 
-First we need the runtime we are going to execute on and a handle to the primitive functions available on that runtime, the python package comes with the `PyRuntime` which runs locally in your python environment.
+First we need the runtime we are going to execute on and a handle to the primitive functions available on that runtime.
+The python package comes with the `PyRuntime` which runs locally in your python environment.
 
 ```python
 from tierkreis.builder import graph, Namespace, Output, Input
@@ -70,7 +71,8 @@ render_graph(sum_pair(), "filename", "pdf")
 ![sum_pair graph](https://user-images.githubusercontent.com/12997250/199997054-8cc815e2-39d3-4a9c-95d0-411510cb5465.svg )
 
 ### Type check
-If you have the `typecheck` extension installed, you can replace `@graph` with `@grap(type_check_sig=sig)`, providing the signature retrived from the client as above, and the graph will be type checked when you call the building function. A graph is well-typed if type annotations can be inferred for every edge of the graph. If type check fails, the error message will try to indicate the location of your error.
+
+If you have the `typecheck` extension installed, you can replace `@graph` with `@graph(type_check_sig=sig)`, providing the signature retrived from the client as above, and the graph will be type checked when you call the building function. A graph is well-typed if type annotations can be inferred for every edge of the graph. If type check fails, the error message will try to indicate the location of your error.
 
 The type checked version of the graph above looks like:
 
@@ -86,7 +88,8 @@ We can now run the graph using the client set up earlier:
 await cl.run_graph(sum_pair(), pair=(1, 2))
 ```
 
-The inputs to the graph are provided via keywork argument, and most of the time you can just provide python values that are auto converted. Here the tuple of integers is automatically converted to the Tierkreis type `Pair[Int, Int]`. The output is given in Tierkreis form:
+The inputs to the graph are provided via keyword argument, and most of the time you can just provide python values that are auto converted. Here the tuple of integers is automatically converted to the Tierkreis type `Pair[Int, Int]`. The output is given in Tierkreis form:
+
 ```
 {'value': IntValue(value=3)}
 ```
@@ -98,7 +101,8 @@ For a more involved example see [variational.ipynb](examples/variational.ipynb)
 ## Custom workers
 
 _Workers_ are standalone servers which implement a set of functions which can connect to a Tierkreis runtime to add extra primitives.
-They do this by implementing the `worker` gRPC services. The `tierkreis` python package makes it easy to do this by taking care of all the server logic, and the conversion to and from Tierkreis data types. Note that workers are intended to be deployed as part of remote Tierkreis runtimes, but we can use the PyRuntime to test and develop them without any networking code.
+
+They do this by implementing the `worker` gRPC service. The `tierkreis` python package makes it easy to do this by taking care of all the server logic, and the conversion to and from Tierkreis data types. Note that workers are intended to be deployed as part of remote Tierkreis runtimes, but we can use the PyRuntime to test and develop them without any networking code.
 
 For example, we could define a custom function to sum a list:
 

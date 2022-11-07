@@ -1,3 +1,4 @@
+import platform
 import sys
 from copy import deepcopy
 from typing import TYPE_CHECKING, Iterator
@@ -316,8 +317,11 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
     for g in (ifelse, lop, clos1, clos2, scop):
         with pytest.raises(TierkreisTypeErrors) as e:
             g()
-        if sys.platform.startswith("win"):
-            # string parsing doesn't work on windows
+        if (
+            sys.platform.startswith("win")
+            or int(platform.python_version_tuple()[1]) > 10
+        ):
+            # string parsing doesn't work on windows or 3.11
             continue
         with open(__file__) as f:
             self_lines = f.readlines()

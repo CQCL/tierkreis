@@ -2,7 +2,7 @@
 
 import sys
 from tempfile import TemporaryDirectory
-from typing import Any, Awaitable, Callable, Coroutine, Optional
+from typing import Any, Callable, Coroutine, Optional
 
 import grpclib
 import grpclib.events
@@ -25,8 +25,8 @@ from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
 from tierkreis.pyruntime.python_runtime import PyRuntime
+from tierkreis.worker.callback import callback_server
 
-from .callback import CallbackHook
 from .exceptions import (
     DecodeInputError,
     EncodeOutputError,
@@ -99,12 +99,10 @@ class Worker:
 
     root: Namespace
     server: Server
-    callback_hook: CallbackHook
     pyruntime: PyRuntime
 
-    def __init__(self, callback_hook, root_namespace):
+    def __init__(self, root_namespace):
         self.root = root_namespace
-        self.callback_hook = callback_hook
         self.pyruntime = PyRuntime([root_namespace])
         self.server = Server(
             [SignatureServerImpl(self), WorkerServerImpl(self), RuntimeServerImpl(self)]
@@ -112,27 +110,19 @@ class Worker:
 
         # Attach event listener for tracing
         self._add_request_listener(_event_recv_request)
-        # Attach event listener to pick up callback address
-        self._add_request_listener(self._extract_callback)
         # Attach event listener to extract auth credentials
         self._add_request_listener(self._extract_auth)
 
-    def run(
-        self, function: FunctionName, inputs: StructValue
-    ) -> Awaitable[StructValue]:
+    async def run(
+        self, function: FunctionName, inputs: StructValue, callback: pr.Callback
+    ) -> StructValue:
         """Run function."""
         func = self.root.get_function(function)
         if func is None:
             raise FunctionNotFound(function)
 
-        return func.run(inputs)
-
-    async def _extract_callback(self, request: grpclib.events.RecvRequest):
-        if self.callback_hook.callback is None:
-            callback_host = str(request.metadata.get("tierkreis_callback_host"))
-            callback_port = int(request.metadata.get("tierkreis_callback_port"))  # type: ignore
-
-            self.callback_hook.callback = (callback_host, callback_port)
+        async with callback_server(callback) as cb:
+            return await func.run(cb, inputs)
 
     async def _extract_auth(self, request: grpclib.events.RecvRequest) -> None:
         if keyring.get_password(_KEYRING_SERVICE, "token") is None:
@@ -190,10 +180,13 @@ class WorkerServerImpl(WorkerBase):
     ) -> RunFunctionResponse:
         function = run_function_request.function
         inputs = run_function_request.inputs
+        callback = run_function_request.callback
         try:
             function_name = FunctionName.from_proto(function)
             inputs_struct = StructValue.from_proto_dict(inputs.map)
-            outputs_struct = await self.worker.run(function_name, inputs_struct)
+            outputs_struct = await self.worker.run(
+                function_name, inputs_struct, callback
+            )
             with span(tracer, name="encoding python type in RunFunctionResponse proto"):
                 res = RunFunctionResponse(
                     outputs=pg.StructValue(outputs_struct.to_proto_dict())

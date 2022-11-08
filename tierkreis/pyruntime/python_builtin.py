@@ -74,7 +74,7 @@ async def eq(value_0: val, value_1: val) -> EqOut:
     return EqOut(value_0 == value_1)
 
 
-async def _eval(_x: StructValue) -> StructValue:
+async def _eval(_, _x: StructValue) -> StructValue:
     # implemented as part of runtime
     raise NotImplementedError
 
@@ -231,7 +231,7 @@ async def imul(a: int, b: int) -> int:
     return a * b
 
 
-async def _insert_key(ins: StructValue) -> StructValue:
+async def _insert_key(_, ins: StructValue) -> StructValue:
     # Extract the arguments to the operation
     inner_map = cast(MapValue, ins.values["map"])
     key = ins.values["key"]
@@ -302,7 +302,7 @@ async def isub(a: int, b: int) -> int:
     return a - b
 
 
-async def _loop(_x: StructValue) -> StructValue:
+async def _loop(_, _x: StructValue) -> StructValue:
     # implemented as part of runtime
     raise NotImplementedError
 
@@ -366,7 +366,7 @@ async def make_pair(first: a, second: b) -> _MakePairOut[a, b]:
     return _MakePairOut((first, second))
 
 
-async def make_struct(ins: StructValue) -> StructValue:
+async def make_struct(_, ins: StructValue) -> StructValue:
     """Construct a struct from incoming ports."""
     return StructValue({"struct": ins})
 
@@ -407,7 +407,7 @@ async def _or(a: bool, b: bool) -> bool:
     return a or b
 
 
-async def _partial(inputs: StructValue) -> StructValue:
+async def _partial(_, inputs: StructValue) -> StructValue:
     invals = inputs.values
     thunk = deepcopy(cast(GraphValue, invals.pop("thunk")).value)
     newg = TierkreisGraph()
@@ -497,7 +497,7 @@ async def push(vec: list[a], item: a) -> _PushOut[a]:
     return _PushOut(vec)
 
 
-async def _remove_key(ins: StructValue) -> StructValue:
+async def _remove_key(_, ins: StructValue) -> StructValue:
     inner_map = cast(MapValue, ins.values["map"])
     val = inner_map.values.pop(ins.values["key"])
 
@@ -544,7 +544,7 @@ namespace.functions["remove_key"] = Function(
 )
 
 
-async def _sequence(inputs: StructValue) -> StructValue:
+async def _sequence(_, inputs: StructValue) -> StructValue:
     invals = cast(dict[str, IncomingWireType], inputs.values)
     first = deepcopy(cast(GraphValue, invals.pop("first")).value)
     second = deepcopy(cast(GraphValue, invals.pop("second")).value)
@@ -603,7 +603,7 @@ namespace.functions["sequence"] = Function(
 )
 
 
-async def _parallel(inputs: StructValue) -> StructValue:
+async def _parallel(_, inputs: StructValue) -> StructValue:
     invals = inputs.values
     left = deepcopy(cast(GraphValue, invals.pop("left")).value)
     right = deepcopy(cast(GraphValue, invals.pop("right")).value)
@@ -702,7 +702,7 @@ async def unpack_pair(pair: tuple[a, b]) -> _UnpackPairOut[a, b]:
     return _UnpackPairOut(*pair)
 
 
-async def _unpack_struct(ins: StructValue) -> StructValue:
+async def _unpack_struct(_, ins: StructValue) -> StructValue:
     return cast(StructValue, ins.values["struct"])
 
 

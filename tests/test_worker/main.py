@@ -4,17 +4,16 @@ from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar, cast
 
 from tierkreis import TierkreisGraph
-from tierkreis.client.server_client import RuntimeClient, with_runtime_client
+from tierkreis.client.server_client import RuntimeClient
 from tierkreis.core.python import RuntimeGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import StarKind
-from tierkreis.worker import CallbackHook, Namespace
+from tierkreis.worker import Namespace
 from tierkreis.worker.prelude import start_worker_server
 
 root = Namespace()
 namespace = root["python_nodes"]
 subspace = namespace["subspace"]
-callback = CallbackHook()
 
 A = TypeVar("A")
 
@@ -89,8 +88,7 @@ async def test_option(x: Optional[int]) -> int:
     return x
 
 
-@namespace.function(type_vars={cast(TypeVar, A): StarKind()})
-@with_runtime_client(callback)
+@namespace.function(type_vars={cast(TypeVar, A): StarKind()}, callback=True)
 async def id_with_callback(client: RuntimeClient, value: A) -> A:
     """Callback to runtime via channel to run identity"""
 
@@ -109,8 +107,7 @@ class GraphInOut(TierkreisStruct, Generic[A]):
     value: A
 
 
-@namespace.function(type_vars={cast(TypeVar, A): StarKind()})
-@with_runtime_client(callback)
+@namespace.function(type_vars={cast(TypeVar, A): StarKind()}, callback=True)
 async def do_callback(
     client: RuntimeClient, graph: RuntimeGraph[GraphInOut, GraphInOut], value: A
 ) -> A:
@@ -123,4 +120,4 @@ async def do_callback(
 
 
 if __name__ == "__main__":
-    start_worker_server("test_worker", root, callback)
+    start_worker_server("test_worker", root)

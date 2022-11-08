@@ -124,7 +124,7 @@ class PyRuntime(RuntimeClient):
                     function = self.root.get_function(fname)
                     if function is None:
                         raise FunctionNotFound(fname)
-                    return (await function.run(StructValue(inps))).values
+                    return (await function.run(self, StructValue(inps))).values
 
             elif isinstance(tk_node, BoxNode):
                 return await self.run_graph(

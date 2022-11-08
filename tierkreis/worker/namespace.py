@@ -2,11 +2,13 @@
 
 import dataclasses
 import typing
+from ctypes import ArgumentError
 from dataclasses import dataclass, make_dataclass
 from functools import wraps
 from inspect import getdoc, isclass
 from typing import Awaitable, Callable, Dict, List, Mapping, Optional, Type, Union, cast
 
+from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.function import FunctionDeclaration, FunctionName
 from tierkreis.core.signature import Namespace as SigNamespace
 from tierkreis.core.signature import Signature
@@ -43,7 +45,7 @@ tracer = get_tracer(__name__)
 class Function:
     """Registered python function."""
 
-    run: Callable[[StructValue], Awaitable[StructValue]]
+    run: Callable[[RuntimeClient, StructValue], Awaitable[StructValue]]
     declaration: FunctionDeclaration
 
 
@@ -157,6 +159,7 @@ class Namespace(Mapping[str, "Namespace"]):
         name: Optional[str] = None,
         constraints: Optional[List[Constraint]] = None,
         type_vars: Optional[Dict[Union[str, typing.TypeVar], Kind]] = None,
+        callback: bool = False,
     ) -> Callable[[Callable], Callable]:
         """Decorator to mark python function as available Namespace."""
 
@@ -173,6 +176,14 @@ class Namespace(Mapping[str, "Namespace"]):
             struct_input = "inputs" in type_hints and _check_tkstruct_hint(
                 type_hints["inputs"]
             )
+
+            if callback:
+                try:
+                    type_hints.pop("client", None)
+                except IndexError:
+                    raise ArgumentError(
+                        "Functions with callbacks must have an argument 'client'"
+                    )
 
             hint_inputs: Type = (
                 type_hints["inputs"]
@@ -197,7 +208,9 @@ class Namespace(Mapping[str, "Namespace"]):
 
             # Wrap function with input and output conversions
             @wraps(func)
-            async def wrapped_func(inputs: StructValue) -> StructValue:
+            async def wrapped_func(
+                runtime: RuntimeClient, inputs: StructValue
+            ) -> StructValue:
                 try:
                     with span(tracer, name="decoding inputs to python type"):
                         python_inputs = (
@@ -212,7 +225,10 @@ class Namespace(Mapping[str, "Namespace"]):
                     raise DecodeInputError(str(error)) from error
 
                 try:
-                    python_outputs = await func(**python_inputs)
+                    if callback:
+                        python_outputs = await func(client=runtime, **python_inputs)
+                    else:
+                        python_outputs = await func(**python_inputs)
                 except Exception as error:
                     raise NodeExecutionError(error) from error
 

@@ -4,9 +4,7 @@
 import argparse
 import asyncio
 import os
-from typing import Optional
 
-from .callback import CallbackHook
 from .namespace import Namespace
 from .tracing import _TRACING
 from .worker import Worker
@@ -46,19 +44,15 @@ def setup_tracing(service_name: str):
         opentelemetry.trace.set_tracer_provider(tracer_provider)
 
 
-def start_worker_server(
-    worker_name: str, namespace: Namespace, callback: Optional[CallbackHook] = None
-):
+def start_worker_server(worker_name: str, namespace: Namespace):
     """Set up tracing and run the worker server with the provided namespaces.
     Expects a port specified on the command line, and reports succesful start to
     stdout"""
 
-    cb_hook = callback or CallbackHook()
-
     async def main():
         args = parser.parse_args()
         setup_tracing(worker_name)
-        worker = Worker(cb_hook, namespace)
+        worker = Worker(namespace)
         await worker.start(args.port)
 
     loop = asyncio.get_event_loop()

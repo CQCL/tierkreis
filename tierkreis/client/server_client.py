@@ -16,9 +16,8 @@ from typing import (
 )
 
 import betterproto
-import keyring
 from grpclib.client import Channel
-from grpclib.events import SendRequest, listen
+from grpclib.events import SendRequest
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 import tierkreis.core.protos.tierkreis.v1alpha.runtime as pr
@@ -28,7 +27,6 @@ from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
-from tierkreis.worker import CallbackHook
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
@@ -186,6 +184,7 @@ class ServerRuntime(RuntimeClient):
     async def run_graph(
         self,
         graph: TierkreisGraph,
+        loc: Location = Location([]),
         /,
         **py_inputs: Any,
     ) -> Dict[str, TierkreisValue]:
@@ -209,7 +208,7 @@ class ServerRuntime(RuntimeClient):
                 graph=graph.to_proto(),
                 inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
                 type_check=True,
-                loc=Location([]),
+                loc=loc,
             )
         )
 
@@ -259,36 +258,6 @@ def _gen_auth_injector(login: str, pwd: str) -> Callable[["SendRequest"], Corout
         event.metadata["key"] = pwd
 
     return _inject_auth
-
-
-def with_runtime_client(callback: CallbackHook) -> Callable:
-    from tierkreis.worker.worker import _KEYRING_SERVICE
-
-    def decorator(func: Callable) -> Callable:
-        @wraps(func)
-        async def wrapped_func(*args, **kwargs):
-            if callback.callback is None:
-                raise RuntimeError(
-                    "Callback address has not been extracted from request."
-                )
-            async with Channel(*callback.callback) as channel:
-                _token = keyring.get_password(_KEYRING_SERVICE, "token")
-                _key = keyring.get_password(_KEYRING_SERVICE, "key")
-                if not (_token is None or _key is None):
-                    listen(channel, SendRequest, _gen_auth_injector(_token, _key))
-                args = (ServerRuntime(channel),) + args
-                return await func(*args, **kwargs)
-
-        try:
-            wrapped_func.__annotations__.pop("client")
-        except KeyError as e:
-            raise RuntimeError(
-                "Function to be wrapped must have"
-                " 'channel: RuntimeClient' as first argument"
-            ) from e
-        return wrapped_func
-
-    return decorator
 
 
 class RuntimeLaunchFailed(Exception):

@@ -12,6 +12,11 @@ service Runtime {
   rpc RunGraph (RunGraphRequest) returns (RunGraphResponse) {};
 }
 
+message Callback {
+  string uri = 1;
+  tierkreis.v1alpha.graph.Location loc = 2;
+}
+
 message RunTaskRequest {
   tierkreis.v1alpha.graph.Graph graph = 1;
   tierkreis.v1alpha.graph.StructValue inputs = 2;

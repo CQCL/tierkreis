@@ -9,7 +9,6 @@ from tierkreis.core.protos.tierkreis.v1alpha.graph import (
     Empty,
     GraphType,
     Kind,
-    PairType,
     PartitionConstraint,
     RowType,
     StructType,
@@ -22,7 +21,7 @@ from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, Tierkre
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import StarKind
 from tierkreis.core.utils import map_vals
-from tierkreis.core.values import MapValue, StructValue
+from tierkreis.core.values import StructValue
 from tierkreis.worker.namespace import Function, Namespace
 
 namespace = Namespace()
@@ -231,56 +230,18 @@ async def imul(a: int, b: int) -> int:
     return a * b
 
 
-async def _insert_key(_, ins: StructValue) -> StructValue:
-    # Extract the arguments to the operation
-    inner_map = cast(MapValue, ins.values["map"])
-    key = ins.values["key"]
-    val = ins.values["val"]
-
-    # Perform update (destructively is fine)
-    inner_map.values[key] = val
-    return StructValue({"map": inner_map})
+@dataclass()
+class _InsertOut(TierkreisStruct, Generic[a, b]):
+    map: dict[a, b]
 
 
-namespace.functions["insert_key"] = Function(
-    run=_insert_key,
-    declaration=FunctionDeclaration(
-        type_scheme=TypeScheme(
-            variables=[
-                TypeSchemeVar(name="key", kind=Kind(star=Empty())),
-                TypeSchemeVar(name="val", kind=Kind(star=Empty())),
-            ],
-            body=Type(
-                graph=GraphType(
-                    inputs=RowType(
-                        content={
-                            "map": Type(
-                                map=PairType(
-                                    first=Type(var="key"), second=Type(var="val")
-                                )
-                            ),
-                            "val": Type(var="val"),
-                            "key": Type(var="key"),
-                        }
-                    ),
-                    outputs=RowType(
-                        content={
-                            "map": Type(
-                                map=PairType(
-                                    first=Type(var="key"), second=Type(var="val")
-                                )
-                            )
-                        }
-                    ),
-                )
-            ),
-        ),
-        description="Insert a key value pair in to a map."
-        " Existing keys will have their values replaced.",
-        input_order=["map", "key", "val"],
-        output_order=["map"],
-    ),
-)
+@namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
+async def insert_key(map: dict[a, b], key: a, val: b) -> _InsertOut[a, b]:
+    # pylint: disable=redefined-builtin
+    """Insert a key value pair in to a map.\
+ Existing keys will have their values replaced."""
+    map[key] = val
+    return _InsertOut(map)
 
 
 @namespace.function()
@@ -497,51 +458,18 @@ async def push(vec: list[a], item: a) -> _PushOut[a]:
     return _PushOut(vec)
 
 
-async def _remove_key(_, ins: StructValue) -> StructValue:
-    inner_map = cast(MapValue, ins.values["map"])
-    val = inner_map.values.pop(ins.values["key"])
+@dataclass
+class _RemoveOut(TierkreisStruct, Generic[a, b]):
+    map: dict[a, b]
+    val: b
 
-    return StructValue({"map": inner_map, "val": val})
 
-
-namespace.functions["remove_key"] = Function(
-    run=_remove_key,
-    declaration=FunctionDeclaration(
-        type_scheme=TypeScheme(
-            variables=[
-                TypeSchemeVar(name="key", kind=Kind(star=Empty())),
-                TypeSchemeVar(name="val", kind=Kind(star=Empty())),
-            ],
-            body=Type(
-                graph=GraphType(
-                    inputs=RowType(
-                        content={
-                            "key": Type(var="key"),
-                            "map": Type(
-                                map=PairType(
-                                    first=Type(var="key"), second=Type(var="val")
-                                )
-                            ),
-                        }
-                    ),
-                    outputs=RowType(
-                        content={
-                            "val": Type(var="val"),
-                            "map": Type(
-                                map=PairType(
-                                    first=Type(var="key"), second=Type(var="val")
-                                )
-                            ),
-                        }
-                    ),
-                )
-            ),
-        ),
-        description="Remove a key value pair from a map and return the map and value.",
-        input_order=["map", "key"],
-        output_order=["map", "val"],
-    ),
-)
+@namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
+async def remove_key(map: dict[a, b], key: a) -> _RemoveOut[a, b]:
+    # pylint: disable=redefined-builtin
+    """Remove a key value pair from a map and return the map and value."""
+    val = map.pop(key)
+    return _RemoveOut(map, val)
 
 
 async def _sequence(_, inputs: StructValue) -> StructValue:

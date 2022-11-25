@@ -18,7 +18,7 @@ class Callback(RuntimeClient):
         self.loc = loc
 
     async def get_signature(self) -> Signature:
-        raise NotImplementedError
+        return await self.runtime.get_signature(self.loc)
 
     async def run_graph(
         self,
@@ -28,8 +28,8 @@ class Callback(RuntimeClient):
     ) -> Dict[str, TierkreisValue]:
         return await self.runtime.run_graph(graph, self.loc, **py_inputs)
 
-    async def type_check_graph(self, _graph: TierkreisGraph) -> TierkreisGraph:
-        raise NotImplementedError
+    async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
+        return await self.runtime.type_check_graph(graph, self.loc)
 
 
 @asynccontextmanager

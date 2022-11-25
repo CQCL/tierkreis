@@ -24,7 +24,7 @@ from tierkreis.core.tierkreis_graph import (
 )
 from tierkreis.core.type_inference import _TYPE_CHECK, infer_graph_types
 from tierkreis.core.utils import map_vals
-from tierkreis.core.values import StructValue, TierkreisValue, VariantValue
+from tierkreis.core.values import StructValue, TierkreisValue, VariantValue, VecValue
 from tierkreis.pyruntime import python_builtin
 
 if TYPE_CHECKING:
@@ -120,6 +120,8 @@ class PyRuntime(RuntimeClient):
                     return await self._run_eval(inps)
                 elif fname.namespaces == [] and fname.name == "loop":
                     return await self._run_loop(inps)
+                elif fname.namespaces == [] and fname.name == "map":
+                    return await self._run_map(inps)
                 else:
                     function = self.root.get_function(fname)
                     if function is None:
@@ -220,6 +222,20 @@ class PyRuntime(RuntimeClient):
                 return nxt
             else:
                 ins = nxt
+
+    async def _run_map(
+        self, ins: dict[str, TierkreisValue]
+    ) -> dict[str, TierkreisValue]:
+        body = cast(GraphValue, ins.pop("thunk")).value
+        inputs = cast(VecValue, ins.pop("value")).values
+
+        async def task(x):
+            return (await self.run_graph(body, value=x))[Labels.VALUE]
+
+        tasks = [asyncio.create_task(task(x)) for x in inputs]
+        out = await asyncio.gather(*tasks)
+        ret = {"value": cast(TierkreisValue, VecValue(out))}
+        return ret
 
     def _run_match(self, ins: dict[str, TierkreisValue]) -> dict[str, TierkreisValue]:
         variant = cast(VariantValue, ins[Labels.VARIANT_VALUE])

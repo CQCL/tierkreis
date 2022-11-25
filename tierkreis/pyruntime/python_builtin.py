@@ -17,6 +17,7 @@ from tierkreis.core.protos.tierkreis.v1alpha.graph import (
     TypeSchemeVar,
 )
 from tierkreis.core.protos.tierkreis.v1alpha.signature import FunctionDeclaration
+from tierkreis.core.python import RuntimeGraph
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import StarKind
@@ -662,3 +663,21 @@ namespace.functions["unpack_struct"] = Function(
 async def xor(a: bool, b: bool) -> bool:
     """Check either a or b are true; a ^ b"""
     return a ^ b
+
+
+@dataclass
+class GraphIn(TierkreisStruct, Generic[a]):
+    value: a
+
+
+@dataclass
+class GraphOut(TierkreisStruct, Generic[b]):
+    value: b
+
+
+@namespace.function(name="map", type_vars={"a": StarKind(), "b": StarKind()})
+async def _map(thunk: RuntimeGraph[GraphIn[a], GraphOut[b]], value: list[a]) -> list[b]:
+    """Runs a graph on each element of a Vec and collects the results in a Vec"""
+    # We avoid the use of callbacks in the python builtins and so must
+    # define map in the pyruntime
+    raise NotImplementedError()

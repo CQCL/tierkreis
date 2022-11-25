@@ -99,9 +99,9 @@ class ServerRuntime(RuntimeClient):
     def _type_stub(self) -> ps.TypeInferenceStub:
         return self._stub_gen("type", ps.TypeInferenceStub)
 
-    async def get_signature(self) -> Signature:
+    async def get_signature(self, loc: Location = Location([])) -> Signature:
         return Signature.from_proto(
-            await self._signature_stub.list_functions(ps.ListFunctionsRequest())
+            await self._signature_stub.list_functions(ps.ListFunctionsRequest(loc))
         )
 
     async def start_task(
@@ -237,10 +237,14 @@ class ServerRuntime(RuntimeClient):
 
         return async_to_sync(_run)(self._channel._host, self._channel._port)
 
-    async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
+    async def type_check_graph(
+        self, graph: TierkreisGraph, loc: Location = Location([])
+    ) -> TierkreisGraph:
         value = TierkreisValue.from_python(graph).to_proto()
 
-        response = await self._type_stub.infer_type(ps.InferTypeRequest(value=value))
+        response = await self._type_stub.infer_type(
+            ps.InferTypeRequest(value=value, loc=loc)
+        )
         name, message = betterproto.which_one_of(response, "response")
 
         if name == "success":

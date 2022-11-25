@@ -10,6 +10,7 @@ message FunctionDeclaration {
 }
 
 message ListFunctionsRequest {
+  tierkreis.v1alpha.graph.Location loc = 1;
 }
 
 message ListFunctionsResponse {
@@ -28,6 +29,7 @@ service TypeInference {
 
 message InferTypeRequest {
   tierkreis.v1alpha.graph.Value value = 1;
+  tierkreis.v1alpha.graph.Location loc = 2;
 }
 
 message InferTypeResponse {

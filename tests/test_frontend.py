@@ -246,3 +246,18 @@ async def test_subspaces(client: RuntimeClient):
     tg.set_outputs(out=idnode)
 
     assert (await client.run_graph(tg))["out"].try_autopython() == 1
+
+
+@pytest.mark.asyncio
+async def test_map(client: RuntimeClient):
+    thunk = TierkreisGraph()
+    double = thunk.add_func("imul", a=thunk.input["value"], b=thunk.add_const(2))
+    thunk.set_outputs(value=double)
+
+    tg = TierkreisGraph()
+    map_node = tg.add_func(
+        "map", value=tg.add_const([1, 2, 3]), thunk=tg.add_const(thunk)
+    )
+    tg.set_outputs(value=map_node)
+
+    assert (await client.run_graph(tg))["value"].try_autopython() == [2, 4, 6]

@@ -214,3 +214,18 @@ def test_inline_boxes():
     assert not check_inlined(nested.inline_boxes())
 
     assert check_inlined(nested.inline_boxes(True))
+
+
+# test of bugfix
+def test_insert_graph_id():
+    tg_box = TierkreisGraph()
+    tg_box.set_outputs(a=tg_box.input["a"], b=tg_box.input["b"])
+
+    tg = TierkreisGraph()
+    con = tg.add_const("word")
+    outs = tg.insert_graph(tg_box, a=con, b=tg.input["b"])
+    tg.set_outputs(**outs)
+
+    # before bugfix outs was empty
+
+    assert outs == {"a": con, "b": tg.input["b"]}

@@ -65,8 +65,8 @@ if TYPE_CHECKING:
 def _compare_graphs(
     first: TierkreisGraph,
     second: TierkreisGraph,
-) -> None:
-    assert first.to_proto() == second.to_proto()
+) -> bool:
+    return first.to_proto() == second.to_proto()
 
 
 def _vecs_graph() -> TierkreisGraph:
@@ -191,7 +191,7 @@ async def test_builder_sample(
 ) -> None:
     tg = request.getfixturevalue(builder)
 
-    _compare_graphs(tg, expected_gen())
+    assert _compare_graphs(tg, expected_gen())
     if client.can_type_check:
         tg = await client.type_check_graph(tg)
 
@@ -974,3 +974,70 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
     assert tc_graph.n_nodes == 4
     assert not any([n.is_unpack_node() for n in tc_graph.nodes()])
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
+
+
+@pytest.mark.asyncio
+async def test_parmap_builder(bi: Namespace, sig, client: RuntimeClient) -> None:
+    @graph()
+    def push(ls, out) -> Output:
+        return Output(ls=bi.push(ls, out))
+
+    @graph()
+    def ls_passthrough(ls) -> Output:
+        return Output(ls=ls)
+
+    @graph()
+    def const_ls() -> Output:
+        return Output(ls=Const([]))
+
+    @graph(type_check_sig=sig)
+    def par_map_builder(f, ins) -> Output:
+        """Returns a graph which when evaluated applies f to each value in inps
+        and collates the results."""
+        f = bi.parallel(f, Const(ls_passthrough()))
+        f = bi.sequence(f, Const(push()))
+
+        @loop()
+        def built(loop_dat) -> Output:
+            ls: ValueSource = Copyable(loop_dat["ls"])
+            with IfElse(bi.eq(Const([]), ls)) as loop_ifelse:
+                with If():
+                    Break(loop_dat["big_g"])
+                with Else():
+                    ls, i = bi.pop(ls)
+
+                    f_part = bi.partial(f, inp=i)
+
+                    big_g = bi.sequence(loop_dat["big_g"], f_part)
+                    Continue(bi.make_struct(ls=ls, big_g=big_g))
+            return Output(loop_ifelse.nref)
+
+        par_f = built(bi.make_struct(ls=ins, big_g=Const(const_ls())))
+
+        return Output(par_f)
+
+    @graph()
+    def func(inp) -> Output:
+        return Output(out=bi.imul(inp, Const(2)))
+
+    ins = [2387, 123, 64]
+    out = await client.run_graph(par_map_builder(), f=func(), ins=ins)
+
+    gv = out["value"]
+
+    assert isinstance(gv, GraphValue)
+
+    tg = gv.value
+
+    @graph()
+    def expected_graph() -> Output:
+        ls: ValueSource = Const([])
+        for v in reversed(ins):
+            ls = bi.push(ls, bi.imul(Const(v), Const(2)))
+        return Output(ls=ls)
+
+    tg.name = expected_graph.__name__
+    assert _compare_graphs(tg, expected_graph())
+    out = await client.run_graph(tg)
+
+    assert out["ls"].try_autopython() == [x * 2 for x in reversed(ins)]

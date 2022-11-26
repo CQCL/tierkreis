@@ -328,7 +328,7 @@ class TierkreisGraph:
         graph: "TierkreisGraph",
         /,
         **kwargs: IncomingWireType,
-    ) -> Dict[str, NodePort]:
+    ) -> Dict[str, IncomingWireType]:
 
         # gather maps from I/O name to node ports
         input_wires = {
@@ -341,12 +341,17 @@ class TierkreisGraph:
         }
 
         # return a map from subgraph outputs to inserted nodeports
-        return_outputs: Dict[str, NodePort] = dict()
+        # start with any identity wires from input
+        return_outputs: Dict[str, IncomingWireType] = {
+            g_out: kwargs[g_in]
+            for g_out, (nid, g_in) in output_wires.items()
+            if nid == graph.input_node_idx
+        }
+
         index_map: Dict[int, int] = dict()
         for node_idx, node in enumerate(graph.nodes()):
             if node_idx in {graph.input_node_idx, graph.output_node_idx}:
                 continue
-
             # find any provided incoming wires to wire to this node
             input_ports = {
                 input_port: kwargs[graph_input]

@@ -376,8 +376,8 @@ async def _partial(_, inputs: StructValue) -> StructValue:
     rest_inputs = [port for port in thunk.inputs() if port not in invals]
     inports = map_vals(invals, lambda x: newg.add_const(x)["value"])
     inports.update({port: newg.input[port] for port in rest_inputs})
-    box = newg.add_box(thunk, **inports)
-    newg.set_outputs(**{port: box[port] for port in thunk.outputs()})
+    outs = newg.insert_graph(thunk, **inports)
+    newg.set_outputs(**outs)
     return StructValue({"value": GraphValue(newg)})
 
 
@@ -478,10 +478,12 @@ async def _sequence(_, inputs: StructValue) -> StructValue:
     first = deepcopy(cast(GraphValue, invals.pop("first")).value)
     second = deepcopy(cast(GraphValue, invals.pop("second")).value)
     newg = TierkreisGraph()
-    box1 = newg.add_box(first, **{port: newg.input[port] for port in first.inputs()})
-    box2 = newg.add_box(second, **{port: box1[port] for port in first.outputs()})
-    newg.set_outputs(**{port: box2[port] for port in second.outputs()})
-    return StructValue({"sequenced": GraphValue(newg.inline_boxes())})
+    outs1 = newg.insert_graph(
+        first, **{port: newg.input[port] for port in first.inputs()}
+    )
+    outs2 = newg.insert_graph(second, **outs1)
+    newg.set_outputs(**outs2)
+    return StructValue({"sequenced": GraphValue(newg)})
 
 
 namespace.functions["sequence"] = Function(
@@ -537,14 +539,14 @@ async def _parallel(_, inputs: StructValue) -> StructValue:
     left = deepcopy(cast(GraphValue, invals.pop("left")).value)
     right = deepcopy(cast(GraphValue, invals.pop("right")).value)
     newg = TierkreisGraph()
-    box1 = newg.add_box(left, **{port: newg.input[port] for port in left.inputs()})
-    box2 = newg.add_box(right, **{port: newg.input[port] for port in right.inputs()})
-    outputs = dict(
-        {port: box1[port] for port in left.outputs()},
-        **{port: box2[port] for port in right.outputs()}
+    outs1 = newg.insert_graph(
+        left, **{port: newg.input[port] for port in left.inputs()}
     )
-    newg.set_outputs(**outputs)
-    return StructValue({"value": GraphValue(newg.inline_boxes())})
+    outs2 = newg.insert_graph(
+        right, **{port: newg.input[port] for port in right.inputs()}
+    )
+    newg.set_outputs(**outs1, **outs2)
+    return StructValue({"value": GraphValue(newg)})
 
 
 namespace.functions["parallel"] = Function(

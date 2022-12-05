@@ -329,73 +329,32 @@ class TierkreisGraph:
         /,
         **kwargs: IncomingWireType,
     ) -> Dict[str, IncomingWireType]:
-
-        # gather maps from I/O name to node ports
-        input_wires = {
-            e.source.port: (e.target.node_ref.idx, e.target.port)
-            for e in graph.out_edges(graph.input_node_idx)
-        }
-        output_wires = {
-            e.target.port: (e.source.node_ref.idx, e.source.port)
-            for e in graph.in_edges(graph.output_node_idx)
-        }
-
-        # return a map from subgraph outputs to inserted nodeports
-        # start with any identity wires from input
-        return_outputs: Dict[str, IncomingWireType] = {
-            g_out: kwargs[g_in]
-            for g_out, (nid, g_in) in output_wires.items()
-            if nid == graph.input_node_idx
-        }
+        """Given a graph and wires to connect to that graph's inputs,
+        inline that graph into <self>, and return the outputs of
+        the inserted graph."""
 
         index_map: Dict[int, int] = dict()
         for node_idx, node in enumerate(graph.nodes()):
-            if node_idx in {graph.input_node_idx, graph.output_node_idx}:
-                continue
-            # find any provided incoming wires to wire to this node
-            input_ports = {
-                input_port: kwargs[graph_input]
-                for graph_input, (
-                    input_node,
-                    input_port,
-                ) in input_wires.items()
-                if input_node == node_idx and graph_input in kwargs
-            }
+            if node_idx not in {graph.input_node_idx, graph.output_node_idx}:
+                index_map[node_idx] = self.add_node(node).idx
 
-            # find any node ports that are graph outputs
-            output_ports = {
-                graph_output: output_port
-                for graph_output, (
-                    output_node,
-                    output_port,
-                ) in output_wires.items()
-                if output_node == node_idx
-            }
-            node_ref = self.add_node(node, **input_ports)
-            index_map[node_idx] = node_ref.idx
-            return_outputs.update(
-                {
-                    graph_output: NodePort(node_ref, output_port)
-                    for graph_output, output_port in output_ports.items()
-                }
-            )
+        return_outputs: Dict[str, IncomingWireType] = {}
 
         for edge in graph.edges():
             source_node = edge.source.node_ref.idx
             target_node = edge.target.node_ref.idx
-            if (
-                source_node == graph.input_node_idx
-                or target_node == graph.output_node_idx
-            ):
-                continue
-            source_node = index_map[source_node]
-            target_node = index_map[target_node]
-
-            self.add_edge(
-                NodeRef(source_node, self)[edge.source.port],
-                NodeRef(target_node, self)[edge.target.port],
-                edge.type_,
+            source_port = (
+                kwargs[edge.source.port]
+                if source_node == graph.input_node_idx
+                else NodeRef(index_map[source_node], self)[edge.source.port]
             )
+
+            if target_node == graph.output_node_idx:
+                return_outputs[edge.target.port] = source_port
+            else:
+                target_port = NodeRef(index_map[target_node], self)[edge.target.port]
+
+                self.add_edge(source_port, target_port, edge.type_)
 
         return return_outputs
 

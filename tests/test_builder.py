@@ -1036,8 +1036,13 @@ async def test_parmap_builder(bi: Namespace, sig, client: RuntimeClient) -> None
             ls = bi.push(ls, bi.imul(Const(v), Const(2)))
         return Output(ls=ls)
 
-    tg.name = expected_graph.__name__
-    assert _compare_graphs(tg, expected_graph())
+    # tg contains some type info, but has never been fully type-checked.
+    # expected_graph contains no type information.
+    # For comparison, we must make the two contain the same type information.
+    tg = await client.type_check_graph(tg)
+    exp = await client.type_check_graph(expected_graph())
+    tg.name = exp.name
+    assert _compare_graphs(tg, exp)
     out = await client.run_graph(tg)
 
     assert out["ls"].try_autopython() == [x * 2 for x in reversed(ins)]

@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
 from contextvars import ContextVar, Token
 from dataclasses import dataclass
-from functools import update_wrapper, wraps
+from functools import cached_property
 from itertools import count
 from types import FrameType, TracebackType
 from typing import (
@@ -51,7 +51,7 @@ from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.type_inference import infer_graph_types
 from tierkreis.core.types import TypeScheme
-from tierkreis.core.utils import map_vals
+from tierkreis.core.utils import graph_from_func, map_vals, rename_ports_graph
 from tierkreis.core.values import TierkreisValue, TKVal1, tkvalue_to_tktype
 
 if TYPE_CHECKING:
@@ -321,8 +321,11 @@ def Const(
         TierkreisGraph,
         tuple,
         list,
+        "LazyGraph",
     ]
 ) -> NodePort:
+    if isinstance(val, LazyGraph):
+        val = val.graph
     n = current_builder().add_node_to_graph(ConstNode(TierkreisValue.from_python(val)))
     return n[Labels.VALUE]
 
@@ -339,18 +342,6 @@ class _CallAddNode:
 
         n = bg.add_node_to_graph(self.node, **kwds)
         return NodeRef(n.idx, n.graph, self.output_order)
-
-
-class Box(_CallAddNode):
-    graph: TierkreisGraph
-
-    def __init__(self, graph: TierkreisGraph, location: Location = Location([])):
-        self.graph = graph
-        super().__init__(
-            BoxNode(graph, location=location),
-            graph.input_order,
-            graph.output_order,
-        )
 
 
 class Scope(CaptureBuilder, ABC):
@@ -373,9 +364,8 @@ class Scope(CaptureBuilder, ABC):
 
         if not any((__exc_type, __exc_value, __traceback)):
             graph = self.graph
-            box = Box(graph, self.location)
             inputs = {v: k for k, v in self.captured.items()}
-            node_ref = box(**inputs)
+            node_ref = _build_box(graph, self.location, **inputs)
             for inner_graph, captured in self.inner_scopes.items():
                 current_builder().inner_scopes[inner_graph] = CaptureOutwards(
                     graph, node_ref, captured
@@ -484,7 +474,6 @@ class Input(Generic[TKVal1], NodePort):
 
 
 _GraphDef = Callable[..., Output]
-_GraphDecoratorType = Callable[[_GraphDef], Callable[[], TierkreisGraph]]
 
 
 def _get_edge_annotations(
@@ -508,18 +497,36 @@ class CapturedError(Exception):
     pass
 
 
-def graph(
+@dataclass(frozen=True)
+class LazyGraph:
+    _builder: Callable[[], TierkreisGraph]
+
+    @cached_property
+    def graph(self) -> TierkreisGraph:
+        return self._builder()
+
+    def __call__(self, *args: ValueSource, **kwargs: ValueSource) -> NodeRef:
+        return self.graph(*args, **kwargs)
+
+    def _repr_svg_(self) -> str:
+        return getattr(self.graph, "_repr_svg_")()
+
+
+_GraphDecoratorType = Callable[[_GraphDef], TierkreisGraph]
+_LazyGraphDecoratorType = Callable[[_GraphDef], LazyGraph]
+
+
+def lazy_graph(
     name: Optional[str] = None,
     type_check_sig: Optional[Signature] = None,
     debug: bool = True,
-) -> _GraphDecoratorType:
-    def decorator_graph(f: _GraphDef) -> Callable[[], TierkreisGraph]:
+) -> _LazyGraphDecoratorType:
+    def decorator_graph(f: _GraphDef) -> LazyGraph:
         in_types, out_types = _get_edge_annotations(f)
         # Use getattr as _GraphDef doesn't specify that it has a __name__
         graph_name = name or getattr(f, "__name__")
         # graph_name = name or f.__name__  # type: ignore  # the alternative
 
-        @wraps(f)
         def wrapper() -> TierkreisGraph:
             gb = GraphBuilder(in_types, out_types, name=graph_name, debug=debug)
 
@@ -532,13 +539,25 @@ def graph(
                 else sub_build.type_check(type_check_sig)
             )
 
-        wrapper.__annotations__ = {}
-        return wrapper
+        return LazyGraph(wrapper)
 
     return decorator_graph
 
 
-class Thunk(_CallAddNode):
+def graph(
+    name: Optional[str] = None,
+    type_check_sig: Optional[Signature] = None,
+    debug: bool = True,
+) -> _GraphDecoratorType:
+    dec = lazy_graph(name, type_check_sig, debug)
+
+    def decorator_graph(f: _GraphDef) -> TierkreisGraph:
+        return dec(f).graph
+
+    return decorator_graph
+
+
+class Thunk(_CallAddNode, PortFunc):
     graph_src: ValueSource
 
     def __init__(
@@ -555,6 +574,14 @@ class Thunk(_CallAddNode):
         self.graph_src = Copyable(self.graph_src)
         return self
 
+    def resolve(self) -> NodePort:
+        """Return a NodePort, creating nodes as necessary in source graph."""
+        return _resolve(self.graph_src)
+
+    def source_graph(self) -> TierkreisGraph:
+        """The graph the port belongs to (or will)."""
+        return _source_graph(self.graph_src)
+
 
 def closure(
     name: Optional[str] = None, debug: bool = True
@@ -569,11 +596,6 @@ def closure(
 
         with gb as sub_build:
             f(*(Input(port) for port in in_types))
-        # Copy docstring, etc., onto the TierkreisGraph.
-        # (Of course such will be lost if the graph is serialized.)
-        wrapper = sub_build.graph
-        update_wrapper(wrapper, f)
-        wrapper.__annotations__ = {}
         return Thunk(
             _partial_thunk(sub_build, sub_build.captured),
             list(in_types.keys()),
@@ -594,7 +616,6 @@ def loop(name: Optional[str] = None, debug: bool = True):
         in_types = {Labels.VALUE: in_types.popitem()[1]}
         graph_name = name or getattr(f, "__name__")
 
-        @wraps(f)
         def wrapper(initial: ValueSource) -> NodePort:
             gb = CaptureBuilder(in_types, out_types, name=graph_name, debug=debug)
             with gb as sub_build:
@@ -878,6 +899,13 @@ class Function(_CallAddNode):
     def signature_string(self) -> str:
         return _func_sig(self.name.name, self.f)
 
+    def to_graph(
+        self,
+        input_map: Optional[dict[str, str]] = None,
+        output_map: Optional[dict[str, str]] = None,
+    ) -> TierkreisGraph:
+        return graph_from_func(self.name, self.f, input_map, output_map)
+
 
 class Namespace(Mapping[str, "Namespace"]):
     @overload
@@ -917,3 +945,45 @@ class Namespace(Mapping[str, "Namespace"]):
 
     def __iter__(self) -> Iterator[str]:
         return self.__subspaces.__iter__()
+
+
+def _rename_ports(
+    thunk: ValueSource, map_old_to_new: dict[str, str], is_inputs: bool
+) -> NodePort:
+    bg = current_builder()
+    rename_g = Const(rename_ports_graph(map_old_to_new))
+    f, s = (rename_g, thunk) if is_inputs else (thunk, rename_g)
+    seq = bg.add_node_to_graph(
+        FunctionNode(FunctionName("sequence")), first=f, second=s
+    )
+
+    return seq["sequenced"]
+
+
+def RenameInputs(thunk: ValueSource, rename_map: dict[str, str]) -> NodePort:
+    return _rename_ports(thunk, {v: k for k, v in rename_map.items()}, True)
+
+
+def RenameOuputs(thunk: ValueSource, rename_map: dict[str, str]) -> NodePort:
+    return _rename_ports(thunk, rename_map, False)
+
+
+def _build_box(
+    g: TierkreisGraph, __tk_loc: Location, *args: ValueSource, **kwargs: ValueSource
+) -> NodeRef:
+    bx = _CallAddNode(
+        BoxNode(g, __tk_loc),
+        g.input_order,
+        g.output_order,
+    )
+    return bx(*args, **kwargs)
+
+
+def __graph_call__(
+    self: TierkreisGraph, *args: ValueSource, **kwargs: ValueSource
+) -> NodeRef:
+    return _build_box(self, Location([]), *args, **kwargs)
+
+
+# mypy is not happy with assignment to a method
+setattr(TierkreisGraph, "__call__", __graph_call__)

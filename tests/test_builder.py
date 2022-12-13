@@ -5,7 +5,6 @@ import pytest
 
 from tierkreis import TierkreisGraph
 from tierkreis.builder import (
-    Box,
     Break,
     Case,
     Const,
@@ -25,6 +24,7 @@ from tierkreis.builder import (
     current_builder,
     current_graph,
     graph,
+    lazy_graph,
     loop,
 )
 from tierkreis.client.runtime_client import RuntimeClient
@@ -39,7 +39,7 @@ from tierkreis.core.tierkreis_graph import (
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.type_inference import _TYPE_CHECK
 from tierkreis.core.types import IntType, MapType, StringType, VecType
-from tierkreis.core.utils import map_vals
+from tierkreis.core.utils import map_vals, rename_ports_graph
 from tierkreis.core.values import (
     BoolValue,
     FloatValue,
@@ -84,7 +84,7 @@ def _vecs_graph_builder() -> TierkreisGraph:
     def g() -> Output[VecValue[IntValue]]:
         return Output(Const([2, 4]))
 
-    return g()
+    return g
 
 
 def _structs_graph() -> TierkreisGraph:
@@ -109,7 +109,7 @@ def _structs_graph_builder(bi) -> TierkreisGraph:
         st_node = bi.make_struct(height=Const(12.3), name=Const("hello"), age=Const(23))
         return Output(st_node["struct"]["age"])
 
-    return g()
+    return g
 
 
 def _maps_graph() -> TierkreisGraph:
@@ -142,7 +142,7 @@ def _maps_graph_builder(bi) -> TierkreisGraph:
         mp, val = bi.remove_key(mp, Const(3))
         return Output(bi.insert_key(mp, Const(5), Const("bar")), val)
 
-    return g()
+    return g
 
 
 def _tag_match_graph() -> TierkreisGraph:
@@ -169,7 +169,7 @@ def _tag_match_graph_builder(bi) -> TierkreisGraph:
                 Output(h1.var_value)
         return Output(match.nref)
 
-    return g()
+    return g
 
 
 @pytest.mark.asyncio
@@ -219,7 +219,7 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
         other_total = bi.iadd(fst, Const(3))
         dbl = double(bi)
         _pair_out = bi.make_pair(Const(True), Const("asdf"))
-        total = Box(dbl)(v1)
+        total = dbl(v1)
 
         quadruple = bi.sequence(Const(dbl), Const(dbl))
 
@@ -241,11 +241,11 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
                     Break(initial)
             return Output(loop_ifelse.nref)
 
-        _disc = Box(struc_id())(Const(Point(FloatValue(4.3e1), IntValue(3))))
+        _disc = struc_id(Const(Point(FloatValue(4.3e1), IntValue(3))))
 
         return Output(o1=ifelse.nref, o2=loop_def(other_total))
 
-    return func()
+    return func
 
 
 @pytest.mark.asyncio
@@ -267,7 +267,7 @@ def double(bi: Namespace) -> TierkreisGraph:
     def _double(value: Input[IntValue]) -> Output[IntValue]:
         return Output(bi.iadd(*bi.copy(value)))
 
-    return _double()
+    return _double
 
 
 @pytest.mark.asyncio
@@ -288,7 +288,7 @@ async def test_copy(client: RuntimeClient, bi: Namespace):
     def copy_graph(y: Input[IntValue]) -> Output[CopyOut]:
         return Output(*bi.copy(y))
 
-    out = await client.run_graph(copy_graph(), y=10)
+    out = await client.run_graph(copy_graph, y=10)
     assert out == {"a": IntValue(10), "b": IntValue(10)}
 
 
@@ -304,14 +304,12 @@ async def test_ifelse(client: RuntimeClient, bi: Namespace):
         bias = Const(1)
         with IfElse(flag) as sw:
             with If():
-                Output(value=bi.iadd(bias, Box(triple())(x)))
+                Output(value=bi.iadd(bias, triple(x)))
             with Else():
                 Output(value=x)
         return Output(sw.nref)
 
-    tg = ifelse()
-
-    outs = [await client.run_graph(tg, x=2, flag=f) for f in (True, False)]
+    outs = [await client.run_graph(ifelse, x=2, flag=f) for f in (True, False)]
 
     assert outs[0] == {"value": IntValue(7)}
     assert outs[1] == {"value": IntValue(2)}
@@ -345,16 +343,15 @@ async def test_ifelse_copying(
                 Output(value=bi.iadd(bi.imul(x2, Const(3)), Const(1)))
         return Output(sw.nref)
 
-    tg = ifelse()
-    assert num_copies(tg) == 1
-    subgraphs = constant_subgraphs(tg)
+    assert num_copies(ifelse) == 1
+    subgraphs = constant_subgraphs(ifelse)
     assert len(subgraphs) == 2
     for g in subgraphs:
         assert num_copies(g) == 0
 
-    outs = await client.run_graph(tg, x=10)
+    outs = await client.run_graph(ifelse, x=10)
     assert outs == {"value": IntValue(5)}
-    outs = await client.run_graph(tg, x=5)
+    outs = await client.run_graph(ifelse, x=5)
     assert outs == {"value": IntValue(16)}
 
 
@@ -370,18 +367,17 @@ async def test_copy_twice_inside_if(client: RuntimeClient, bi: Namespace):
                 Output(value=x)
         return Output(sw.nref)
 
-    tg = ifelse()
-    assert num_copies(tg) == 0
-    assert sorted(num_copies(g) for g in constant_subgraphs(tg)) == sorted([1, 0])
+    assert num_copies(ifelse) == 0
+    assert sorted(num_copies(g) for g in constant_subgraphs(ifelse)) == sorted([1, 0])
 
-    outs = {b: await client.run_graph(tg, x=3, flag=b) for b in [True, False]}
+    outs = {b: await client.run_graph(ifelse, x=3, flag=b) for b in [True, False]}
     assert outs[True] == {"value": IntValue(12)}
     assert outs[False] == {"value": IntValue(3)}
 
 
 @pytest.mark.asyncio
-async def test_copy_twice_from_outside_if(client: RuntimeClient, bi: Namespace):
-    @graph()
+async def test_copy_twice_from_outside_if(bi: Namespace):
+    @lazy_graph()
     def ifelse(x: Input[IntValue], flag: Input[BoolValue]) -> Output[IntValue]:
         c = Copyable(x)  # This can only copy in outer graph
         with IfElse(flag) as sw:
@@ -393,7 +389,7 @@ async def test_copy_twice_from_outside_if(client: RuntimeClient, bi: Namespace):
         return Output(sw.nref)
 
     with pytest.raises(ValueError, match="Already captured"):
-        ifelse()
+        _ = ifelse.graph
 
 
 @pytest.mark.asyncio
@@ -419,7 +415,7 @@ async def test_loop(client: RuntimeClient, bi: Namespace):
 
         return Output(loop_def(Const(0)))
 
-    assert (await client.run_graph(loopyg())) == {"value": FloatValue(7.0)}
+    assert (await client.run_graph(loopyg)) == {"value": FloatValue(7.0)}
 
 
 @pytest.mark.asyncio
@@ -441,14 +437,12 @@ async def test_match(client: RuntimeClient, bi: Namespace):
                 Output(bi.push(bi.push(Const([]), bi.fmul(fst, factor)), scd))
         return Output(match.nref)
 
-    tg = match()
-
-    assert (await client.run_graph(tg, var=TierkreisVariant("pair", (1.0, 2.0)))) == {
-        "value": VecValue(values=[FloatValue(value=2.0), FloatValue(value=2.0)])
-    }
-    assert (await client.run_graph(tg, var=TierkreisVariant("list", [1.0, 2.0]))) == {
-        "value": VecValue(values=[FloatValue(value=1.0), FloatValue(value=4.0)])
-    }
+    assert (
+        await client.run_graph(match, var=TierkreisVariant("pair", (1.0, 2.0)))
+    ) == {"value": VecValue(values=[FloatValue(value=2.0), FloatValue(value=2.0)])}
+    assert (
+        await client.run_graph(match, var=TierkreisVariant("list", [1.0, 2.0]))
+    ) == {"value": VecValue(values=[FloatValue(value=1.0), FloatValue(value=4.0)])}
 
 
 @pytest.fixture()
@@ -462,7 +456,7 @@ def _pair_builder(bi: Namespace, sig: Signature) -> TierkreisGraph:
     def main() -> Output[Pair]:
         return Output(*bi.unpack_pair(Const((2, "asdf"))))
 
-    return main()
+    return main
 
 
 @pytest.fixture()
@@ -476,7 +470,7 @@ def _if_no_inputs(bi: Namespace, sig: Signature) -> TierkreisGraph:
                 Output(Const(5))
         return Output(ifelse.nref)
 
-    return main()
+    return main
 
 
 @pytest.mark.asyncio
@@ -550,7 +544,7 @@ async def test_Copyable(bi, client: RuntimeClient) -> None:
         assert num_copies(current_graph()) == 3
         return Output(out=a_squared_plus_ab, res=b_plus_2a)
 
-    outputs = await client.run_graph(foo(), a=2, b=3)
+    outputs = await client.run_graph(foo, a=2, b=3)
     assert outputs == {"out": IntValue(10), "res": IntValue(7)}
 
 
@@ -590,7 +584,7 @@ async def test_unpacking(
         assert proto == current_graph().to_proto()  # Did nothing
         return Output(first=first, second=second)
 
-    outputs = await client.run_graph(foo(), a=3.142, b=5)
+    outputs = await client.run_graph(foo, a=3.142, b=5)
     assert outputs == {"first": FloatValue(3.142), "second": IntValue(6)}
 
 
@@ -621,8 +615,6 @@ def test_cant_unpack_original_after_copy(bi) -> None:
         assert proto == current_graph().to_proto()  # Did nothing
         return o
 
-    foo()
-
 
 @pytest.mark.asyncio
 async def test_can_unpack_copy_with_resolve(bi, client: RuntimeClient) -> None:
@@ -639,7 +631,7 @@ async def test_can_unpack_copy_with_resolve(bi, client: RuntimeClient) -> None:
         assert num_copies_unpacks() == (1, 2)
         return o
 
-    outputs = await client.run_graph(foo(), a=3, b=4)
+    outputs = await client.run_graph(foo, a=3, b=4)
     assert outputs == {"sum": IntValue(7), "product": IntValue(12)}
 
 
@@ -657,7 +649,7 @@ async def test_Copyable_fields(bi, client: RuntimeClient) -> None:
             product=bi.imul(a=Copyable(sturct["foo"]), b=Copyable(sturct["bar"])),
         )
 
-    outputs = await client.run_graph(foo(), a=3, b=4)
+    outputs = await client.run_graph(foo, a=3, b=4)
     assert outputs == {"sum": IntValue(7), "product": IntValue(12)}
 
 
@@ -667,13 +659,12 @@ async def test_unpacking_nested(client: RuntimeClient) -> None:
     def foo(arg: Input[Any]) -> Output:
         return Output(out=arg["outer"]["inner"])
 
-    tg = foo()
     nested_val = FloatValue(42.0)
     argument: StructValue = StructValue(
         values={"outer": StructValue(values={"inner": nested_val})}
     )
 
-    outputs = await client.run_graph(tg, arg=argument)
+    outputs = await client.run_graph(foo, arg=argument)
     assert outputs == {"out": nested_val}
 
 
@@ -698,14 +689,14 @@ async def test_bad_annotations() -> None:
     with pytest.raises(TypeError, match="Graph builder function arguments"):
 
         @no_type_check
-        @graph()
+        @lazy_graph()
         def foo3(arg: float) -> Output:
             return Output(out=arg)
 
     with pytest.raises(ValueError, match="Cannot convert"):
 
         @no_type_check
-        @graph()
+        @lazy_graph()
         def foo4(arg: Input[float]) -> Output:
             return Output(out=arg)
 
@@ -724,26 +715,30 @@ async def test_box_order(bi: Namespace, sig: Signature) -> None:
         pair = bi.make_pair(first, second)
         return Output(lst=bi.push(lst, pair), first=first)
 
-    push_pair_box = Box(push_pair())
-    assert push_pair_box.input_order == ["lst", "first", "second"]
-    assert push_pair_box.output_order == ["first", "lst"]
+    assert push_pair.input_order == ["lst", "first", "second"]
+    assert push_pair.output_order == ["first", "lst"]
 
     @graph(type_check_sig=sig)
     def test_g() -> Output:
-        i, lst = push_pair_box(Const([]), Const(3), Const("hello"))
+        i, lst = push_pair(Const([]), Const(3), Const("hello"))
         return Output(one=lst, two=i)
 
-    g = test_g()
-    box_n_name = next(n for n in range(g.n_nodes) if isinstance(g[n], BoxNode))
-    box_ins = {p2: n1 for n1, _, (_, p2) in g._graph.in_edges(box_n_name, keys=True)}
+    box_n_name = next(
+        n for n, nod in enumerate(test_g.nodes()) if isinstance(nod, BoxNode)
+    )
+    box_ins = {
+        p2: n1 for n1, _, (_, p2) in test_g._graph.in_edges(box_n_name, keys=True)
+    }
     assert len(box_ins) == 3
 
-    assert all(isinstance(g[n], ConstNode) for n in box_ins.values())
-    assert isinstance(cast(ConstNode, g[box_ins["lst"]]).value, VecValue)
-    assert isinstance(cast(ConstNode, g[box_ins["first"]]).value, IntValue)
-    assert isinstance(cast(ConstNode, g[box_ins["second"]]).value, StringValue)
+    assert all(isinstance(test_g[n], ConstNode) for n in box_ins.values())
+    assert isinstance(cast(ConstNode, test_g[box_ins["lst"]]).value, VecValue)
+    assert isinstance(cast(ConstNode, test_g[box_ins["first"]]).value, IntValue)
+    assert isinstance(cast(ConstNode, test_g[box_ins["second"]]).value, StringValue)
 
-    box_outs = tuple(ports for _, _, ports in g._graph.out_edges(box_n_name, keys=True))
+    box_outs = tuple(
+        ports for _, _, ports in test_g._graph.out_edges(box_n_name, keys=True)
+    )
     assert len(box_outs) == 2
 
     assert ("first", "two") in box_outs
@@ -761,7 +756,7 @@ async def test_scope(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 3
     n = cast(
         BoxNode,
@@ -784,7 +779,7 @@ async def test_scope_capture_in(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 4
     n = cast(
         BoxNode,
@@ -807,7 +802,7 @@ async def test_scope_capture_out(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 4
     n = cast(
         BoxNode,
@@ -841,7 +836,7 @@ async def test_nested_scopes(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 5
     n = cast(
         BoxNode,
@@ -865,7 +860,7 @@ async def test_copyable_capture_in(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 6
     assert any([n.is_copy_node() for n in tc_graph.nodes()])
 
@@ -881,7 +876,7 @@ async def test_copyable_capture_out_once(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 4
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
@@ -899,7 +894,7 @@ async def test_copyable_capture_out_copied(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 4
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
@@ -918,7 +913,7 @@ async def test_copyable_on_captured_input(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 5
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
@@ -936,7 +931,7 @@ async def test_copyable_dont_use(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 5
     assert not any([n.is_copy_node() for n in tc_graph.nodes()])
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
@@ -953,7 +948,7 @@ async def test_unpack_capture_in(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 6
     assert any([n.is_unpack_node() for n in tc_graph.nodes()])
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
@@ -970,7 +965,7 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
 
     if not client.can_type_check:
         pytest.skip()
-    tc_graph = await client.type_check_graph(g())
+    tc_graph = await client.type_check_graph(g)
     assert tc_graph.n_nodes == 4
     assert not any([n.is_unpack_node() for n in tc_graph.nodes()])
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
@@ -978,41 +973,33 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
 
 @pytest.mark.asyncio
 async def test_parmap_builder(bi: Namespace, sig, client: RuntimeClient) -> None:
-    @graph()
-    def push(ls, out) -> Output:
-        return Output(ls=bi.push(ls, out))
+    @lazy_graph()
+    def const_vec() -> Output:
+        return Output(vec=Const([]))
 
-    @graph()
-    def ls_passthrough(ls) -> Output:
-        return Output(ls=ls)
-
-    @graph()
-    def const_ls() -> Output:
-        return Output(ls=Const([]))
-
-    @graph(type_check_sig=sig)
+    @lazy_graph(type_check_sig=sig)
     def par_map_builder(f, ins) -> Output:
         """Returns a graph which when evaluated applies f to each value in inps
         and collates the results."""
-        f = bi.parallel(f, Const(ls_passthrough()))
-        f = bi.sequence(f, Const(push()))
+        f = bi.parallel(f, Const(rename_ports_graph({"vec": "vec"})))
+        f = bi.sequence(f, Const(bi.push.to_graph(input_map={"item": "out"})))
 
         @loop()
         def built(loop_dat) -> Output:
-            ls: ValueSource = Copyable(loop_dat["ls"])
-            with IfElse(bi.eq(Const([]), ls)) as loop_ifelse:
+            vec: ValueSource = Copyable(loop_dat["vec"])
+            with IfElse(bi.eq(Const([]), vec)) as loop_ifelse:
                 with If():
                     Break(loop_dat["big_g"])
                 with Else():
-                    ls, i = bi.pop(ls)
+                    vec, i = bi.pop(vec)
 
                     f_part = bi.partial(f, inp=i)
 
                     big_g = bi.sequence(loop_dat["big_g"], f_part)
-                    Continue(bi.make_struct(ls=ls, big_g=big_g))
+                    Continue(bi.make_struct(vec=vec, big_g=big_g))
             return Output(loop_ifelse.nref)
 
-        par_f = built(bi.make_struct(ls=ins, big_g=Const(const_ls())))
+        par_f = built(bi.make_struct(vec=ins, big_g=Const(const_vec)))
 
         return Output(par_f)
 
@@ -1021,7 +1008,7 @@ async def test_parmap_builder(bi: Namespace, sig, client: RuntimeClient) -> None
         return Output(out=bi.imul(inp, Const(2)))
 
     ins = [2387, 123, 64]
-    out = await client.run_graph(par_map_builder(), f=func(), ins=ins)
+    out = await client.run_graph(par_map_builder.graph, f=func, ins=ins)
 
     gv = out["value"]
 
@@ -1034,15 +1021,15 @@ async def test_parmap_builder(bi: Namespace, sig, client: RuntimeClient) -> None
         ls: ValueSource = Const([])
         for v in reversed(ins):
             ls = bi.push(ls, bi.imul(Const(v), Const(2)))
-        return Output(ls=ls)
+        return Output(vec=ls)
 
     # tg contains some type info, but has never been fully type-checked.
     # expected_graph contains no type information.
     # For comparison, we must make the two contain the same type information.
     tg = await client.type_check_graph(tg)
-    exp = await client.type_check_graph(expected_graph())
+    exp = await client.type_check_graph(expected_graph)
     tg.name = exp.name
     assert _compare_graphs(tg, exp)
     out = await client.run_graph(tg)
 
-    assert out["ls"].try_autopython() == [x * 2 for x in reversed(ins)]
+    assert out["vec"].try_autopython() == [x * 2 for x in reversed(ins)]

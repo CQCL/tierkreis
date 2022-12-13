@@ -18,6 +18,7 @@ from tierkreis.builder import (
     Scope,
     closure,
     graph,
+    lazy_graph,
     loop,
 )
 from tierkreis.client import RuntimeClient, ServerRuntime
@@ -223,7 +224,7 @@ async def test_deep_type_err(client: RuntimeClient, bi: "BuilderNS"):
         match=r"In: NodeRef\(3, Const\(Graph\(if\)\)\)\/NodeRef\(4, Function\(iadd\)\)"
         + r"| NodeRef\(3, Const\(Graph\(if\)\)\)\/NodeRef\(3, Const\(1.0\)\)",
     ):
-        await client.type_check_graph(ifelse())
+        await client.type_check_graph(ifelse)
 
 
 def _extract_dbg_info(errstrings: str) -> Iterator[tuple[str, int]]:
@@ -246,7 +247,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
         # ERROR
         return bi.iadd(Const(1), Const(1.0))
 
-    @graph(type_check_sig=sig)
+    @lazy_graph(type_check_sig=sig)
     def ifelse() -> Output:
         # ERROR
         with IfElse(Const(True)):
@@ -257,7 +258,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
                 pass
         return Output()
 
-    @graph(type_check_sig=sig)
+    @lazy_graph(type_check_sig=sig)
     def lop() -> Output:
         @loop()
         def lopdef(x) -> Output:
@@ -276,7 +277,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
 
         return Output()
 
-    @graph(type_check_sig=sig)
+    @lazy_graph(type_check_sig=sig)
     def clos1() -> Output:
         # ERROR
         y = Const(1.0)
@@ -290,7 +291,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
 
         return Output()
 
-    @graph(type_check_sig=sig)
+    @lazy_graph(type_check_sig=sig)
     def clos2() -> Output:
         @closure()
         # ERROR
@@ -304,7 +305,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
 
         return Output()
 
-    @graph(type_check_sig=sig)
+    @lazy_graph(type_check_sig=sig)
     def scop(x) -> Output:
         # ERROR
         with Scope():
@@ -316,7 +317,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
 
     for g in (ifelse, lop, clos1, clos2, scop):
         with pytest.raises(TierkreisTypeErrors) as e:
-            g()
+            _ = g.graph
         if (
             sys.platform.startswith("win")
             or int(platform.python_version_tuple()[1]) > 10

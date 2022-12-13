@@ -27,7 +27,7 @@ from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue
 
 if TYPE_CHECKING:
-    from tierkreis.builder import Unpack
+    from tierkreis.builder import Unpack, ValueSource
 
 PortID = str
 Location = pg.Location
@@ -606,6 +606,13 @@ class TierkreisGraph:
         if isinstance(type_, typing.TypeVar) or type_ is TierkreisGraph:
             return cast(T, self)
         raise TypeError()
+
+    def __call__(
+        self: "TierkreisGraph", *args: "ValueSource", **kwargs: "ValueSource"
+    ) -> NodeRef:
+        raise NotImplementedError(
+            "TierkreisGraph can only be called inside builder contexts."
+        )
 
 
 def _to_tierkreis_type(

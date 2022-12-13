@@ -8,10 +8,10 @@ from utils import nint_adder
 
 from tierkreis import TierkreisGraph
 from tierkreis.client import RuntimeClient
-from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.graphviz import _merge_copies
 from tierkreis.core.tierkreis_graph import FunctionNode
 from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.utils import graph_from_func
 from tierkreis.core.values import FloatValue, VariantValue
 from tierkreis.pyruntime import PyRuntime
 from tierkreis.worker.exceptions import NodeExecutionError
@@ -175,15 +175,6 @@ async def test_fail_node(client: RuntimeClient) -> None:
         await client.run_graph(tg)
 
     assert "fail node was run" in str(err.value)
-
-
-def graph_from_func(name: str, func: FunctionDeclaration) -> TierkreisGraph:
-    # build a graph with a single function node, with the same interface as that
-    # function
-    tg = TierkreisGraph()
-    node = tg.add_func(name, **{port: tg.input[port] for port in func.input_order})
-    tg.set_outputs(**{port: node[port] for port in func.output_order})
-    return tg
 
 
 @pytest.mark.asyncio

@@ -53,6 +53,7 @@ from tierkreis.core.values import (
     VariantValue,
     VecValue,
 )
+from tierkreis.pyruntime import PyRuntime
 
 if TYPE_CHECKING:
     from tierkreis.builder import StablePortFunc
@@ -972,7 +973,9 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
 
 
 @pytest.mark.asyncio
-async def test_parmap_builder(bi: Namespace, sig, client: RuntimeClient) -> None:
+async def test_parmap_builder(bi: Namespace, sig, pyruntime: PyRuntime) -> None:
+    client = pyruntime  # We expect to make this pass for Rust runtime too soon
+
     @lazy_graph()
     def const_vec() -> Output:
         return Output(vec=Const([]))

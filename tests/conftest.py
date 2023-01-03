@@ -1,4 +1,5 @@
 import asyncio
+import inspect
 from typing import AsyncIterator
 
 import pytest
@@ -43,7 +44,11 @@ def pytest_collection_modifyitems(config, items):
         return
     skip_non_client = pytest.mark.skip(reason="Doesn't use client fixture")
     for item in items:
-        if "client" not in getattr(item, "fixturenames", ()):
+        # item.fixturenames includes all transitively-required fixtures too,
+        # hence check the directly-declared arguments to the function
+        if "client" in inspect.signature(item.function).parameters:
+            assert "client" in item.fixturenames
+        else:
             item.add_marker(skip_non_client)
 
 

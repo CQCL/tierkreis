@@ -73,6 +73,7 @@ message RunGraphRequest {
   tierkreis.v1alpha.graph.StructValue inputs = 2;
   bool type_check = 3;
   tierkreis.v1alpha.graph.Location loc = 4;
+  Callback escape = 5;
 }
 
 message RunGraphResponse {

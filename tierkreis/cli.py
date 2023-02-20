@@ -42,10 +42,16 @@ def coro(f):
     return wrapper
 
 
-def _inputs(source: str) -> Dict[str, TierkreisValue]:
-    if source == "":
-        return {}
-    path = Path(source)
+def _inputs(proto_file: str, py_source: str) -> Dict[str, TierkreisValue]:
+    if proto_file == "":
+        return (
+            {}
+            if py_source == ""
+            else {k: TierkreisValue.from_python(v) for k, v in eval(py_source).items()}
+        )
+    if py_source != "":
+        raise ValueError("Cannot provide both inputs and --py-inputs")
+    path = Path(proto_file)
     with open(path, "rb") as f:
         v: StructValue = StructValue.from_proto(pg.StructValue().parse(f.read()))
         return v.values
@@ -182,16 +188,17 @@ def _print_typeerrs(errs: str):
 @cli.command()
 @click.argument("proto", type=click.Path(exists=True))
 @click.argument("inputs", default="")
+@click.option("-p", "--py-inputs", default="")
 @click.pass_context
 @coro
-async def run(ctx: click.Context, proto: Path, inputs: str):
+async def run(ctx: click.Context, proto: Path, inputs: str, py_inputs: str):
     """Run PROTO binary on runtime with optional INPUTS and output to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(ServerRuntime, client)
         tkg = await _parse(proto)
-        py_inputs = _inputs(inputs)
+        input_dict = _inputs(inputs, py_inputs)
         try:
-            outputs = await client.run_graph(tkg, **py_inputs)
+            outputs = await client.run_graph(tkg, **input_dict)
             _print_outputs(outputs)
         except TierkreisTypeErrors:
             _print_typeerrs(traceback.format_exc(0))
@@ -201,17 +208,18 @@ async def run(ctx: click.Context, proto: Path, inputs: str):
 @cli.command()
 @click.argument("proto", type=click.Path(exists=True))
 @click.argument("inputs", default="")
+@click.option("-p", "--py-inputs", default="")
 @click.pass_context
 @coro
-async def submit(ctx: click.Context, proto: Path, inputs: str):
+async def submit(ctx: click.Context, proto: Path, inputs: str, py_inputs: str):
     """Submit PROTO binary and optional
     INPUTS to runtime and print task id to console."""
     async with ctx.obj["client_manager"] as client:
         client = cast(ServerRuntime, client)
         tkg = await _parse(proto)
-        py_inputs = _inputs(inputs)
+        input_dict = _inputs(inputs, py_inputs)
         try:
-            task_handle = await client.start_task(tkg, py_inputs)
+            task_handle = await client.start_task(tkg, input_dict)
             print(chalk.bold.yellow("Task id:"), task_handle.task_id)
         except TierkreisTypeErrors:
             _print_typeerrs(traceback.format_exc(0))

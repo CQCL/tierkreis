@@ -51,6 +51,15 @@ message Value {
   }
 }
 
+message Output {
+  Edge edge  = 1;
+  Value value = 2;
+}
+
+message OutputStream {
+  repeated Output stream = 1;
+}
+
 message Type {
   oneof type {
     string var = 1;

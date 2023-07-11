@@ -4,10 +4,12 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, cast
 
 import networkx as nx  # type: ignore
+import requests
 
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
+from tierkreis.core.protos.tierkreis.v1alpha.graph import Output, OutputStream
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
@@ -22,6 +24,7 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisEdge,
     TierkreisGraph,
 )
+from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.type_inference import _TYPE_CHECK, infer_graph_types
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import StructValue, TierkreisValue, VariantValue, VecValue
@@ -253,7 +256,7 @@ class PyRuntime(RuntimeClient):
     async def get_signature(self) -> Signature:
         return self.root.extract_signature(True)
 
-    async def type_check_graph(self, tg) -> TierkreisGraph:
+    async def type_check_graph(self, tg: TierkreisGraph) -> TierkreisGraph:
         return infer_graph_types(tg, await self.get_signature())
 
     async def type_check_graph_with_inputs(
@@ -264,3 +267,58 @@ class PyRuntime(RuntimeClient):
     @property
     def can_type_check(self) -> bool:
         return _TYPE_CHECK
+
+
+class VizRuntime(PyRuntime):
+    """Child class of ``PyRuntime`` that can interact with a tierkreis-viz instance
+    for live graph visulization."""
+
+    def __init__(self, url: str, roots: Iterable["Namespace"], num_workers: int = 1):
+        """`url` is the address of the running tierkreis-viz instance. See
+        `PyRuntime` for remaining parameters
+        """
+        self.url = url
+        super().__init__(roots, num_workers)
+
+    def _post(self, endpoint: str, data):
+        proto_dat = data.to_proto() if hasattr(data, "to_proto") else data
+        requests.post(
+            self.url + endpoint,
+            data=bytes(proto_dat),
+            headers={"content-type": "application/protobuf"},
+        )
+
+    async def type_check_graph(self, tg: TierkreisGraph) -> TierkreisGraph:
+        """See ``PyRuntime.type_check_graph``. Additionally updates
+        vizualized graph with type annotations."""
+        try:
+            typedg = await super().type_check_graph(tg)
+        except TierkreisTypeErrors as e:
+            self._post("/api/typeErrors", e)
+            raise e
+        self.viz_graph(typedg)
+        return typedg
+
+    def viz_graph(self, tg: TierkreisGraph):
+        """Send graph to be visualized."""
+        self._post("/api/graph", tg)
+        self._post("/api/streamList", OutputStream())
+        self._post("/api/typeErrors", TierkreisTypeErrors([]))
+
+    async def run_graph(
+        self,
+        run_g: TierkreisGraph,
+        /,
+        **py_inputs: Any,
+    ) -> dict[str, TierkreisValue]:
+        """See ``PyRuntime.type_check_graph``. Additionally updates the
+        visualization with the outputs of each node when they are available."""
+        lst = OutputStream()
+
+        def _psh(edge: TierkreisEdge, val):
+            lst.stream.append(Output(edge=edge.to_proto(), value=val.to_proto()))
+            self._post("/api/streamList", lst)
+
+        self.set_callback(_psh)
+
+        return await super().run_graph(run_g, **py_inputs)

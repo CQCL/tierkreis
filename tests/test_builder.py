@@ -972,6 +972,7 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
 
 
+@pytest.mark.skipif(not _TYPE_CHECK, reason="tierkreis_typecheck not installed.")
 @pytest.mark.asyncio
 async def test_parmap_builder(bi: Namespace, sig, pyruntime: PyRuntime) -> None:
     client = pyruntime  # We expect to make this pass for Rust runtime too soon

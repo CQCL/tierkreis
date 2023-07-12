@@ -37,7 +37,6 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisGraph,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.type_inference import _TYPE_CHECK
 from tierkreis.core.types import IntType, MapType, StringType, VecType
 from tierkreis.core.utils import map_vals, rename_ports_graph
 from tierkreis.core.values import (
@@ -702,7 +701,7 @@ async def test_bad_annotations() -> None:
             return Output(out=arg)
 
 
-@pytest.mark.skipif(not _TYPE_CHECK, reason="tierkreis_typecheck not installed.")
+@pytest.mark.skip_typecheck
 @pytest.mark.asyncio
 async def test_box_order(bi: Namespace, sig: Signature) -> None:
     @dataclass
@@ -972,7 +971,7 @@ async def test_unpack_capture_out(bi, client: RuntimeClient) -> None:
     assert any([isinstance(n, BoxNode) for n in tc_graph.nodes()])
 
 
-@pytest.mark.skipif(not _TYPE_CHECK, reason="tierkreis_typecheck not installed.")
+@pytest.mark.skip_typecheck
 @pytest.mark.asyncio
 async def test_parmap_builder(bi: Namespace, sig, pyruntime: PyRuntime) -> None:
     client = pyruntime  # We expect to make this pass for Rust runtime too soon

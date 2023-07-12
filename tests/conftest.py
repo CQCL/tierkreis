@@ -11,6 +11,7 @@ from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.client.server_client import RuntimeClient, ServerRuntime
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import TierkreisGraph
+from tierkreis.core.type_inference import _TYPE_CHECK
 from tierkreis.pyruntime import PyRuntime
 
 
@@ -39,6 +40,12 @@ def pytest_addoption(parser):
     )
 
 
+def pytest_runtest_setup(item):
+    if not _TYPE_CHECK:
+        for _ in item.iter_markers(name="skip_typecheck"):
+            pytest.skip("Test skipped because typecheck is not installed")
+
+
 def pytest_collection_modifyitems(config, items):
     if not config.getoption("--client-only"):
         return
@@ -53,6 +60,12 @@ def pytest_collection_modifyitems(config, items):
 
 
 def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "skip_typecheck: this mark skips tests that"
+        " require typecheck installed if it is not installed.",
+    )
+
     if not config.option.pytket:
         setattr(config.option, "markexpr", "not pytket")
 

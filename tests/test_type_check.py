@@ -26,7 +26,7 @@ from tierkreis.core.function import FunctionDeclaration
 from tierkreis.core.signature import Namespace, Signature
 from tierkreis.core.tierkreis_graph import GraphValue, NodePort
 from tierkreis.core.type_errors import TierkreisTypeErrors, UnifyError, UnknownFunction
-from tierkreis.core.type_inference import _TYPE_CHECK, infer_graph_types
+from tierkreis.core.type_inference import infer_graph_types
 from tierkreis.core.types import (
     FloatType,
     GraphType,
@@ -41,8 +41,6 @@ from tierkreis.core.values import FloatValue, StructValue
 
 if TYPE_CHECKING:
     from tierkreis.builder import Namespace as BuilderNS
-
-TYPE_CHECK_REASON = "tierkreis_typecheck not installed"
 
 
 @pytest.mark.asyncio
@@ -110,7 +108,7 @@ _foo_func = FunctionDeclaration(
 )
 
 
-@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
+@pytest.mark.skip_typecheck
 def test_infer_graph_types():
     tg = TierkreisGraph()
     foo = tg.add_func("foo", value=tg.add_const(3))
@@ -131,7 +129,7 @@ def test_infer_graph_types():
     assert out_type == PairType(IntType(), IntType())
 
 
-@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
+@pytest.mark.skip_typecheck
 @pytest.mark.asyncio
 async def test_infer_graph_types_with_sig(client: RuntimeClient):
     # client is only used for signatures of builtins etc.
@@ -153,7 +151,7 @@ async def test_infer_graph_types_with_sig(client: RuntimeClient):
     assert out_type == PairType(in_type, IntType())
 
 
-@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
+@pytest.mark.skip_typecheck
 @pytest.mark.asyncio
 async def test_infer_graph_types_with_inputs(
     client: RuntimeClient, idpy_graph: TierkreisGraph
@@ -238,7 +236,7 @@ def _extract_dbg_info(errstrings: str) -> Iterator[tuple[str, int]]:
             yield fname.strip(), int(linno.strip())
 
 
-@pytest.mark.skipif(not _TYPE_CHECK, reason=TYPE_CHECK_REASON)
+@pytest.mark.skip_typecheck
 @pytest.mark.asyncio
 async def test_builder_debug(bi: "BuilderNS", sig: Signature):
     # test debug string is correctly found

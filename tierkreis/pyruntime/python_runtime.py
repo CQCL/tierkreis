@@ -68,7 +68,7 @@ class PyRuntime(RuntimeClient):
         for root in roots:
             self.root.merge_namespace(root)
         self.num_workers = num_workers
-        self.callback: Callable[[TierkreisEdge, TierkreisValue], None]
+        self._callback: Optional[Callable[[TierkreisEdge, TierkreisValue], None]] = None
         self.set_callback(None)
 
     def set_callback(
@@ -77,7 +77,15 @@ class PyRuntime(RuntimeClient):
         """Set a callback function that takes a TierkreisEdge and
         TierkreisValue, which will be called every time a edge receives an
         output. Can be used to inspect intermediate values."""
-        self.callback = callback if callback is not None else lambda _1, _2: None
+        self._callback = callback
+
+    def callback(
+        self,
+        edge: TierkreisEdge,
+        val: TierkreisValue,
+    ):
+        if self._callback:
+            self._callback(edge, val)
 
     async def run_graph(
         self,
@@ -278,6 +286,7 @@ class VizRuntime(PyRuntime):
         `PyRuntime` for remaining parameters
         """
         self.url = url
+        self.outputs = OutputStream()
         super().__init__(roots, num_workers)
 
     def _post(self, endpoint: str, data):
@@ -305,20 +314,22 @@ class VizRuntime(PyRuntime):
         self._post("/api/streamList", OutputStream())
         self._post("/api/typeErrors", TierkreisTypeErrors([]))
 
-    async def run_graph(
+    async def run_viz_graph(
         self,
         run_g: TierkreisGraph,
         /,
         **py_inputs: Any,
     ) -> dict[str, TierkreisValue]:
-        """See ``PyRuntime.type_check_graph``. Additionally updates the
+        """See ``PyRuntime.run_graph``. Additionally updates the
         visualization with the outputs of each node when they are available."""
-        lst = OutputStream()
+        self.outputs = OutputStream()
+        return await self.run_graph(run_g, **py_inputs)
 
-        def _psh(edge: TierkreisEdge, val):
-            lst.stream.append(Output(edge=edge.to_proto(), value=val.to_proto()))
-            self._post("/api/streamList", lst)
-
-        self.set_callback(_psh)
-
-        return await super().run_graph(run_g, **py_inputs)
+    def callback(
+        self,
+        edge: TierkreisEdge,
+        val: TierkreisValue,
+    ):
+        super().callback(edge, val)
+        self.outputs.stream.append(Output(edge=edge.to_proto(), value=val.to_proto()))
+        self._post("/api/streamList", self.outputs)

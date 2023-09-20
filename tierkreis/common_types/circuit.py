@@ -2,13 +2,23 @@ from __future__ import annotations
 
 from abc import ABC
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Tuple,
+    Union,
+    cast,
+)
 from uuid import UUID
 
 if TYPE_CHECKING:
     # pylint: disable=E0611
     from pytket.circuit import Circuit as PytketCircuit
-    from pytket.circuit import Node  # type: ignore
+    from pytket.circuit import Node
 
 # pylint: disable=redefined-builtin
 
@@ -43,10 +53,9 @@ class UnitID(Serializable):
         return self.reg_name, self.index
 
     @classmethod
-    def from_serializable(cls, jsonable: Tuple[str, List[int]]) -> "UnitID":
-        reg_name = jsonable[0]
-        index = jsonable[1]
-        return UnitID(reg_name=reg_name, index=index)
+    def from_serializable(cls, jsonable: Iterable[Union[str, List[int]]]) -> "UnitID":
+        reg_name, index = jsonable
+        return UnitID(reg_name=cast(str, reg_name), index=cast(List[int], index))
 
     @classmethod
     def from_pytket_node(cls, node: Node) -> "UnitID":
@@ -57,7 +66,7 @@ class UnitID(Serializable):
         """Convert a UnitID object to a pytket Node object."""
         try:
             # pylint: disable=E0611
-            from pytket.circuit import Node  # type: ignore
+            from pytket.circuit import Node
         except ImportError as err:
             raise PytketDependencyError from err
 
@@ -438,7 +447,7 @@ class ClassicalExp(Serializable):
         args: List[Union[int, UnitID, BitRegister, "ClassicalExp"]] = [
             arg
             if isinstance(arg, int)
-            else UnitID.from_serializable(arg)  # type:ignore
+            else UnitID.from_serializable(arg)
             if isinstance(arg, (tuple, list))
             else BitRegister.from_serializable(arg)
             if isinstance(arg, dict) and "name" in arg and "size" in arg

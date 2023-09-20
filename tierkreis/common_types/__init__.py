@@ -13,9 +13,9 @@ if TYPE_CHECKING:
     from pytket.backends.backendresult import BackendResult
 
     # use obscure names for following imports to make isort, black and mypy happy
-    from pytket.partition import MeasurementBitMap as _PMBP  # type: ignore
-    from pytket.partition import MeasurementSetup as _PMS  # type: ignore
-    from pytket.pauli import QubitPauliString as PytketQubitPauliString  # type: ignore
+    from pytket.partition import MeasurementBitMap as _PMBP
+    from pytket.partition import MeasurementSetup as _PMS
+    from pytket.pauli import QubitPauliString as PytketQubitPauliString
 
 Distribution = Dict[str, float]
 

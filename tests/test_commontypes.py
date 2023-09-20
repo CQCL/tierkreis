@@ -2,9 +2,9 @@
 import pytest
 
 pytket = pytest.importorskip("pytket")
-from pytket.circuit import Circuit, Qubit  # type: ignore
-from pytket.partition import MeasurementBitMap, MeasurementSetup  # type: ignore
-from pytket.pauli import Pauli, QubitPauliString  # type: ignore
+from pytket.circuit import Circuit, Qubit
+from pytket.partition import MeasurementBitMap, MeasurementSetup
+from pytket.pauli import Pauli, QubitPauliString
 
 import tierkreis.common_types as common
 from tierkreis.common_types import _qps_from_pytket, _qps_to_pytket

@@ -22,6 +22,7 @@ def generate_proto_code():
         [
             "protoc",
             "--python_betterproto_out=" + PROTO_OUTPUT_DIR,
+            "--experimental_allow_proto3_optional",
             "-I",
             PROTO_INPUT_DIR,
         ]

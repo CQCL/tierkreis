@@ -15,6 +15,7 @@ tierkreis = { path = "..", develop = true }
 
 pytket-qiskit = "^0.24.0"
 cryptography = "3.4.7"    # 3.4.8 causes issues so pinning
+tweedledum = ">=1.1,<1.1.1 || >1.1.1,<2.0"  # Avoid 1.1.1 as no MacOSX binary
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^6.2.5"

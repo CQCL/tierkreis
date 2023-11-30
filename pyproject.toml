@@ -150,4 +150,4 @@ backend-path = ["tierkreis/_build"]
 version = { attr = "tierkreis._version.__version__" }
 
 [tool.setuptools.packages.find]
-include = ["tierkreis*"]
+include = ["tierkreis*", "tierkreis/py.typed"]

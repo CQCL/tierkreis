@@ -9,16 +9,16 @@ from functools import reduce
 from typing import Callable, Dict, List
 
 import pytket.extensions
-import pytket.passes  # type: ignore
+import pytket.passes
+from pytket._tket.circuit import Circuit
 from pytket.backends import Backend
-from pytket.circuit import Circuit  # type: ignore
 from pytket.qasm.qasm import circuit_from_qasm_str
-from sympy.core.symbol import Symbol  # type: ignore
+from sympy.core.symbol import Symbol
 
 from tierkreis.common_types import SampledDistribution, backres_to_sampleddist
-from tierkreis.common_types.circuit import BitRegister, CircBox
-from tierkreis.common_types.circuit import Circuit as CircStruct
 from tierkreis.common_types.circuit import (
+    BitRegister,
+    CircBox,
     Command,
     Conditional,
     GenericClassical,
@@ -26,6 +26,7 @@ from tierkreis.common_types.circuit import (
     Permutation,
     UnitID,
 )
+from tierkreis.common_types.circuit import Circuit as CircStruct
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import TierkreisType
 from tierkreis.worker.namespace import Namespace
@@ -110,8 +111,7 @@ async def execute_circuits(
     shots: list[int],
     backend_name: str,
 ) -> List[SampledDistribution]:
-
-    from pytket.extensions.qiskit import AerBackend  # type: ignore
+    from pytket.extensions.qiskit import AerBackend
 
     available_backends: Dict[str, Callable[..., Backend]] = {
         "AerBackend": AerBackend,
@@ -129,7 +129,6 @@ async def execute(
     shots: int,
     backend_name: str,
 ) -> SampledDistribution:
-
     return (await execute_circuits([circuit], [shots], backend_name))[0]
 
 

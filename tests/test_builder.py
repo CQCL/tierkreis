@@ -3,7 +3,6 @@ from typing import TYPE_CHECKING, Any, Callable, Tuple, cast, no_type_check
 
 import pytest
 
-from tierkreis import TierkreisGraph
 from tierkreis.builder import (
     Break,
     Case,
@@ -57,9 +56,6 @@ from tierkreis.pyruntime import PyRuntime
 if TYPE_CHECKING:
     from tierkreis.builder import StablePortFunc
     from tierkreis.core.tierkreis_graph import NodePort, NodeRef
-
-# This avoids errors on every call to a decorated _GraphDef
-# pylint: disable=no-value-for-parameter
 
 
 def _compare_graphs(
@@ -214,7 +210,6 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
 
     @graph()
     def func(v1: Input[IntValue], v2: Input[PairValue[IntValue, BoolValue]]) -> Output:
-
         fst, scd = bi.unpack_pair(v2)
         other_total = bi.iadd(fst, Const(3))
         dbl = double(bi)
@@ -272,7 +267,6 @@ def double(bi: Namespace) -> TierkreisGraph:
 
 @pytest.mark.asyncio
 async def test_double(client: RuntimeClient, bi: Namespace):
-
     out = await client.run_graph(double(bi), value=10)
     assert out == {"value": IntValue(20)}
 
@@ -670,20 +664,20 @@ async def test_unpacking_nested(client: RuntimeClient) -> None:
 
 @pytest.mark.asyncio
 async def test_bad_annotations() -> None:
-    # each case should also generate a static type error without
-    # the `no_type_check` decorator
+    # pyright does not support no_type_check decorator
+    # so peppered with type: ignore
     with pytest.raises(TypeError, match="return type"):
 
         @no_type_check
-        @graph()
+        @graph()  # type: ignore
         def foo1(arg: Input[Any]) -> int:
-            return Output(out=arg)
+            return Output(out=arg)  # type: ignore
 
     with pytest.raises(TypeError, match="return type"):
 
         @no_type_check
         @graph()
-        def foo2(arg: Input[Any]) -> Output[int]:
+        def foo2(arg: Input[Any]) -> Output[int]:  # type: ignore
             return Output(out=arg)
 
     with pytest.raises(TypeError, match="Graph builder function arguments"):
@@ -691,13 +685,13 @@ async def test_bad_annotations() -> None:
         @no_type_check
         @lazy_graph()
         def foo3(arg: float) -> Output:
-            return Output(out=arg)
+            return Output(out=arg)  # type: ignore
 
     with pytest.raises(ValueError, match="Cannot convert"):
 
         @no_type_check
         @lazy_graph()
-        def foo4(arg: Input[float]) -> Output:
+        def foo4(arg: Input[float]) -> Output:  # type: ignore
             return Output(out=arg)
 
 
@@ -727,7 +721,8 @@ async def test_box_order(bi: Namespace, sig: Signature) -> None:
         n for n, nod in enumerate(test_g.nodes()) if isinstance(nod, BoxNode)
     )
     box_ins = {
-        p2: n1 for n1, _, (_, p2) in test_g._graph.in_edges(box_n_name, keys=True)
+        p2: n1
+        for n1, _, (_, p2) in test_g._graph.in_edges(box_n_name, keys=True)  # type: ignore
     }
     assert len(box_ins) == 3
 
@@ -737,7 +732,8 @@ async def test_box_order(bi: Namespace, sig: Signature) -> None:
     assert isinstance(cast(ConstNode, test_g[box_ins["second"]]).value, StringValue)
 
     box_outs = tuple(
-        ports for _, _, ports in test_g._graph.out_edges(box_n_name, keys=True)
+        ports
+        for _, _, ports in test_g._graph.out_edges(box_n_name, keys=True)  # type: ignore
     )
     assert len(box_outs) == 2
 

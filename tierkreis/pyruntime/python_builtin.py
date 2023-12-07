@@ -142,7 +142,6 @@ async def fleq(a: float, b: float) -> bool:
 
 @namespace.function()
 async def float_to_int(float: float) -> int:
-    # pylint: disable=redefined-builtin
     """Convert a float to an integer"""
     return int(float)
 
@@ -238,7 +237,6 @@ class _InsertOut(TierkreisStruct, Generic[a, b]):
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
 async def insert_key(map: dict[a, b], key: a, val: b) -> _InsertOut[a, b]:
-    # pylint: disable=redefined-builtin
     """Insert a key value pair in to a map.\
  Existing keys will have their values replaced."""
     map[key] = val
@@ -247,7 +245,6 @@ async def insert_key(map: dict[a, b], key: a, val: b) -> _InsertOut[a, b]:
 
 @namespace.function()
 async def int_to_float(int: int) -> float:
-    # pylint: disable=redefined-builtin
     """Convert an integer to a float"""
     return float(int)
 
@@ -467,7 +464,6 @@ class _RemoveOut(TierkreisStruct, Generic[a, b]):
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
 async def remove_key(map: dict[a, b], key: a) -> _RemoveOut[a, b]:
-    # pylint: disable=redefined-builtin
     """Remove a key value pair from a map and return the map and value."""
     val = map.pop(key)
     return _RemoveOut(map, val)

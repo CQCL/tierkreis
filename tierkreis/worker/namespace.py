@@ -54,7 +54,7 @@ def _snake_to_pascal(name: str) -> str:
 
 
 def _get_base_tkstruct(class_type: Type) -> Type:
-    origin = typing.get_origin(class_type)
+    origin = cast(Type, typing.get_origin(class_type))
     return origin if origin is not None else class_type
 
 
@@ -107,7 +107,7 @@ class Namespace(Mapping[str, "Namespace"]):
         if intersect:
             raise NamespaceClash(prefix, intersect)
         self.functions = other.functions | self.functions
-        for (k, v) in other.subspaces.items():
+        for k, v in other.subspaces.items():
             if (x := self.subspaces.get(k)) is None:
                 self.subspaces[k] = v
             else:

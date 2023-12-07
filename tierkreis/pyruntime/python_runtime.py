@@ -3,7 +3,7 @@ import asyncio
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, cast
 
-import networkx as nx  # type: ignore
+import networkx as nx
 import requests
 
 from tierkreis.client.runtime_client import RuntimeClient
@@ -264,8 +264,8 @@ class PyRuntime(RuntimeClient):
     async def get_signature(self) -> Signature:
         return self.root.extract_signature(True)
 
-    async def type_check_graph(self, tg: TierkreisGraph) -> TierkreisGraph:
-        return infer_graph_types(tg, await self.get_signature())
+    async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
+        return infer_graph_types(graph, await self.get_signature())
 
     async def type_check_graph_with_inputs(
         self, tg, inputs: StructValue
@@ -297,11 +297,11 @@ class VizRuntime(PyRuntime):
             headers={"content-type": "application/protobuf"},
         )
 
-    async def type_check_graph(self, tg: TierkreisGraph) -> TierkreisGraph:
+    async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
         """See ``PyRuntime.type_check_graph``. Additionally updates
         vizualized graph with type annotations."""
         try:
-            typedg = await super().type_check_graph(tg)
+            typedg = await super().type_check_graph(graph)
         except TierkreisTypeErrors as e:
             self._post("/api/typeErrors", e)
             raise e

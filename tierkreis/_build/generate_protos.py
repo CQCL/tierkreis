@@ -1,4 +1,3 @@
-# type: ignore
 import glob
 import os
 import subprocess

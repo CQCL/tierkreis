@@ -8,7 +8,7 @@ from test_worker import main
 
 from tierkreis.builder import Namespace
 from tierkreis.client.runtime_client import RuntimeClient
-from tierkreis.client.server_client import RuntimeClient, ServerRuntime
+from tierkreis.client.server_client import ServerRuntime
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.type_inference import _TYPE_CHECK

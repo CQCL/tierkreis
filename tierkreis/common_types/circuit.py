@@ -16,11 +16,8 @@ from typing import (
 from uuid import UUID
 
 if TYPE_CHECKING:
-    # pylint: disable=E0611
-    from pytket.circuit import Circuit as PytketCircuit
+    from pytket._tket.circuit import Circuit as PytketCircuit
     from pytket.circuit import Node
-
-# pylint: disable=redefined-builtin
 
 
 class PytketDependencyError(Exception):
@@ -65,7 +62,6 @@ class UnitID(Serializable):
     def to_pytket_node(self) -> Node:
         """Convert a UnitID object to a pytket Node object."""
         try:
-            # pylint: disable=E0611
             from pytket.circuit import Node
         except ImportError as err:
             raise PytketDependencyError from err
@@ -507,7 +503,10 @@ Box = Union[
     QControlBox,
     ClassicalExpBox,
 ]
-box_name_to_class: Dict[str, Box] = {box_type.__name__: box_type for box_type in Box.__args__}  # type: ignore
+box_name_to_class: Dict[str, Box] = {
+    box_type.__name__: box_type
+    for box_type in Box.__args__  # type: ignore
+}
 
 
 def deserialize_box(jsonable: Dict[str, Any]) -> Box:
@@ -804,8 +803,7 @@ class Circuit(Serializable):
     def to_pytket_circuit(self) -> PytketCircuit:
         """Construct a pytket Circuit from a Circuit."""
         try:
-            # pylint: disable=E0611
-            from pytket.circuit import Circuit as PytketCircuit
+            from pytket._tket.circuit import Circuit as PytketCircuit
         except ImportError as err:
             raise PytketDependencyError from err
         return PytketCircuit.from_dict(self.to_serializable())

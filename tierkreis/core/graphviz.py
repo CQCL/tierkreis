@@ -2,7 +2,7 @@
 import textwrap
 from typing import Iterable, NewType, Optional, Tuple, cast
 
-import graphviz as gv  # type: ignore
+import graphviz as gv
 
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
@@ -115,7 +115,6 @@ _OUTPUT_PREFIX = "out."
 
 
 def _html_ports(ports: Iterable[str], id_prefix: str) -> str:
-
     return _HTML_PORTS_ROW_TEMPLATE.format(
         port_cells="".join(
             _HTML_PORT_TEMPLATE.format(
@@ -294,7 +293,10 @@ def tierkreis_to_graphviz(
             else:
                 unthunked_nodes.add(node_identifier)
                 subgraph = cast(GraphValue, cast(ConstNode, node).value).value
-            with gv_graph.subgraph(name=cluster_name) as c:
+
+            ctx_mgr = gv_graph.subgraph(name=cluster_name)
+            assert ctx_mgr is not None
+            with ctx_mgr as c:
                 tierkreis_to_graphviz(
                     subgraph,
                     initial_graph=c,

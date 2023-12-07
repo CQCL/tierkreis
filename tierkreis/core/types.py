@@ -2,6 +2,7 @@ import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
 from functools import reduce
+from types import NoneType
 from typing import Optional, cast
 from uuid import UUID
 
@@ -12,12 +13,6 @@ from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 
 from . import Labels
-
-# import from types when updating to python 3.10
-try:
-    from types import NoneType  # type: ignore
-except ImportError as _:
-    NoneType = type(None)
 
 
 def _get_optional_type(type_: typing.Type) -> typing.Optional[typing.Type]:
@@ -98,7 +93,7 @@ class TierkreisType(ABC):
                 outputs=Row.from_python(args[1], visited_types),
             )
         elif (TierkreisStruct in type_.__bases__) or is_dataclass(type_):
-            actual_type = type_origin or type_
+            actual_type = cast(typing.Type, type_origin or type_)
             result = StructType(
                 shape=Row.from_python(actual_type, visited_types), name=type_name
             )
@@ -296,15 +291,15 @@ class Row(TierkreisType):
             )
         )
 
-    @staticmethod
+    @classmethod
     def from_python(
+        cls,
         type_: typing.Type,
         visited_types: typing.Optional[dict[typing.Type, "TierkreisType"]] = None,
     ) -> "Row":
         if isinstance(type_, typing.TypeVar):
             return Row(rest=type_.__name__)
         else:
-
             return Row(
                 content={
                     field_name: TierkreisType.from_python(field_type, visited_types)
@@ -312,9 +307,9 @@ class Row(TierkreisType):
                 }
             )
 
-    @staticmethod
-    def from_proto(row_type: pg.Type) -> "Row":
-        return Row.from_proto_rowtype(row_type.row)
+    @classmethod
+    def from_proto(cls, type_: pg.Type) -> "Row":
+        return Row.from_proto_rowtype(type_.row)
 
     @staticmethod
     def from_proto_rowtype(row: pg.RowType) -> "Row":

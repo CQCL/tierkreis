@@ -1,4 +1,3 @@
-# pylint: disable=protected-access
 """Common compound type aliases."""
 
 from collections import Counter
@@ -12,7 +11,7 @@ from .circuit import UnitID
 if TYPE_CHECKING:
     from pytket.backends.backendresult import BackendResult
 
-    # use obscure names for following imports to make isort, black and mypy happy
+    # use obscure names for following imports to make linting happy
     from pytket.partition import MeasurementBitMap as _PMBP
     from pytket.partition import MeasurementSetup as _PMS
     from pytket.pauli import QubitPauliString as PytketQubitPauliString

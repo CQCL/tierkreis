@@ -1,8 +1,9 @@
-# pylint: disable=wrong-import-order, wrong-import-position
+# ruff: noqa: E402
 import pytest
 
 pytket = pytest.importorskip("pytket")
-from pytket.circuit import Circuit, Qubit
+from pytket._tket.circuit import Circuit
+from pytket.circuit import Qubit
 from pytket.partition import MeasurementBitMap, MeasurementSetup
 from pytket.pauli import Pauli, QubitPauliString
 

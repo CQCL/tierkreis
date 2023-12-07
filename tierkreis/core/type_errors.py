@@ -43,7 +43,7 @@ def _node_str(idx: int, tkn: "TierkreisNode") -> tuple[str, Optional["TierkreisG
         s += f", Tag({tkn.tag_name})"
 
     elif isinstance(tkn, MatchNode):
-        s += f", Match"
+        s += ", Match"
     elif isinstance(tkn, ConstNode):
         val = tkn.value
         if isinstance(val, GraphValue) and val.value.name:
@@ -105,8 +105,8 @@ class TierkreisTypeError(Exception):
         locs = []
         dbgs = []
         current_g = self.graph
-        for l in self.proto_err.location:
-            name, out_type = betterproto.which_one_of(l, "location")
+        for location in self.proto_err.location:
+            name, out_type = betterproto.which_one_of(location, "location")
             if dbg_str := self._get_dbg_str(name, out_type, current_g):
                 # s += f"\n{dbg_str}"
                 dbgs.append(dbg_str)

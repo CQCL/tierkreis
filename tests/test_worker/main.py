@@ -18,7 +18,7 @@ subspace = namespace["subspace"]
 A = TypeVar("A")
 
 
-@namespace.function(type_vars={A: StarKind()})  # type: ignore
+@namespace.function(type_vars={A: StarKind()})
 async def id_py(value: A) -> A:
     "Identity function which passes on the value on port 'value'."
     return value
@@ -62,7 +62,7 @@ class IdDelayOutputs(TierkreisStruct, Generic[A]):
 
 
 @namespace.function(
-    type_vars={A: StarKind()},  # type: ignore
+    type_vars={A: StarKind()},
 )
 async def id_delay(inputs: IdDelayInputs[A]) -> IdDelayOutputs[A]:
     await asyncio.sleep(inputs.wait)

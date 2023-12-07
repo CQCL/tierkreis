@@ -18,7 +18,7 @@ To install the python package run:
 pip install tierkreis
 ```
 
-This package is pure python and is compatible with Python 3.9 and above. Tierkreis has a strong, static type system, and full automated type inference is available as an extension on supported platforms via the `typecheck` optional feature. To install that run:
+This package is pure python and is compatible with Python 3.10 and above. Tierkreis has a strong, static type system, and full automated type inference is available as an extension on supported platforms via the `typecheck` optional feature. To install that run:
 
 ```bash
 pip install tierkreis[typecheck]

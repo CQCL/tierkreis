@@ -36,13 +36,6 @@ from .exceptions import (
 from .namespace import Namespace
 from .tracing import _TRACING, context_token, get_tracer, span
 
-if _TRACING:
-    import opentelemetry.context
-    import opentelemetry.propagate
-    import opentelemetry.trace
-    from opentelemetry.semconv.trace import SpanAttributes
-
-
 tracer = get_tracer(__name__)
 
 
@@ -51,6 +44,10 @@ async def _event_recv_request(request: grpclib.events.RecvRequest):
     service, method = request.method_name.lstrip("/").split("/", 1)
     kwargs: dict[str, Any] = dict(name=f"GRPC: {request.method_name}")
     if _TRACING:
+        import opentelemetry.propagate
+        import opentelemetry.trace
+        from opentelemetry.semconv.trace import SpanAttributes
+
         context = opentelemetry.propagate.extract(request.metadata)
         attributes = {
             SpanAttributes.RPC_SYSTEM: "grpc",
@@ -221,7 +218,7 @@ class SignatureServerImpl(ps.SignatureBase):
         self.worker = worker
 
     async def list_functions(
-        self, _: ps.ListFunctionsRequest
+        self, list_functions_request: ps.ListFunctionsRequest
     ) -> ps.ListFunctionsResponse:
         signature = self.worker.root.extract_signature(True)
 

@@ -191,7 +191,6 @@ class GraphBuilder(AbstractContextManager):
         __exc_value: Optional[BaseException],
         __traceback: Optional[TracebackType],
     ) -> Optional[bool]:
-
         _reset_state(self._state_token)
         return super().__exit__(__exc_type, __exc_value, __traceback)
 
@@ -322,7 +321,7 @@ def Const(
         tuple,
         list,
         "LazyGraph",
-    ]
+    ],
 ) -> NodePort:
     if isinstance(val, LazyGraph):
         val = val.graph
@@ -421,7 +420,7 @@ class Break(_LoopOutput):
 
 
 def _vals_to_types(
-    d: dict[str, Optional[Type["TierkreisValue"]]]
+    d: dict[str, Optional[Type["TierkreisValue"]]],
 ) -> dict[str, Optional["TierkreisType"]]:
     return map_vals(
         d, lambda arg: None if (arg is Any or arg is None) else tkvalue_to_tktype(arg)
@@ -458,7 +457,7 @@ def _convert_return(ret: Type) -> dict[str, Optional["TierkreisType"]]:
     if not args:
         return {}
     ret = args[0]
-    subc = get_origin(ret) or ret
+    subc = cast(Type, get_origin(ret) or ret)
     if issubclass(subc, TierkreisStruct):
         return _vals_to_types(get_type_hints(ret))
     if issubclass(subc, TierkreisValue):
@@ -478,7 +477,10 @@ _GraphDef = Callable[..., Output]
 
 def _get_edge_annotations(
     f: _GraphDef,
-) -> tuple[dict[str, Optional["TierkreisType"]], dict[str, Optional["TierkreisType"]],]:
+) -> tuple[
+    dict[str, Optional["TierkreisType"]],
+    dict[str, Optional["TierkreisType"]],
+]:
     f_sig = inspect.signature(f)
     inps = map_vals(
         inspect.signature(f).parameters,

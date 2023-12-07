@@ -1,4 +1,3 @@
-# pylint: disable=wrong-import-position, wrong-import-order
 """Utilities for building tierkreis graphs."""
 import copy
 import typing
@@ -11,6 +10,7 @@ from typing import (
     Iterable,
     Iterator,
     List,
+    Mapping,
     Optional,
     Tuple,
     Type,
@@ -19,7 +19,7 @@ from typing import (
 )
 
 import betterproto
-import networkx as nx  # type: ignore
+import networkx as nx
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core.function import FunctionName
@@ -223,7 +223,7 @@ class MismatchedGraphs(Exception):
     def __init__(self, graph: "TierkreisGraph", endpoint: NodeRef):
         self.graph = graph
         self.endpoint = endpoint
-        super().__init__(f"Cannot add an edge whose endpoint is on a different graph")
+        super().__init__("Cannot add an edge whose endpoint is on a different graph")
 
 
 class TierkreisGraph:
@@ -370,7 +370,6 @@ class TierkreisGraph:
         deleted_nodes = []
         # Iterate through self.nodes rather than graph.nodes so we can mutate latter
         for node_idx, node in enumerate(self.nodes()):
-
             if not isinstance(node, BoxNode):
                 continue
 
@@ -498,10 +497,13 @@ class TierkreisGraph:
 
     def _to_tkedge(self, handle: _EdgeData) -> TierkreisEdge:
         src, tgt, (src_port, tgt_port) = handle
+        edge_data = cast(
+            Mapping, self._graph.get_edge_data(src, tgt, (src_port, tgt_port))
+        )
         return TierkreisEdge(
             NodeRef(src, self)[src_port],
             NodeRef(tgt, self)[tgt_port],
-            self._graph.get_edge_data(src, tgt, (src_port, tgt_port))["type"],
+            edge_data["type"],
         )
 
     def in_edges(self, node: Union[NodeRef, int]) -> Iterator[TierkreisEdge]:
@@ -616,7 +618,7 @@ class TierkreisGraph:
 
 
 def _to_tierkreis_type(
-    edge_type: Optional[Union[Type, TierkreisType]]
+    edge_type: Optional[Union[Type, TierkreisType]],
 ) -> Optional[TierkreisType]:
     if edge_type is None:
         return None
@@ -667,12 +669,10 @@ class GraphValue(TierkreisValue):
 
 
 # allow graph displays in jupyter notebooks
-from tierkreis.core.graphviz import tierkreis_to_graphviz
+from tierkreis.core.graphviz import tierkreis_to_graphviz  # noqa: E402
 
 setattr(
     TierkreisGraph,
     "_repr_svg_",
-    lambda self: tierkreis_to_graphviz(  # pylint: disable=protected-access
-        self
-    )._repr_svg_(),
+    lambda self: tierkreis_to_graphviz(self)._repr_svg_(),  # type: ignore
 )

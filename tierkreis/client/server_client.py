@@ -1,14 +1,13 @@
 """Send requests to tierkreis server to execute a graph."""
 import asyncio
+from collections.abc import Coroutine
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from functools import wraps
 from typing import (
     TYPE_CHECKING,
     Any,
-    Awaitable,
     Callable,
-    Coroutine,
     Dict,
     Type,
     TypeVar,
@@ -272,7 +271,7 @@ CallableReturn = TypeVar("CallableReturn")
 
 
 def async_to_sync(
-    func: Callable[..., Awaitable[CallableReturn]]
+    func: Callable[..., Coroutine[None, None, CallableReturn]],
 ) -> Callable[..., CallableReturn]:
     """
     Converts an asynchronous function into a synchronous one by running it

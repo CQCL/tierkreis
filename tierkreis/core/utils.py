@@ -38,7 +38,7 @@ def graph_from_func(
     inmap = input_map or {}
     oumap = output_map or {}
 
-    for (mp, order) in [(inmap, func.input_order), (oumap, func.output_order)]:
+    for mp, order in [(inmap, func.input_order), (oumap, func.output_order)]:
         for port in order:
             if port not in mp:
                 mp[port] = port

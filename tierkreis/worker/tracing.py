@@ -1,12 +1,12 @@
 from contextlib import AbstractContextManager, contextmanager, nullcontext
+from importlib.util import find_spec
 from typing import Iterator
 
 try:
-    import opentelemetry.context
-    import opentelemetry.trace
-
-    _TRACING = True
-except ImportError:
+    _TRACING = (
+        find_spec("opentelemetry.context") and find_spec("opentelemetry.trace")
+    ) is not None
+except ModuleNotFoundError:
     _TRACING = False
 
 
@@ -23,6 +23,8 @@ def context_token(context) -> Iterator[None]:
         yield
         return
     else:
+        import opentelemetry.context
+
         token = opentelemetry.context.attach(context)
         try:
             yield
@@ -32,5 +34,7 @@ def context_token(context) -> Iterator[None]:
 
 def get_tracer(_name: str):
     if _TRACING:
+        import opentelemetry.trace
+
         return opentelemetry.trace.get_tracer(_name)
     return None

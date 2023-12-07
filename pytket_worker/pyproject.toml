@@ -10,17 +10,13 @@ authors = [
 packages = [{ include = "pytket_worker" }]
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.11"
+python = ">=3.10,<3.13"
 tierkreis = { path = "..", develop = true }
-
-pytket-qiskit = "^0.24.0"
-cryptography = "3.4.7"    # 3.4.8 causes issues so pinning
-tweedledum = ">=1.1,<1.1.1 || >1.1.1,<2.0"  # Avoid 1.1.1 as no MacOSX binary
+pytket-qiskit = "^0.46.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^6.2.5"
 pytest-asyncio = "^0.16.0"
-mypy = "^0.910"
 
 
 [build-system]

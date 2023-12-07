@@ -18,6 +18,7 @@ Out = typing.TypeVar("Out", bound=TierkreisStruct)
 @dataclass
 class RuntimeGraph(Generic[In, Out]):
     "Graph with a `RuntimeStruct` annotation for inputs and outputs."
+
     graph: TierkreisGraph
 
     def to_proto(self) -> pg.Value:

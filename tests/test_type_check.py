@@ -229,10 +229,9 @@ def _extract_dbg_info(errstrings: str) -> Iterator[tuple[str, int]]:
     for errstr in errstrings.split("\n\n" + ("─" * 80) + "\n\n"):
         lines = errstr.splitlines()
 
-        # print(lines)
         lines = lines[lines.index("Debug Info:") + 1 :]
-        for l in lines:
-            _, fname, linno = l.split(":", 3)
+        for line in lines:
+            _, fname, linno = line.split(":", 3)
             yield fname.strip(), int(linno.strip())
 
 

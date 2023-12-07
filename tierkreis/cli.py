@@ -292,7 +292,7 @@ def _print_namespace(sig: Signature, namespace: List[str], function: Optional[st
 
     print(chalk.bold(f"Namespace: {root if namespace == [] else namespace_str}"))
     print()
-    print(chalk.bold(f"Aliases and Struct definitions"))
+    print(chalk.bold("Aliases and Struct definitions"))
 
     for alias, type_scheme in sig.aliases.items():
         prefix = f"{namespace_str}::"
@@ -310,7 +310,7 @@ def _print_namespace(sig: Signature, namespace: List[str], function: Optional[st
         print(f"{chalk.bold.magenta(alias)} = {alias_string}\n")
 
     print()
-    print(chalk.bold(f"Functions"))
+    print(chalk.bold("Functions"))
 
     names_dict = sig.root.get(namespace).functions
     func_names = [function] if function else list(names_dict.keys())

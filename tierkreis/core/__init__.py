@@ -14,4 +14,4 @@ class Labels:
 
 
 # This needs to be here to fix some cycles in the imports
-from .tierkreis_graph import TierkreisGraph  # pylint: disable=wrong-import-position
+from .tierkreis_graph import TierkreisGraph  # noqa: E402, F401

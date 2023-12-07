@@ -69,7 +69,7 @@ class TierkreisValue(ABC):
 
     @property
     def _instance_pytype(self):
-        return self._class_pytype
+        return getattr(self, "_class_pytype")
 
     @abstractmethod
     def to_proto(self) -> pg.Value:
@@ -102,7 +102,6 @@ class TierkreisValue(ABC):
         """
 
     @classmethod
-    @abstractmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
         "Converts a python value to a tierkreis value."
         # TODO find workaround for delayed imports

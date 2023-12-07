@@ -1,4 +1,3 @@
-# pylint: disable=redefined-outer-name, missing-docstring, invalid-name
 from dataclasses import dataclass
 from time import time
 from typing import Any, Dict, List, Optional, Tuple, Type
@@ -19,7 +18,6 @@ from tierkreis.worker.exceptions import NodeExecutionError
 
 @pytest.mark.asyncio
 async def test_nint_adder(client: RuntimeClient):
-
     for in_list in ([1] * 5, list(range(5))):
         tk_g = nint_adder(len(in_list))
         outputs = await client.run_graph(tk_g, array=in_list)
@@ -155,7 +153,7 @@ async def test_idpy(client: RuntimeClient, idpy_graph: TierkreisGraph):
         ("test123", str),
         (2, int),
         (132.3, float),
-        ((2, "a"), tuple[int, str]),  # type: ignore
+        ((2, "a"), tuple[int, str]),
         ([1, 2, 3], list[int]),
         (True, bool),
     ]

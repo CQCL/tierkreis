@@ -17,7 +17,7 @@ def python_struct_fields(type_: typing.Type) -> Dict[str, typing.Type]:
         if type_origin is None:
             return type_
         else:
-            return type_origin[
+            return type_origin[  # type: ignore
                 tuple(
                     [substitute(arg_type, subst) for arg_type in typing.get_args(type_)]
                 )

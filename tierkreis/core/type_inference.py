@@ -1,13 +1,7 @@
+from importlib.util import find_spec
 from typing import Optional, Tuple, Union, overload
 
 import betterproto
-
-try:
-    import tierkreis_typecheck
-
-    _TYPE_CHECK = True
-except ImportError:
-    _TYPE_CHECK = False
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
@@ -17,6 +11,11 @@ from tierkreis import TierkreisGraph
 from tierkreis.core.signature import Namespace, Signature
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
+
+try:
+    _TYPE_CHECK = find_spec("tierkreis_typecheck") is not None
+except ModuleNotFoundError:
+    _TYPE_CHECK = False
 
 
 class TypeCheckNotInstalled(ImportError):
@@ -53,6 +52,9 @@ def infer_graph_types(
 ) -> Union[TierkreisGraph, Tuple[TierkreisGraph, StructValue]]:
     if not _TYPE_CHECK:
         raise _ERR
+    else:
+        import tierkreis_typecheck
+
     req = ps.InferGraphTypesRequest(
         gwi=ps.GraphWithInputs(
             graph=g.to_proto(),
@@ -76,9 +78,11 @@ def infer_graph_types(
 
 
 def builtin_namespace() -> Namespace:
-    if not _TYPE_CHECK:
-        raise _ERR
+    if _TYPE_CHECK:
+        import tierkreis_typecheck
 
-    return Namespace.from_proto(
-        ps.Namespace().parse(tierkreis_typecheck.builtin_namespace())
-    )
+        return Namespace.from_proto(
+            ps.Namespace().parse(tierkreis_typecheck.builtin_namespace())
+        )
+    else:
+        raise _ERR

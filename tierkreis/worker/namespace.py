@@ -26,8 +26,8 @@ from tierkreis.core.types import (
 )
 from tierkreis.core.values import (
     StructValue,
-    TierkreisValue,
     register_struct_convertible,
+    val_known_tk_type,
 )
 from tierkreis.worker.exceptions import (
     DecodeInputError,
@@ -234,7 +234,13 @@ class Namespace(Mapping[str, "Namespace"]):
 
                 try:
                     with span(tracer, name="encoding outputs from python type"):
-                        outputs = TierkreisValue.from_python(python_outputs)
+                        if struct_output:
+                            tk_type = type_outputs
+                        else:
+                            tk_type = type_outputs.content["value"]
+
+                        outputs = val_known_tk_type(tk_type, python_outputs)
+
                 except Exception as error:
                     raise EncodeOutputError(str(error)) from error
                 return (

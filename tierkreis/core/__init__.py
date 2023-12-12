@@ -7,10 +7,6 @@ class Labels:
     VARIANT_VALUE = "variant_value"
     CONTINUE = "continue"
     BREAK = "break"
-    # These are not set by the protobuf/Tierkreis framework,
-    # but used by the python frontend to map to python 'Optional'
-    SOME = "Some"
-    NONE = "None"
 
 
 # This needs to be here to fix some cycles in the imports

@@ -50,9 +50,13 @@ from tierkreis.core.tierkreis_graph import (
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.type_inference import infer_graph_types
-from tierkreis.core.types import TypeScheme
+from tierkreis.core.types import TypeScheme, UnionTag
 from tierkreis.core.utils import graph_from_func, map_vals, rename_ports_graph
-from tierkreis.core.values import TierkreisValue, TKVal1, tkvalue_to_tktype
+from tierkreis.core.values import (
+    TierkreisValue,
+    TKVal1,
+    tkvalue_to_tktype,
+)
 
 if TYPE_CHECKING:
     from tierkreis.core.types import GraphType, TierkreisType
@@ -327,6 +331,27 @@ def Const(
         val = val.graph
     n = current_builder().add_node_to_graph(ConstNode(TierkreisValue.from_python(val)))
     return n[Labels.VALUE]
+
+
+def UnionConst(
+    val: Union[
+        int,
+        float,
+        bool,
+        str,
+        dict,
+        TierkreisStruct,
+        TierkreisValue,
+        TierkreisGraph,
+        tuple,
+        list,
+        "LazyGraph",
+    ],
+) -> NodePort:
+    """Add a constant as a variant value tagged by its type, to be used
+    with `Union` type annotations."""
+    union_tag = UnionTag.value_type_tag(val)
+    return Tag(union_tag, Const(val))
 
 
 @dataclass(frozen=True)

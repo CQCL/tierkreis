@@ -1,33 +1,46 @@
 import inspect
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, is_dataclass
+from dataclasses import Field, dataclass, field, fields, is_dataclass
+from enum import Enum
 from functools import reduce
-from types import NoneType
-from typing import ClassVar, Iterable, Optional, cast
+from types import NoneType, UnionType
+from typing import Any, ClassVar, Iterable, Optional, cast
 from uuid import UUID
 
 import betterproto
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core.internal import python_struct_fields
+from tierkreis.core.pydantic import map_constrained_number
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-
-from . import Labels
-
-
-def _get_optional_type(type_: typing.Type) -> typing.Optional[typing.Type]:
-    if args := _get_union_args(type_):
-        if NoneType in args:
-            return args[0]
-    return None
 
 
 def _get_union_args(
     type_: typing.Type,
 ) -> typing.Optional[typing.Tuple[typing.Type, ...]]:
-    if typing.get_origin(type_) is typing.Union:
+    # "Union" syntax or "A | B" syntax produces different results
+    if type(type_) is UnionType or typing.get_origin(type_) is typing.Union:
         return typing.get_args(type_)
+    return None
+
+
+def _extract_literal_args(type_: typing.Type) -> Optional[tuple]:
+    if typing.get_origin(type_) is typing.Literal:
+        return typing.get_args(type_)
+    return None
+
+
+def _extract_literal_type(type_: typing.Type) -> Optional[typing.Type]:
+    if args := _extract_literal_args(type_):
+        # all args of literal must be the same type
+        return type(args[0])
+    return None
+
+
+def _is_enum(type_: typing.Type) -> Optional[typing.Type[Enum]]:
+    if inspect.isclass(type_) and issubclass(type_, Enum):
+        return type_
     return None
 
 
@@ -68,13 +81,8 @@ class TierkreisType(ABC):
             result = StringType()
         elif type_ is float:
             result = FloatType()
-        elif inner_type := _get_optional_type(type_):
-            inner = TierkreisType.from_python(inner_type, visited_types)
-            result = VariantType(
-                shape=Row(
-                    content={Labels.NONE: StructType(shape=Row()), Labels.SOME: inner}
-                )
-            )
+        elif type_ is NoneType:
+            result = UNIT_TYPE
         elif type_origin is list:
             args = typing.get_args(type_)
             result = VecType(element=TierkreisType.from_python(args[0], visited_types))
@@ -108,6 +116,10 @@ class TierkreisType(ABC):
             )
         elif type_ is UUID:
             result = StringType()
+
+        elif enum_type := _is_enum(type_):
+            result = VariantType(Row({x.name: UNIT_TYPE for x in enum_type}))
+
         elif union_args := _get_union_args(type_):
             variants = {
                 UnionTag.type_tag(t): TierkreisType.from_python(t, visited_types)
@@ -120,6 +132,10 @@ class TierkreisType(ABC):
                     "Try using a discrimnated field in a dataclass instead."
                 )
             result = VariantType(shape=Row(content=variants))
+        elif constrained_base := map_constrained_number(type_):
+            return cls.from_python(constrained_base)
+        elif inner_type := _extract_literal_type(type_):
+            return cls.from_python(inner_type)
         else:
             raise ValueError(
                 f"Could not convert python type to tierkreis type: {type_}"
@@ -320,6 +336,17 @@ class Row(TierkreisType):
     ) -> "Row":
         if isinstance(type_, typing.TypeVar):
             return Row(rest=type_.__name__)
+        elif is_dataclass(type_):
+            dat_fields = fields(type_)
+            types = python_struct_fields(type_)
+            return Row(
+                content={
+                    f.name: _from_disc_field(f, visited_types)
+                    if hasattr(f.default, "discriminator")
+                    else TierkreisType.from_python(types[f.name], visited_types)
+                    for f in dat_fields
+                }
+            )
         else:
             return Row(
                 content={
@@ -414,7 +441,7 @@ class VariantType(TierkreisType):
         return self.shape.children()
 
 
-@dataclass()
+@dataclass(frozen=True)
 class UnionTag:
     prefix: ClassVar[str] = "__py_union_"
 
@@ -434,6 +461,14 @@ class UnionTag:
     @staticmethod
     def type_tag(type_: typing.Type) -> str:
         return UnionTag.prefix + type_.__name__
+
+    @staticmethod
+    def value_type_tag(value: Any) -> str:
+        return UnionTag.type_tag(type(value))
+
+    @classmethod
+    def none_type_tag(cls) -> str:
+        return UnionTag.type_tag(NoneType)
 
 
 class Constraint(ABC):
@@ -539,3 +574,37 @@ class TypeScheme:
         ]
         body = TierkreisType.from_proto(proto_tg.body)
         return cls(variables, constraints, body)
+
+
+UNIT_TYPE = StructType(Row())
+
+
+def _get_discriminators(field: Field) -> Optional[dict[str, typing.Type]]:
+    """If a dataclass field is a discriminated union find the map from tag name
+    to variant type."""
+    disc = getattr(field.default, "discriminator", None)
+    union_args = _get_union_args(field.type)
+    if disc is None or union_args is None:
+        return None
+
+    var_row = {}
+    for t in union_args:
+        if args := _extract_literal_args(typing.get_type_hints(t)[disc]):
+            assert isinstance(args[0], str)
+            var_row[args[0]] = t
+
+    return var_row
+
+
+def _from_disc_field(
+    field: Field, visited_types: Optional[dict[typing.Type, TierkreisType]]
+) -> TierkreisType:
+    """If a dataclass field is a discriminated union, map it to a variant type,
+    else compute it's type normally."""
+    var_row = _get_discriminators(field)
+    if var_row is None:
+        return TierkreisType.from_python(field.type, visited_types)
+
+    return VariantType(
+        Row({k: TierkreisType.from_python(v) for k, v in var_row.items()})
+    )

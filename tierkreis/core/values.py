@@ -26,7 +26,13 @@ import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core import types as TKType
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import NoneType, TierkreisType, _get_optional_type
+from tierkreis.core.types import (
+    NoneType,
+    TierkreisType,
+    UnionTag,
+    _get_optional_type,
+    _get_union_args,
+)
 
 from . import Labels
 
@@ -519,12 +525,7 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         types = python_struct_fields(type(value))
 
         return StructValue(
-            {
-                name: TierkreisValue.from_python_optional(value)
-                if _get_optional_type(types[name])
-                else TierkreisValue.from_python(value)
-                for name, value in vals.items()
-            }
+            {name: _get_value(value, types[name]) for name, value in vals.items()}
         )
 
     @classmethod
@@ -586,6 +587,12 @@ class VariantValue(Generic[RowStruct], TierkreisValue):
             return cast(T, None)
         elif (inner_t := _get_optional_type(type_)) and self.tag == Labels.SOME:
             return cast(T, self.value.to_python(inner_t))
+        elif args := _get_union_args(type_):
+            try:
+                tag_type_ = UnionTag.parse_type(self.tag, args)
+                return self.value.to_python(tag_type_)
+            except UnionTag.UnexpectedTag:
+                pass
         raise ToPythonFailure(self)
 
     def viz_str(self) -> str:
@@ -644,3 +651,15 @@ def tkvalue_to_tktype(val_cls: typing.Type[TierkreisValue]) -> TierkreisType:
         return TKType.StringType()
 
     raise ValueError("Cannot convert value class.")
+
+
+def _get_value(value: Any, typ: typing.Type) -> TierkreisValue:
+    if _get_optional_type(typ):
+        return TierkreisValue.from_python_optional(value)
+
+    if _get_union_args(typ):
+        return VariantValue(
+            UnionTag.type_tag(type(value)), TierkreisValue.from_python(value)
+        )
+
+    return TierkreisValue.from_python(value)

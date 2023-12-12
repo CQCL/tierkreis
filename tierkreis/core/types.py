@@ -1,9 +1,10 @@
+import inspect
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, is_dataclass
 from functools import reduce
 from types import NoneType
-from typing import Optional, cast
+from typing import ClassVar, Iterable, Optional, cast
 from uuid import UUID
 
 import betterproto
@@ -16,9 +17,17 @@ from . import Labels
 
 
 def _get_optional_type(type_: typing.Type) -> typing.Optional[typing.Type]:
-    args = typing.get_args(type_)
-    if typing.get_origin(type_) is typing.Union and NoneType in args:
-        return args[0]
+    if args := _get_union_args(type_):
+        if NoneType in args:
+            return args[0]
+    return None
+
+
+def _get_union_args(
+    type_: typing.Type,
+) -> typing.Optional[typing.Tuple[typing.Type, ...]]:
+    if typing.get_origin(type_) is typing.Union:
+        return typing.get_args(type_)
     return None
 
 
@@ -34,7 +43,6 @@ class TierkreisType(ABC):
         visited_types: typing.Optional[dict[typing.Type, "TierkreisType"]] = None,
     ) -> "TierkreisType":
         "Converts a python type to its corresponding tierkreis type."
-
         from tierkreis.core.python import RuntimeGraph
 
         visited_types = visited_types or {}
@@ -51,7 +59,6 @@ class TierkreisType(ABC):
         visited_types[type_] = VarType(f"CyclicType_{type_name}")
         type_origin = typing.get_origin(type_)
         result: TierkreisType
-
         # TODO: Graph types
         if type_ is int:
             result = IntType()
@@ -92,13 +99,27 @@ class TierkreisType(ABC):
                 inputs=Row.from_python(args[0], visited_types),
                 outputs=Row.from_python(args[1], visited_types),
             )
-        elif (TierkreisStruct in type_.__bases__) or is_dataclass(type_):
+        elif inspect.isclass(type_) and (
+            issubclass(type_, TierkreisStruct) or is_dataclass(type_)
+        ):
             actual_type = cast(typing.Type, type_origin or type_)
             result = StructType(
                 shape=Row.from_python(actual_type, visited_types), name=type_name
             )
         elif type_ is UUID:
             result = StringType()
+        elif union_args := _get_union_args(type_):
+            variants = {
+                UnionTag.type_tag(t): TierkreisType.from_python(t, visited_types)
+                for t in union_args
+            }
+            if len(set(variants.keys())) != len(union_args):
+                raise ValueError(
+                    "Could not generate unique names for all possible union types."
+                    " For example a list[int] and list[float] would both generate the tag '__py_union_list'."
+                    "Try using a discrimnated field in a dataclass instead."
+                )
+            result = VariantType(shape=Row(content=variants))
         else:
             raise ValueError(
                 f"Could not convert python type to tierkreis type: {type_}"
@@ -391,6 +412,28 @@ class VariantType(TierkreisType):
 
     def children(self) -> list["TierkreisType"]:
         return self.shape.children()
+
+
+@dataclass()
+class UnionTag:
+    prefix: ClassVar[str] = "__py_union_"
+
+    @dataclass
+    class UnexpectedTag(Exception):
+        tag: str
+
+    @staticmethod
+    def parse_type(s: str, types: Iterable[typing.Type]) -> typing.Type:
+        if not s.startswith(UnionTag.prefix):
+            raise UnionTag.UnexpectedTag(s)
+        s = s[len(UnionTag.prefix) :]
+        # will raise StopIteration if the substring does not match the __name__
+        # of any type in args
+        return next(t for t in types if t.__name__ == s)
+
+    @staticmethod
+    def type_tag(type_: typing.Type) -> str:
+        return UnionTag.prefix + type_.__name__
 
 
 class Constraint(ABC):

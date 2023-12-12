@@ -1,7 +1,8 @@
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Tuple, cast, no_type_check
+from typing import TYPE_CHECKING, Any, Callable, Tuple, Union, cast, no_type_check
 
 import pytest
+from test_worker.main import IntStruct, StructWithUnion
 
 from tierkreis.builder import (
     Break,
@@ -36,7 +37,14 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisGraph,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import IntType, MapType, StringType, VecType
+from tierkreis.core.types import (
+    IntType,
+    MapType,
+    StringType,
+    TierkreisType,
+    UnionTag,
+    VecType,
+)
 from tierkreis.core.utils import map_vals, rename_ports_graph
 from tierkreis.core.values import (
     BoolValue,
@@ -48,6 +56,7 @@ from tierkreis.core.values import (
     StructValue,
     TierkreisValue,
     TierkreisVariant,
+    ToPythonFailure,
     VariantValue,
     VecValue,
 )
@@ -1032,3 +1041,42 @@ async def test_parmap_builder(bi: Namespace, sig, pyruntime: PyRuntime) -> None:
     out = await client.run_graph(tg)
 
     assert out["vec"].try_autopython() == [x * 2 for x in reversed(ins)]
+
+
+@pytest.mark.asyncio
+async def test_union_types(bi, client: RuntimeClient) -> None:
+    # test structs containing unions can be converted to variant values, sent
+    # through worker functions that process them as unions, and converted back
+    # to unions.
+    pn = bi["python_nodes"]
+    a_py = StructWithUnion(1.0)
+    b_py = StructWithUnion(IntStruct(2))
+
+    @graph()
+    def g() -> Output:
+        return Output(a=pn.id_union(Const(a_py)), b=pn.id_union(Const(b_py)))
+
+    out = await client.run_graph(g)
+    a, b = out["a"], out["b"]
+
+    assert isinstance(a, StructValue)
+    assert isinstance(b, StructValue)
+
+    assert isinstance(a.values["x"], VariantValue)
+    assert isinstance(b.values["x"], VariantValue)
+
+    assert a.to_python(StructWithUnion) == a_py
+    assert b.to_python(StructWithUnion) == b_py
+
+    for bad_tag in ("invalid_tag", UnionTag.type_tag(IntStruct)):
+        with pytest.raises(ToPythonFailure):
+            v: VariantValue = VariantValue(bad_tag, TierkreisValue.from_python(1.0))
+            struct: StructValue = StructValue({"x": v})
+            _ = struct.to_python(StructWithUnion)
+
+    @dataclass
+    class AmbiguousUnion(TierkreisStruct):
+        x: Union[list[int], list[bool]]
+
+    with pytest.raises(ValueError, match="unique names"):
+        TierkreisType.from_python(AmbiguousUnion)

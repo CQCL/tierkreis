@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, cast
+from typing import Generic, Optional, TypeVar, Union, cast
 
 from tierkreis import TierkreisGraph
 from tierkreis.client.server_client import RuntimeClient
@@ -117,6 +117,26 @@ async def do_callback(
     outs = await client.run_graph(g, value=value)
 
     return cast(A, outs["value"])
+
+
+@dataclass
+class IntStruct(TierkreisStruct):
+    y: int
+
+
+@dataclass
+class StructWithUnion(TierkreisStruct):
+    x: Union[IntStruct, float]
+
+
+@dataclass
+class UnionOutput(TierkreisStruct):
+    value: StructWithUnion
+
+
+@namespace.function()
+async def id_union(x: StructWithUnion) -> UnionOutput:
+    return UnionOutput(x)
 
 
 if __name__ == "__main__":

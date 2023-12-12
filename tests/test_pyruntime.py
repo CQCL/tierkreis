@@ -12,7 +12,7 @@ def sample_graph() -> TierkreisGraph:
 
 
 @pytest.mark.asyncio
-async def test_callback(sample_graph: TierkreisGraph, pyruntime: PyRuntime):
+async def test_callback(sample_graph: TierkreisGraph, pyruntime_function: PyRuntime):
     ins = {"inp": "world", "vv": VariantValue("many", TierkreisValue.from_python(2))}
 
     cache = {}
@@ -20,7 +20,7 @@ async def test_callback(sample_graph: TierkreisGraph, pyruntime: PyRuntime):
     def cback(e: TierkreisEdge, v: TierkreisValue):
         cache[e] = v
 
-    pyruntime.set_callback(cback)
-    outs = await pyruntime.run_graph(sample_graph, **ins)
+    pyruntime_function.set_callback(cback)
+    outs = await pyruntime_function.run_graph(sample_graph, **ins)
     assert all(e in cache for e in sample_graph.edges())
     assert sorted(outs) == sorted(sample_graph.outputs())

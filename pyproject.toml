@@ -36,11 +36,17 @@ telemetry = [
 ]
 
 commontypes = ["pytket>=1.0"]
-lint = ["ruff~=0.1", "pyright~=1.1", "tierkreis[sc22-example,telemetry,docker]"]
-test = ["pytest>=6.2,<7", "pytest-asyncio>=0.16,<0.17"]
+lint = [
+    "ruff~=0.1",
+    "pyright~=1.1",
+    "tierkreis[sc22-example,telemetry,docker,pydantic]",
+]
+test = ["pytest>=6.2,<7", "pytest-asyncio>=0.16,<0.17", "tierkreis[pydantic]"]
 sc22-example = ["numpy>=1.20,<2", "pytket>=1.0"]
 
 typecheck = ["tierkreis_typecheck"]
+
+pydantic = ["pydantic~=1.10"]
 
 [tool.pytest.ini_options]
 markers = ["pytket"]

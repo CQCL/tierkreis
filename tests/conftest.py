@@ -82,6 +82,12 @@ def pyruntime():
     return PyRuntime([main.root])
 
 
+@pytest.fixture(scope="function")
+def pyruntime_function():
+    runtime = PyRuntime([main.root])
+    return runtime
+
+
 @pytest.fixture(scope="session")
 async def client(request, pyruntime) -> AsyncIterator[RuntimeClient]:
     host = request.config.getoption("--host", "")

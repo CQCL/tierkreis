@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import asyncio
 from dataclasses import dataclass
-from typing import Generic, Optional, TypeVar, Union, cast
+from typing import Generic, Optional, TypeVar, cast
 
 from tierkreis import TierkreisGraph
 from tierkreis.client.server_client import RuntimeClient
@@ -126,17 +126,22 @@ class IntStruct(TierkreisStruct):
 
 @dataclass
 class StructWithUnion(TierkreisStruct):
-    x: Union[IntStruct, float]
+    x: IntStruct | float
 
 
 @dataclass
-class UnionOutput(TierkreisStruct):
+class UnionStructOutput(TierkreisStruct):
     value: StructWithUnion
 
 
 @namespace.function()
-async def id_union(x: StructWithUnion) -> UnionOutput:
-    return UnionOutput(x)
+async def id_union_struct(x: StructWithUnion) -> UnionStructOutput:
+    return UnionStructOutput(x)
+
+
+@namespace.function()
+async def id_union(x: int | float) -> float | int:
+    return x
 
 
 if __name__ == "__main__":

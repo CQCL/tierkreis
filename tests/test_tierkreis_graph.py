@@ -3,7 +3,7 @@ from typing import Any, Iterable, Optional
 
 import pytest
 
-from tierkreis.core import Labels, TierkreisGraph
+from tierkreis.core import TierkreisGraph
 from tierkreis.core.tierkreis_graph import (
     FunctionNode,
     NodePort,
@@ -15,6 +15,7 @@ from tierkreis.core.types import (
     IntType,
     StructType,
     TierkreisType,
+    UnionTag,
     VariantType,
     VarType,
 )
@@ -27,7 +28,6 @@ from tierkreis.core.values import (
     TierkreisValue,
     TierkreisVariant,
     VecValue,
-    option_some,
     register_struct_convertible,
 )
 
@@ -107,8 +107,6 @@ def test_value_topython():
     for val in fail_vals:
         assert TierkreisValue.from_python(val).try_autopython() is None
 
-    assert option_some(VecValue([IntValue(3), IntValue(4)])).try_autopython() == [3, 4]
-
 
 def test_value_topython_struct():
     @dataclass
@@ -136,7 +134,7 @@ def test_type_from_python():
     fields = t.shape.content
     tail = fields.pop("tail")
     assert isinstance(tail, VariantType)
-    some = tail.shape.content[Labels.SOME]
+    some = tail.shape.content["__py_union_Foo"]
     assert isinstance(some, VarType) and some.name.startswith("CyclicType")
     assert fields == {"head": IntType()}
 
@@ -150,8 +148,10 @@ def test_type_from_python():
     fields = t.shape.content
     d1 = fields.pop("data1")
     assert isinstance(d1, VariantType)
-    assert d1.shape.content.keys() == frozenset([Labels.SOME, Labels.NONE])
-    assert d1.shape.content[Labels.SOME] == IntType()
+    assert d1.shape.content.keys() == frozenset(
+        [UnionTag.type_tag(int), UnionTag.none_type_tag()]
+    )
+    assert d1.shape.content[UnionTag.type_tag(int)] == IntType()
     assert fields == {"data2": d1}
 
 

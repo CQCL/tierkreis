@@ -50,7 +50,7 @@ from tierkreis.core.tierkreis_graph import (
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.type_inference import infer_graph_types
-from tierkreis.core.types import TypeScheme, UnionTag
+from tierkreis.core.types import TupleLabel, TypeScheme, UnionTag
 from tierkreis.core.utils import graph_from_func, map_vals, rename_ports_graph
 from tierkreis.core.values import (
     TierkreisValue,
@@ -1010,6 +1010,26 @@ def __graph_call__(
     self: TierkreisGraph, *args: ValueSource, **kwargs: ValueSource
 ) -> NodeRef:
     return _build_box(self, Location([]), *args, **kwargs)
+
+
+def UnpackTuple(src: ValueSource, first_n: int) -> Iterator[NodePort]:
+    """Unpack a struct containing python tuple fields, up to the `first_n` fields."""
+    unpack_node = current_builder().add_node_to_graph(
+        FunctionNode(FunctionName("unpack_struct")),
+        struct=src,
+    )
+
+    return (unpack_node[TupleLabel.index_label(i)] for i in range(first_n))
+
+
+def MakeTuple(*args: ValueSource) -> NodePort:
+    """Make a struct from some values, treating them like a python tuple, with
+    member position indices used to generate the field labels."""
+    make_node = current_builder().add_node_to_graph(
+        FunctionNode(FunctionName("make_struct")),
+        **{TupleLabel.index_label(i): v for i, v in enumerate(args)},
+    )
+    return make_node["struct"]
 
 
 # mypy is not happy with assignment to a method

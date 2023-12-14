@@ -553,7 +553,8 @@ class GenericClassical(Serializable):
     n_i: Optional[int]
     n_io: Optional[int]
     name: Optional[str]
-    values: Optional[Union[List[int], List[bool]]]
+    # TODO also support list[bool] using discriminated union
+    values: list[int] | None
     upper: Optional[int]
     lower: Optional[int]
 

@@ -95,7 +95,7 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
 class ConstrainedField:
     foo: float
     bar: pyd.PositiveFloat
-    points: list[float]
+    points: tuple[float, ...]
 
 
 @pyd.dataclasses.dataclass(frozen=True, kw_only=True)
@@ -126,7 +126,7 @@ class ContainsVariant:
 
 @pytest.mark.asyncio
 async def test_pydantic_types(bi, client: RuntimeClient) -> None:
-    constrained = ConstrainedField(foo=1, points=[1.2], bar=2.3)
+    constrained = ConstrainedField(foo=1, points=(1.2,), bar=2.3)
     tk_constrained = StructValue(
         {
             "foo": FloatValue(1.0),

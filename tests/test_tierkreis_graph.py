@@ -24,7 +24,6 @@ from tierkreis.core.values import (
     IncompatiblePyType,
     IntValue,
     MapValue,
-    PairValue,
     TierkreisValue,
     TierkreisVariant,
     VecValue,
@@ -174,9 +173,11 @@ def test_value_topython_map_with_empty():
     tkval = TierkreisValue.from_python(pyval)
     if tkval != MapValue(
         {
-            IntValue(10): PairValue(VecValue([]), VecValue([IntValue(3), IntValue(4)])),
-            IntValue(15): PairValue(
-                VecValue([FloatValue(2.1), FloatValue(3.2)]), VecValue([])
+            IntValue(10): VecValue.from_python(
+                (VecValue([]), VecValue([IntValue(3), IntValue(4)]))
+            ),
+            IntValue(15): VecValue.from_python(
+                (VecValue([FloatValue(2.1), FloatValue(3.2)]), VecValue([]))
             ),
         }
     ):

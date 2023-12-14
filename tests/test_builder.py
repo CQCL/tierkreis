@@ -13,11 +13,13 @@ from tierkreis.builder import (
     If,
     IfElse,
     Input,
+    MakeTuple,
     Match,
     Namespace,
     Output,
     Scope,
     Tag,
+    UnpackTuple,
     ValueSource,
     closure,
     current_builder,
@@ -36,12 +38,7 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisGraph,
 )
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import (
-    IntType,
-    MapType,
-    StringType,
-    VecType,
-)
+from tierkreis.core.types import IntType, MapType, StringType, TierkreisPair, VecType
 from tierkreis.core.utils import map_vals, rename_ports_graph
 from tierkreis.core.values import (
     BoolValue,
@@ -214,11 +211,11 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
         return Output(in_st)
 
     @graph()
-    def func(v1: Input[IntValue], v2: Input[PairValue[IntValue, BoolValue]]) -> Output:
-        fst, scd = bi.unpack_pair(v2)
+    def func(v1: Input[IntValue], v2: Input) -> Output:
+        fst, scd = UnpackTuple(v2, 2)
         other_total = bi.iadd(fst, Const(3))
         dbl = double(bi)
-        _pair_out = bi.make_pair(Const(True), Const("asdf"))
+        _tuple_out = MakeTuple(Const(True), Const("asdf"))
         total = dbl(v1)
 
         quadruple = bi.sequence(Const(dbl), Const(dbl))
@@ -437,7 +434,9 @@ async def test_match(client: RuntimeClient, bi: Namespace):
         return Output(match.nref)
 
     assert (
-        await client.run_graph(match, var=TierkreisVariant("pair", (1.0, 2.0)))
+        await client.run_graph(
+            match, var=TierkreisVariant("pair", TierkreisPair(1.0, 2.0))
+        )
     ) == {"value": VecValue(values=[FloatValue(value=2.0), FloatValue(value=2.0)])}
     assert (
         await client.run_graph(match, var=TierkreisVariant("list", [1.0, 2.0]))
@@ -445,15 +444,15 @@ async def test_match(client: RuntimeClient, bi: Namespace):
 
 
 @pytest.fixture()
-def _pair_builder(bi: Namespace, sig: Signature) -> TierkreisGraph:
+def _tuple_builder(bi: Namespace, sig: Signature) -> TierkreisGraph:
     @dataclass
-    class Pair(TierkreisStruct):
+    class TestPair(TierkreisStruct):
         first: IntValue
         second: StringValue
 
     @graph()
-    def main() -> Output[Pair]:
-        return Output(*bi.unpack_pair(Const((2, "asdf"))))
+    def main() -> Output[TestPair]:
+        return Output(*UnpackTuple(Const((2, "asdf")), 2))
 
     return main
 
@@ -476,40 +475,9 @@ def _if_no_inputs(bi: Namespace, sig: Signature) -> TierkreisGraph:
 @pytest.mark.parametrize(
     "builder,inputs,expected_outputs",
     [
-        # ("_option_builder", {}, {"some": IntValue(30), "none": IntValue(-1)}),
-        ("_pair_builder", {}, {"first": IntValue(2), "second": StringValue("asdf")}),
+        ("_tuple_builder", {}, {"first": IntValue(2), "second": StringValue("asdf")}),
         ("_if_no_inputs", {"pred": BoolValue(True)}, {"value": IntValue(3)}),
         ("_if_no_inputs", {"pred": BoolValue(False)}, {"value": IntValue(5)}),
-        # (
-        #     "match_variant.tksl",
-        #     {"expr": VariantValue("cst", IntValue(5)), "vv": IntValue(67)},
-        #     {"res": IntValue(5)},
-        # ),
-        # (
-        #     "match_variant.tksl",
-        #     {"expr": VariantValue("var", StructValue({})), "vv": IntValue(4)},
-        #     {"res": IntValue(4)},
-        # ),
-        # (
-        #     "match_variant.tksl",
-        #     {
-        #         "expr": VariantValue(
-        #             "sum", StructValue({"a": IntValue(5), "b": IntValue(3)})
-        #         ),
-        #         "vv": IntValue(99),
-        #     },
-        #     {"res": IntValue(8)},
-        # ),
-        # (
-        #     "match_variant.tksl",
-        #     {
-        #         "expr": VariantValue(
-        #             "prod", StructValue({"a": IntValue(5), "b": IntValue(3)})
-        #         ),
-        #         "vv": IntValue(99),
-        #     },
-        #     {"res": IntValue(15)},
-        # ),
     ],
 )
 async def test_run_sample(

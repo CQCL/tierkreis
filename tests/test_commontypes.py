@@ -1,5 +1,9 @@
 # ruff: noqa: E402
+from typing import Type
+
 import pytest
+
+from tierkreis.core.types import MapType, StructType, TierkreisType, VecType
 
 pytket = pytest.importorskip("pytket")
 from pytket._tket.circuit import Circuit
@@ -9,6 +13,7 @@ from pytket.pauli import Pauli, QubitPauliString
 
 import tierkreis.common_types as common
 from tierkreis.common_types import _qps_from_pytket, _qps_to_pytket
+from tierkreis.common_types.circuit import Circuit as CircStruct
 
 
 @pytest.mark.parametrize(
@@ -68,3 +73,19 @@ def test_measurementsetup():
         first_ser = common.MeasurementSetup.from_pytket(m)
         deser = first_ser.to_pytket()
         assert first_ser == common.MeasurementSetup.from_pytket(deser)
+
+
+@pytest.mark.parametrize(
+    "t,expected_tk_ty",
+    [
+        (CircStruct, StructType),
+        (common.MeasurementSetup, StructType),
+        (common.Distribution, MapType),
+        (common.SampledDistribution, StructType),
+        (common.QubitPauliString, VecType),
+        (common.UnitID, StructType),
+    ],
+)
+def test_type_conversions(t: Type, expected_tk_ty: type[TierkreisType]):
+    tk_ty = TierkreisType.from_python(t)
+    assert isinstance(tk_ty, expected_tk_ty)

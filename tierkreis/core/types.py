@@ -5,7 +5,7 @@ from dataclasses import Field, dataclass, field, fields, is_dataclass
 from enum import Enum
 from functools import reduce
 from types import NoneType, UnionType
-from typing import Any, ClassVar, Iterable, Optional, cast
+from typing import Any, ClassVar, Generic, Iterable, Optional, TypeVar, cast
 from uuid import UUID
 
 import betterproto
@@ -87,6 +87,23 @@ class TierkreisType(ABC):
             args = typing.get_args(type_)
             result = VecType(element=TierkreisType.from_python(args[0], visited_types))
         elif type_origin is tuple:
+            args = typing.get_args(type_)
+            if len(args) == 2 and args[1] == ...:
+                # tuple all of one type can be treated as list
+                result = VecType(TierkreisType.from_python(args[0]))
+            else:
+                result = StructType(
+                    shape=Row(
+                        {
+                            TupleLabel.index_label(i): TierkreisType.from_python(
+                                t, visited_types
+                            )
+                            for i, t in enumerate(args)
+                        },
+                    ),
+                    name=type_name,
+                )
+        elif type_origin is TierkreisPair:
             args = typing.get_args(type_)
             result = PairType(
                 first=TierkreisType.from_python(args[0], visited_types),
@@ -257,6 +274,18 @@ class VarType(TierkreisType):
 
     def contained_vartypes(self) -> set[str]:
         return {self.name}
+
+
+First = TypeVar("First")
+Second = TypeVar("Second")
+
+
+@dataclass(frozen=True)
+class TierkreisPair(Generic[First, Second]):
+    """A pair of values that can be converted to/from a Tierkreis Pair type."""
+
+    first: First
+    second: Second
 
 
 @dataclass
@@ -469,6 +498,35 @@ class UnionTag:
     @classmethod
     def none_type_tag(cls) -> str:
         return UnionTag.type_tag(NoneType)
+
+
+@dataclass(frozen=True)
+class TupleLabel:
+    """Generate and parse struct field labels for tuple members."""
+
+    prefix: ClassVar[str] = "__py_tuple_"
+
+    @dataclass
+    class UnexpectedLabel(Exception):
+        """The label does not conform to tuple member format"""
+
+        label: str
+
+    @staticmethod
+    def index_label(idx: int) -> str:
+        """Generate a label for a tuple member at position `idx`"""
+        return f"{TupleLabel.prefix}{idx}"
+
+    @staticmethod
+    def parse_label(s: str) -> int:
+        """Parse a tuple member index from a label string."""
+        if not s.startswith(TupleLabel.prefix):
+            raise TupleLabel.UnexpectedLabel(s)
+        s = s[len(TupleLabel.prefix) :]
+        try:
+            return int(s)
+        except ValueError as e:
+            raise TupleLabel.UnexpectedLabel(s) from e
 
 
 class Constraint(ABC):

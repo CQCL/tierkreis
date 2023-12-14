@@ -10,9 +10,8 @@ from typing import (
     ClassVar,
     Dict,
     Generic,
-    List,
+    Iterable,
     Optional,
-    Tuple,
     TypeVar,
     cast,
     get_args,
@@ -39,7 +38,9 @@ from tierkreis.core.types import (
     Row,
     StringType,
     StructType,
+    TierkreisPair,
     TierkreisType,
+    TupleLabel,
     UnionTag,
     VariantType,
     VarType,
@@ -165,6 +166,12 @@ class TierkreisValue(ABC):
             return option_none
         if isinstance(value, Enum):
             return VariantValue(value.name, StructValue({}))
+        if isinstance(value, tuple):
+            # could potentially constrain length here?
+            if len(set(type(v) for v in value)) == 1:
+                # all of same type - can be Vec
+                return VecValue.from_python(value)
+            return StructValue.from_tuple(value)
         else:
             try:
                 find_subclass = next(
@@ -337,13 +344,13 @@ class FloatValue(TierkreisValue):
 @dataclass(frozen=True)
 class PairValue(Generic[TKVal1, TKVal2], TierkreisValue):
     _proto_name: ClassVar[str] = "pair"
-    _class_pytype: ClassVar[typing.Type] = tuple
+    _class_pytype: ClassVar[typing.Type] = TierkreisPair
     first: TKVal1
     second: TKVal2
 
     @property
     def _instance_pytype(self):
-        return tuple[self.first._instance_pytype, self.second._instance_pytype]
+        return TierkreisPair[self.first._instance_pytype, self.second._instance_pytype]
 
     def to_proto(self) -> pg.Value:
         return pg.Value(
@@ -356,19 +363,19 @@ class PairValue(Generic[TKVal1, TKVal2], TierkreisValue):
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
-        if typing.get_origin(type_) is tuple:
+        if typing.get_origin(type_) is TierkreisPair:
             type_args = typing.get_args(type_)
             first = self.first.to_python(type_args[0])
             second = self.second.to_python(type_args[1])
-            return cast(T, (first, second))
+            return cast(T, TierkreisPair(first, second))
         return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
-        value = cast(Tuple[Any, Any], value)
+        value = cast(TierkreisPair[Any, Any], value)
         return PairValue(
-            TierkreisValue.from_python(value[0]),
-            TierkreisValue.from_python(value[1]),
+            TierkreisValue.from_python(value.first),
+            TierkreisValue.from_python(value.second),
         )
 
     @classmethod
@@ -408,7 +415,7 @@ class VecValue(Generic[TKVal1], TierkreisValue):
     def to_python(self, type_: typing.Type[T]) -> T:
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
-        if typing.get_origin(type_) is list:
+        if typing.get_origin(type_) in (list, tuple):
             type_args = typing.get_args(type_)
             values = [value.to_python(type_args[0]) for value in self.values]
             return cast(T, values)
@@ -417,7 +424,7 @@ class VecValue(Generic[TKVal1], TierkreisValue):
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
         return VecValue(
-            [TierkreisValue.from_python(element) for element in cast(List, value)]
+            [TierkreisValue.from_python(element) for element in cast(Iterable, value)]
         )
 
     @classmethod
@@ -529,6 +536,18 @@ class StructValue(Generic[RowStruct], TierkreisValue):
             k: getattr(self._struct, k) for k in (f.name for f in fields(self._struct))
         }
 
+    @property
+    def _instance_pytype(self):
+        try:
+            # if all the keys are tuple labels, report tuple
+            arg_vals = _labeled_dict_to_tuple(self.values)
+            instance_pytypes = cast(
+                tuple[typing.Type, ...], tuple(v._instance_pytype for _, v in arg_vals)
+            )
+            return tuple[instance_pytypes]  # type: ignore
+        except TupleLabel.UnexpectedLabel:
+            return super()._instance_pytype
+
     def to_proto(self) -> pg.Value:
         return pg.Value(struct=pg.StructValue(map=self.to_proto_dict()))
 
@@ -551,6 +570,11 @@ class StructValue(Generic[RowStruct], TierkreisValue):
 
             return cast(Callable[..., T], type_)(**field_values)
 
+        if typing.get_origin(type_) is tuple:
+            args = typing.get_args(type_)
+            arg_vals = _labeled_dict_to_tuple(self.values)
+            converted = [v.to_python(args[i]) for i, v in arg_vals]
+            return cast(T, tuple(converted))
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
 
@@ -587,6 +611,16 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         )
 
     @classmethod
+    def from_tuple(cls, tup: tuple[Any, ...]) -> "StructValue":
+        """Generate a `StructValue` from a tuple using tuple member indices as labels."""
+        return StructValue(
+            {
+                TupleLabel.index_label(i): TierkreisValue.from_python(v)
+                for i, v in enumerate(tup)
+            }
+        )
+
+    @classmethod
     def from_proto(cls, value: Any) -> "StructValue":
         struct_value = cast(pg.StructValue, value)
         return StructValue(
@@ -604,6 +638,18 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         key_vals = (f"{key}: {val.viz_str()}" for key, val in self.values.items())
 
         return f"Struct{{{', '.join(key_vals)}}}"
+
+
+V = TypeVar("V")
+
+
+def _labeled_dict_to_tuple(labeled_d: dict[str, V]) -> list[tuple[int, V]]:
+    # read tuple indices from dictionary keys
+    arg_vals = [
+        (TupleLabel.parse_label(label), val) for label, val in labeled_d.items()
+    ]
+    arg_vals.sort(key=lambda x: x[0])
+    return arg_vals
 
 
 @dataclass(frozen=True)

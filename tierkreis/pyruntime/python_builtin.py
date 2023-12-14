@@ -20,7 +20,7 @@ from tierkreis.core.protos.tierkreis.v1alpha.signature import FunctionDeclaratio
 from tierkreis.core.python import RuntimeGraph
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
 from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import StarKind
+from tierkreis.core.types import StarKind, TierkreisPair
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import StructValue
 from tierkreis.worker.namespace import Function, Namespace
@@ -316,13 +316,13 @@ namespace.functions["loop"] = Function(
 
 @dataclass
 class _MakePairOut(TierkreisStruct, Generic[a, b]):
-    pair: tuple[a, b]
+    pair: TierkreisPair[a, b]
 
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
 async def make_pair(first: a, second: b) -> _MakePairOut[a, b]:
     "Creates a new pair."
-    return _MakePairOut((first, second))
+    return _MakePairOut(TierkreisPair(first, second))
 
 
 async def make_struct(_, ins: StructValue) -> StructValue:
@@ -624,9 +624,9 @@ class _UnpackPairOut(TierkreisStruct, Generic[a, b]):
 
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
-async def unpack_pair(pair: tuple[a, b]) -> _UnpackPairOut[a, b]:
+async def unpack_pair(pair: TierkreisPair[a, b]) -> _UnpackPairOut[a, b]:
     "Unpacks a pair."
-    return _UnpackPairOut(*pair)
+    return _UnpackPairOut(pair.first, pair.second)
 
 
 async def _unpack_struct(_, ins: StructValue) -> StructValue:

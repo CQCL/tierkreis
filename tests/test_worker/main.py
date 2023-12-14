@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import asyncio
+import base64
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar, cast
 
@@ -142,6 +143,13 @@ async def id_union_struct(x: StructWithUnion) -> UnionStructOutput:
 @namespace.function()
 async def id_union(x: int | float) -> float | int:
     return x
+
+
+@namespace.function(pass_stack=True)
+async def dump_stack(stack: bytes, label: str) -> str:
+    """Returns the stack trace formatted as a Base64 string prefixed with the given label"""
+    stack_str: str = base64.b64encode(stack).decode("ascii")
+    return f"{label} {stack_str}"
 
 
 if __name__ == "__main__":

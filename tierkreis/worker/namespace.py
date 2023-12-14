@@ -43,9 +43,10 @@ tracer = get_tracer(__name__)
 
 @dataclass
 class Function:
-    """Registered python function."""
+    """Registered python function.
+    The second (bytes) argument is an encoded stack-trace."""
 
-    run: Callable[[RuntimeClient, StructValue], Awaitable[StructValue]]
+    run: Callable[[RuntimeClient, bytes, StructValue], Awaitable[StructValue]]
     declaration: FunctionDeclaration
 
 
@@ -160,6 +161,7 @@ class Namespace(Mapping[str, "Namespace"]):
         constraints: Optional[List[Constraint]] = None,
         type_vars: Optional[Dict[Union[str, typing.TypeVar], Kind]] = None,
         callback: bool = False,
+        pass_stack: bool = False,
     ) -> Callable[[Callable], Callable]:
         """Decorator to mark python function as available Namespace."""
 
@@ -179,10 +181,18 @@ class Namespace(Mapping[str, "Namespace"]):
 
             if callback:
                 try:
-                    type_hints.pop("client", None)
-                except IndexError:
+                    type_hints.pop("client")
+                except KeyError:
                     raise ArgumentError(
                         "Functions with callbacks must have an argument 'client'"
+                    )
+
+            if pass_stack:
+                try:
+                    type_hints.pop("stack")
+                except KeyError:
+                    raise ArgumentError(
+                        "Functions asking for stack trace must have an argument 'stack'"
                     )
 
             hint_inputs: Type = (
@@ -209,7 +219,9 @@ class Namespace(Mapping[str, "Namespace"]):
             # Wrap function with input and output conversions
             @wraps(func)
             async def wrapped_func(
-                runtime: RuntimeClient, inputs: StructValue
+                runtime: RuntimeClient,
+                stack_trace: bytes,
+                inputs: StructValue,
             ) -> StructValue:
                 try:
                     with span(tracer, name="decoding inputs to python type"):
@@ -224,11 +236,12 @@ class Namespace(Mapping[str, "Namespace"]):
                 except Exception as error:
                     raise DecodeInputError(str(error)) from error
 
+                if callback:
+                    python_inputs["client"] = runtime
+                if pass_stack:
+                    python_inputs["stack"] = stack_trace
                 try:
-                    if callback:
-                        python_outputs = await func(client=runtime, **python_inputs)
-                    else:
-                        python_outputs = await func(**python_inputs)
+                    python_outputs = await func(**python_inputs)
                 except Exception as error:
                     raise NodeExecutionError(error) from error
 

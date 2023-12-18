@@ -28,6 +28,7 @@ from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.pydantic import map_constrained_number
 from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
+    UNIT_TYPE,
     BoolType,
     FloatType,
     GraphType,
@@ -554,22 +555,24 @@ class StructValue(Generic[RowStruct], TierkreisValue):
     def to_python(self, type_: typing.Type[T]) -> T:
         if is_dataclass(type_):
             dat_fields = fields(type_)
+            types = python_struct_fields(type_)
             field_values = {}
             for field in dat_fields:
                 val = self.values[field.name]
                 if hasattr(field.default, "discriminator"):
                     assert isinstance(val, VariantValue)
-                    var_types = _get_discriminators(field)
+                    var_types = _get_discriminators(field, types[field.name])
                     assert var_types is not None
                     field_type = var_types[val.tag]
                     val = val.value
                 else:
-                    field_type = field.type
+                    field_type = types[field.name]
 
                 field_values[field.name] = val.to_python(field_type)
 
             return cast(Callable[..., T], type_)(**field_values)
-
+        if type_ is NoneType:
+            return cast(T, None)
         if typing.get_origin(type_) is tuple:
             args = typing.get_args(type_)
             arg_vals = _labeled_dict_to_tuple(self.values)
@@ -605,9 +608,12 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         assert is_dataclass(value)
         vals = vars(value)
         dat_fields = fields(value)
-
+        types = python_struct_fields(type(value))
         return StructValue(
-            {field.name: _get_value(vals[field.name], field) for field in dat_fields}
+            {
+                field.name: _get_value(vals[field.name], field, types[field.name])
+                for field in dat_fields
+            }
         )
 
     @classmethod
@@ -750,14 +756,15 @@ def tkvalue_to_tktype(val_cls: typing.Type[TierkreisValue]) -> TierkreisType:
     raise ValueError("Cannot convert value class.")
 
 
-def _get_value(value: Any, field: Field) -> TierkreisValue:
+def _get_value(value: Any, field: Field, field_type: typing.Type) -> TierkreisValue:
     disc = getattr(field.default, "discriminator", None)
     if disc:
         tag = getattr(value, disc)
         assert tag is not None
         return VariantValue(tag, TierkreisValue.from_python(value))
-    typ = field.type
-    if _get_union_args(typ):
+    if _get_union_args(field_type):
+        if value is None:
+            return option_none
         return VariantValue(
             UnionTag.value_type_tag(value), TierkreisValue.from_python(value)
         )
@@ -773,10 +780,12 @@ def val_known_tk_type(tk_type: TierkreisType, value: Any) -> TierkreisValue:
     err = IncompatibleTierkreisType(value, tk_type)
     rec = val_known_tk_type
 
-    def _check_type(expected: typing.Type):
+    def _check_type(expected: typing.Type | tuple[typing.Type, ...]):
         if not isinstance(value, expected):
             raise err
 
+    if value is None and tk_type == UNIT_TYPE:
+        return StructValue({})
     match tk_type:
         case Row(shape) | StructType(shape=Row(shape)):
             assert is_dataclass(value)
@@ -789,8 +798,8 @@ def val_known_tk_type(tk_type: TierkreisType, value: Any) -> TierkreisValue:
             _check_type(bool)
             return BoolValue.from_python(value)
         case FloatType():
-            _check_type(float)
-            return FloatValue.from_python(value)
+            _check_type((float, int))  # promoting int to float is ok
+            return FloatValue.from_python(float(value))
         case StringType():
             _check_type(str)
             return StringValue.from_python(value)

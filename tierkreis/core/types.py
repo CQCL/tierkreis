@@ -1,4 +1,5 @@
 import inspect
+import re
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import Field, dataclass, field, fields, is_dataclass
@@ -370,7 +371,7 @@ class Row(TierkreisType):
             types = python_struct_fields(type_)
             return Row(
                 content={
-                    f.name: _from_disc_field(f, visited_types)
+                    f.name: _from_disc_field(f, types[f.name], visited_types)
                     if hasattr(f.default, "discriminator")
                     else TierkreisType.from_python(types[f.name], visited_types)
                     for f in dat_fields
@@ -474,6 +475,8 @@ class VariantType(TierkreisType):
 class UnionTag:
     prefix: ClassVar[str] = "__py_union_"
 
+    normalize_pattern: re.Pattern = re.compile(r"(?<!^)(?=[A-Z])")
+
     @dataclass
     class UnexpectedTag(Exception):
         tag: str
@@ -482,14 +485,19 @@ class UnionTag:
     def parse_type(s: str, types: Iterable[typing.Type]) -> typing.Type:
         if not s.startswith(UnionTag.prefix):
             raise UnionTag.UnexpectedTag(s)
-        s = s[len(UnionTag.prefix) :]
         # will raise StopIteration if the substring does not match the __name__
         # of any type in args
-        return next(t for t in types if t.__name__ == s)
+        return next(t for t in types if UnionTag.type_tag(t) == s)
 
     @staticmethod
     def type_tag(type_: typing.Type) -> str:
-        return UnionTag.prefix + type_.__name__
+        # convert names to snake case to avoid mismatch between `list` vs.
+        # `List` etc.
+
+        return (
+            UnionTag.prefix
+            + UnionTag.normalize_pattern.sub("_", str(type_.__name__)).lower()
+        )
 
     @staticmethod
     def value_type_tag(value: Any) -> str:
@@ -637,11 +645,14 @@ class TypeScheme:
 UNIT_TYPE = StructType(Row())
 
 
-def _get_discriminators(field: Field) -> Optional[dict[str, typing.Type]]:
+def _get_discriminators(
+    field: Field,
+    field_type: typing.Type,
+) -> Optional[dict[str, typing.Type]]:
     """If a dataclass field is a discriminated union find the map from tag name
     to variant type."""
     disc = getattr(field.default, "discriminator", None)
-    union_args = _get_union_args(field.type)
+    union_args = _get_union_args(field_type)
     if disc is None or union_args is None:
         return None
 
@@ -655,13 +666,15 @@ def _get_discriminators(field: Field) -> Optional[dict[str, typing.Type]]:
 
 
 def _from_disc_field(
-    field: Field, visited_types: Optional[dict[typing.Type, TierkreisType]]
+    field: Field,
+    field_type: typing.Type,
+    visited_types: Optional[dict[typing.Type, TierkreisType]],
 ) -> TierkreisType:
     """If a dataclass field is a discriminated union, map it to a variant type,
     else compute it's type normally."""
-    var_row = _get_discriminators(field)
+    var_row = _get_discriminators(field, field_type)
     if var_row is None:
-        return TierkreisType.from_python(field.type, visited_types)
+        return TierkreisType.from_python(field_type, visited_types)
 
     return VariantType(
         Row({k: TierkreisType.from_python(v) for k, v in var_row.items()})

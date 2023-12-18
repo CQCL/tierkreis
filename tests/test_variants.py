@@ -4,7 +4,9 @@ from typing import Literal, Union
 
 import pydantic as pyd
 import pytest
-from test_worker.main import IntStruct
+from test_worker.main import (
+    IntStruct,
+)
 
 from tierkreis.builder import Const, Output, UnionConst, graph
 from tierkreis.client.runtime_client import RuntimeClient
@@ -19,6 +21,7 @@ from tierkreis.core.values import (
     ToPythonFailure,
     VariantValue,
     VecValue,
+    option_none,
     register_struct_convertible,
 )
 
@@ -61,7 +64,7 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
     assert a_var.tag == UnionTag.prefix + "float"
     b_var = b.values["x"]
     assert isinstance(b_var, VariantValue)
-    assert b_var.tag == UnionTag.prefix + "IntStruct"
+    assert b_var.tag == UnionTag.prefix + "int_struct"
 
     assert a.to_python(StructWithUnion) == a_py
     assert b.to_python(StructWithUnion) == b_py
@@ -94,7 +97,7 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
 @pyd.dataclasses.dataclass(frozen=True, kw_only=True)
 class ConstrainedField:
     foo: float
-    bar: pyd.PositiveFloat
+    bar: pyd.PositiveFloat | None = None
     points: tuple[float, ...]
 
 
@@ -126,12 +129,12 @@ class ContainsVariant:
 
 @pytest.mark.asyncio
 async def test_pydantic_types(bi, client: RuntimeClient) -> None:
-    constrained = ConstrainedField(foo=1, points=(1.2,), bar=2.3)
+    constrained = ConstrainedField(foo=1, points=(1.2,))
     tk_constrained = StructValue(
         {
             "foo": FloatValue(1.0),
             "points": VecValue([FloatValue(1.2)]),
-            "bar": FloatValue(2.3),
+            "bar": option_none,
         }
     )
 

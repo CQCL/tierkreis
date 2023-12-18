@@ -133,7 +133,7 @@ def test_type_from_python():
     fields = t.shape.content
     tail = fields.pop("tail")
     assert isinstance(tail, VariantType)
-    some = tail.shape.content["__py_union_Foo"]
+    some = tail.shape.content["__py_union_foo"]
     assert isinstance(some, VarType) and some.name.startswith("CyclicType")
     assert fields == {"head": IntType()}
 

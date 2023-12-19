@@ -372,7 +372,7 @@ class Row(TierkreisType):
             return Row(
                 content={
                     f.name: _from_disc_field(f, types[f.name], visited_types)
-                    if hasattr(f.default, "discriminator")
+                    if getattr(f.default, "discriminator", None)
                     else TierkreisType.from_python(types[f.name], visited_types)
                     for f in dat_fields
                 }

@@ -127,6 +127,12 @@ class ContainsVariant:
     variant: ComplexVariant | SimpleVariant = pyd.Field(discriminator="disc_name")
 
 
+@pyd.dataclasses.dataclass(frozen=True, kw_only=True)
+class NonInitPydField:
+    xl: int = pyd.Field(default=0)
+    non_init: int = field(default=0, init=False)
+
+
 @pytest.mark.asyncio
 async def test_pydantic_types(bi, client: RuntimeClient) -> None:
     constrained = ConstrainedField(foo=1, points=(1.2,))
@@ -178,6 +184,14 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         }
     )
 
+    da = NonInitPydField()
+    tk_da = StructValue(
+        {
+            "xl": IntValue(0),
+            "non_init": IntValue(0),
+        }
+    )
+
     samples = [
         (ConstrainedField, constrained, tk_constrained),
         (SimpleVariant, simple, tk_simple),
@@ -190,6 +204,7 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         (ComplexVariant, cmplex, tk_cmplex),
         (ContainsVariant, contains, tk_contains),
         (ContainsVariant, contains_alt, tk_contains_alt),
+        (NonInitPydField, da, tk_da),
     ]
     for py_type, py_val, tk_val in samples:
         _ = TierkreisType.from_python(py_type)

@@ -557,9 +557,10 @@ class StructValue(Generic[RowStruct], TierkreisValue):
             dat_fields = fields(type_)
             types = python_struct_fields(type_)
             field_values = {}
+            non_init_values = {}
             for field in dat_fields:
                 val = self.values[field.name]
-                if hasattr(field.default, "discriminator"):
+                if getattr(field.default, "discriminator", None):
                     assert isinstance(val, VariantValue)
                     var_types = _get_discriminators(field, types[field.name])
                     assert var_types is not None
@@ -567,10 +568,17 @@ class StructValue(Generic[RowStruct], TierkreisValue):
                     val = val.value
                 else:
                     field_type = types[field.name]
+                py_val = val.to_python(field_type)
+                if field.init:
+                    # field can be set via __init__ method
+                    field_values[field.name] = py_val
+                else:
+                    non_init_values[field.name] = py_val
 
-                field_values[field.name] = val.to_python(field_type)
-
-            return cast(Callable[..., T], type_)(**field_values)
+            d_cls = cast(Callable[..., T], type_)(**field_values)
+            for k, v in non_init_values.items():
+                d_cls.__dict__[k] = v
+            return d_cls
         if type_ is NoneType:
             return cast(T, None)
         if typing.get_origin(type_) is tuple:

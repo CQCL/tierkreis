@@ -196,7 +196,7 @@ class GraphBuilder(AbstractContextManager):
         __traceback: Optional[TracebackType],
     ) -> Optional[bool]:
         _reset_state(self._state_token)
-        return super().__exit__(__exc_type, __exc_value, __traceback)
+        return None
 
     def _inner_capture(self, incoming: ValueSource) -> Optional[ValueSource]:
         source_graph = _source_graph(incoming)

@@ -38,7 +38,7 @@ telemetry = [
 commontypes = ["pytket>=1.0"]
 lint = [
     "ruff~=0.1",
-    "pyright~=1.1",
+    "pyright==1.1.345",
     "tierkreis[sc22-example,telemetry,docker,pydantic]",
 ]
 test = ["pytest>=6.2,<7", "pytest-asyncio>=0.16,<0.17", "tierkreis[pydantic]"]

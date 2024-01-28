@@ -164,13 +164,13 @@ async def test_idpy(client: RuntimeClient, idpy_graph: TierkreisGraph):
 @pytest.mark.asyncio
 async def test_fail_node(client: RuntimeClient) -> None:
     tg = TierkreisGraph()
-    tg.add_func("python_nodes::fail")
+    tg.add_func("python_nodes::fail", value=tg.input["arg"])
 
     exception: Type[Exception] = (
         NodeExecutionError if isinstance(client, PyRuntime) else RuntimeError
     )
     with pytest.raises(exception) as err:
-        await client.run_graph(tg)
+        await client.run_graph(tg, arg=3)
 
     assert "fail node was run" in str(err.value)
 

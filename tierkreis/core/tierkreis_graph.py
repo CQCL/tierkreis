@@ -367,7 +367,7 @@ class TierkreisGraph:
         """
 
         graph = copy.deepcopy(self)
-        deleted_nodes = []
+        deleted_nodes: list[int] = []
         # Iterate through self.nodes rather than graph.nodes so we can mutate latter
         for node_idx, node in enumerate(self.nodes()):
             if not isinstance(node, BoxNode):
@@ -399,14 +399,7 @@ class TierkreisGraph:
                     inserted_outputs[edge.source.port], edge.target, edge.type_
                 )
         if deleted_nodes:
-            graph._graph.remove_nodes_from(deleted_nodes)
-            # shift node indices to account for missing nodes
-            # without this step indices will not be contiguous
-            nx.relabel_nodes(
-                graph._graph,
-                {n: i for i, n in enumerate(sorted(graph._graph.nodes()))},
-                copy=False,
-            )
+            graph.remove_nodes(deleted_nodes)
 
         return graph
 
@@ -459,6 +452,25 @@ class TierkreisGraph:
         )
 
         return self._to_tkedge(edge_data)
+
+    def remove_edge(self, edge: TierkreisEdge):
+        assert edge.source.node_ref.graph is self
+        assert edge.target.node_ref.graph is self
+        self._graph.remove_edge(
+            edge.source.node_ref.idx,
+            edge.target.node_ref.idx,
+            (edge.source.port, edge.target.port),
+        )
+
+    def remove_nodes(self, nodes: Iterable[int]):
+        self._graph.remove_nodes_from(nodes)
+        # shift node indices to account for missing nodes
+        # without this step indices will not be contiguous
+        nx.relabel_nodes(
+            self._graph,
+            {n: i for i, n in enumerate(sorted(self._graph.nodes()))},
+            copy=False,
+        )
 
     def annotate_input(
         self, input_port: str, edge_type: Optional[Union[Type, TierkreisType]]

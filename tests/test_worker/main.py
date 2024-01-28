@@ -70,13 +70,8 @@ async def id_delay(inputs: IdDelayInputs[A]) -> IdDelayOutputs[A]:
     return IdDelayOutputs(value=inputs.value)
 
 
-@dataclass
-class FailOutput(TierkreisStruct):
-    pass
-
-
-@namespace.function()
-async def fail() -> FailOutput:
+@namespace.function(type_vars={A: StarKind()})
+async def fail(value: A) -> A:
     raise RuntimeError("fail node was run")
 
 

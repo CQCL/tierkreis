@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import operator
-from dataclasses import dataclass
 from functools import reduce
 from typing import Callable, Dict, List
 
@@ -54,11 +53,6 @@ SampledDistribution = namespace.add_named_struct(
 )
 
 
-@dataclass
-class CircArg:
-    value: CircStruct
-
-
 circ_type = TierkreisType.from_python(CircStruct)
 
 
@@ -71,15 +65,15 @@ def _dump_circstruct(circ: Circuit) -> CircStruct:
 
 
 @namespace.function()
-async def load_qasm(qasm: str) -> CircArg:
+async def load_qasm(qasm: str) -> CircStruct:
     """Load a qasm string in to a circuit."""
-    return CircArg(_dump_circstruct(circuit_from_qasm_str(qasm)))
+    return _dump_circstruct(circuit_from_qasm_str(qasm))
 
 
 @namespace.function()
-async def load_circuit_json(json_str: str) -> CircArg:
+async def load_circuit_json(json_str: str) -> CircStruct:
     """Load a json string in to a circuit."""
-    return CircArg(_dump_circstruct(Circuit.from_dict(json.loads(json_str))))
+    return _dump_circstruct(Circuit.from_dict(json.loads(json_str)))
 
 
 @namespace.function()
@@ -142,11 +136,11 @@ async def z_expectation(dist: SampledDistribution) -> float:
 @namespace.function()
 async def substitute_symbols(
     circ: CircStruct, symbs: list[str], params: list[float]
-) -> CircArg:
+) -> CircStruct:
     # TODO use Dict[str, float] once there are make/unmake map builtins0
     tkcirc = _load_circstruct(circ)
     tkcirc.symbol_substitution({Symbol(key): val for key, val in zip(symbs, params)})
-    return CircArg(_dump_circstruct(tkcirc))
+    return _dump_circstruct(tkcirc)
 
 
 if __name__ == "__main__":

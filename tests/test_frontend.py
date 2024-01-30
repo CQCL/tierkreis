@@ -9,7 +9,6 @@ from tierkreis import TierkreisGraph
 from tierkreis.client import RuntimeClient
 from tierkreis.core.graphviz import _merge_copies
 from tierkreis.core.tierkreis_graph import FunctionNode
-from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.utils import graph_from_func
 from tierkreis.core.values import FloatValue, VariantValue
 from tierkreis.pyruntime import PyRuntime
@@ -121,7 +120,7 @@ async def test_tag(client: RuntimeClient):
 
 
 @dataclass
-class NestedStruct(TierkreisStruct):
+class NestedStruct:
     s: List[int]
     a: Tuple[int, bool]
     b: Optional[str]
@@ -129,7 +128,7 @@ class NestedStruct(TierkreisStruct):
 
 
 @dataclass
-class TstStruct(TierkreisStruct):
+class TstStruct:
     x: int
     y: bool
     m: Dict[int, int]

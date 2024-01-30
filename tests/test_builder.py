@@ -37,8 +37,14 @@ from tierkreis.core.tierkreis_graph import (
     GraphValue,
     TierkreisGraph,
 )
-from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import IntType, MapType, StringType, TierkreisPair, VecType
+from tierkreis.core.types import (
+    IntType,
+    MapType,
+    StringType,
+    TierkreisPair,
+    UnpackRow,
+    VecType,
+)
 from tierkreis.core.utils import map_vals, rename_ports_graph
 from tierkreis.core.values import (
     BoolValue,
@@ -131,7 +137,7 @@ def _maps_graph() -> TierkreisGraph:
 @pytest.fixture()
 def _maps_graph_builder(bi) -> TierkreisGraph:
     @dataclass
-    class Mapout(TierkreisStruct):
+    class Mapout(UnpackRow):
         mp: MapValue[IntValue, StringValue]
         vl: StringValue
 
@@ -202,7 +208,7 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
         return Output(bi.iadd(x, Const(5)))
 
     @dataclass
-    class Point(TierkreisStruct):
+    class Point:
         p1: FloatValue
         p2: IntValue
 
@@ -276,7 +282,7 @@ async def test_double(client: RuntimeClient, bi: Namespace):
 @pytest.mark.asyncio
 async def test_copy(client: RuntimeClient, bi: Namespace):
     @dataclass
-    class CopyOut(TierkreisStruct):
+    class CopyOut(UnpackRow):
         a: Any
         b: IntValue
 
@@ -417,7 +423,7 @@ async def test_loop(client: RuntimeClient, bi: Namespace):
 @pytest.mark.asyncio
 async def test_match(client: RuntimeClient, bi: Namespace):
     @dataclass
-    class _Vdict(TierkreisStruct):
+    class _Vdict:
         list: VecValue[FloatValue]
         pair: PairValue[FloatValue, FloatValue]
 
@@ -446,7 +452,7 @@ async def test_match(client: RuntimeClient, bi: Namespace):
 @pytest.fixture()
 def _tuple_builder(bi: Namespace, sig: Signature) -> TierkreisGraph:
     @dataclass
-    class TestPair(TierkreisStruct):
+    class TestPair(UnpackRow):
         first: IntValue
         second: StringValue
 
@@ -672,7 +678,7 @@ async def test_bad_annotations() -> None:
 @pytest.mark.asyncio
 async def test_box_order(bi: Namespace, sig: Signature) -> None:
     @dataclass
-    class TestOut(TierkreisStruct):
+    class TestOut(UnpackRow):
         first: IntValue
         lst: VecValue[PairValue[IntValue, StringValue]]
 

@@ -1,7 +1,6 @@
 import asyncio
 import json
 import sys
-from pathlib import Path
 from typing import Any, Optional
 
 from grpclib.client import Channel
@@ -31,10 +30,10 @@ from tierkreis.client.server_client import ServerRuntime
 
 def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
     if len(args) == 0:
+        import sc22_worker.main
+
         import pytket_worker.main  # type: ignore
         from tierkreis.pyruntime import PyRuntime
-
-        import sc22_worker.main
 
         return PyRuntime(
             [

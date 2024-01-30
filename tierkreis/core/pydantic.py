@@ -1,7 +1,7 @@
 import inspect
 import warnings
 from importlib.util import find_spec
-from typing import Type
+from typing import Any, ParamSpec, Type
 
 try:
     _PYDANTIC = (find_spec("pydantic")) is not None
@@ -13,26 +13,35 @@ class PydanticNotInstalled(ImportError):
     pass
 
 
-def map_constrained_number(type_: Type) -> Type | None:
-    """If the type is a pydantic constrained version of a type Tierkreis can
-    handle, return the base type.
-    """
-    if not _PYDANTIC:
-        warnings.warn(
-            "Automatic handling of pydantic objects requires"
-            " pydantic to be installed, with the optional 'pydantic' feature."
-        )
-        return None
-    else:
+def _get_pyd():
+    if _PYDANTIC:
         import pydantic as pyd
 
-    if not inspect.isclass(type_):
-        return None
+        return pyd
 
-    for con_ty, base_ty in [
-        (pyd.ConstrainedInt, int),
-        (pyd.ConstrainedFloat, float),
-        (pyd.ConstrainedStr, str),
-    ]:
-        if issubclass(type_, con_ty):
-            return base_ty
+    warnings.warn(
+        "Automatic handling of pydantic objects requires"
+        " pydantic to be installed, with the optional 'pydantic' feature."
+    )
+    return None
+
+
+def _is_base_model(type_: Type | ParamSpec) -> bool:
+    pyd = _get_pyd()
+    if pyd is None:
+        raise RuntimeError("Can't check without pydantic installed.")
+
+    if inspect.isclass(type_):
+        try:
+            return issubclass(type_, pyd.BaseModel)
+        except TypeError:
+            return False
+    return False
+
+
+def _is_base_model_instance(value: Any) -> bool:
+    pyd = _get_pyd()
+    if pyd is None:
+        raise RuntimeError("Can't check without pydantic installed.")
+
+    return isinstance(value, pyd.BaseModel)

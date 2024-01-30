@@ -13,7 +13,6 @@ from tierkreis.core.function import FunctionDeclaration, FunctionName
 from tierkreis.core.signature import Namespace as SigNamespace
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location
-from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
     Constraint,
     GraphType,
@@ -23,10 +22,10 @@ from tierkreis.core.types import (
     StructType,
     TierkreisType,
     TypeScheme,
+    UnpackRow,
 )
 from tierkreis.core.values import (
     StructValue,
-    register_struct_convertible,
     val_known_tk_type,
 )
 from tierkreis.worker.exceptions import (
@@ -73,9 +72,7 @@ def _type_var_to_name(type_var: Union[str, typing.TypeVar]) -> str:
 
 def _check_tkstruct_hint(hint: Type) -> bool:
     tk_cls = _get_base_tkstruct(hint)
-    return (
-        tk_cls is not None and isclass(tk_cls) and issubclass(tk_cls, TierkreisStruct)
-    )
+    return tk_cls is not None and isclass(tk_cls) and issubclass(tk_cls, UnpackRow)
 
 
 class Namespace(Mapping[str, "Namespace"]):
@@ -119,7 +116,6 @@ class Namespace(Mapping[str, "Namespace"]):
         return type_
 
     def add_named_struct(self, name, type_: Type) -> Type:
-        register_struct_convertible(type_)
         tk_type = TierkreisType.from_python(type_)
         if not isinstance(tk_type, StructType):
             raise ValueError(f"{type_} cannot be converted to a Tierkreis Struct Type.")

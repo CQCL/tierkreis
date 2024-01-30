@@ -10,7 +10,6 @@ from test_worker.main import (
 
 from tierkreis.builder import Const, Output, UnionConst, graph
 from tierkreis.client.runtime_client import RuntimeClient
-from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import TierkreisType, UnionTag
 from tierkreis.core.values import (
     FloatValue,
@@ -22,7 +21,6 @@ from tierkreis.core.values import (
     VariantValue,
     VecValue,
     option_none,
-    register_struct_convertible,
 )
 
 
@@ -38,7 +36,7 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
     assert fv.to_python(int | float) == 2.3
 
     @dataclass
-    class StructWithUnion(TierkreisStruct):
+    class StructWithUnion:
         # redefine struct with Union[] syntax here to test both
         # (alongside A | B syntax)
         x: Union[IntStruct, float]
@@ -58,7 +56,6 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
 
     assert isinstance(a, StructValue)
     assert isinstance(b, StructValue)
-
     a_var = a.values["x"]
     assert isinstance(a_var, VariantValue)
     assert a_var.tag == UnionTag.prefix + "float"
@@ -76,7 +73,7 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
             _ = struct.to_python(StructWithUnion)
 
     @dataclass
-    class AmbiguousUnion(TierkreisStruct):
+    class AmbiguousUnion:
         x: Union[list[int], list[bool]]
 
     with pytest.raises(ValueError, match="unique names"):
@@ -120,8 +117,7 @@ class EnumExample(Enum):
     Second = "Second"
 
 
-@pyd.dataclasses.dataclass(frozen=True, kw_only=True)
-class ContainsVariant:
+class ContainsVariant(pyd.BaseModel):
     n: int
     enum: EnumExample
     variant: ComplexVariant | SimpleVariant = pyd.Field(discriminator="disc_name")
@@ -131,6 +127,19 @@ class ContainsVariant:
 class NonInitPydField:
     xl: int = pyd.Field(default=0)
     non_init: int = field(default=0, init=False)
+
+
+class Model(pyd.BaseModel):
+    x: int
+    y: NonInitPydField
+
+
+class AnnotatedWithUnion(pyd.BaseModel):
+    un: pyd.PositiveFloat | int
+
+
+class AnnotatedInList(pyd.BaseModel):
+    ul: list[pyd.PositiveFloat]
 
 
 @pytest.mark.asyncio
@@ -192,6 +201,24 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         }
     )
 
+    tk_model = StructValue(
+        {
+            "x": IntValue(1),
+            "y": tk_da,
+        }
+    )
+
+    tk_list_model = StructValue(
+        {
+            "ul": VecValue([FloatValue(1.2)]),
+        }
+    )
+
+    tk_union_model = StructValue(
+        {
+            "un": VariantValue(UnionTag.type_tag(int), IntValue(1)),
+        }
+    )
     samples = [
         (ConstrainedField, constrained, tk_constrained),
         (SimpleVariant, simple, tk_simple),
@@ -205,10 +232,12 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         (ContainsVariant, contains, tk_contains),
         (ContainsVariant, contains_alt, tk_contains_alt),
         (NonInitPydField, da, tk_da),
+        (Model, Model(x=1, y=da), tk_model),
+        (AnnotatedInList, AnnotatedInList(ul=[1.2]), tk_list_model),
+        (AnnotatedWithUnion, AnnotatedWithUnion(un=1), tk_union_model),
     ]
     for py_type, py_val, tk_val in samples:
         _ = TierkreisType.from_python(py_type)
-        register_struct_convertible(py_type)
         tv = TierkreisValue.from_python(py_val)
         assert tv == tk_val
         assert tv.to_python(py_type) == py_val

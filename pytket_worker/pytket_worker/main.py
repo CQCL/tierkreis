@@ -27,7 +27,6 @@ from tierkreis.common_types.circuit import (
     UnitID,
 )
 from tierkreis.common_types.circuit import Circuit as CircStruct
-from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import TierkreisType
 from tierkreis.worker.namespace import Namespace
 from tierkreis.worker.prelude import start_worker_server
@@ -56,7 +55,7 @@ SampledDistribution = namespace.add_named_struct(
 
 
 @dataclass
-class CircArg(TierkreisStruct):
+class CircArg:
     value: CircStruct
 
 

@@ -15,7 +15,7 @@ A = TypeVar("A")
 CandRecord = tuple[list[float], float]
 
 # @dataclass(frozen=True)
-# class CandRecord(TierkreisStruct):
+# class CandRecord():
 #     params: list[float]
 #     score: float
 

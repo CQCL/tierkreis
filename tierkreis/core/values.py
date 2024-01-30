@@ -12,6 +12,7 @@ from typing import (
     Generic,
     Iterable,
     Optional,
+    Protocol,
     TypeVar,
     cast,
     get_args,
@@ -25,8 +26,6 @@ import betterproto
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core import types as TKType
 from tierkreis.core.internal import python_struct_fields
-from tierkreis.core.pydantic import map_constrained_number
-from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.types import (
     UNIT_TYPE,
     BoolType,
@@ -49,6 +48,7 @@ from tierkreis.core.types import (
     _extract_literal_type,
     _get_discriminators,
     _get_union_args,
+    _is_annotated,
     _is_enum,
 )
 
@@ -57,23 +57,12 @@ TKVal1 = TypeVar("TKVal1", bound="TierkreisValue")
 TKVal2 = TypeVar("TKVal2", bound="TierkreisValue")
 
 
-def _check_registered(value: Any, msg: str) -> str:
-    value_type = type(value)
-    if is_dataclass(value_type) and not issubclass(value_type, TierkreisStruct):
-        msg += (
-            f". Try calling {register_struct_convertible.__name__}"
-            f" with its type ({value_type})."
-        )
-    return msg
-
-
 @dataclass
 class IncompatiblePyType(Exception):
     value: Any
 
     def __str__(self) -> str:
-        msg = f"Could not convert python value to tierkreis value: {self.value}"
-        return _check_registered(self.value, msg)
+        return f"Could not convert python value to tierkreis value: {self.value}"
 
 
 @dataclass
@@ -82,11 +71,10 @@ class IncompatibleTierkreisType(Exception):
     tk_type: TierkreisType
 
     def __str__(self) -> str:
-        msg = (
+        return (
             f"Could not convert python value: {self.value}, "
             + f"to Tierkreis type: {self.tk_type}"
         )
-        return _check_registered(self.value, msg)
 
 
 @dataclass
@@ -140,7 +128,7 @@ class TierkreisValue(ABC):
         """
         if inner_type := _extract_literal_type(type_):
             return self.to_python(inner_type)
-        if inner_type := map_constrained_number(type_):
+        if inner_type := _is_annotated(type_):
             return self.to_python(inner_type)
         if args := _get_union_args(type_):
             # expected type is a union so try converting to each and return the
@@ -174,14 +162,15 @@ class TierkreisValue(ABC):
                 return VecValue.from_python(value)
             return StructValue.from_tuple(value)
         else:
-            try:
-                find_subclass = next(
+            find_subclass = next(
+                (
                     tktype
                     for pytype, tktype in cls._pytype_map.items()
-                    if pytype is not Optional and isinstance(value, pytype)
-                )
-            except StopIteration as e:
-                raise IncompatiblePyType(value) from e
+                    if pytype not in (Optional, None) and isinstance(value, pytype)
+                ),
+                StructValue,
+            )
+
         return find_subclass.from_python(value)
 
     def try_autopython(self) -> Optional[Any]:
@@ -197,19 +186,6 @@ class TierkreisValue(ABC):
             return self.to_python(self._instance_pytype)
         except ToPythonFailure as _:
             return None
-
-
-def register_struct_convertible(struct_class: typing.Type):
-    """Instructs subsequent calls of TierkreisValue.from_python to convert
-    instances of the supplied class (which must be a dataclass) into StructValues.
-    Otherwise, such conversion is only applied to subclasses of TierkreisStruct."""
-    if is_dataclass(struct_class):
-        TierkreisValue._pytype_map[struct_class] = StructValue
-
-    elif _is_enum(struct_class):
-        TierkreisValue._pytype_map[struct_class] = VariantValue
-    else:
-        raise ValueError("Can only convert dataclasses")
 
 
 @dataclass(frozen=True)
@@ -512,18 +488,20 @@ class MapValue(Generic[TKVal1, TKVal2], TierkreisValue):
         return f"{{{', '.join(entries)})}}"
 
 
-RowStruct = TypeVar("RowStruct", bound=TierkreisStruct)
+class DataclassInstance(Protocol):
+    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
+
+
+RowStruct = TypeVar("RowStruct", bound=DataclassInstance)
 
 
 class StructValue(Generic[RowStruct], TierkreisValue):
     _proto_name: ClassVar[str] = "struct"
-    _class_pytype: ClassVar[typing.Type] = TierkreisStruct
+    _class_pytype = None
     _struct: RowStruct
 
     def __init__(self, values: dict[str, TierkreisValue]) -> None:
-        __AnonStruct = make_dataclass(
-            "__AnonStruct", values.keys(), bases=(TierkreisStruct,)
-        )
+        __AnonStruct = make_dataclass("__AnonStruct", values.keys())
         self._struct = __AnonStruct(**values)
 
     def __eq__(self, __o: object) -> bool:
@@ -553,32 +531,6 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         return pg.Value(struct=pg.StructValue(map=self.to_proto_dict()))
 
     def to_python(self, type_: typing.Type[T]) -> T:
-        if is_dataclass(type_):
-            dat_fields = fields(type_)
-            types = python_struct_fields(type_)
-            field_values = {}
-            non_init_values = {}
-            for field in dat_fields:
-                val = self.values[field.name]
-                if getattr(field.default, "discriminator", None):
-                    assert isinstance(val, VariantValue)
-                    var_types = _get_discriminators(field, types[field.name])
-                    assert var_types is not None
-                    field_type = var_types[val.tag]
-                    val = val.value
-                else:
-                    field_type = types[field.name]
-                py_val = val.to_python(field_type)
-                if field.init:
-                    # field can be set via __init__ method
-                    field_values[field.name] = py_val
-                else:
-                    non_init_values[field.name] = py_val
-
-            d_cls = cast(Callable[..., T], type_)(**field_values)
-            for k, v in non_init_values.items():
-                d_cls.__dict__[k] = v
-            return d_cls
         if type_ is NoneType:
             return cast(T, None)
         if typing.get_origin(type_) is tuple:
@@ -590,17 +542,30 @@ class StructValue(Generic[RowStruct], TierkreisValue):
             return cast(T, self)
 
         type_origin = typing.get_origin(type_) or type_
+        class_fields = python_struct_fields(type_origin)
+        field_values = {}
+        non_init_values = {}
+        for field in class_fields:
+            val = self.values[field.name]
+            if field.discriminant is not None:
+                assert isinstance(val, VariantValue)
+                var_types = _get_discriminators(field.type_, field.discriminant)
+                assert var_types is not None
+                field_type = var_types[val.tag]
+                val = val.value
+            else:
+                field_type = field.type_
 
-        if TierkreisStruct in type_origin.__bases__:
-            field_values = {}
-            for field_name, field_type in python_struct_fields(type_).items():
-                if field_name not in self.values:
-                    raise ValueError(f"Missing field {field_name} in struct.")
-                field_values[field_name] = self.values[field_name].to_python(field_type)
-
-            return cast(Callable[..., T], type_origin)(**field_values)
-
-        return super().to_python(type_)
+            py_val = val.to_python(field_type)
+            if field.init:
+                # field can be set via __init__ method
+                field_values[field.name] = py_val
+            else:
+                non_init_values[field.name] = py_val
+        d_cls = cast(Callable[..., T], type_)(**field_values)
+        for k, v in non_init_values.items():
+            d_cls.__dict__[k] = v
+        return d_cls
 
     @staticmethod
     def from_proto_dict(values: dict[str, pg.Value]) -> "StructValue":
@@ -612,15 +577,16 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         return {name: value.to_proto() for name, value in self.values.items()}
 
     @classmethod
-    def from_python(cls, value: TierkreisStruct) -> "StructValue":
-        assert is_dataclass(value)
-        vals = vars(value)
-        dat_fields = fields(value)
-        types = python_struct_fields(type(value))
+    def from_python(cls, value: Any) -> "StructValue":
+        class_fields = python_struct_fields(type(value))
         return StructValue(
             {
-                field.name: _get_value(vals[field.name], field, types[field.name])
-                for field in dat_fields
+                field.name: _get_value(
+                    getattr(value, field.name),
+                    field.type_,
+                    field.discriminant,
+                )
+                for field in class_fields
             }
         )
 
@@ -764,13 +730,12 @@ def tkvalue_to_tktype(val_cls: typing.Type[TierkreisValue]) -> TierkreisType:
     raise ValueError("Cannot convert value class.")
 
 
-def _get_value(value: Any, field: Field, field_type: typing.Type) -> TierkreisValue:
-    disc = getattr(field.default, "discriminator", None)
+def _get_value(value: Any, type_: typing.Type, disc: Optional[str]) -> TierkreisValue:
     if disc:
         tag = getattr(value, disc)
         assert tag is not None
         return VariantValue(tag, TierkreisValue.from_python(value))
-    if _get_union_args(field_type):
+    if _get_union_args(type_):
         if value is None:
             return option_none
         return VariantValue(

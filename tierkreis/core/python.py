@@ -5,14 +5,14 @@ from dataclasses import dataclass
 from typing import Generic
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
-from tierkreis.core.tierkreis_struct import TierkreisStruct
+from tierkreis.core.types import UnpackRow
 
 if typing.TYPE_CHECKING:
     from tierkreis.core.tierkreis_graph import TierkreisGraph
 
 
-In = typing.TypeVar("In", bound=TierkreisStruct)
-Out = typing.TypeVar("Out", bound=TierkreisStruct)
+In = typing.TypeVar("In", bound=UnpackRow)
+Out = typing.TypeVar("Out", bound=UnpackRow)
 
 
 @dataclass

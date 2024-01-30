@@ -19,8 +19,7 @@ from tierkreis.core.protos.tierkreis.v1alpha.graph import (
 from tierkreis.core.protos.tierkreis.v1alpha.signature import FunctionDeclaration
 from tierkreis.core.python import RuntimeGraph
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
-from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import StarKind, TierkreisPair
+from tierkreis.core.types import StarKind, TierkreisPair, UnpackRow
 from tierkreis.core.utils import map_vals
 from tierkreis.core.values import StructValue
 from tierkreis.worker.namespace import Function, Namespace
@@ -40,7 +39,7 @@ async def _and(a: bool, b: bool) -> bool:
 
 
 @dataclass
-class CopyOut(TierkreisStruct, Generic[a]):
+class CopyOut(Generic[a], UnpackRow):
     value_0: a
     value_1: a
 
@@ -52,7 +51,7 @@ async def copy(value: a) -> CopyOut[a]:
 
 
 @dataclass
-class EmptyOut(TierkreisStruct, Generic[a]):
+class EmptyOut(Generic[a], UnpackRow):
     pass
 
 
@@ -64,7 +63,7 @@ async def discard(value: a) -> EmptyOut[a]:
 
 
 @dataclass
-class EqOut(TierkreisStruct, Generic[a]):
+class EqOut(Generic[a], UnpackRow):
     result: bool
 
 
@@ -231,7 +230,7 @@ async def imul(a: int, b: int) -> int:
 
 
 @dataclass()
-class _InsertOut(TierkreisStruct, Generic[a, b]):
+class _InsertOut(Generic[a, b], UnpackRow):
     map: dict[a, b]
 
 
@@ -315,7 +314,7 @@ namespace.functions["loop"] = Function(
 
 
 @dataclass
-class _MakePairOut(TierkreisStruct, Generic[a, b]):
+class _MakePairOut(Generic[a, b], UnpackRow):
     pair: TierkreisPair[a, b]
 
 
@@ -432,7 +431,7 @@ namespace.functions["partial"] = Function(
 
 
 @dataclass
-class _PopOut(TierkreisStruct, Generic[a]):
+class _PopOut(Generic[a], UnpackRow):
     vec: list[a]
     item: a
 
@@ -445,7 +444,7 @@ async def pop(vec: list[a]) -> _PopOut[a]:
 
 
 @dataclass
-class _PushOut(TierkreisStruct, Generic[a]):
+class _PushOut(Generic[a], UnpackRow):
     vec: list[a]
 
 
@@ -457,7 +456,7 @@ async def push(vec: list[a], item: a) -> _PushOut[a]:
 
 
 @dataclass
-class _RemoveOut(TierkreisStruct, Generic[a, b]):
+class _RemoveOut(Generic[a, b], UnpackRow):
     map: dict[a, b]
     val: b
 
@@ -618,7 +617,7 @@ async def switch(pred: bool, if_true: a, if_false: a) -> a:
 
 
 @dataclass
-class _UnpackPairOut(TierkreisStruct, Generic[a, b]):
+class _UnpackPairOut(Generic[a, b], UnpackRow):
     first: a
     second: b
 
@@ -664,12 +663,12 @@ async def xor(a: bool, b: bool) -> bool:
 
 
 @dataclass
-class GraphIn(TierkreisStruct, Generic[a]):
+class GraphIn(Generic[a], UnpackRow):
     value: a
 
 
 @dataclass
-class GraphOut(TierkreisStruct, Generic[b]):
+class GraphOut(Generic[b], UnpackRow):
     value: b
 
 

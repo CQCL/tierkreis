@@ -47,10 +47,9 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisNode,
     to_nodeport,
 )
-from tierkreis.core.tierkreis_struct import TierkreisStruct
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.type_inference import infer_graph_types
-from tierkreis.core.types import TupleLabel, TypeScheme, UnionTag
+from tierkreis.core.types import TupleLabel, TypeScheme, UnionTag, UnpackRow
 from tierkreis.core.utils import graph_from_func, map_vals, rename_ports_graph
 from tierkreis.core.values import (
     TierkreisValue,
@@ -313,19 +312,7 @@ T = TypeVar("T")
 
 
 def Const(
-    val: Union[
-        int,
-        float,
-        bool,
-        str,
-        dict,
-        TierkreisStruct,
-        TierkreisValue,
-        TierkreisGraph,
-        tuple,
-        list,
-        "LazyGraph",
-    ],
+    val: Any,
 ) -> NodePort:
     if isinstance(val, LazyGraph):
         val = val.graph
@@ -340,7 +327,6 @@ def UnionConst(
         bool,
         str,
         dict,
-        TierkreisStruct,
         TierkreisValue,
         TierkreisGraph,
         tuple,
@@ -403,7 +389,7 @@ def Tag(tag: str, value: ValueSource) -> NodePort:
 
 OutAnnotation = TypeVar(
     "OutAnnotation",
-    bound=Union[TierkreisStruct, TierkreisValue],
+    bound=Union[UnpackRow, TierkreisValue],
 )
 
 
@@ -471,7 +457,7 @@ _RETURN_TYPE_ERROR = TypeError(
     "Graph builder function must be annotated with return type `Output`."
     " Optionally annotate with "
     "`Output[TierkreisValue]` for a single return from port 'value',"
-    " or with a `TierkreisStruct` specifying the Row type of the ouput."
+    " or with a `UnpackRow` specifying the Row type of the ouput."
 )
 
 
@@ -483,7 +469,7 @@ def _convert_return(ret: Type) -> dict[str, Optional["TierkreisType"]]:
         return {}
     ret = args[0]
     subc = cast(Type, get_origin(ret) or ret)
-    if issubclass(subc, TierkreisStruct):
+    if issubclass(subc, UnpackRow):
         return _vals_to_types(get_type_hints(ret))
     if issubclass(subc, TierkreisValue):
         return _vals_to_types({Labels.VALUE: ret})

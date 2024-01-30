@@ -46,7 +46,7 @@ sc22-example = ["numpy>=1.20,<2", "pytket>=1.0"]
 
 typecheck = ["tierkreis_typecheck"]
 
-pydantic = ["pydantic~=1.10"]
+pydantic = ["pydantic~=2.5"]
 
 [tool.pytest.ini_options]
 markers = ["pytket"]

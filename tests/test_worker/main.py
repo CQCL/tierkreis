@@ -7,8 +7,7 @@ from typing import Generic, Optional, TypeVar, cast
 from tierkreis import TierkreisGraph
 from tierkreis.client.server_client import RuntimeClient
 from tierkreis.core.python import RuntimeGraph
-from tierkreis.core.tierkreis_struct import TierkreisStruct
-from tierkreis.core.types import StarKind
+from tierkreis.core.types import StarKind, UnpackRow
 from tierkreis.worker import Namespace
 from tierkreis.worker.prelude import start_worker_server
 
@@ -52,13 +51,13 @@ async def python_add(a: int, b: int) -> int:
 
 
 @dataclass
-class IdDelayInputs(TierkreisStruct, Generic[A]):
+class IdDelayInputs(UnpackRow, Generic[A]):
     wait: int
     value: A
 
 
 @dataclass
-class IdDelayOutputs(TierkreisStruct, Generic[A]):
+class IdDelayOutputs(UnpackRow, Generic[A]):
     value: A
 
 
@@ -99,7 +98,7 @@ async def id_with_callback(client: RuntimeClient, value: A) -> A:
 
 
 @dataclass
-class GraphInOut(TierkreisStruct, Generic[A]):
+class GraphInOut(UnpackRow, Generic[A]):
     value: A
 
 
@@ -116,17 +115,17 @@ async def do_callback(
 
 
 @dataclass
-class IntStruct(TierkreisStruct):
+class IntStruct:
     y: int
 
 
 @dataclass
-class StructWithUnion(TierkreisStruct):
+class StructWithUnion:
     x: IntStruct | float
 
 
 @dataclass
-class UnionStructOutput(TierkreisStruct):
+class UnionStructOutput(UnpackRow):
     value: StructWithUnion
 
 

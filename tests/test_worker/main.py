@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python
 import asyncio
 import base64
 from dataclasses import dataclass

@@ -1,0 +1,70 @@
+syntax = "proto3";
+import "v1alpha/graph.proto";
+import "v1alpha/signature.proto";
+package tierkreis.v1alpha1.jobs;
+
+service JobControl {
+  rpc RunningJobs (RunningJobsRequest) returns (RunningJobsResponse) {};
+  rpc StartJob (StartJobRequest) returns (StartJobResponse) {};
+  rpc JobStatus (JobStatusRequest) returns (JobStatusResponse) {};
+  rpc StopJob (StopJobRequest) returns (StopJobResponse) {};
+}
+
+message StartJobRequest {
+  tierkreis.v1alpha.graph.Graph graph = 1;
+  tierkreis.v1alpha.graph.StructValue inputs = 2;
+  string job_id = 3;
+}
+
+message StartJobResponse {
+  oneof result {
+    string job_id = 1;
+    tierkreis.v1alpha.signature.TypeErrors type_errors = 2;
+    string runtime_error = 3;
+  }
+}
+
+message RunningJobsRequest {
+}
+
+message RunningJobsResponse {
+  repeated JobResult jobs = 1;
+}
+
+
+message StopJobRequest {
+  string id = 1;
+}
+
+message StopJobResponse {
+}
+
+message JobStatusRequest {
+  string id = 1;
+}
+
+message JobStatusResponse {
+  JobStatus status = 1;
+}
+
+// This is supposed to be `google.protobuf.Empty` but unfortunately there is no
+// support for this in `betterproto` yet.
+message Empty {
+}
+
+message JobStatus {
+  string id = 1;
+  oneof status {
+    Empty success = 2;
+    Empty running = 3;
+    string error = 4;
+  }
+}
+
+message JobResult {
+  string id = 1;
+  oneof status {
+    tierkreis.v1alpha.graph.StructValue success = 2;
+    string error = 3;
+  }
+}

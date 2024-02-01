@@ -16,7 +16,6 @@ import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis import TierkreisGraph
 from tierkreis.builder import _func_sig
 from tierkreis.client import ServerRuntime
-from tierkreis.client.server_client import TaskHandle
 from tierkreis.core.graphviz import tierkreis_to_graphviz
 from tierkreis.core.protos.tierkreis.v1alpha.graph import Graph as ProtoGraph
 from tierkreis.core.signature import Signature
@@ -203,84 +202,6 @@ async def run(ctx: click.Context, proto: Path, inputs: str, py_inputs: str):
         except TierkreisTypeErrors:
             _print_typeerrs(traceback.format_exc(0))
             sys.exit(1)
-
-
-@cli.command()
-@click.argument("proto", type=click.Path(exists=True))
-@click.argument("inputs", default="")
-@click.option("-p", "--py-inputs", default="")
-@click.pass_context
-@coro
-async def submit(ctx: click.Context, proto: Path, inputs: str, py_inputs: str):
-    """Submit PROTO binary and optional
-    INPUTS to runtime and print task id to console."""
-    async with ctx.obj["client_manager"] as client:
-        client = cast(ServerRuntime, client)
-        tkg = await _parse(proto)
-        input_dict = _inputs(inputs, py_inputs)
-        try:
-            task_handle = await client.start_task(tkg, input_dict)
-            print(chalk.bold.yellow("Task id:"), task_handle.task_id)
-        except TierkreisTypeErrors:
-            _print_typeerrs(traceback.format_exc(0))
-            sys.exit(1)
-
-
-@cli.command()
-@click.argument("task_id")
-@click.pass_context
-@coro
-async def retrieve(ctx: click.Context, task_id: str):
-    """Retrive outputs of submitted graph from runtime, using TASK_ID."""
-    async with ctx.obj["client_manager"] as client:
-        client = cast(ServerRuntime, client)
-        outputs = await client.await_task(TaskHandle(task_id))
-        _print_outputs(outputs)
-
-
-@cli.command()
-@click.argument("task_id")
-@click.pass_context
-@coro
-async def delete(ctx: click.Context, task_id: str):
-    """Delete task by TASK_ID."""
-    async with ctx.obj["client_manager"] as client:
-        client = cast(ServerRuntime, client)
-        await client.delete_task(TaskHandle(task_id))
-        print(f"Task {task_id} deleted")
-
-
-@cli.command()
-@click.option(
-    "--task", default=None, type=click.STRING, help="Task id to report status for"
-)
-@click.pass_context
-@coro
-async def status(ctx: click.Context, task: Optional[str]):
-    """Check status of tasks."""
-    async with ctx.obj["client_manager"] as client:
-        client = cast(ServerRuntime, client)
-        task_statuses = await client.list_tasks()
-
-        handles = [TaskHandle(task)] if task else list(task_statuses.keys())
-        try:
-            statuses = [task_statuses[handle] for handle in handles]
-        except KeyError:
-            print(chalk.red(f"Task with id {task} not found on runtime."))
-            sys.exit(1)
-        handle_ids = [handle.task_id for handle in handles]
-        id_width = len(handle_ids[0])
-        cell_format = "{:<{width}}"
-        print(
-            f"{chalk.bold(cell_format.format('Task ID', width=id_width))}"
-            f"  {chalk.bold('Status')}"
-        )
-        print()
-        for handle_id, status in zip(handle_ids, statuses):
-            print(
-                f"{cell_format.format(handle_id, width=id_width)}"
-                f"  {status or 'unknown'}"
-            )
 
 
 PORT_RE = re.compile(r"([\w]+):")

@@ -1,13 +1,13 @@
 syntax = "proto3";
 import "v1alpha/graph.proto";
-import "v1alpha/runtime.proto";
-package tierkreis.v1alpha.worker;
+import "v1alpha1/runtime.proto";
+package tierkreis.v1alpha1.worker;
 
 message RunFunctionRequest {
   tierkreis.v1alpha.graph.FunctionName function = 1;
   tierkreis.v1alpha.graph.StructValue inputs = 2;
   tierkreis.v1alpha.graph.Location loc = 3;
-  tierkreis.v1alpha.runtime.Callback callback = 4;
+  tierkreis.v1alpha1.runtime.Callback callback = 4;
 }
 
 message RunFunctionResponse {

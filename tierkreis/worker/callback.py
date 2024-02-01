@@ -4,7 +4,7 @@ from urllib.parse import urlparse
 
 from grpclib.client import Channel
 
-import tierkreis.core.protos.tierkreis.v1alpha.runtime as pr
+import tierkreis.core.protos.tierkreis.v1alpha1.runtime as pr
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.client.server_client import ServerRuntime
 from tierkreis.core.signature import Signature

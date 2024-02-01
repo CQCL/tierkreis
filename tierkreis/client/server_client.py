@@ -19,8 +19,8 @@ from grpclib.client import Channel
 from grpclib.events import SendRequest
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
-import tierkreis.core.protos.tierkreis.v1alpha.runtime as pr
 import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
+import tierkreis.core.protos.tierkreis.v1alpha1.runtime as pr
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
@@ -45,13 +45,6 @@ class RuntimeHTTPError(Exception):
             f" failed with code {self.code}"
             f" and content '{self.content}'."
         )
-
-
-@dataclass(frozen=True)
-class TaskHandle:
-    """Handle for server task"""
-
-    task_id: str
 
 
 @dataclass
@@ -103,83 +96,6 @@ class ServerRuntime(RuntimeClient):
             await self._signature_stub.list_functions(ps.ListFunctionsRequest(loc))
         )
 
-    async def start_task(
-        self, graph: TierkreisGraph, py_inputs: Dict[str, Any]
-    ) -> TaskHandle:
-        """
-        Spawn a task that runs a graph and return the task's id. The id can
-        later be used to await the completion of the task or cancel its
-        execution.
-
-        :param graph: The graph to run.
-        :param inputs: The inputs to the graph as map from label to value.
-        :return: The id of the running task.
-        """
-        inputs = {}
-        for key, val in py_inputs.items():
-            try:
-                inputs[key] = TierkreisValue.from_python(val)
-            except IncompatiblePyType as err:
-                raise InputConversionError(key, val) from err
-
-        decoded = await self._runtime_stub.run_task(
-            pr.RunTaskRequest(
-                graph=graph.to_proto(),
-                inputs=pg.StructValue(map=StructValue(inputs).to_proto_dict()),
-            )
-        )
-        name, _ = betterproto.which_one_of(decoded, "result")
-
-        if name == "task_id":
-            return TaskHandle(decoded.task_id)
-        raise TierkreisTypeErrors.from_proto(decoded.type_errors, graph)
-
-    async def list_tasks(
-        self,
-    ) -> Dict[TaskHandle, str]:
-        """
-        List the id and status for every task on the server.
-        """
-
-        decoded = await self._runtime_stub.list_tasks(pr.ListTasksRequest())
-        result = {}
-
-        for task in decoded.tasks:
-            status_name, _ = betterproto.which_one_of(task, "status")
-
-            if status_name is (None or ""):
-                status_name = "running"
-
-            result[TaskHandle(task.id)] = status_name
-
-        return result
-
-    async def await_task(self, task: TaskHandle) -> Dict[str, TierkreisValue]:
-        """
-        Await the completion of a task with a given id.
-
-        :param task: The id of the task to wait for.
-        :return: The result of the task.
-        """
-
-        decoded = await self._runtime_stub.await_task(
-            pr.AwaitTaskRequest(id=task.task_id)
-        )
-        status, status_value = betterproto.which_one_of(decoded.task, "status")
-
-        if status != "success":
-            raise RuntimeError(f"Task execution failed with message:\n{status_value}")
-        assert status_value is not None
-        return StructValue.from_proto_dict(status_value.map).values
-
-    async def delete_task(self, task: TaskHandle):
-        """
-        Delete a task. Stops the task's execution if it is still running.
-
-        :param task: The id of the task to delete.
-        """
-        await self._runtime_stub.delete_task(pr.DeleteTaskRequest(id=task.task_id))
-
     async def run_graph(
         self,
         graph: TierkreisGraph,
@@ -188,7 +104,7 @@ class ServerRuntime(RuntimeClient):
         **py_inputs: Any,
     ) -> Dict[str, TierkreisValue]:
         """
-        Run a graph and return results. This combines `start_task` and `await_task`.
+        Run a graph and return results.
 
         :param gb: Graph to run.
         :param inputs: Inputs to graph as map from label to value.

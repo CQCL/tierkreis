@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 #!/bin/sh
 "exec" "$(dirname $0)/../.venv/bin/python" "$0" "$@"
 from __future__ import annotations
@@ -15,16 +17,6 @@ from pytket.qasm.qasm import circuit_from_qasm_str
 from sympy.core.symbol import Symbol
 
 from tierkreis.common_types import SampledDistribution, backres_to_sampleddist
-from tierkreis.common_types.circuit import (
-    BitRegister,
-    CircBox,
-    Command,
-    Conditional,
-    GenericClassical,
-    Operation,
-    Permutation,
-    UnitID,
-)
 from tierkreis.common_types.circuit import Circuit as CircStruct
 from tierkreis.core.types import TierkreisType
 from tierkreis.worker.namespace import Namespace
@@ -33,20 +25,7 @@ from tierkreis.worker.prelude import start_worker_server
 root = Namespace()
 namespace = root["pytket"]
 
-_ = [
-    namespace.add_named_struct(thing.__name__, thing)
-    for thing in (
-        Command,
-        UnitID,
-        Conditional,
-        BitRegister,
-        Operation,
-        CircStruct,
-        Permutation,
-        CircBox,
-        GenericClassical,
-    )
-]
+namespace.add_named_struct("Circuit", CircStruct)
 
 SampledDistribution = namespace.add_named_struct(
     "SampledDistribution", SampledDistribution
@@ -79,7 +58,7 @@ async def load_circuit_json(json_str: str) -> CircStruct:
 @namespace.function()
 async def dump_circuit_json(circ: CircStruct) -> str:
     """Dump a circuit in to json string."""
-    return json.dumps(circ.to_serializable())
+    return circ.circuit_json_str
 
 
 @namespace.function()

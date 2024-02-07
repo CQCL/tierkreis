@@ -1,6 +1,16 @@
 # Changelog
 
-## [0.4.0](https://github.com/CQCL/guppy/compare/v0.1.0...v0.2.0) (2024-02-01)
+
+## [0.4.1] (2024-02-07)
+
+
+### Bug Fixes
+* Fix bug in `val_known_tk_type` (assumed dataclass for all structures).
+* Fix protobuf versioning
+* Fix shebang in pytket worker
+
+
+## [0.4.0] (2024-02-01)
 
 
 ### Features

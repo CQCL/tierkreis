@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import inspect
+import json
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import Field, dataclass, fields, make_dataclass
@@ -26,6 +28,9 @@ import betterproto
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core import types as TKType
 from tierkreis.core.internal import python_struct_fields
+from tierkreis.core.opaque_model import (
+    OpaqueModel,
+)
 from tierkreis.core.types import (
     UNIT_TYPE,
     BoolType,
@@ -488,6 +493,12 @@ class MapValue(Generic[TKVal1, TKVal2], TierkreisValue):
         return f"{{{', '.join(entries)})}}"
 
 
+def _opaque_to_struct(opaque: OpaqueModel) -> StructValue:
+    return StructValue(
+        {opaque.tierkreis_field(): StringValue(opaque.model_dump_json())}
+    )
+
+
 class DataclassInstance(Protocol):
     __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
 
@@ -540,13 +551,20 @@ class StructValue(Generic[RowStruct], TierkreisValue):
             return cast(T, tuple(converted))
         if isinstance(type_, typing.TypeVar):
             return cast(T, self)
-
+        vals = self.values
+        if inspect.isclass(type_) and issubclass(type_, OpaqueModel):
+            ((fieldname, payload),) = vals.items()  # Exactly one entry
+            assert fieldname == type_.tierkreis_field()
+            assert isinstance(payload, StringValue)
+            py_val = json.loads(payload.value)
+            return cast(Callable[..., T], type_)(**py_val)
         type_origin = typing.get_origin(type_) or type_
         class_fields = python_struct_fields(type_origin)
+
         field_values = {}
         non_init_values = {}
         for field in class_fields:
-            val = self.values[field.name]
+            val = vals[field.name]
             if field.discriminant is not None:
                 assert isinstance(val, VariantValue)
                 var_types = _get_discriminators(field.type_, field.discriminant)
@@ -578,6 +596,8 @@ class StructValue(Generic[RowStruct], TierkreisValue):
 
     @classmethod
     def from_python(cls, value: Any) -> "StructValue":
+        if isinstance(value, OpaqueModel):
+            return _opaque_to_struct(value)
         class_fields = python_struct_fields(type(value))
         return StructValue(
             {
@@ -761,6 +781,8 @@ def val_known_tk_type(tk_type: TierkreisType, value: Any) -> TierkreisValue:
         return StructValue({})
     match tk_type:
         case Row(shape) | StructType(shape=Row(shape)):
+            if isinstance(value, OpaqueModel):
+                return _opaque_to_struct(value)
             return StructValue({k: rec(t, getattr(value, k)) for k, t in shape.items()})
         case IntType():
             _check_type(int)

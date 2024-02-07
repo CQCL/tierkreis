@@ -1,5 +1,4 @@
 import inspect
-import re
 import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
@@ -13,6 +12,7 @@ import betterproto
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core.internal import python_struct_fields
+from tierkreis.core.opaque_model import _to_snake_case
 
 
 def _get_union_args(
@@ -491,8 +491,6 @@ class VariantType(TierkreisType):
 class UnionTag:
     prefix: ClassVar[str] = "__py_union_"
 
-    normalize_pattern: re.Pattern = re.compile(r"(?<!^)(?=[A-Z])")
-
     @dataclass
     class UnexpectedTag(Exception):
         tag: str
@@ -510,10 +508,7 @@ class UnionTag:
         # convert names to snake case to avoid mismatch between `list` vs.
         # `List` etc.
 
-        return (
-            UnionTag.prefix
-            + UnionTag.normalize_pattern.sub("_", str(type_.__name__)).lower()
-        )
+        return UnionTag.prefix + _to_snake_case(type_.__name__)
 
     @staticmethod
     def value_type_tag(value: Any) -> str:

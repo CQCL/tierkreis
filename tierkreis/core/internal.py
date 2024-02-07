@@ -1,8 +1,11 @@
+import inspect
 import typing
 from dataclasses import dataclass, fields, is_dataclass, replace
 from typing import Any, Dict, ParamSpec, cast
 
-from tierkreis.core.pydantic import _PYDANTIC, _is_base_model
+from pydantic import BaseModel
+
+from tierkreis.core.opaque_model import OpaqueModel
 
 
 def substitute(
@@ -59,9 +62,20 @@ def python_struct_fields(
             replace(field, type_=substitute(field.type_, type_subst))
             for field in python_struct_fields(type_origin)
         ]
-    if _PYDANTIC and _is_base_model(type_):
+
+    if inspect.isclass(type_) and issubclass(type_, BaseModel):
         import pydantic as pyd
 
+        if issubclass(type_, OpaqueModel):
+            model_type = cast(typing.Type[OpaqueModel], type_)
+
+            return [
+                ClassField(
+                    model_type.tierkreis_field(),
+                    str,
+                    None,
+                )
+            ]
         model_type = cast(typing.Type[pyd.BaseModel], type_)
         model_fields = model_type.model_fields
 

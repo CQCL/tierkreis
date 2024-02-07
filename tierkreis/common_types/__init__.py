@@ -29,48 +29,6 @@ def _try_pytket_import(mod: str, obj: str) -> Any:
     return loaded
 
 
-@dataclass(frozen=True)
-class SampledDistribution:
-    distribution: Distribution
-    n_samples: int
-
-
-def backres_to_sampleddist(backres: "BackendResult") -> SampledDistribution:
-    """Convert pytket BackendResult to Tierkreis type."""
-    assert backres.contains_measured_results
-    if backres._counts is not None:
-        total_shots = int(sum(backres._counts.values()))
-    else:
-        assert backres._shots is not None
-        total_shots = len(backres._shots)
-    return SampledDistribution(
-        {
-            "".join(map(str, key)): val
-            for key, val in backres.get_distribution().items()
-        },
-        total_shots,
-    )
-
-
-def _bitstring_to_tuple(bitstr: str) -> Tuple[int, ...]:
-    return tuple(map(int, bitstr))
-
-
-def sampleddist_to_backres(dist: SampledDistribution) -> "BackendResult":
-    """Convert Tierkreis type to pytket backend result"""
-    BackendResult = _try_pytket_import("pytket.backends.backendresult", "BackendResult")
-    OutcomeArray = _try_pytket_import("pytket.utils.outcomearray", "OutcomeArray")
-
-    counts = {
-        OutcomeArray.from_readouts([_bitstring_to_tuple(key)]): int(
-            val * dist.n_samples
-        )
-        for key, val in dist.distribution.items()
-    }
-
-    return BackendResult(counts=Counter(counts))
-
-
 QubitPauliString = list[tuple[UnitID, str]]
 
 
@@ -120,7 +78,7 @@ class MeasurementSetup:
         )
         ms = PytketMeasurementSetup()
         for circ in self.measurement_circs:
-            ms.add_measurement_circuit(circ.to_pytket_circuit())
+            ms.add_measurement_circuit(circ.to_pytket_value())
         for qps, mbms in self.results:
             tkqps = _qps_to_pytket(qps)
             for mbm in mbms:
@@ -131,7 +89,7 @@ class MeasurementSetup:
     @classmethod
     def from_pytket(cls, py_map: "_PMS") -> "MeasurementSetup":
         return cls(
-            [CircStruct.from_pytket_circuit(c) for c in py_map.measurement_circs],
+            [CircStruct.from_pytket_value(c) for c in py_map.measurement_circs],
             [
                 (
                     _qps_from_pytket(tkqps),

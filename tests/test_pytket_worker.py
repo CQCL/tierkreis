@@ -3,6 +3,9 @@ from typing import cast
 import pytest
 
 from tierkreis import TierkreisGraph
+from tierkreis.common_types.circuit import (
+    BackendResult as ResStruct,
+)
 from tierkreis.core.values import StructValue, VecValue
 from tierkreis.pyruntime import PyRuntime
 
@@ -58,20 +61,22 @@ async def test_execute_circuit(bell_circuit: str, pytket_pyruntime) -> None:
     )
     tg.set_outputs(out=execute_node)
 
+    shots = [10, 20]
     outputs = cast(
         VecValue,
         (
             await pytket_pyruntime.run_graph(
                 tg,
                 circuits=[bell_circuit, bell_circuit],
-                shots=[10, 20],
+                shots=shots,
             )
         )["out"],
     )
 
-    assert (
-        cast(StructValue, outputs.values[0]).values["n_samples"].try_autopython() == 10
-    )
-    assert (
-        cast(StructValue, outputs.values[1]).values["n_samples"].try_autopython() == 20
-    )
+    for count, res in zip(shots, outputs.values):
+        assert isinstance(res, StructValue)
+
+        bres = res.to_python(ResStruct)
+        pytket_res = bres.to_pytket_value()
+
+        assert sum(pytket_res.get_counts().values()) == count

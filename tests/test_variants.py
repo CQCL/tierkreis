@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Literal, Union
+from typing import Any, Literal, Type, Union
 
 import pydantic as pyd
 import pytest
@@ -10,6 +10,7 @@ from test_worker.main import (
 
 from tierkreis.builder import Const, Output, UnionConst, graph
 from tierkreis.client.runtime_client import RuntimeClient
+from tierkreis.core.opaque_model import OpaqueModel
 from tierkreis.core.types import TierkreisType, UnionTag
 from tierkreis.core.values import (
     FloatValue,
@@ -142,6 +143,12 @@ class AnnotatedInList(pyd.BaseModel):
     ul: list[pyd.PositiveFloat]
 
 
+class OpaqueContainsVariant(OpaqueModel):
+    n: int
+    enum: EnumExample
+    variant: ComplexVariant | SimpleVariant = pyd.Field(discriminator="disc_name")
+
+
 @pytest.mark.asyncio
 async def test_pydantic_types(bi, client: RuntimeClient) -> None:
     constrained = ConstrainedField(foo=1, points=(1.2,))
@@ -173,6 +180,7 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
     )
 
     contains = ContainsVariant(variant=cmplex, n=4, enum=EnumExample.First)
+    opaque_contains = OpaqueContainsVariant(variant=cmplex, n=4, enum=EnumExample.First)
 
     tk_first = VariantValue("First", StructValue({}))
     tk_contains = StructValue(
@@ -219,7 +227,15 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
             "un": VariantValue(UnionTag.type_tag(int), IntValue(1)),
         }
     )
-    samples = [
+    tk_opaque_contains = StructValue(
+        {
+            "__tk_opaque_opaque_contains_variant": StringValue(
+                opaque_contains.model_dump_json()
+            ),
+        }
+    )
+
+    samples: list[tuple[Type, Any, TierkreisValue]] = [
         (ConstrainedField, constrained, tk_constrained),
         (SimpleVariant, simple, tk_simple),
         (
@@ -235,6 +251,11 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         (Model, Model(x=1, y=da), tk_model),
         (AnnotatedInList, AnnotatedInList(ul=[1.2]), tk_list_model),
         (AnnotatedWithUnion, AnnotatedWithUnion(un=1), tk_union_model),
+        (
+            OpaqueContainsVariant,
+            opaque_contains,
+            tk_opaque_contains,
+        ),
     ]
     for py_type, py_val, tk_val in samples:
         _ = TierkreisType.from_python(py_type)

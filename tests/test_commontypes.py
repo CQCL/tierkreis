@@ -81,7 +81,6 @@ def test_measurementsetup():
         (CircStruct, StructType),
         (common.MeasurementSetup, StructType),
         (common.Distribution, MapType),
-        (common.SampledDistribution, StructType),
         (common.QubitPauliString, VecType),
         (common.UnitID, StructType),
     ],

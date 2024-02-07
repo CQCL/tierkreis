@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import typing
 from abc import ABC, abstractmethod
-from dataclasses import Field, dataclass, fields, is_dataclass, make_dataclass
+from dataclasses import Field, dataclass, fields, make_dataclass
 from enum import Enum
 from typing import (
     Any,
@@ -761,9 +761,7 @@ def val_known_tk_type(tk_type: TierkreisType, value: Any) -> TierkreisValue:
         return StructValue({})
     match tk_type:
         case Row(shape) | StructType(shape=Row(shape)):
-            assert is_dataclass(value)
-            vals = vars(value)
-            return StructValue({k: rec(t, vals[k]) for k, t in shape.items()})
+            return StructValue({k: rec(t, getattr(value, k)) for k, t in shape.items()})
         case IntType():
             _check_type(int)
             return IntValue.from_python(value)

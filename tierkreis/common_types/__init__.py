@@ -5,8 +5,7 @@ from dataclasses import dataclass
 from importlib import import_module
 from typing import TYPE_CHECKING, Any, Dict, Tuple
 
-from .circuit import Circuit as CircStruct
-from .circuit import UnitID
+from .circuit import CircuitWrapper, UnitID
 
 if TYPE_CHECKING:
     from pytket.backends.backendresult import BackendResult
@@ -69,7 +68,7 @@ class MeasurementBitMap:
 
 @dataclass(frozen=True)
 class MeasurementSetup:
-    measurement_circs: list[CircStruct]
+    measurement_circs: list[CircuitWrapper]  # using the wrapper to avoid pytket import
     results: list[tuple[QubitPauliString, list[MeasurementBitMap]]]
 
     def to_pytket(self) -> "_PMS":
@@ -78,7 +77,7 @@ class MeasurementSetup:
         )
         ms = PytketMeasurementSetup()
         for circ in self.measurement_circs:
-            ms.add_measurement_circuit(circ.to_pytket_value())
+            ms.add_measurement_circuit(circ.from_tierkreis_compatible())
         for qps, mbms in self.results:
             tkqps = _qps_to_pytket(qps)
             for mbm in mbms:
@@ -89,7 +88,10 @@ class MeasurementSetup:
     @classmethod
     def from_pytket(cls, py_map: "_PMS") -> "MeasurementSetup":
         return cls(
-            [CircStruct.from_pytket_value(c) for c in py_map.measurement_circs],
+            [
+                CircuitWrapper.new_tierkreis_compatible(c)
+                for c in py_map.measurement_circs
+            ],
             [
                 (
                     _qps_from_pytket(tkqps),

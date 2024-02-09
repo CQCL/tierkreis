@@ -123,6 +123,12 @@ class TierkreisValue(ABC):
         except KeyError as e:
             raise ValueError(f"Unknown protobuf value type: {name}") from e
 
+    @abstractmethod
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
+        """Each subclass should implement this method to convert to associated
+        python type if possible."""
+        ...
+
     def to_python(self, type_: typing.Type[T]) -> T:
         """
         Converts a tierkreis value to a python value given the desired python type.
@@ -131,6 +137,17 @@ class TierkreisValue(ABC):
         `TierkreisValue` is returned unchanged. This allows us to write generic
         functions in which values of unknown type are passed on as they are.
         """
+        if isinstance(type_, typing.TypeVar):
+            return cast(T, self)
+
+        if alternative := TierkreisType._convert_as.get(type_):
+            alt_value = self.to_python(alternative)
+            return alt_value.from_tierkreis_compatible()
+        if type_ is NoneType:
+            return cast(T, None)
+        if (py_val := self._to_python_impl(type_)) is not None:
+            # check if known type to subclass
+            return py_val
         if inner_type := _extract_literal_type(type_):
             return self.to_python(inner_type)
         if inner_type := _is_annotated(type_):
@@ -152,6 +169,10 @@ class TierkreisValue(ABC):
         from tierkreis.core.python import RuntimeGraph
         from tierkreis.core.tierkreis_graph import GraphValue
 
+        if alternative := TierkreisType._convert_as.get(type(value)):
+            return TierkreisValue.from_python(
+                alternative.new_tierkreis_compatible(value)
+            )
         if isinstance(value, TierkreisValue):
             return value
         if isinstance(value, RuntimeGraph):
@@ -203,12 +224,9 @@ class BoolValue(TierkreisValue):
     def to_proto(self) -> pg.Value:
         return pg.Value(boolean=self.value)
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if type_ is bool:
             return cast(T, self.value)
-        return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -234,14 +252,11 @@ class StringValue(TierkreisValue):
     def to_proto(self) -> pg.Value:
         return pg.Value(str=self.value)
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if type_ is str:
             return cast(T, self.value)
         if type_ is UUID:
             return cast(T, self.value)
-        return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -270,12 +285,9 @@ class IntValue(TierkreisValue):
     def to_proto(self) -> pg.Value:
         return pg.Value(integer=self.value)
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if type_ is int:
             return cast(T, self.value)
-        return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -301,12 +313,9 @@ class FloatValue(TierkreisValue):
     def to_proto(self) -> pg.Value:
         return pg.Value(flt=self.value)
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if type_ is float:
             return cast(T, self.value)
-        return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -342,15 +351,12 @@ class PairValue(Generic[TKVal1, TKVal2], TierkreisValue):
             )
         )
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if typing.get_origin(type_) is TierkreisPair:
             type_args = typing.get_args(type_)
             first = self.first.to_python(type_args[0])
             second = self.second.to_python(type_args[1])
             return cast(T, TierkreisPair(first, second))
-        return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -394,14 +400,11 @@ class VecValue(Generic[TKVal1], TierkreisValue):
             vec=pg.VecValue(vec=[value.to_proto() for value in self.values])
         )
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if typing.get_origin(type_) in (list, tuple):
             type_args = typing.get_args(type_)
             values = [value.to_python(type_args[0]) for value in self.values]
             return cast(T, values)
-        return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -448,9 +451,7 @@ class MapValue(Generic[TKVal1, TKVal2], TierkreisValue):
             )
         )
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if typing.get_origin(type_) is dict:
             type_args = typing.get_args(type_)
             values = {
@@ -458,7 +459,6 @@ class MapValue(Generic[TKVal1, TKVal2], TierkreisValue):
                 for key, value in self.values.items()
             }
             return cast(T, values)
-        return super().to_python(type_)
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":
@@ -541,16 +541,12 @@ class StructValue(Generic[RowStruct], TierkreisValue):
     def to_proto(self) -> pg.Value:
         return pg.Value(struct=pg.StructValue(map=self.to_proto_dict()))
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if type_ is NoneType:
-            return cast(T, None)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if typing.get_origin(type_) is tuple:
             args = typing.get_args(type_)
             arg_vals = _labeled_dict_to_tuple(self.values)
             converted = [v.to_python(args[i]) for i, v in arg_vals]
             return cast(T, tuple(converted))
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
         vals = self.values
         if inspect.isclass(type_) and issubclass(type_, OpaqueModel):
             ((fieldname, payload),) = vals.items()  # Exactly one entry
@@ -678,9 +674,7 @@ class VariantValue(Generic[RowStruct], TierkreisValue):
             variant=pg.VariantValue(tag=self.tag, value=self.value.to_proto())
         )
 
-    def to_python(self, type_: typing.Type[T]) -> T:
-        if isinstance(type_, typing.TypeVar):
-            return cast(T, self)
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         if type_ is NoneType and self.tag == UnionTag.none_type_tag():
             return cast(T, None)
         if typing.get_origin(type_) is TierkreisVariant:
@@ -694,7 +688,6 @@ class VariantValue(Generic[RowStruct], TierkreisValue):
                 return self.value.to_python(tag_type_)
             except UnionTag.UnexpectedTag:
                 pass
-        return cast(T, super().to_python(type_))
 
     def viz_str(self) -> str:
         return f"Variant{{{self.tag}: {self.value.viz_str()}}}"
@@ -772,6 +765,9 @@ def val_known_tk_type(tk_type: TierkreisType, value: Any) -> TierkreisValue:
         return value
     err = IncompatibleTierkreisType(value, tk_type)
     rec = val_known_tk_type
+
+    if alternative := TierkreisType._convert_as.get(type(value)):
+        return rec(tk_type, alternative.new_tierkreis_compatible(value))
 
     def _check_type(expected: typing.Type | tuple[typing.Type, ...]):
         if not isinstance(value, expected):

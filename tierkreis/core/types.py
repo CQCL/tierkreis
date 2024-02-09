@@ -5,10 +5,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from functools import reduce
 from types import NoneType, UnionType
-from typing import Any, ClassVar, Generic, Iterable, Optional, TypeVar, cast
+from typing import Any, ClassVar, Generic, Iterable, Optional, Protocol, TypeVar, cast
 from uuid import UUID
 
 import betterproto
+from typing_extensions import Self
 
 import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
 from tierkreis.core.internal import python_struct_fields
@@ -49,7 +50,26 @@ def _is_annotated(type_: typing.Type) -> Optional[typing.Type]:
     return None
 
 
+Base = TypeVar("Base")
+
+
+class SerializeAs(Protocol[Base]):
+    """Methods implemented by Tierkreis-compatible types used as alternatives to
+    Base"""
+
+    @classmethod
+    def new_tierkreis_compatible(cls, value: Base) -> Self:
+        """Create a new instance of the tierkreis-compatible type from a Base instance."""
+        ...
+
+    def from_tierkreis_compatible(self) -> Base:
+        """Convert the tierkreis-compatible type to a Base instance."""
+        ...
+
+
 class TierkreisType(ABC):
+    _convert_as: dict[typing.Type, typing.Type[SerializeAs]] = dict()
+
     @abstractmethod
     def to_proto(self) -> pg.Type:
         "Converts a tierkreis type to its protobuf representation."
@@ -61,6 +81,9 @@ class TierkreisType(ABC):
         visited_types: typing.Optional[dict[typing.Type, "TierkreisType"]] = None,
     ) -> "TierkreisType":
         "Converts a python type to its corresponding tierkreis type."
+
+        if alternative := TierkreisType._convert_as.get(type_):
+            return TierkreisType.from_python(alternative, visited_types)
         from tierkreis.core.python import RuntimeGraph
 
         visited_types = visited_types or {}
@@ -217,6 +240,13 @@ class TierkreisType(ABC):
             (child.contained_vartypes() for child in self.children()),
             set(),
         )
+
+    @classmethod
+    def register_alternative(
+        cls, type_: typing.Type, alternative: typing.Type[SerializeAs]
+    ):
+        """Register an alternative type that can be used to convert to/from TierkreisType."""
+        cls._convert_as[type_] = alternative
 
 
 @dataclass

@@ -654,7 +654,7 @@ class GraphValue(TierkreisValue):
     def to_proto(self) -> pg.Value:
         return pg.Value(graph=self.value.to_proto())
 
-    def to_python(self, type_: typing.Type[T]) -> T:
+    def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         from tierkreis.core.python import RuntimeGraph
 
         if isinstance(type_, typing.TypeVar):
@@ -663,7 +663,6 @@ class GraphValue(TierkreisValue):
             return cast(T, RuntimeGraph(self.value))
         if issubclass(type_, TierkreisGraph):
             return cast(T, self.value)
-        raise TypeError()
 
     @classmethod
     def from_python(cls, value: Any) -> "TierkreisValue":

@@ -1,13 +1,14 @@
 from typing import cast
 
 import pytest
+from pytket.backends.backendresult import BackendResult
 
 from tierkreis import TierkreisGraph
-from tierkreis.common_types.circuit import (
-    BackendResult as ResStruct,
-)
+from tierkreis.common_types.circuit import register_pytket_types
 from tierkreis.core.values import StructValue, VecValue
 from tierkreis.pyruntime import PyRuntime
+
+register_pytket_types()
 
 
 @pytest.fixture
@@ -76,7 +77,6 @@ async def test_execute_circuit(bell_circuit: str, pytket_pyruntime) -> None:
     for count, res in zip(shots, outputs.values):
         assert isinstance(res, StructValue)
 
-        bres = res.to_python(ResStruct)
-        pytket_res = bres.to_pytket_value()
+        pytket_res = res.to_python(BackendResult)
 
         assert sum(pytket_res.get_counts().values()) == count

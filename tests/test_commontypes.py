@@ -1,19 +1,27 @@
 # ruff: noqa: E402
 from typing import Type
 
+import numpy as np
 import pytest
 
 from tierkreis.core.types import MapType, StructType, TierkreisType, VecType
+from tierkreis.core.values import TierkreisValue
 
 pytket = pytest.importorskip("pytket")
 from pytket._tket.circuit import Circuit
+from pytket.backends.backendresult import BackendResult
 from pytket.circuit import Qubit
 from pytket.partition import MeasurementBitMap, MeasurementSetup
 from pytket.pauli import Pauli, QubitPauliString
+from pytket.utils.outcomearray import OutcomeArray
 
 import tierkreis.common_types as common
 from tierkreis.common_types import _qps_from_pytket, _qps_to_pytket
-from tierkreis.common_types.circuit import Circuit as CircStruct
+from tierkreis.common_types.circuit import (
+    CircuitWrapper,
+    ResultWrapper,
+    register_pytket_types,
+)
 
 
 @pytest.mark.parametrize(
@@ -75,10 +83,26 @@ def test_measurementsetup():
         assert first_ser == common.MeasurementSetup.from_pytket(deser)
 
 
+def test_registered_conversions():
+    register_pytket_types()
+    tk_circ = TierkreisType.from_python(Circuit)
+    assert isinstance(tk_circ, StructType)
+    assert tk_circ == TierkreisType.from_python(CircuitWrapper)
+    tk_res = TierkreisType.from_python(BackendResult)
+    assert tk_res == TierkreisType.from_python(ResultWrapper)
+
+    circ = Circuit(2, 2).H(0).CX(0, 1).Measure(0, 0).Measure(1, 1)
+    assert TierkreisValue.from_python(circ).to_python(Circuit) == circ
+
+    res = BackendResult(
+        shots=OutcomeArray(np.array([[2, 3], [4, 5]], dtype=np.uint8), 15)
+    )
+    assert TierkreisValue.from_python(res).to_python(BackendResult) == res
+
+
 @pytest.mark.parametrize(
     "t,expected_tk_ty",
     [
-        (CircStruct, StructType),
         (common.MeasurementSetup, StructType),
         (common.Distribution, MapType),
         (common.QubitPauliString, VecType),

@@ -38,7 +38,7 @@ telemetry = [
 
 commontypes = ["pytket>=1.0"]
 lint = [
-    "ruff~=0.1",
+    "ruff~=0.2",
     "pyright==1.1.345",
     "tierkreis[sc22-example,telemetry,docker,pydantic]",
 ]
@@ -66,10 +66,10 @@ include = ["tierkreis*", "tierkreis/py.typed"]
 [tool.ruff]
 target-version = "py310"
 # default + imports
-select = ["E4", "E7", "E9", "F", "I"]
+lint.select = ["E4", "E7", "E9", "F", "I"]
 extend-exclude = ["tierkreis/core/protos"]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"] # module imported but unused
 
 [tool.pyright]

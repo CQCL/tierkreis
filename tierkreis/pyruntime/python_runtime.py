@@ -9,7 +9,7 @@ import requests
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
-from tierkreis.core.protos.tierkreis.v1alpha.graph import Output, OutputStream
+from tierkreis.core.protos.tierkreis.v1alpha1.graph import Output, OutputStream
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,

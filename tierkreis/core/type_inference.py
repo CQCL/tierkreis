@@ -3,8 +3,8 @@ from typing import Optional, Tuple, Union, overload
 
 import betterproto
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
-import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha1.signature as ps
 
 # Awkwardly, the Rust stubs end up here:
 from tierkreis import TierkreisGraph

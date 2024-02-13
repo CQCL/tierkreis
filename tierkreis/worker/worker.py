@@ -14,9 +14,9 @@ from grpclib.const import Status as StatusCode
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
-import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
 import tierkreis.core.protos.tierkreis.v1alpha1.runtime as pr
+import tierkreis.core.protos.tierkreis.v1alpha1.signature as ps
 import tierkreis.core.protos.tierkreis.v1alpha1.worker as pw
 from tierkreis.core.function import FunctionName
 from tierkreis.core.protos.tierkreis.v1alpha1.worker import (

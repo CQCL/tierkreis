@@ -2,8 +2,8 @@
 from dataclasses import dataclass, field
 from typing import List
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
-import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha1.signature as ps
 
 
 @dataclass

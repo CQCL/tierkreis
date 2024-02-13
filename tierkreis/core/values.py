@@ -25,7 +25,7 @@ from uuid import UUID
 
 import betterproto
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
 from tierkreis.core import types as TKType
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.opaque_model import (

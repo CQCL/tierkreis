@@ -1,22 +1,22 @@
 syntax = "proto3";
-package tierkreis.v1alpha.signature;
-import "v1alpha/graph.proto";
+package tierkreis.v1alpha1.signature;
+import "v1alpha1/graph.proto";
 
 message FunctionDeclaration {
-  tierkreis.v1alpha.graph.TypeScheme type_scheme = 2;
+  tierkreis.v1alpha1.graph.TypeScheme type_scheme = 2;
   string description = 3;
   repeated string input_order = 4;
   repeated string output_order = 5;
 }
 
 message ListFunctionsRequest {
-  tierkreis.v1alpha.graph.Location loc = 1;
+  tierkreis.v1alpha1.graph.Location loc = 1;
 }
 
 message ListFunctionsResponse {
   Namespace root = 1;
-  map<string, tierkreis.v1alpha.graph.TypeScheme> aliases = 2;
-  repeated tierkreis.v1alpha.graph.Location scopes = 3;
+  map<string, tierkreis.v1alpha1.graph.TypeScheme> aliases = 2;
+  repeated tierkreis.v1alpha1.graph.Location scopes = 3;
 }
 
 service Signature {
@@ -28,8 +28,8 @@ service TypeInference {
 }
 
 message InferTypeRequest {
-  tierkreis.v1alpha.graph.Value value = 1;
-  tierkreis.v1alpha.graph.Location loc = 2;
+  tierkreis.v1alpha1.graph.Value value = 1;
+  tierkreis.v1alpha1.graph.Location loc = 2;
 }
 
 message InferTypeResponse {
@@ -40,13 +40,13 @@ message InferTypeResponse {
 }
 
 message InferTypeSuccess {
-  tierkreis.v1alpha.graph.Value value = 1;
-  tierkreis.v1alpha.graph.TypeScheme type_scheme = 2;
+  tierkreis.v1alpha1.graph.Value value = 1;
+  tierkreis.v1alpha1.graph.TypeScheme type_scheme = 2;
 }
 
 message GraphWithInputs {
-  tierkreis.v1alpha.graph.Graph graph = 1;
-  optional tierkreis.v1alpha.graph.StructValue inputs = 2;
+  tierkreis.v1alpha1.graph.Graph graph = 1;
+  optional tierkreis.v1alpha1.graph.StructValue inputs = 2;
 }
 
 message InferGraphTypesRequest {
@@ -71,7 +71,7 @@ message GraphLocation {
     Empty root = 1;
     uint32 vec_index = 2;
     uint32 node_idx = 4;
-    tierkreis.v1alpha.graph.Edge edge = 5;
+    tierkreis.v1alpha1.graph.Edge edge = 5;
     Empty input = 6;
     Empty output = 7;
     string struct_field = 8;
@@ -88,20 +88,20 @@ message TypeErrors {
 }
 
 message UnifyError {
-  tierkreis.v1alpha.graph.Type expected = 1;
-  tierkreis.v1alpha.graph.Type found = 2;
+  tierkreis.v1alpha1.graph.Type expected = 1;
+  tierkreis.v1alpha1.graph.Type found = 2;
 }
 
 message TypeVarError {
-  tierkreis.v1alpha.graph.TypeSchemeVar variable = 1;
-  tierkreis.v1alpha.graph.TypeScheme type_scheme = 2;
+  tierkreis.v1alpha1.graph.TypeSchemeVar variable = 1;
+  tierkreis.v1alpha1.graph.TypeScheme type_scheme = 2;
 }
 
 message ErrorVariant {
   oneof error {
     UnifyError unify = 1;
     string kind = 2;
-    tierkreis.v1alpha.graph.FunctionName unknown_function = 3;
+    tierkreis.v1alpha1.graph.FunctionName unknown_function = 3;
     TypeVarError unknown_type_var = 4;
     string bound = 5;
   }
@@ -116,7 +116,7 @@ message TierkreisTypeError {
 
 message NamespaceItem {
   FunctionDeclaration decl = 1;
-  repeated tierkreis.v1alpha.graph.Location locations = 2;
+  repeated tierkreis.v1alpha1.graph.Location locations = 2;
 }
 
 message Namespace {

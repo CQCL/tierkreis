@@ -47,6 +47,7 @@ class ClassField:
     discriminant: str | None
     # whether the field is present in the __init__ function
     init: bool = True
+    default: Any = None
 
 
 def python_struct_fields(
@@ -90,6 +91,7 @@ def python_struct_fields(
                 k,
                 _assert_annotation(f.annotation),
                 _get_discriminator(f),
+                default=f.default,
             )
             for k, f in model_fields.items()
         ]
@@ -97,7 +99,12 @@ def python_struct_fields(
         dat_fields = fields(type_)
         types = typing.get_type_hints(type_)
         return [
-            ClassField(f.name, types[f.name], getattr(f.default, "discriminator", None))
+            ClassField(
+                f.name,
+                types[f.name],
+                getattr(f.default, "discriminator", None),
+                default=f.default,
+            )
             for f in dat_fields
         ]
 

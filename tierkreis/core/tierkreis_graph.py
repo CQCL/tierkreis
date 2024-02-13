@@ -667,7 +667,10 @@ def _to_tierkreis_type(
 class GraphValue(TierkreisValue):
     value: TierkreisGraph
     _proto_name: str = "graph"
-    _class_pytype: typing.ClassVar[typing.Type] = TierkreisGraph
+
+    @property
+    def _instance_pytype(self) -> typing.Type:
+        return TierkreisGraph
 
     def to_proto(self) -> pg.Value:
         return pg.Value(graph=self.value.to_proto())
@@ -681,10 +684,6 @@ class GraphValue(TierkreisValue):
             return cast(T, RuntimeGraph(self.value))
         if issubclass(type_, TierkreisGraph):
             return cast(T, self.value)
-
-    @classmethod
-    def from_python(cls, value: Any) -> "TierkreisValue":
-        return cls(value)
 
     @classmethod
     def from_proto(cls, value: Any) -> "TierkreisValue":

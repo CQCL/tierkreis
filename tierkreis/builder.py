@@ -313,10 +313,13 @@ T = TypeVar("T")
 
 def Const(
     val: Any,
+    type_: Type | None = None,
 ) -> NodePort:
     if isinstance(val, LazyGraph):
         val = val.graph
-    n = current_builder().add_node_to_graph(ConstNode(TierkreisValue.from_python(val)))
+    n = current_builder().add_node_to_graph(
+        ConstNode(TierkreisValue.from_python(val, type_))
+    )
     return n[Labels.VALUE]
 
 

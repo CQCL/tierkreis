@@ -50,6 +50,12 @@ def _is_annotated(type_: typing.Type) -> Optional[typing.Type]:
     return None
 
 
+def _is_var_length_tuple(args: tuple) -> Optional[typing.Type]:
+    if len(args) == 2 and args[1] == ...:
+        return args[0]
+    return None
+
+
 Base = TypeVar("Base")
 
 
@@ -65,6 +71,14 @@ class SerializeAs(Protocol[Base]):
     def from_tierkreis_compatible(self) -> Base:
         """Convert the tierkreis-compatible type to a Base instance."""
         ...
+
+
+@dataclass
+class IncompatiblePyType(Exception):
+    type_: Any
+
+    def __str__(self) -> str:
+        return f"Could not convert python type to tierkreis type: {self.type_}"
 
 
 class TierkreisType(ABC):
@@ -116,9 +130,9 @@ class TierkreisType(ABC):
             result = VecType(element=TierkreisType.from_python(args[0], visited_types))
         elif type_origin is tuple:
             args = typing.get_args(type_)
-            if len(args) == 2 and args[1] == ...:
-                # tuple all of one type can be treated as list
-                result = VecType(TierkreisType.from_python(args[0]))
+            if element_type := _is_var_length_tuple(args):
+                # Varargs tuple can be treated as list
+                result = VecType(TierkreisType.from_python(element_type, visited_types))
             else:
                 result = StructType.from_tuple(args, visited_types)
         elif type_origin is TierkreisPair:
@@ -170,9 +184,7 @@ class TierkreisType(ABC):
                 shape=Row.from_python(actual_type, visited_types), name=type_name
             )
         else:
-            raise ValueError(
-                f"Could not convert python type to tierkreis type: {type_}"
-            )
+            raise IncompatiblePyType(type_)
 
         visited_types[type_] = result
 
@@ -393,8 +405,10 @@ class Row(TierkreisType):
         if isinstance(type_, typing.TypeVar):
             return Row(rest=type_.__name__)
 
-        class_fields = python_struct_fields(type_)
-
+        try:
+            class_fields = python_struct_fields(type_)
+        except ValueError as e:
+            raise IncompatiblePyType(type_) from e
         return Row(
             content={
                 field.name: _from_disc_field(

@@ -160,14 +160,14 @@ def test_value_topython_list_with_empty():
 
 @pytest.mark.xfail(raises=AssertionError)
 def test_value_topython_map_with_empty():
-    pyval = {10: ([], [3, 4]), 15: ([2.1, 3.2], [])}
+    pyval = {10: [[], [3, 4]], 15: [[2.1, 3.2], []]}
     tkval = TierkreisValue.from_python(pyval)
     if tkval != MapValue(
         {
-            IntValue(10): VecValue.from_python(
+            IntValue(10): VecValue.from_iterable(
                 (VecValue([]), VecValue([IntValue(3), IntValue(4)]))
             ),
-            IntValue(15): VecValue.from_python(
+            IntValue(15): VecValue.from_iterable(
                 (VecValue([FloatValue(2.1), FloatValue(3.2)]), VecValue([]))
             ),
         }

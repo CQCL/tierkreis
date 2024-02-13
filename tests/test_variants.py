@@ -30,7 +30,6 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
     # test structs containing unions can be converted to variant values, sent
     # through worker funcctions that process them as unions, and converted back
     # to unions.
-
     iv = TierkreisValue.from_python(1)
     assert iv.to_python(float | int) == 1
     fv = TierkreisValue.from_python(2.3)
@@ -257,11 +256,12 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
             tk_opaque_contains,
         ),
     ]
-    for py_type, py_val, tk_val in samples:
+    for py_type, py_val, expected_tk_val in samples:
         _ = TierkreisType.from_python(py_type)
-        tv = TierkreisValue.from_python(py_val)
-        assert tv == tk_val
-        assert tv.to_python(py_type) == py_val
+        converted_tk_val = TierkreisValue.from_python(py_val)
+        assert converted_tk_val == expected_tk_val
+        assert TierkreisValue.from_python(py_val, py_type) == expected_tk_val
+        assert converted_tk_val.to_python(py_type) == py_val
 
         pn = bi["python_nodes"]
 

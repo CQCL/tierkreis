@@ -25,7 +25,7 @@ from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph
 from tierkreis.core.type_errors import TierkreisTypeErrors
-from tierkreis.core.values import IncompatiblePyType, StructValue, TierkreisValue
+from tierkreis.core.values import IncompatiblePyValue, StructValue, TierkreisValue
 
 if TYPE_CHECKING:
     from betterproto.grpc.grpclib_client import ServiceStub
@@ -115,7 +115,7 @@ class ServerRuntime(RuntimeClient):
         for key, val in py_inputs.items():
             try:
                 inputs[key] = TierkreisValue.from_python(val)
-            except IncompatiblePyType as err:
+            except IncompatiblePyValue as err:
                 raise InputConversionError(key, val) from err
 
         decoded = await self._runtime_stub.run_graph(

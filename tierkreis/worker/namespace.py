@@ -26,7 +26,7 @@ from tierkreis.core.types import (
 )
 from tierkreis.core.values import (
     StructValue,
-    val_known_tk_type,
+    TierkreisValue,
 )
 from tierkreis.worker.exceptions import (
     DecodeInputError,
@@ -208,10 +208,6 @@ class Namespace(Mapping[str, "Namespace"]):
                 )
             )
 
-            # Convert type hints into tierkreis types
-            type_inputs = Row.from_python(hint_inputs)
-            type_outputs = Row.from_python(hint_outputs)
-
             # Wrap function with input and output conversions
             @wraps(func)
             async def wrapped_func(
@@ -243,12 +239,10 @@ class Namespace(Mapping[str, "Namespace"]):
 
                 try:
                     with span(tracer, name="encoding outputs from python type"):
-                        if struct_output:
-                            tk_type = type_outputs
-                        else:
-                            tk_type = type_outputs.content["value"]
-
-                        outputs = val_known_tk_type(tk_type, python_outputs)
+                        return_type = hint_outputs if struct_output else return_hint
+                        outputs = TierkreisValue.from_python(
+                            python_outputs, return_type
+                        )
 
                 except Exception as error:
                     raise EncodeOutputError(str(error)) from error
@@ -264,6 +258,9 @@ class Namespace(Mapping[str, "Namespace"]):
                 else {}
             )
 
+            # Convert type hints into tierkreis types
+            type_inputs = Row.from_python(hint_inputs)
+            type_outputs = Row.from_python(hint_outputs)
             type_vars_by_name.update(
                 {name: StarKind() for name in type_inputs.contained_vartypes()}
             )

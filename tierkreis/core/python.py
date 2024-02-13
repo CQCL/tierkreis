@@ -4,7 +4,7 @@ import typing
 from dataclasses import dataclass
 from typing import Generic
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
 from tierkreis.core.types import UnpackRow
 
 if typing.TYPE_CHECKING:

@@ -11,7 +11,7 @@ from uuid import UUID
 import betterproto
 from typing_extensions import Self
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
 from tierkreis.core.internal import python_struct_fields
 from tierkreis.core.opaque_model import _to_snake_case
 

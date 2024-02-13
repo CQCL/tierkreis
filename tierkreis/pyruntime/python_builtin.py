@@ -4,7 +4,7 @@ from copy import deepcopy
 from dataclasses import dataclass
 from typing import Generic, TypeVar, cast
 
-from tierkreis.core.protos.tierkreis.v1alpha.graph import (
+from tierkreis.core.protos.tierkreis.v1alpha1.graph import (
     Constraint,
     Empty,
     GraphType,
@@ -16,7 +16,7 @@ from tierkreis.core.protos.tierkreis.v1alpha.graph import (
     TypeScheme,
     TypeSchemeVar,
 )
-from tierkreis.core.protos.tierkreis.v1alpha.signature import FunctionDeclaration
+from tierkreis.core.protos.tierkreis.v1alpha1.signature import FunctionDeclaration
 from tierkreis.core.python import RuntimeGraph
 from tierkreis.core.tierkreis_graph import GraphValue, IncomingWireType, TierkreisGraph
 from tierkreis.core.types import StarKind, TierkreisPair, UnpackRow

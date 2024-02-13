@@ -21,7 +21,7 @@ from typing import (
 import betterproto
 import networkx as nx
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
 from tierkreis.core.function import FunctionName
 from tierkreis.core.types import TierkreisType
 from tierkreis.core.values import T, TierkreisValue
@@ -51,8 +51,9 @@ class TierkreisNode(ABC):
                 graph=TierkreisGraph.from_proto(box_node.graph), location=box_node.loc
             )
         elif name == "function":
+            fn_node = cast(pg.FunctionNode, out_node)
             result = FunctionNode(
-                FunctionName.from_proto(cast(pg.FunctionName, out_node))
+                FunctionName.from_proto(fn_node.name), fn_node.retry_secs
             )
         elif name == "input":
             result = InputNode()
@@ -113,9 +114,14 @@ class BoxNode(TierkreisNode):
 @dataclass(frozen=True)
 class FunctionNode(TierkreisNode):
     function_name: FunctionName
+    retry_secs: Optional[int] = None  # Stored as uint32, so always >=0
 
     def to_proto(self) -> pg.Node:
-        return pg.Node(function=self.function_name.to_proto())
+        return pg.Node(
+            function=pg.FunctionNode(
+                name=self.function_name.to_proto(), retry_secs=self.retry_secs
+            )
+        )
 
     def is_discard_node(self) -> bool:
         return self.function_name == FunctionName("discard")
@@ -146,6 +152,17 @@ class NodeRef(Iterable):
     idx: int
     graph: "TierkreisGraph"
     outports: Optional[list[str]] = field(default=None, compare=False)
+
+    def with_retry_secs(self, retry_secs: int) -> "NodeRef":
+        """If this NodeRef refers to a FunctionNode, set its retry time in seconds.
+        Otherwise, raises ValueError."""
+        node = self.graph[self.idx]
+        if not isinstance(node, FunctionNode):
+            raise ValueError(
+                "{self} must refer to a FunctionNode, but actually refers to {node}"
+            )
+        self.graph[self.idx] = FunctionNode(node.function_name, retry_secs)
+        return self
 
     def default_nodeport(self, create: bool = True) -> "NodePort":
         if self.outports:
@@ -282,6 +299,7 @@ class TierkreisGraph:
     def add_func(
         self,
         _tk_function: Union[str, FunctionName],
+        _retry_secs: Optional[int] = None,
         /,
         **kwargs: IncomingWireType,
     ) -> NodeRef:
@@ -291,7 +309,7 @@ class TierkreisGraph:
             else _tk_function
         )
 
-        return self.add_node(FunctionNode(f_name), **kwargs)
+        return self.add_node(FunctionNode(f_name, _retry_secs), **kwargs)
 
     def add_const(self, value: Any) -> NodeRef:
         return self.add_node(ConstNode(TierkreisValue.from_python(value)))

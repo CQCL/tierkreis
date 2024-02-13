@@ -1,6 +1,6 @@
 syntax = "proto3";
-import "v1alpha/graph.proto";
-import "v1alpha/signature.proto";
+import "v1alpha1/graph.proto";
+import "v1alpha1/signature.proto";
 package tierkreis.v1alpha1.jobs;
 
 service JobControl {
@@ -11,15 +11,15 @@ service JobControl {
 }
 
 message StartJobRequest {
-  tierkreis.v1alpha.graph.Graph graph = 1;
-  tierkreis.v1alpha.graph.StructValue inputs = 2;
+  tierkreis.v1alpha1.graph.Graph graph = 1;
+  tierkreis.v1alpha1.graph.StructValue inputs = 2;
   string job_id = 3;
 }
 
 message StartJobResponse {
   oneof result {
     string job_id = 1;
-    tierkreis.v1alpha.signature.TypeErrors type_errors = 2;
+    tierkreis.v1alpha1.signature.TypeErrors type_errors = 2;
     string runtime_error = 3;
   }
 }
@@ -64,7 +64,7 @@ message JobStatus {
 message JobResult {
   string id = 1;
   oneof status {
-    tierkreis.v1alpha.graph.StructValue success = 2;
+    tierkreis.v1alpha1.graph.StructValue success = 2;
     string error = 3;
   }
 }

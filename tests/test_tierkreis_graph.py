@@ -4,7 +4,9 @@ from typing import Any, Iterable, Optional
 import pytest
 
 from tierkreis.core import TierkreisGraph
+from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import (
+    BoxNode,
     FunctionNode,
     NodePort,
     NodeRef,
@@ -32,17 +34,17 @@ def count(i: Iterable[Any]) -> int:
     return sum(1 for _ in i)
 
 
-def test_creation() -> None:
+def test_creation_roundtrip() -> None:
     tg = TierkreisGraph()
 
     add = tg.add_func("iadd", a=tg.add_const(3), b=tg.input["input"])
     tg.set_outputs(output=add)
 
     id_g = TierkreisGraph()
-    id_node = id_g.add_func("id", value=id_g.input["value"])
+    id_node = id_g.add_func("id", 2, value=id_g.input["value"])
     id_g.set_outputs(value=id_node["value"])
 
-    tg.add_box(id_g)
+    b = tg.add_box(id_g)
 
     deser_tg = TierkreisGraph.from_proto(tg.to_proto())
 
@@ -54,9 +56,15 @@ def test_creation() -> None:
         assert graph.outputs() == ["output"]
 
         add_node = NodeRef(add.idx, graph)
+        assert graph[add_node] == FunctionNode(FunctionName.parse("iadd"))
+        assert graph[add_node] != FunctionNode(FunctionName.parse("iadd"), 0)
         assert next(graph.out_edges(add)) == TierkreisEdge(
             add_node["value"], NodePort(graph.output, "output"), None
         )
+
+        boxn = graph[b.idx]
+        assert isinstance(boxn, BoxNode)
+        assert boxn.graph[id_node.idx] == FunctionNode(FunctionName.parse("id"), 2)
 
 
 def test_insert_subgraph() -> None:

@@ -1,17 +1,17 @@
 syntax = "proto3";
-import "v1alpha/graph.proto";
+import "v1alpha1/graph.proto";
 import "v1alpha1/runtime.proto";
 package tierkreis.v1alpha1.worker;
 
 message RunFunctionRequest {
-  tierkreis.v1alpha.graph.FunctionName function = 1;
-  tierkreis.v1alpha.graph.StructValue inputs = 2;
-  tierkreis.v1alpha.graph.Location loc = 3;
+  tierkreis.v1alpha1.graph.FunctionName function = 1;
+  tierkreis.v1alpha1.graph.StructValue inputs = 2;
+  tierkreis.v1alpha1.graph.Location loc = 3;
   tierkreis.v1alpha1.runtime.Callback callback = 4;
 }
 
 message RunFunctionResponse {
-    tierkreis.v1alpha.graph.StructValue outputs = 1;
+    tierkreis.v1alpha1.graph.StructValue outputs = 1;
 }
 
 service Worker {

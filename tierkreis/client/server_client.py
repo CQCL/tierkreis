@@ -18,9 +18,9 @@ import betterproto
 from grpclib.client import Channel
 from grpclib.events import SendRequest
 
-import tierkreis.core.protos.tierkreis.v1alpha.graph as pg
-import tierkreis.core.protos.tierkreis.v1alpha.signature as ps
+import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
 import tierkreis.core.protos.tierkreis.v1alpha1.runtime as pr
+import tierkreis.core.protos.tierkreis.v1alpha1.signature as ps
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import Location, TierkreisGraph

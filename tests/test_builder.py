@@ -34,6 +34,7 @@ from tierkreis.core.signature import Signature
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
     ConstNode,
+    FunctionNode,
     GraphValue,
     TierkreisGraph,
 )
@@ -639,6 +640,17 @@ async def test_unpacking_nested(client: RuntimeClient) -> None:
 
     outputs = await client.run_graph(foo, arg=argument)
     assert outputs == {"out": nested_val}
+
+
+def test_retry_secs(bi) -> None:
+    pn = bi["python_nodes"]
+
+    @graph()
+    def foo(arg: Input[Any]) -> Output:
+        return Output(res=pn.id_py(arg).with_retry_secs(2))
+
+    (f,) = [n for n in foo.nodes() if isinstance(n, FunctionNode)]
+    assert f.retry_secs == 2
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,6 @@
 syntax = "proto3";
-import "v1alpha/graph.proto";
-import "v1alpha/signature.proto";
+import "v1alpha1/graph.proto";
+import "v1alpha1/signature.proto";
 package tierkreis.v1alpha1.runtime;
 
 service Runtime {
@@ -9,22 +9,22 @@ service Runtime {
 
 message Callback {
   string uri = 1;
-  tierkreis.v1alpha.graph.Location loc = 2;
+  tierkreis.v1alpha1.graph.Location loc = 2;
 }
 
 
 message RunGraphRequest {
-  tierkreis.v1alpha.graph.Graph graph = 1;
-  tierkreis.v1alpha.graph.StructValue inputs = 2;
+  tierkreis.v1alpha1.graph.Graph graph = 1;
+  tierkreis.v1alpha1.graph.StructValue inputs = 2;
   bool type_check = 3;
-  tierkreis.v1alpha.graph.Location loc = 4;
+  tierkreis.v1alpha1.graph.Location loc = 4;
   Callback escape = 5;
 }
 
 message RunGraphResponse {
   oneof result {
-    tierkreis.v1alpha.graph.StructValue success = 1;
+    tierkreis.v1alpha1.graph.StructValue success = 1;
     string error = 2;
-    tierkreis.v1alpha.signature.TypeErrors type_errors = 3;
+    tierkreis.v1alpha1.signature.TypeErrors type_errors = 3;
   }
 }

@@ -63,7 +63,7 @@ async def discard(value: a) -> EmptyOut[a]:
 
 
 @dataclass
-class EqOut(Generic[a], UnpackRow):
+class EqOut(UnpackRow):
     result: bool
 
 

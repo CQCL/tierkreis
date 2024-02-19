@@ -29,7 +29,11 @@ import betterproto
 
 import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
 from tierkreis.core import types as TKType
-from tierkreis.core.internal import ClassField, python_struct_fields
+from tierkreis.core.internal import (
+    ClassField,
+    FieldExtractionError,
+    python_struct_fields,
+)
 from tierkreis.core.opaque_model import (
     OpaqueModel,
 )
@@ -514,7 +518,9 @@ class StructValue(Generic[RowStruct], TierkreisValue):
         return pg.Value(struct=pg.StructValue(map=self.to_proto_dict()))
 
     def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
-        if typing.get_origin(type_) is tuple:
+        type_origin = typing.get_origin(type_) or type_
+
+        if type_origin is tuple:
             args = typing.get_args(type_)
             arg_vals = _labeled_dict_to_tuple(self.values)
             converted = [v.to_python(args[i]) for i, v in arg_vals]
@@ -526,10 +532,9 @@ class StructValue(Generic[RowStruct], TierkreisValue):
             assert isinstance(payload, StringValue)
             py_val = json.loads(payload.value)
             return cast(Callable[..., T], type_)(**py_val)
-        type_origin = typing.get_origin(type_) or type_
         try:
-            class_fields = python_struct_fields(type_origin)
-        except ValueError as e:
+            class_fields = python_struct_fields(type_)
+        except FieldExtractionError as e:
             raise ToPythonFailure(self) from e
 
         field_values = {}
@@ -544,7 +549,6 @@ class StructValue(Generic[RowStruct], TierkreisValue):
                 val = val.value
             else:
                 field_type = field.type_
-
             py_val = val.to_python(field_type)
             if field.init:
                 # field can be set via __init__ method
@@ -568,10 +572,9 @@ class StructValue(Generic[RowStruct], TierkreisValue):
     @classmethod
     def from_object(cls, value: Any, type_: typing.Type | None = None) -> "StructValue":
         struct_type = type_ or type(value)
-        type_origin = typing.get_origin(struct_type) or struct_type
         try:
-            class_fields = python_struct_fields(type_origin)
-        except ValueError as e:
+            class_fields = python_struct_fields(struct_type)
+        except FieldExtractionError as e:
             raise IncompatiblePyValue(value) from e
 
         def _extract_value(field: ClassField) -> TierkreisValue:
@@ -857,7 +860,6 @@ def _check_subclass(value: Any, type_: typing.Type):
     value_type = type(value)
     if value_type != type_:
         type_origin = typing.get_origin(type_) or type_
-        assert isinstance(value, type_origin)  # type: ignore
         if (typing.get_origin(value_type) or value_type) != type_origin:
             warnings.warn(
                 f"Ignoring extra fields in {value_type} beyond those in type {type_}."

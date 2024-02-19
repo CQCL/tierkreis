@@ -12,7 +12,7 @@ import betterproto
 from typing_extensions import Self
 
 import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
-from tierkreis.core.internal import python_struct_fields
+from tierkreis.core.internal import FieldExtractionError, python_struct_fields
 from tierkreis.core.opaque_model import _to_snake_case
 
 
@@ -178,8 +178,7 @@ class TierkreisType(ABC):
             return cls.from_python(inner_type)
         elif inner_type := _is_annotated(type_):
             return cls.from_python(inner_type)
-        elif inspect.isclass(type_):
-            actual_type = cast(typing.Type, type_origin or type_)
+        elif inspect.isclass((actual_type := cast(typing.Type, type_origin or type_))):
             result = StructType(
                 shape=Row.from_python(actual_type, visited_types), name=type_name
             )
@@ -407,7 +406,7 @@ class Row(TierkreisType):
 
         try:
             class_fields = python_struct_fields(type_)
-        except ValueError as e:
+        except FieldExtractionError as e:
             raise IncompatiblePyType(type_) from e
         return Row(
             content={

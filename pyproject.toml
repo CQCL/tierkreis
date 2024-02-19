@@ -42,10 +42,10 @@ lint = [
     "pyright==1.1.345",
     "tierkreis[sc22-example,telemetry,docker,pydantic]",
 ]
-test = ["pytest>=6.2,<7", "pytest-asyncio>=0.16,<0.17", "tierkreis[pydantic]"]
+test = ["pytest>=6.2,<7", "pytest-asyncio>=0.16,<0.17", "tierkreis[pydantic,commontypes,typecheck]"]
 sc22-example = ["numpy>=1.20,<2", "pytket>=1.0"]
 
-typecheck = ["tierkreis_typecheck"]
+typecheck = ["tierkreis_typecheck>=0.2,<0.3"]
 
 [tool.pytest.ini_options]
 markers = ["pytket"]

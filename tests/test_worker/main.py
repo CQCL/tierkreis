@@ -4,6 +4,8 @@ import base64
 from dataclasses import dataclass
 from typing import Generic, Optional, TypeVar, cast
 
+from pydantic import BaseModel
+
 from tierkreis import TierkreisGraph
 from tierkreis.client.server_client import RuntimeClient
 from tierkreis.core.python import RuntimeGraph
@@ -137,6 +139,27 @@ async def id_union_struct(x: StructWithUnion) -> UnionStructOutput:
 @namespace.function()
 async def id_union(x: int | float) -> float | int:
     return x
+
+
+G = TypeVar("G")
+
+
+class MyGenericList(BaseModel, Generic[G]):
+    x: list[G]
+
+
+@namespace.function()
+async def generic_int_to_str_list(g: MyGenericList[int]) -> MyGenericList[str]:
+    return MyGenericList(x=[f"got number: {g.x[0]}"])
+
+
+class MyGeneric(BaseModel, Generic[G]):
+    x: G
+
+
+@namespace.function()
+async def generic_int_to_str(g: MyGeneric[int]) -> MyGeneric[str]:
+    return MyGeneric(x=f"got number: {g.x}")
 
 
 @namespace.function(pass_stack=True)

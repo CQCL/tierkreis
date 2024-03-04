@@ -76,16 +76,16 @@ async def test_match(client: RuntimeClient):
     match_graph = TierkreisGraph()
     match_graph.set_outputs(
         result=match_graph.add_func(
-            "python_nodes::id_delay",
-            wait=match_graph.add_const(1),
+            "sleep",
+            delay_secs=match_graph.add_const(1.0),
             value=match_graph.add_func(
                 "eval",
                 thunk=match_graph.add_match(
                     match_graph.input["vv"],
                     one=match_graph.add_const(one_graph),
                     many=match_graph.add_func(
-                        "python_nodes::id_delay",
-                        wait=match_graph.add_const(1),
+                        "sleep",
+                        delay_secs=match_graph.add_const(1.0),
                         value=match_graph.add_const(many_graph),
                     ),
                 )["thunk"],

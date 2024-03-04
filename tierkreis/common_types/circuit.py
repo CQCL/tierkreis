@@ -88,12 +88,10 @@ class UnitID:
 class PytketType(Protocol):
     """Many pytket types define to_dict and from_dict for serialization."""
 
-    def to_dict(self) -> dict[str, Any]:
-        ...
+    def to_dict(self) -> dict[str, Any]: ...
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any], /) -> "PytketType":
-        ...
+    def from_dict(cls, d: dict[str, Any], /) -> "PytketType": ...
 
 
 T = TypeVar("T", bound=PytketType)

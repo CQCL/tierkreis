@@ -1,4 +1,5 @@
 """Utilities for building tierkreis graphs."""
+
 import copy
 import typing
 from abc import ABC, abstractmethod

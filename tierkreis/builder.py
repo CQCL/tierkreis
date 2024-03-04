@@ -698,12 +698,10 @@ class _CaseScope(GraphBuilder, ABC):
         handlers[tag] = handler
 
     @abstractmethod
-    def _get_thunk(self) -> NodePort:
-        ...
+    def _get_thunk(self) -> NodePort: ...
 
     @abstractmethod
-    def _intermediate_error(self) -> IntermediateNodes:
-        ...
+    def _intermediate_error(self) -> IntermediateNodes: ...
 
     def __exit__(
         self,
@@ -925,8 +923,7 @@ class Function(_CallAddNode):
 
 class Namespace(Mapping[str, "Namespace"]):
     @overload
-    def __init__(self, args: Signature, /):
-        ...
+    def __init__(self, args: Signature, /): ...
 
     @overload
     def __init__(self, args: SigNamespace, *, _prefix: list[str]):

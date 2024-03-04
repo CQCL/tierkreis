@@ -1,4 +1,5 @@
 """Simple utilities useful throughout the codebase."""
+
 from typing import Callable, Mapping, Optional, TypeVar, Union
 
 from tierkreis.core.function import FunctionDeclaration, FunctionName

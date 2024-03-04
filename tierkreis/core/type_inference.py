@@ -32,8 +32,7 @@ def infer_graph_types(
     g: TierkreisGraph,
     funcs: Signature,
     inputs: None = None,
-) -> TierkreisGraph:
-    ...
+) -> TierkreisGraph: ...
 
 
 @overload
@@ -41,8 +40,7 @@ def infer_graph_types(
     g: TierkreisGraph,
     funcs: Signature,
     inputs: StructValue,
-) -> Tuple[TierkreisGraph, StructValue]:
-    ...
+) -> Tuple[TierkreisGraph, StructValue]: ...
 
 
 def infer_graph_types(

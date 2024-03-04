@@ -1,4 +1,5 @@
 """Visualise TierkreisGraph using graphviz."""
+
 import textwrap
 from typing import Iterable, NewType, Optional, Tuple, cast
 

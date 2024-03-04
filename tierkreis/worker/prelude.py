@@ -1,5 +1,4 @@
-"""Prelude definitions and functions for server executable scripts.
-"""
+"""Prelude definitions and functions for server executable scripts."""
 
 import argparse
 import asyncio

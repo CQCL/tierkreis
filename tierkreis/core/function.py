@@ -1,4 +1,5 @@
 """TierkreisFunction encapsulation of available function signatures"""
+
 from dataclasses import dataclass, field
 from typing import List
 

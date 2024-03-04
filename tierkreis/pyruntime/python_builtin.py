@@ -1,5 +1,6 @@
 """Implementation of builtin namespace in python."""
 
+import asyncio
 from copy import deepcopy
 from dataclasses import dataclass
 from typing import Generic, TypeVar, cast
@@ -184,6 +185,13 @@ async def iadd(a: int, b: int) -> int:
 @namespace.function("id", type_vars={"a": StarKind()})
 async def _id(value: a) -> a:
     """Passes on an arbitrary value unchanged."""
+    return value
+
+
+@namespace.function(type_vars={"a": StarKind()})
+async def sleep(value: a, delay_secs: float) -> a:
+    """Identity function with an asynchronous delay input in seconds."""
+    await asyncio.sleep(delay_secs)
     return value
 
 

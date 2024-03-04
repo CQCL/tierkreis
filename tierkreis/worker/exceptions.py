@@ -1,4 +1,5 @@
 """Worker exceptions."""
+
 from dataclasses import dataclass
 
 

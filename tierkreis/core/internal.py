@@ -9,7 +9,7 @@ from typing import (
     get_type_hints,
 )
 
-from pydantic import BaseModel
+import pydantic as pyd
 
 from tierkreis.core.opaque_model import OpaqueModel
 
@@ -50,9 +50,7 @@ def python_struct_fields(
     type_: Type | ParamSpec,
 ) -> list[ClassField]:
     """For a python dataclass or pydantic BaseModel, extract the fields and their types."""
-    if inspect.isclass(type_) and issubclass(type_, BaseModel):
-        import pydantic as pyd
-
+    if inspect.isclass(type_) and issubclass(type_, pyd.BaseModel):
         if issubclass(type_, OpaqueModel):
             model_type = cast(Type[OpaqueModel], type_)
 
@@ -100,3 +98,19 @@ def python_struct_fields(
     raise FieldExtractionError(
         type_, "Can only convert dataclasses or pydantic BaseModel."
     )
+
+
+def generic_origin(type_: Type) -> Type | None:
+    """Like typing.get_origin but also supports Generic pydantic 'BaseModel's"""
+    if (o := get_origin(type_)) is not None:
+        return o
+    if inspect.isclass(type_) and issubclass(type_, pyd.BaseModel):
+        # This taken from
+        # https://github.com/pydantic/pydantic/blob/812516d71a8696d5e29c5bdab40336d82ccde412/pydantic/_internal/_generics.py#L214-L218
+        pydantic_generic_metadata = getattr(
+            type_, "__pydantic_generic_metadata__", None
+        )
+        if pydantic_generic_metadata:
+            return pydantic_generic_metadata.get("origin")
+        # BaseModel but not generic; fall through
+    return None

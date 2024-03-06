@@ -8,6 +8,7 @@ service JobControl {
   rpc StartJob (StartJobRequest) returns (StartJobResponse) {};
   rpc JobStatus (JobStatusRequest) returns (JobStatusResponse) {};
   rpc StopJob (StopJobRequest) returns (StopJobResponse) {};
+  rpc DeleteCompleted(DeleteCompletedRequest) returns (DeleteCompletedResponse);
 }
 
 message StartJobRequest {
@@ -67,4 +68,10 @@ message JobResult {
     tierkreis.v1alpha1.graph.StructValue success = 2;
     string error = 3;
   }
+}
+
+message DeleteCompletedRequest {}
+message DeleteCompletedResponse {
+    // ids of deleted jobs
+    repeated string job_ids = 1;
 }

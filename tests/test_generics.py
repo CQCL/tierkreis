@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Generic, TypeVar
+from typing import Generic, Type, TypeVar, cast
 
 import pydantic as pyd
 import pytest
@@ -10,6 +10,7 @@ from test_worker.main import (
 
 from tierkreis.builder import Const, Output, graph
 from tierkreis.client.runtime_client import RuntimeClient
+from tierkreis.core.internal import generic_origin
 from tierkreis.core.types import (
     IntType,
     Row,
@@ -31,6 +32,7 @@ from tierkreis.core.values import (
 async def test_generic(bi, client: RuntimeClient) -> None:
     py_type = MyGeneric[int]
     py_val = MyGeneric(x=1)
+    py_val_explicit_type = MyGeneric[int](x=1)
     tk_val = StructValue(
         {
             "x": IntValue(1),
@@ -43,6 +45,8 @@ async def test_generic(bi, client: RuntimeClient) -> None:
     with pytest.raises(IncompatibleAnnotatedValue, match="~G"):
         # value doesn't know it is instance of concrete type so fails.
         TierkreisValue.from_python(py_val)
+    # whereas the pydantic-validated instantation records its own concrete type
+    assert TierkreisValue.from_python(py_val_explicit_type) == tk_val
     assert tk_val.to_python(py_type) == py_val
 
     pn = bi["python_nodes"]
@@ -60,6 +64,7 @@ async def test_generic(bi, client: RuntimeClient) -> None:
 async def test_generic_list(bi, client: RuntimeClient) -> None:
     py_type = MyGenericList[int]
     py_val = MyGenericList(x=[1])
+    py_val_explicit_type = MyGenericList[int](x=[1])
     tk_val = StructValue(
         {
             "x": VecValue([IntValue(1)]),
@@ -72,6 +77,8 @@ async def test_generic_list(bi, client: RuntimeClient) -> None:
     with pytest.raises(IncompatibleAnnotatedValue, match="~G"):
         # value doesn't know it is instance of concrete type so fails.
         TierkreisValue.from_python(py_val)
+    # whereas the pydantic-validated instantation records its own concrete type
+    assert TierkreisValue.from_python(py_val_explicit_type) == tk_val
     assert tk_val.to_python(py_type) == py_val
 
     pn = bi["python_nodes"]
@@ -135,8 +142,8 @@ def test_pydantic_nested() -> None:
     # Tierkreis can convert only the validated without an explicit type annotation
     for o in [un_un, val_un]:
         with pytest.raises(IncompatibleAnnotatedValue):
-            TierkreisValue.from_python(o, None)
-    tk_val = TierkreisValue.from_python(val_val, None)
+            TierkreisValue.from_python(o)
+    tk_val = TierkreisValue.from_python(val_val)
     assert tk_val.to_python(Outer[int]) == val_val  # and back (with explicit type)
 
     # Tierkreis can convert any of them with an explicit type annotation:
@@ -145,10 +152,41 @@ def test_pydantic_nested() -> None:
         assert tk_val.to_python(Outer[int]) == o
 
     # And pydantic rejects this one at runtime:
-    from pydantic_core._pydantic_core import ValidationError
-
     with pytest.raises(
-        ValidationError,
+        pyd.ValidationError,
         match=r"Input should be a valid dictionary or instance of Inner\[int\]",
     ):
         Outer[int](val=make_inner())
+
+
+def test_generic_origin() -> None:
+    assert generic_origin(list[int]) == list
+    assert generic_origin(list) is None
+
+    @dataclass
+    class MyDataclass:
+        foo: int
+
+    assert generic_origin(MyDataclass) is None
+
+    T = TypeVar("T")
+
+    @dataclass
+    class MyGenericDataclass(Generic[T]):
+        item: T
+
+    assert generic_origin(MyGenericDataclass[int]) == MyGenericDataclass
+    assert generic_origin(MyGenericDataclass) is None
+
+    class MyModel(pyd.BaseModel):
+        f: int
+
+    assert generic_origin(MyModel) is None
+
+    class MyGenericModel(pyd.BaseModel, Generic[T]):
+        items: list[T]
+
+    assert generic_origin(MyGenericModel[int]) == MyGenericModel
+    assert generic_origin(MyGenericModel) is None
+
+    assert generic_origin(cast(Type, T)) is None

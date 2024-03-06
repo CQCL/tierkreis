@@ -32,6 +32,7 @@ from tierkreis.core import types as TKType
 from tierkreis.core.internal import (
     ClassField,
     FieldExtractionError,
+    generic_origin,
     python_struct_fields,
 )
 from tierkreis.core.opaque_model import (
@@ -68,8 +69,7 @@ class IncompatiblePyValue(Exception):
 
 
 @dataclass
-class IncompatibleAnnotatedValue(Exception):
-    value: Any
+class IncompatibleAnnotatedValue(IncompatiblePyValue):
     type_: typing.Type
 
     def __str__(self) -> str:
@@ -844,10 +844,15 @@ def _val_known_type(type_: typing.Type, value: Any) -> TierkreisValue:
             # instance of the child type may be converted as if it were an
             # instance of the parent (possibly losing some fields)
             try:
-                inner_val = TierkreisValue.from_python(value, possible)
+                with warnings.catch_warnings(record=True) as caught:
+                    inner_val = TierkreisValue.from_python(value, possible)
+                # Success, so issue warnings (perhaps to next catcher up)
+                for w in caught:
+                    warnings.warn(w.message, w.category)
                 union_tag = UnionTag.type_tag(possible)
                 return VariantValue(union_tag, inner_val)
             except IncompatiblePyValue:
+                # Suppress (discard) warnings from failed variant
                 continue
         raise IncompatiblePyValue(value)
 
@@ -858,9 +863,13 @@ def _val_known_type(type_: typing.Type, value: Any) -> TierkreisValue:
 
 def _check_subclass(value: Any, type_: typing.Type):
     value_type = type(value)
-    if value_type != type_:
-        type_origin = typing.get_origin(type_) or type_
-        if (typing.get_origin(value_type) or value_type) != type_origin:
+    if value_type != type_ and not isinstance(
+        type_, TypeVar
+    ):  # skip check if type erased
+        type_origin = generic_origin(type_) or type_
+        if not issubclass(value_type, type_origin):
+            raise IncompatibleAnnotatedValue(value, type_)
+        if value_type != type_origin:
             warnings.warn(
                 f"Ignoring extra fields in {value_type} beyond those in type {type_}."
             )

@@ -136,9 +136,20 @@ async def id_union_struct(x: StructWithUnion) -> UnionStructOutput:
     return UnionStructOutput(x)
 
 
+@dataclass
+class EmptyStruct: ...
+
+
 @namespace.function()
 async def id_union(x: int | float) -> float | int:
     return x
+
+
+@namespace.function()
+async def zero_to_empty(x: int) -> IntStruct | EmptyStruct:
+    if x == 0:
+        return EmptyStruct()
+    return IntStruct(x)
 
 
 G = TypeVar("G")

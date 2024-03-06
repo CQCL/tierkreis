@@ -1,3 +1,5 @@
+import re
+import warnings
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal, Type, Union
@@ -5,6 +7,7 @@ from typing import Any, Literal, Type, Union
 import pydantic as pyd
 import pytest
 from test_worker.main import (
+    EmptyStruct,
     IntStruct,
 )
 
@@ -31,7 +34,7 @@ from tierkreis.core.values import (
 @pytest.mark.asyncio
 async def test_union_types(bi, client: RuntimeClient) -> None:
     # test structs containing unions can be converted to variant values, sent
-    # through worker funcctions that process them as unions, and converted back
+    # through worker functions that process them as unions, and converted back
     # to unions.
     iv = TierkreisValue.from_python(1)
     assert iv.to_python(float | int) == 1
@@ -275,3 +278,55 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         out = (await client.run_graph(g))["value"]
 
         assert out.to_python(py_type) == py_val
+
+
+@pytest.mark.asyncio
+async def test_return_union(bi, client: RuntimeClient) -> None:
+    # test a worker function declared as returning a union type,
+    # correctly converts the return value
+
+    sig = await client.get_signature()
+    pn = bi["python_nodes"]
+
+    @graph(type_check_sig=sig)
+    def g() -> Output:
+        return Output(b=pn.zero_to_empty(x=Const(0)), a=pn.zero_to_empty(x=Const(1)))
+
+    out = await client.run_graph(g)
+
+    a, b = out["a"], out["b"]
+
+    assert isinstance(a, VariantValue)
+    assert a.tag == UnionTag.type_tag(IntStruct)
+    assert isinstance(b, VariantValue)
+    assert b.tag == UnionTag.type_tag(EmptyStruct)
+
+    # to_python is tag-driven so ordering of union elements makes no difference
+    assert a.to_python(IntStruct | EmptyStruct) == IntStruct(1)
+    assert a.to_python(EmptyStruct | IntStruct) == IntStruct(1)
+    assert b.to_python(IntStruct | EmptyStruct) == EmptyStruct()
+
+
+# Make sure that the ordering of Union elements doesn't affect anything here
+@pytest.mark.parametrize(
+    "union_type", [IntStruct | EmptyStruct, EmptyStruct | IntStruct]
+)
+def test_warnings(union_type: Type) -> None:
+    with warnings.catch_warnings(record=True) as ws:
+        val = TierkreisValue.from_python(IntStruct(3), union_type)
+    assert len(ws) == 0
+    assert val == VariantValue(
+        UnionTag.type_tag(IntStruct), StructValue({"y": IntValue(3)})
+    )
+
+    @dataclass
+    class IntSubStruct(IntStruct):
+        new_field: float
+
+    with warnings.catch_warnings(record=True) as ws:
+        val = TierkreisValue.from_python(IntSubStruct(13, 4.21), union_type)
+    assert len(ws) == 1
+    assert re.search("IntSubStruct.*beyond those in.*IntStruct", str(ws[0]))
+    assert val == VariantValue(
+        UnionTag.type_tag(IntStruct), StructValue({"y": IntValue(13)})
+    )

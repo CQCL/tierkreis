@@ -180,5 +180,10 @@ async def dump_stack(stack: bytes, label: str) -> str:
     return f"{label} {stack_str}"
 
 
+@namespace.function()
+async def echo_union(s: str) -> MyGeneric[str] | int:
+    return MyGeneric[str](x=s)
+
+
 if __name__ == "__main__":
     start_worker_server("test_worker", root)

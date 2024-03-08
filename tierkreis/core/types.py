@@ -81,6 +81,16 @@ class IncompatiblePyType(Exception):
         return f"Could not convert python type to tierkreis type: {self.type_}"
 
 
+@dataclass
+class IncompatibleUnionType(IncompatiblePyType):
+    def __str__(self) -> str:
+        return (
+            f"Could not generate unique names for all possible variants of union type {self.type_}."
+            " For example a list[int] and list[float] would both generate the tag '__py_union_list'."
+            "Try using a discriminated field in a dataclass instead."
+        )
+
+
 class TierkreisType(ABC):
     _convert_as: dict[typing.Type, typing.Type[SerializeAs]] = dict()
 
@@ -167,12 +177,8 @@ class TierkreisType(ABC):
                 UnionTag.type_tag(t): TierkreisType.from_python(t, visited_types)
                 for t in union_args
             }
-            if len(set(variants.keys())) != len(union_args):
-                raise ValueError(
-                    "Could not generate unique names for all possible union types."
-                    " For example a list[int] and list[float] would both generate the tag '__py_union_list'."
-                    "Try using a discrimnated field in a dataclass instead."
-                )
+            if len(variants) != len(union_args):
+                raise IncompatibleUnionType(type_)
             result = VariantType(shape=Row(content=variants))
         elif inner_type := _extract_literal_type(type_):
             return cls.from_python(inner_type)
@@ -548,10 +554,11 @@ class UnionTag:
 
     @staticmethod
     def type_tag(type_: typing.Type) -> str:
-        # convert names to snake case to avoid mismatch between `list` vs.
-        # `List` etc.
-
-        return UnionTag.prefix + _to_snake_case(type_.__name__)
+        # For generic pydantic BaseModels (but not python types like 'list'),
+        # __name__ includes the type arguments, in illegal [square brackets].
+        n = type_.__name__.replace("[", "_").replace("]", "_")
+        # Also convert names to snake case to identify `list` and List, etc.
+        return UnionTag.prefix + _to_snake_case(n)
 
     @staticmethod
     def value_type_tag(value: Any) -> str:

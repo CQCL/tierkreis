@@ -6,18 +6,12 @@ from typing import Any, Literal, Type, Union
 
 import pydantic as pyd
 import pytest
-from test_worker.main import (
-    EmptyStruct,
-    IntStruct,
-)
+from test_worker.main import EmptyStruct, IntStruct, MyGeneric
 
 from tierkreis.builder import Const, Output, UnionConst, graph
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.opaque_model import OpaqueModel
-from tierkreis.core.types import (
-    TierkreisType,
-    UnionTag,
-)
+from tierkreis.core.types import IncompatibleUnionType, TierkreisType, UnionTag
 from tierkreis.core.values import (
     FloatValue,
     IntValue,
@@ -82,7 +76,7 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
     class AmbiguousUnion:
         x: Union[list[int], list[bool]]
 
-    with pytest.raises(ValueError, match="unique names"):
+    with pytest.raises(IncompatibleUnionType):
         TierkreisType.from_python(AmbiguousUnion)
 
     sig = await client.get_signature()
@@ -240,6 +234,9 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         }
     )
 
+    def mk_mygeneric_variant(typ: Type, val: TierkreisValue) -> StructValue:
+        return StructValue({"x": VariantValue(UnionTag.type_tag(typ), val)})
+
     samples: list[tuple[Type, Any, TierkreisValue]] = [
         (ConstrainedField, constrained, tk_constrained),
         (SimpleVariant, simple, tk_simple),
@@ -261,7 +258,25 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
             opaque_contains,
             tk_opaque_contains,
         ),
+        # This works because validated pydantic instances preserve types,
+        # rather than erasing them:
+        (
+            MyGeneric[MyGeneric[int] | MyGeneric[float]],
+            MyGeneric[MyGeneric[int] | MyGeneric[float]](x=MyGeneric[float](x=3.2)),
+            mk_mygeneric_variant(MyGeneric[float], StructValue({"x": FloatValue(3.2)})),
+        ),
+        (
+            MyGeneric[MyGeneric[list[int]] | MyGeneric[list[float]]],
+            MyGeneric[MyGeneric[list[int]] | MyGeneric[list[float]]](
+                x=MyGeneric[list[float]](x=[3.2, 3.3])
+            ),
+            mk_mygeneric_variant(
+                MyGeneric[list[float]],
+                StructValue({"x": VecValue([FloatValue(3.2), FloatValue(3.3)])}),
+            ),
+        ),
     ]
+
     for py_type, py_val, expected_tk_val in samples:
         _ = TierkreisType.from_python(py_type)
         converted_tk_val = TierkreisValue.from_python(py_val)
@@ -278,6 +293,15 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         out = (await client.run_graph(g))["value"]
 
         assert out.to_python(py_type) == py_val
+
+
+def test_pydantic_generic_union() -> None:
+    # Similar to above but from_python with explicit 'typ'
+    # avoids the need for pydantic validation
+    val = MyGeneric(x=MyGeneric[float](x=3.2))
+    typ = MyGeneric[MyGeneric[int] | MyGeneric[float]]
+    tk_val = TierkreisValue.from_python(val, typ)
+    assert tk_val.to_python(typ) == val
 
 
 @pytest.mark.asyncio
@@ -330,3 +354,17 @@ def test_warnings(union_type: Type) -> None:
     assert val == VariantValue(
         UnionTag.type_tag(IntStruct), StructValue({"y": IntValue(13)})
     )
+
+
+@pytest.mark.asyncio
+async def test_union_generic_basemodel(sig, bi, client: RuntimeClient) -> None:
+    msg = "Hello World!"
+
+    @graph(type_check_sig=sig)
+    def main() -> Output:
+        res = bi["python_nodes"].echo_union(Const(msg))
+        return Output(res)
+
+    res = await client.run_graph(main)
+    assert res.pop("value").to_python(MyGeneric[str] | int) == MyGeneric[str](x=msg)
+    assert res == {}  # No other outputs besides x

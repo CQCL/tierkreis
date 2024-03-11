@@ -698,6 +698,8 @@ class VariantValue(Generic[RowStruct], TierkreisValue):
             (type_arg,) = typing.get_args(type_)
             return cast(T, TierkreisVariant(self.tag, self.value.to_python(type_arg)))
         if enum_type := _is_enum(type_):
+            if not hasattr(enum_type, self.tag):
+                raise ToPythonFailure(self)
             return getattr(enum_type, self.tag)
         if args := _get_union_args(type_):
             try:

@@ -240,11 +240,7 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
     samples: list[tuple[Type, Any, TierkreisValue]] = [
         (ConstrainedField, constrained, tk_constrained),
         (SimpleVariant, simple, tk_simple),
-        (
-            EnumExample,
-            EnumExample.First,
-            tk_first,
-        ),
+        (EnumExample, EnumExample.First, tk_first),
         (EnumExample, EnumExample.Second, tk_second),
         (ComplexVariant, cmplex, tk_cmplex),
         (ContainsVariant, contains, tk_contains),
@@ -258,6 +254,10 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
             opaque_contains,
             tk_opaque_contains,
         ),
+        (EnumExample | None, EnumExample.First, tk_first),
+        # (None | EnumExample, EnumExample.First, tk_first), # fails, see test_reversed_union
+        (EnumExample | None, None, option_none),
+        (None | EnumExample, None, option_none),
         # This works because validated pydantic instances preserve types,
         # rather than erasing them:
         (
@@ -293,6 +293,19 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         out = (await client.run_graph(g))["value"]
 
         assert out.to_python(py_type) == py_val
+
+
+@pytest.mark.xfail(reason="See issue #454")
+def test_reversed_union() -> None:
+    # This should be an entry in test:pydantic_types, if it worked:
+    # (None | EnumExample, EnumExample.First, tk_first)
+    tk_first = VariantValue("First", StructValue({}))
+    py_type, py_val, expected_tk_val = (None | EnumExample, EnumExample.First, tk_first)
+    assert TierkreisValue.from_python(py_val) == expected_tk_val
+    # Works the right way around:
+    assert expected_tk_val.to_python(EnumExample | None) == py_val
+    # But reverse the union and it does not (result is "None")
+    assert expected_tk_val.to_python(py_type) == py_val
 
 
 def test_pydantic_generic_union() -> None:

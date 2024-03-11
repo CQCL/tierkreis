@@ -65,7 +65,7 @@ In an Jupyter notebook this is immediately visualised, as long as you have [Grap
 ```python
 from tierkreis import render_graph
 
-render_graph(sum_pair(), "filename", "pdf")
+render_graph(sum_pair, "filename", "pdf")
 ```
 
 ![sum_pair graph](https://user-images.githubusercontent.com/12997250/199997054-8cc815e2-39d3-4a9c-95d0-411510cb5465.svg )
@@ -83,11 +83,18 @@ The type checked version of the graph above looks like:
 We can now run the graph using the client set up earlier:
 
 ```python
+from tierkreis.core.types import TierkreisPair
 
-await cl.run_graph(sum_pair(), pair=(1, 2))
+await cl.run_graph(sum_pair, pair=TierkreisPair(1, 2))
 ```
 
-The inputs to the graph are provided via keyword argument, and most of the time you can just provide python values that are auto converted. Here the tuple of integers is automatically converted to the Tierkreis type `Pair[Int, Int]`. The output is given in Tierkreis form:
+The inputs to the graph are provided via keyword argument, and most of the time
+you can just provide python values that are auto converted (for example
+integers, floats, strings).
+But here, since there is no exact Python equivalent for "Pair" we use the
+tierkreis utility type `TierkreisPair`.
+ The output is given
+in Tierkreis form:
 ```
 {'value': IntValue(value=3)}
 ```
@@ -119,5 +126,5 @@ ns = Namespace(await cl.get_signature())["custom"]
 @graph()
 def runsum() -> Output:
     return Output(ns.sum_list(Const([1, 2, 3])))
-await cl.run_graph(runsum())
+await cl.run_graph(runsum)
 ```

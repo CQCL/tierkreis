@@ -29,7 +29,7 @@ message RunningJobsRequest {
 }
 
 message RunningJobsResponse {
-  repeated JobResult jobs = 1;
+  repeated JobStatus jobs = 1;
 }
 
 
@@ -62,13 +62,6 @@ message JobStatus {
   }
 }
 
-message JobResult {
-  string id = 1;
-  oneof status {
-    tierkreis.v1alpha1.graph.StructValue success = 2;
-    string error = 3;
-  }
-}
 
 message DeleteCompletedRequest {}
 message DeleteCompletedResponse {

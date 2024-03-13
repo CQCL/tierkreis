@@ -865,13 +865,23 @@ def _val_known_type(type_: typing.Type, value: Any) -> TierkreisValue:
 
 def _check_subclass(value: Any, type_: typing.Type):
     value_type = type(value)
-    if value_type != type_ and not isinstance(
-        type_, TypeVar
-    ):  # skip check if type erased
-        type_origin = generic_origin(type_) or type_
-        if not issubclass(value_type, type_origin):
-            raise IncompatibleAnnotatedValue(value, type_)
-        if value_type != type_origin:
-            warnings.warn(
-                f"Ignoring extra fields in {value_type} beyond those in type {type_}."
-            )
+    if isinstance(type_, TypeVar):
+        return  # skip check if type erased
+
+    target_type = (
+        # value_type could be GenericPydanticModel, list, NonGenericClass.
+        # Compare against origin of type_, in case type_ is e.g. GenericPydanticModel[SomeArgs]
+        (generic_origin(type_) or type_)
+        if generic_origin(value_type) is None
+        # value_type is GenericPydanticModel[SomeArgs] (it can never be e.g. list[Args])
+        # So compare against exact type_, thus failing if type_ is GenericPydanticModel[DifferentArgs]
+        else type_
+    )
+
+    if not issubclass(value_type, target_type):
+        raise IncompatibleAnnotatedValue(value, type_)
+
+    if value_type != target_type:
+        warnings.warn(
+            f"Ignoring extra fields in {value_type} beyond those in type {type_}."
+        )

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import random
-from typing import TypeVar
 
 import numpy as np
 
@@ -10,14 +9,7 @@ from tierkreis.worker.prelude import start_worker_server
 root = Namespace()
 namespace = root["sc22"]
 
-A = TypeVar("A")
-
 CandRecord = tuple[list[float], float]
-
-# @dataclass(frozen=True)
-# class CandRecord():
-#     params: list[float]
-#     score: float
 
 random.seed(4)
 

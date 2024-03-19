@@ -920,6 +920,9 @@ class Function(_CallAddNode):
     ) -> TierkreisGraph:
         return graph_from_func(self.name, self.f, input_map, output_map)
 
+    def __str__(self) -> str:
+        return self.signature_string()
+
 
 class Namespace(Mapping[str, "Namespace"]):
     @overload

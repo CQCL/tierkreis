@@ -240,11 +240,7 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
     samples: list[tuple[Type, Any, TierkreisValue]] = [
         (ConstrainedField, constrained, tk_constrained),
         (SimpleVariant, simple, tk_simple),
-        (
-            EnumExample,
-            EnumExample.First,
-            tk_first,
-        ),
+        (EnumExample, EnumExample.First, tk_first),
         (EnumExample, EnumExample.Second, tk_second),
         (ComplexVariant, cmplex, tk_cmplex),
         (ContainsVariant, contains, tk_contains),
@@ -258,23 +254,10 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
             opaque_contains,
             tk_opaque_contains,
         ),
-        # This works because validated pydantic instances preserve types,
-        # rather than erasing them:
-        (
-            MyGeneric[MyGeneric[int] | MyGeneric[float]],
-            MyGeneric[MyGeneric[int] | MyGeneric[float]](x=MyGeneric[float](x=3.2)),
-            mk_mygeneric_variant(MyGeneric[float], StructValue({"x": FloatValue(3.2)})),
-        ),
-        (
-            MyGeneric[MyGeneric[list[int]] | MyGeneric[list[float]]],
-            MyGeneric[MyGeneric[list[int]] | MyGeneric[list[float]]](
-                x=MyGeneric[list[float]](x=[3.2, 3.3])
-            ),
-            mk_mygeneric_variant(
-                MyGeneric[list[float]],
-                StructValue({"x": VecValue([FloatValue(3.2), FloatValue(3.3)])}),
-            ),
-        ),
+        (EnumExample | None, EnumExample.First, tk_first),
+        # (None | EnumExample, EnumExample.First, tk_first), # fails, see test_reversed_union
+        (EnumExample | None, None, option_none),
+        (None | EnumExample, None, option_none),
     ]
 
     for py_type, py_val, expected_tk_val in samples:
@@ -293,6 +276,39 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
         out = (await client.run_graph(g))["value"]
 
         assert out.to_python(py_type) == py_val
+
+
+def test_union_over_arguments() -> None:
+    values = [MyGeneric[int](x=3), MyGeneric[str](x="foo")]
+    types = [
+        t
+        for base in [MyGeneric[int] | MyGeneric[str], MyGeneric[str] | MyGeneric[int]]
+        for t in [base, base | None, None | base]
+    ]
+
+    for val in values:
+        for typ in types:
+            tk_val = TierkreisValue.from_python(val, typ)
+            assert tk_val.to_python(typ) == val
+
+            # Separately test value+typ embedded together in an outer MyGeneric
+            typ2 = MyGeneric[typ]
+            val2 = typ2(x=val)
+            tk_val2 = TierkreisValue.from_python(val2, typ2)
+            assert tk_val2.to_python(typ2) == val2
+
+
+@pytest.mark.xfail(reason="See issue #454")
+def test_reversed_union_enum() -> None:
+    # This should be an entry in test:pydantic_types, if it worked:
+    # (None | EnumExample, EnumExample.First, tk_first)
+    tk_first = VariantValue("First", StructValue({}))
+    py_type, py_val, expected_tk_val = (None | EnumExample, EnumExample.First, tk_first)
+    assert TierkreisValue.from_python(py_val) == expected_tk_val
+    # Works the right way around:
+    assert expected_tk_val.to_python(EnumExample | None) == py_val
+    # But reverse the union and it does not (result is "None")
+    assert expected_tk_val.to_python(py_type) == py_val
 
 
 def test_pydantic_generic_union() -> None:

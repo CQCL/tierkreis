@@ -9,7 +9,6 @@ from typing import Any, Callable, Coroutine, Optional, cast
 import grpclib
 import grpclib.events
 import grpclib.server
-import keyring
 from grpclib.const import Status as StatusCode
 from grpclib.exceptions import GRPCError
 from grpclib.server import Server
@@ -111,8 +110,7 @@ class Worker:
 
         # Attach event listener for tracing
         self._add_request_listener(_event_recv_request)
-        # Attach event listener to extract auth credentials
-        self._add_request_listener(self._extract_auth)
+        # Attach event listener to extract stack trace from metadata
         self._add_request_listener(self._record_stack_trace)
 
     async def run(
@@ -129,14 +127,6 @@ class Worker:
 
         async with callback_server(callback) as cb:
             return await func.run(cb, stack_trace, inputs)
-
-    async def _extract_auth(self, request: grpclib.events.RecvRequest) -> None:
-        if keyring.get_password(_KEYRING_SERVICE, "token") is None:
-            token = request.metadata.pop("token", None)
-            key = request.metadata.pop("key", None)
-            if (token is not None) and (key is not None):
-                keyring.set_password(_KEYRING_SERVICE, "token", str(token))
-                keyring.set_password(_KEYRING_SERVICE, "key", str(key))
 
     async def _record_stack_trace(self, request: grpclib.events.RecvRequest) -> None:
         # Metadata contains Union[str, bytes] but actual type should be bytes for "-bin" keys
@@ -184,10 +174,6 @@ class Worker:
                 sys.stdout.flush()
 
                 await self.server.wait_closed()
-
-        # clear any stored credentials
-        keyring.delete_password(_KEYRING_SERVICE, "token")
-        keyring.delete_password(_KEYRING_SERVICE, "key")
 
 
 class WorkerServerImpl(WorkerBase):

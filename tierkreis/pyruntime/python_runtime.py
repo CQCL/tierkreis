@@ -139,7 +139,7 @@ class PyRuntime(RuntimeClient):
                     if function is None:
                         raise FunctionNotFound(fname)
                     # For now the PyRuntime does not provide a stack trace
-                    return (await function.run(self, bytes(), StructValue(inps))).values
+                    return (await function.run(self, dict(), StructValue(inps))).values
 
             elif isinstance(tk_node, BoxNode):
                 return await self.run_graph(

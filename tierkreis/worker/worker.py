@@ -5,7 +5,7 @@ import sys
 from contextvars import ContextVar
 from tempfile import TemporaryDirectory
 from traceback import print_tb
-from typing import Any, Callable, Coroutine, Optional, cast
+from typing import Any, Callable, Coroutine, Optional
 
 import grpclib
 import grpclib.events
@@ -35,7 +35,7 @@ from .exceptions import (
     FunctionNotFound,
     NodeExecutionError,
 )
-from .namespace import Namespace
+from .namespace import Metadata, Namespace
 from .tracing import _TRACING, context_token, get_tracer, span
 
 tracer = get_tracer(__name__)
@@ -99,7 +99,7 @@ class Worker:
     root: Namespace
     server: Server
     pyruntime: PyRuntime
-    stack_trace: ContextVar[bytes]
+    metadata: ContextVar[Metadata]
 
     def __init__(self, root_namespace):
         self.root = root_namespace
@@ -107,19 +107,19 @@ class Worker:
         self.server = Server(
             [SignatureServerImpl(self), WorkerServerImpl(self), RuntimeServerImpl(self)]
         )
-        self.stack_trace = ContextVar("stack_trace")
+        self.metadata = ContextVar("metadata")
 
         # Attach event listener for tracing
         self._add_request_listener(_event_recv_request)
-        # Attach event listener to extract stack trace from metadata
-        self._add_request_listener(self._record_stack_trace)
+        # Attach event listener to extract metadata
+        self._add_request_listener(self._record_metadata)
 
     async def run(
         self,
         function: FunctionName,
         inputs: StructValue,
         callback: pr.Callback,
-        stack_trace: bytes,
+        metadata: Metadata,
     ) -> StructValue:
         """Run function."""
         func = self.root.get_function(function)
@@ -127,21 +127,17 @@ class Worker:
             raise FunctionNotFound(function)
 
         async with callback_server(callback) as cb:
-            return await func.run(cb, stack_trace, inputs)
+            return await func.run(cb, metadata, inputs)
 
-    async def _record_stack_trace(self, request: grpclib.events.RecvRequest) -> None:
-        # Metadata contains Union[str, bytes] but actual type should be bytes for "-bin" keys
-        stack_trace = cast(
-            bytes, request.metadata.pop("tierkreis-stack-trace-bin", None)
-        )
+    async def _record_metadata(self, request: grpclib.events.RecvRequest) -> None:
         method_func = request.method_func
 
         @functools.wraps(method_func)
         async def wrapped(stream: grpclib.server.Stream):
-            token = self.stack_trace.set(stack_trace)
+            token = self.metadata.set(request.metadata)
             await method_func(stream)
             # Good practice but probably not essential:
-            self.stack_trace.reset(token)
+            self.metadata.reset(token)
 
         request.method_func = wrapped
 
@@ -189,12 +185,12 @@ class WorkerServerImpl(WorkerBase):
         function = run_function_request.function
         inputs = run_function_request.inputs
         callback = run_function_request.callback
-        stack_trace = self.worker.stack_trace.get()
+        metadata = self.worker.metadata.get()
         try:
             function_name = FunctionName.from_proto(function)
             inputs_struct = StructValue.from_proto_dict(inputs.map)
             outputs_struct = await self.worker.run(
-                function_name, inputs_struct, callback, stack_trace
+                function_name, inputs_struct, callback, metadata
             )
             with span(tracer, name="encoding python type in RunFunctionResponse proto"):
                 res = RunFunctionResponse(

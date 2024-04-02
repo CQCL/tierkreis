@@ -173,10 +173,12 @@ async def generic_int_to_str(g: MyGeneric[int]) -> MyGeneric[str]:
     return MyGeneric(x=f"got number: {g.x}")
 
 
-@namespace.function(pass_stack=True)
-async def dump_stack(stack: bytes, label: str) -> str:
-    """Returns the stack trace formatted as a Base64 string prefixed with the given label"""
-    stack_str: str = base64.b64encode(stack).decode("ascii")
+@namespace.function(metadata_keys=["tierkreis-stack-trace-bin"])
+async def dump_stack(label: str, tierkreis_metadata: dict[str, bytes]) -> str:
+    """Returns the stack trace formatted as a Base64 string prefixed with the
+    given label"""
+    stack_bin = tierkreis_metadata.get("tierkreis-stack-trace-bin", b"")
+    stack_str = base64.b64encode(stack_bin).decode("ascii")
     return f"{label} {stack_str}"
 
 

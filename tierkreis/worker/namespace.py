@@ -6,7 +6,18 @@ from ctypes import ArgumentError
 from dataclasses import dataclass, make_dataclass
 from functools import wraps
 from inspect import getdoc, isclass
-from typing import Awaitable, Callable, Dict, List, Mapping, Optional, Type, Union, cast
+from typing import (
+    Awaitable,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    MutableMapping,
+    Optional,
+    Type,
+    Union,
+    cast,
+)
 
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.function import FunctionDeclaration, FunctionName
@@ -39,13 +50,18 @@ from .tracing import get_tracer, span
 
 tracer = get_tracer(__name__)
 
+Metadata = MutableMapping[str, str | bytes]
+
+METADATA_ARG = "tierkreis_metadata"
+CALLBACK_ARG = "client"
+
 
 @dataclass
 class Function:
     """Registered python function.
     The second (bytes) argument is an encoded stack-trace."""
 
-    run: Callable[[RuntimeClient, bytes, StructValue], Awaitable[StructValue]]
+    run: Callable[[RuntimeClient, Metadata, StructValue], Awaitable[StructValue]]
     declaration: FunctionDeclaration
 
 
@@ -157,7 +173,7 @@ class Namespace(Mapping[str, "Namespace"]):
         constraints: Optional[List[Constraint]] = None,
         type_vars: Optional[Dict[Union[str, typing.TypeVar], Kind]] = None,
         callback: bool = False,
-        pass_stack: bool = False,
+        metadata_keys: list[str] | None = None,
     ) -> Callable[[Callable], Callable]:
         """Decorator to mark python function as available Namespace."""
 
@@ -177,18 +193,18 @@ class Namespace(Mapping[str, "Namespace"]):
 
             if callback:
                 try:
-                    type_hints.pop("client")
+                    type_hints.pop(CALLBACK_ARG)
                 except KeyError:
                     raise ArgumentError(
                         "Functions with callbacks must have an argument 'client'"
                     )
 
-            if pass_stack:
+            if metadata_keys is not None:
                 try:
-                    type_hints.pop("stack")
+                    type_hints.pop(METADATA_ARG)
                 except KeyError:
                     raise ArgumentError(
-                        "Functions asking for stack trace must have an argument 'stack'"
+                        f"Functions asking for metadata values must have an argument '{METADATA_ARG}'"
                     )
 
             hint_inputs: Type = (
@@ -212,7 +228,7 @@ class Namespace(Mapping[str, "Namespace"]):
             @wraps(func)
             async def wrapped_func(
                 runtime: RuntimeClient,
-                stack_trace: bytes,
+                metadata: Metadata,
                 inputs: StructValue,
             ) -> StructValue:
                 try:
@@ -229,9 +245,12 @@ class Namespace(Mapping[str, "Namespace"]):
                     raise DecodeInputError(str(error)) from error
 
                 if callback:
-                    python_inputs["client"] = runtime
-                if pass_stack:
-                    python_inputs["stack"] = stack_trace
+                    python_inputs[CALLBACK_ARG] = runtime
+                if metadata_keys is not None:
+                    # unavailable keys are ignored
+                    python_inputs[METADATA_ARG] = {
+                        k: metadata.pop(k) for k in metadata_keys if k in metadata
+                    }
                 try:
                     python_outputs = await func(**python_inputs)
                 except Exception as error:

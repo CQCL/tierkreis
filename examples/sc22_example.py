@@ -1,7 +1,7 @@
 import asyncio
 import json
 import sys
-from typing import Any, Optional
+from typing import Optional
 
 from grpclib.client import Channel
 from pytket._tket.circuit import Circuit
@@ -16,10 +16,10 @@ from tierkreis.builder import (
     Else,
     If,
     IfElse,
-    Input,
     MakeTuple,
     Namespace,
     Output,
+    ValueSource,
     closure,
     lazy_graph,
     loop,
@@ -62,7 +62,7 @@ async def run_test(cl: RuntimeClient):
     ).measure_all()
 
     @lazy_graph()
-    def initial(run) -> Output:
+    def initial(run: ValueSource) -> Output:
         init_params = Copyable(Const([0.2, 0.2]))
         init_score = bi.eval(run, params=init_params)
         p = MakeTuple(init_params, init_score)
@@ -76,7 +76,7 @@ async def run_test(cl: RuntimeClient):
         return Output(c)
 
     @lazy_graph()
-    def zexp_to_parity(zexp) -> Output:
+    def zexp_to_parity(zexp: ValueSource) -> Output:
         y = bi.fsub(Const(1.0), zexp)
         return Output(bi.fdiv(y, Const(2.0)))
 
@@ -85,7 +85,7 @@ async def run_test(cl: RuntimeClient):
         circ = load_circuit()
 
         @closure()
-        def run_circuit(params: Input) -> Output:
+        def run_circuit(params: ValueSource) -> Output:
             syms = Const(["a", "b"])
             # substitute parameters in circuit with values a, b
             subs = pt.substitute_symbols(circ, syms, params)
@@ -95,7 +95,7 @@ async def run_test(cl: RuntimeClient):
         run_circuit.copyable()
 
         @loop()
-        def loop_def(initial: Input[Any]) -> Output:
+        def loop_def(initial: ValueSource) -> Output:
             recs = Copyable(initial)
             new_cand = Copyable(sc.new_params(recs))
             score = run_circuit(new_cand)

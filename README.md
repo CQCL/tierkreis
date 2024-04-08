@@ -30,7 +30,7 @@ First we need the runtime we are going to execute on and a handle to the primiti
 The python package comes with the `PyRuntime` which runs locally in your python environment.
 
 ```python
-from tierkreis.builder import graph, Namespace, Output, Input
+from tierkreis.builder import graph, Namespace, Output, ValueSource
 from tierkreis.pyruntime import PyRuntime
 
 cl = PyRuntime([]) # empty list for no extra workers
@@ -52,7 +52,7 @@ The `@graph` decorator allows you to build graphs using python functions.
 
 ```python
 @graph()
-def sum_pair(pair: Input) -> Output:
+def sum_pair(pair: ValueSource) -> Output:
     first, second = ns.unpack_pair(pair) # tierkreis functions can have multiple outputs
     return Output(ns.iadd(first, second))
 ```

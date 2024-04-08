@@ -11,7 +11,6 @@ from typing import (
     Any,
     Callable,
     Dict,
-    Generic,
     Iterable,
     Iterator,
     Mapping,
@@ -20,9 +19,6 @@ from typing import (
     TypeVar,
     Union,
     cast,
-    get_args,
-    get_origin,
-    get_type_hints,
     overload,
 )
 
@@ -49,12 +45,10 @@ from tierkreis.core.tierkreis_graph import (
 )
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.type_inference import infer_graph_types
-from tierkreis.core.types import TupleLabel, TypeScheme, UnionTag, UnpackRow
+from tierkreis.core.types import TupleLabel, TypeScheme, UnionTag
 from tierkreis.core.utils import graph_from_func, map_vals, rename_ports_graph
 from tierkreis.core.values import (
     TierkreisValue,
-    TKVal1,
-    tkvalue_to_tktype,
 )
 
 if TYPE_CHECKING:
@@ -159,24 +153,24 @@ TGBuilder = TypeVar("TGBuilder", bound="GraphBuilder")
 
 class GraphBuilder(AbstractContextManager):
     graph: TierkreisGraph
-    inputs: dict[str, Optional["TierkreisType"]]
-    outputs: dict[str, Optional["TierkreisType"]]
+    inputs: list[str]
+    outputs: list[str]
     inner_scopes: dict[TierkreisGraph, CaptureOutwards]
     debug_info: dict[NodeRef, str]
     _state_token: Token["GraphBuilder"]
 
     def __init__(
         self,
-        inputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
-        outputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
+        inputs: list[str] | None = None,
+        outputs: list[str] | None = None,
         name: str = "",
         debug: bool = True,
     ) -> None:
         self.graph = TierkreisGraph(name)
-        self.inputs = inputs or {}
-        self.outputs = outputs or {}
+        self.inputs = inputs or []
+        self.outputs = outputs or []
         self.inner_scopes = {}
-        self.graph.input_order.extend(self.inputs.keys())
+        self.graph.input_order.extend(self.inputs)
         self.debug_info = {self.graph.input: _debug_str()} if debug else {}
 
     def input(self, name: str) -> NodePort:
@@ -224,10 +218,6 @@ class GraphBuilder(AbstractContextManager):
         for tgt_port, vs in incoming_wires.items():
             src = _resolve(self.capture(vs))
             self.graph.add_edge(src, nr[tgt_port])
-            if src.node_ref == self.graph.input and (
-                inp_typ := self.inputs.get(src.port)
-            ):
-                self.graph.annotate_input(src.port, inp_typ)
 
     def add_node_to_graph(
         self,
@@ -258,8 +248,8 @@ class CaptureBuilder(GraphBuilder):
 
     def __init__(
         self,
-        inputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
-        outputs: Optional[Dict[str, Optional["TierkreisType"]]] = None,
+        inputs: list[str] | None = None,
+        outputs: list[str] | None = None,
         name: str = "",
         debug: Optional[bool] = None,
     ) -> None:
@@ -390,30 +380,20 @@ def Tag(tag: str, value: ValueSource) -> NodePort:
     return current_builder().add_node_to_graph(TagNode(tag), value=value)[Labels.VALUE]
 
 
-OutAnnotation = TypeVar(
-    "OutAnnotation",
-    bound=Union[UnpackRow, TierkreisValue],
-)
-
-
-class Output(NodeRef, Generic[OutAnnotation]):
+class Output(NodeRef):
     def __init__(self, *args: ValueSource, **kwargs: ValueSource) -> None:
         s = current_builder()
 
         g = s.graph
 
-        for o in s.outputs:
-            g.output_order.append(o)
-
         if len(args) == 1 and len(kwargs) == 0:
             kwargs = {Labels.VALUE: args[0]}
         else:
-            kwargs = _combine_args_with_kwargs(s.outputs.keys(), *args, **kwargs)
+            kwargs = _combine_args_with_kwargs(s.outputs, *args, **kwargs)
 
         s.set_graph_outputs(**kwargs)
         for o in kwargs:
-            if ot := s.outputs.get(o):
-                g.annotate_output(o, ot)
+            g.output_order.append(o)
 
         super().__init__(g.output.idx, g)
 
@@ -433,80 +413,15 @@ class Break(_LoopOutput):
         super().__init__(Tag(Labels.BREAK, loopout))
 
 
-def _vals_to_types(
-    d: dict[str, Optional[Type["TierkreisValue"]]],
-) -> dict[str, Optional["TierkreisType"]]:
-    return map_vals(
-        d, lambda arg: None if (arg is Any or arg is None) else tkvalue_to_tktype(arg)
-    )
-
-
-def _convert_input(t: Optional[Type["Input[TierkreisValue]"]]) -> Optional[Type]:
-    if t is not None:
-        if not (get_origin(t) == Input or t == Input):
-            raise TypeError(
-                "Graph builder function arguments must be ``Input``"
-                " with an optional ``TierkreisValue`` argument."
-                "For example Input[IntValue]"
-            )
-
-        args = get_args(t)
-        if args:
-            return args[0]
-    return None
-
-
-_RETURN_TYPE_ERROR = TypeError(
-    "Graph builder function must be annotated with return type `Output`."
-    " Optionally annotate with "
-    "`Output[TierkreisValue]` for a single return from port 'value',"
-    " or with a `UnpackRow` specifying the Row type of the ouput."
-)
-
-
-def _convert_return(ret: Type) -> dict[str, Optional["TierkreisType"]]:
-    if not (get_origin(ret) == Output or ret == Output):
-        raise _RETURN_TYPE_ERROR
-    args = get_args(ret)
-    if not args:
-        return {}
-    ret = args[0]
-    subc = cast(Type, get_origin(ret) or ret)
-    if issubclass(subc, UnpackRow):
-        return _vals_to_types(get_type_hints(ret))
-    if issubclass(subc, TierkreisValue):
-        return _vals_to_types({Labels.VALUE: ret})
-
-    raise _RETURN_TYPE_ERROR
-
-
-class Input(Generic[TKVal1], NodePort):
-    def __init__(self, port: PortID) -> None:
-        np = current_builder().graph.input[port]
-        super().__init__(np.node_ref, np.port)
+def _input_port(port: PortID) -> NodePort:
+    return current_builder().graph.input[port]
 
 
 _GraphDef = Callable[..., Output]
 
 
-def _get_edge_annotations(
-    f: _GraphDef,
-) -> tuple[
-    dict[str, Optional["TierkreisType"]],
-    dict[str, Optional["TierkreisType"]],
-]:
-    f_sig = inspect.signature(f)
-    inps = map_vals(
-        inspect.signature(f).parameters,
-        lambda x: None if x.annotation is inspect.Signature.empty else x.annotation,
-    )
-    out_types = (
-        {}
-        if f_sig.return_annotation is inspect.Signature.empty
-        else _convert_return(f_sig.return_annotation)
-    )
-    in_types = _vals_to_types(map_vals(inps, _convert_input))
-    return in_types, out_types
+def _get_input_names(f: _GraphDef) -> list[str]:
+    return list(inspect.signature(f).parameters.keys())
 
 
 class CapturedError(Exception):
@@ -534,20 +449,21 @@ _LazyGraphDecoratorType = Callable[[_GraphDef], LazyGraph]
 
 def lazy_graph(
     name: Optional[str] = None,
-    type_check_sig: Optional[Signature] = None,
+    type_check_sig: Signature | None = None,
+    output_order: list[str] | None = None,
     debug: bool = True,
 ) -> _LazyGraphDecoratorType:
     def decorator_graph(f: _GraphDef) -> LazyGraph:
-        in_types, out_types = _get_edge_annotations(f)
+        input_order = _get_input_names(f)
         # Use getattr as _GraphDef doesn't specify that it has a __name__
         graph_name = name or getattr(f, "__name__")
         # graph_name = name or f.__name__  # type: ignore  # the alternative
 
         def wrapper() -> TierkreisGraph:
-            gb = GraphBuilder(in_types, out_types, name=graph_name, debug=debug)
+            gb = GraphBuilder(input_order, output_order, name=graph_name, debug=debug)
 
             with gb as sub_build:
-                f(*(Input(port) for port in in_types))
+                f(*(_input_port(port) for port in input_order))
 
             return (
                 sub_build.graph
@@ -563,9 +479,10 @@ def lazy_graph(
 def graph(
     name: Optional[str] = None,
     type_check_sig: Optional[Signature] = None,
+    output_order: list[str] | None = None,
     debug: bool = True,
 ) -> _GraphDecoratorType:
-    dec = lazy_graph(name, type_check_sig, debug)
+    dec = lazy_graph(name, type_check_sig, output_order, debug)
 
     def decorator_graph(f: _GraphDef) -> TierkreisGraph:
         return dec(f).graph
@@ -600,42 +517,40 @@ class Thunk(_CallAddNode, PortFunc):
 
 
 def closure(
-    name: Optional[str] = None, debug: bool = True
+    name: Optional[str] = None,
+    debug: bool = True,
+    output_order: list[str] | None = None,
 ) -> Callable[[_GraphDef], Thunk]:
     def decorator_graph(f: _GraphDef) -> Thunk:
-        in_types, out_types = _get_edge_annotations(f)
+        input_order = _get_input_names(f)
+
         # Use getattr as _GraphDef doesn't specify that it has a __name__
         graph_name = name or getattr(f, "__name__")
         # graph_name = name or f.__name__  # type: ignore  # the alternative
 
-        gb = CaptureBuilder(in_types, out_types, name=graph_name, debug=debug)
+        gb = CaptureBuilder(input_order, output_order, name=graph_name, debug=debug)
 
         with gb as sub_build:
-            f(*(Input(port) for port in in_types))
-        return Thunk(
-            _partial_thunk(sub_build, sub_build.captured),
-            list(in_types.keys()),
-            list(out_types.keys()),
-        )
+            f(*(_input_port(port) for port in input_order))
+        return Thunk(_partial_thunk(sub_build, sub_build.captured), input_order, [])
 
     return decorator_graph
 
 
 def loop(name: Optional[str] = None, debug: bool = True):
     def decorator_graph(f: _GraphDef):
-        in_types, out_types = _get_edge_annotations(f)
-        if len(in_types) != 1:
+        inps = _get_input_names(f)
+        if len(inps) != 1:
             raise ValueError("Loop body graph can only have one input.")
 
         # the loop node has input port "value"
         # allow body definitions to use any input names and map it
-        in_types = {Labels.VALUE: in_types.popitem()[1]}
         graph_name = name or getattr(f, "__name__")
 
         def wrapper(initial: ValueSource) -> NodePort:
-            gb = CaptureBuilder(in_types, out_types, name=graph_name, debug=debug)
+            gb = CaptureBuilder(inps, None, name=graph_name, debug=debug)
             with gb as sub_build:
-                f(Input(Labels.VALUE))
+                f(_input_port(Labels.VALUE))
 
             loop_node = current_builder().add_node_to_graph(
                 FunctionNode(FunctionName("loop")),

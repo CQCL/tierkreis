@@ -16,6 +16,7 @@ from tierkreis.builder import (
     IfElse,
     Output,
     Scope,
+    ValueSource,
     closure,
     graph,
     lazy_graph,
@@ -258,7 +259,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
     @lazy_graph(type_check_sig=sig)
     def lop() -> Output:
         @loop()
-        def lopdef(x) -> Output:
+        def lopdef(x):
             # ERROR
             with IfElse(Const(True)):
                 with If():
@@ -281,7 +282,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
 
         @closure()
         # ERROR
-        def clos_def(x) -> Output:
+        def clos_def(x):
             # ERROR
             bi.iadd(x, y)
             return Output()
@@ -292,7 +293,7 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
     def clos2() -> Output:
         @closure()
         # ERROR
-        def clos_def(x) -> Output:
+        def clos_def(x):
             # ERROR
             bi.iadd(x, Const(1))
             return Output()
@@ -303,14 +304,14 @@ async def test_builder_debug(bi: "BuilderNS", sig: Signature):
         return Output()
 
     @lazy_graph(type_check_sig=sig)
-    def scop(x) -> Output:
+    def scop(x: ValueSource) -> Output:
         # ERROR
         with Scope():
             # ERROR
             with Scope():
                 # ERROR
-                x = _bad_nod()
-        return Output(x)
+                x2 = _bad_nod()
+        return Output(x2)
 
     for g in (ifelse, lop, clos1, clos2, scop):
         with pytest.raises(TierkreisTypeErrors) as e:

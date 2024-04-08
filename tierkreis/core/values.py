@@ -19,16 +19,12 @@ from typing import (
     Protocol,
     TypeVar,
     cast,
-    get_args,
-    get_origin,
-    get_type_hints,
 )
 from uuid import UUID
 
 import betterproto
 
 import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
-from tierkreis.core import types as TKType
 from tierkreis.core.internal import (
     ClassField,
     FieldExtractionError,
@@ -725,45 +721,6 @@ class VariantValue(Generic[RowStruct], TierkreisValue):
 
 
 option_none: VariantValue = VariantValue(UnionTag.none_type_tag(), StructValue({}))
-
-
-def _typeddict_to_row(typeddict: dict[str, TierkreisValue]) -> TKType.Row:
-    return TKType.Row(
-        {key: tkvalue_to_tktype(val) for key, val in get_type_hints(typeddict).items()}
-    )
-
-
-def tkvalue_to_tktype(val_cls: typing.Type[TierkreisValue]) -> TierkreisType:
-    if get_origin(val_cls) == VecValue:
-        (inner,) = get_args(val_cls)
-        return TKType.VecType(tkvalue_to_tktype(inner))
-    if get_origin(val_cls) == VariantValue:
-        (typeddict,) = get_args(val_cls)
-        return TKType.VariantType(_typeddict_to_row(typeddict))
-
-    if get_origin(val_cls) == StructValue:
-        (typeddict,) = get_args(val_cls)
-        return TKType.StructType(_typeddict_to_row(typeddict))
-    if get_origin(val_cls) == PairValue:
-        first, second = get_args(val_cls)
-        return TKType.PairType(*map(tkvalue_to_tktype, (first, second)))
-    if get_origin(val_cls) == MapValue:
-        first, second = get_args(val_cls)
-        return TKType.MapType(*map(tkvalue_to_tktype, (first, second)))
-
-    if val_cls == IntValue:
-        return TKType.IntType()
-
-    if val_cls == BoolValue:
-        return TKType.BoolType()
-
-    if val_cls == FloatValue:
-        return TKType.FloatType()
-
-    if val_cls == StringValue:
-        return TKType.StringType()
-
-    raise ValueError("Cannot convert value class.")
 
 
 def _val_known_type(type_: typing.Type, value: Any) -> TierkreisValue:

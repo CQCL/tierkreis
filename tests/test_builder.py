@@ -630,26 +630,6 @@ def test_retry_secs(bi: Namespace) -> None:
     assert f.retry_secs == 2
 
 
-# @pytest.mark.asyncio
-# async def test_bad_annotations() -> None:
-#     # pyright does not support no_type_check decorator
-#     # so peppered with type: ignore
-#     with pytest.raises(TypeError, match="return type"):
-
-#         @no_type_check
-#         @graph()  # type: ignore
-#         def foo1(arg) -> int:
-#             return Output(out=arg)  # type: ignore
-
-
-#     with pytest.raises(TypeError, match="Graph builder function arguments"):
-
-#         @no_type_check
-#         @lazy_graph()
-#         def foo3(arg: float) :
-#             return Output(out=arg)  # type: ignore
-
-
 @pytest.mark.skip_typecheck
 @pytest.mark.asyncio
 async def test_box_order(bi: Namespace, sig: Signature) -> None:

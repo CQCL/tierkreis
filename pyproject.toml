@@ -13,7 +13,6 @@ authors = [
 requires-python = ">=3.10,<3.13"
 dependencies = [
     "betterproto[compiler]==2.0.0b6",
-    "protobuf>=3.19,<4",              # Restrict version to maintain compatibility with opentelemetry
     "grpclib>=0.4.3rc,<0.5",          # pre-release to support python 3.10
     "networkx>=2.6.3,<3",
     "graphviz>=0.20,<0.21",
@@ -30,8 +29,8 @@ tkrs = 'tierkreis.cli:cli'
 docker = ["docker>=5,<6"]
 
 telemetry = [
-    "opentelemetry-sdk>=1.5.0,<2",
-    "opentelemetry-exporter-otlp>=1.5.0,<2",
+    "opentelemetry-sdk>=1.15.0,<2",
+    "opentelemetry-exporter-otlp>=1.15.0,<2",
 ]
 
 commontypes = ["pytket>=1.0"]

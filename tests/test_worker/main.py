@@ -73,7 +73,13 @@ async def id_delay(inputs: IdDelayInputs[A]) -> IdDelayOutputs[A]:
 
 @namespace.function(type_vars={A: StarKind()})
 async def fail(value: A) -> A:
-    raise RuntimeError("fail node was run")
+    lst = {}
+    try:
+        _ = lst["key"]
+    except KeyError as e:
+        # induce nested exception
+        raise RuntimeError("fail node was run") from e
+    return value
 
 
 @namespace.function()

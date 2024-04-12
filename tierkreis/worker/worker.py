@@ -4,7 +4,7 @@ import functools
 import sys
 from contextvars import ContextVar
 from tempfile import TemporaryDirectory
-from traceback import print_tb
+from traceback import print_exception
 from typing import Any, Callable, Coroutine, Optional
 
 import grpclib
@@ -213,10 +213,12 @@ class WorkerServerImpl(WorkerBase):
                 message=f"Unsupported function: {function}",
             ) from err
         except NodeExecutionError as err:
-            # The response resulting from the GRPCError below does not seem to include
-            # any part of the original stack trace
+            # The response resulting from the GRPCError below does not include
+            # the original traceback to avoid leaking implementation details.
+            # The traceback is instead printed to local stderr.
             print(f"Error in running {function}:", file=sys.stderr)
-            print_tb((err.__cause__ or err).__traceback__)
+            print_exception(err.base_exception)
+
             raise GRPCError(
                 status=StatusCode.UNKNOWN,
                 message=f"Error while running operation: {repr(err.base_exception)}",

@@ -164,10 +164,10 @@ def _tag_match_graph_builder(bi: Namespace) -> TierkreisGraph:
 @pytest.mark.parametrize(
     "builder,expected_gen",
     [
-        # ("_vecs_graph_builder", _vecs_graph),
-        # ("_structs_graph_builder", _structs_graph),
+        ("_vecs_graph_builder", _vecs_graph),
+        ("_structs_graph_builder", _structs_graph),
         ("_maps_graph_builder", _maps_graph),
-        # ("_tag_match_graph_builder", _tag_match_graph),
+        ("_tag_match_graph_builder", _tag_match_graph),
     ],
 )
 async def test_builder_sample(

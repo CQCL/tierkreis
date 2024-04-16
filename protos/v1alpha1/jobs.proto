@@ -11,15 +11,20 @@ service JobControl {
   rpc DeleteCompleted(DeleteCompletedRequest) returns (DeleteCompletedResponse);
 }
 
+message JobHandle {
+  string uuid = 1;
+  uint32 attempt_id = 2;
+}
+
 message StartJobRequest {
   tierkreis.v1alpha1.graph.Graph graph = 1;
   tierkreis.v1alpha1.graph.StructValue inputs = 2;
-  string job_id = 3;
+  JobHandle job_handle = 3;
 }
 
 message StartJobResponse {
   oneof result {
-    string job_id = 1;
+    JobHandle job_handle = 1;
     tierkreis.v1alpha1.signature.TypeErrors type_errors = 2;
     string runtime_error = 3;
   }
@@ -34,14 +39,14 @@ message RunningJobsResponse {
 
 
 message StopJobRequest {
-  string id = 1;
+  JobHandle handle = 1;
 }
 
 message StopJobResponse {
 }
 
 message JobStatusRequest {
-  string id = 1;
+  JobHandle handle = 1;
 }
 
 message JobStatusResponse {
@@ -54,7 +59,7 @@ message Empty {
 }
 
 message JobStatus {
-  string id = 1;
+  JobHandle handle = 1;
   oneof status {
     Empty success = 2;
     Empty running = 3;
@@ -65,6 +70,6 @@ message JobStatus {
 
 message DeleteCompletedRequest {}
 message DeleteCompletedResponse {
-    // ids of deleted jobs
-    repeated string job_ids = 1;
+    // handles of deleted jobs
+    repeated JobHandle job_handles = 1;
 }

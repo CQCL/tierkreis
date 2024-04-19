@@ -39,7 +39,7 @@ message RunningJobsResponse {
 
 
 message StopJobRequest {
-  JobHandle handle = 1;
+  string job_id = 1;
 }
 
 message StopJobResponse {

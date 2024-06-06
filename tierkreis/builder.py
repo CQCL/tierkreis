@@ -350,20 +350,7 @@ def Const(
     return n[Labels.VALUE]
 
 
-def UnionConst(
-    val: Union[
-        int,
-        float,
-        bool,
-        str,
-        dict,
-        TierkreisValue,
-        TierkreisGraph,
-        tuple,
-        list,
-        "LazyGraph",
-    ],
-) -> NodePort:
+def UnionConst(val: Any) -> NodePort:
     """Add a constant as a variant value tagged by its type, to be used
     with `Union` type annotations.
     """

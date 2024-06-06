@@ -11,12 +11,14 @@ W = TypeVar("W")
 
 
 def map_vals(inp: Mapping[K, V], f: Callable[[V], W]) -> dict[K, W]:
+    """Apply function `f` to map all the values in the input mapping."""
     return {k: f(v) for k, v in inp.items()}
 
 
 def rename_ports_graph(name_map: dict[str, str]) -> TierkreisGraph:
     """Generate an identity graph with inputs -> outputs mapped by the provided
-    dictionary."""
+    dictionary.
+    """
     tg = TierkreisGraph()
 
     tg.set_outputs(**{out: tg.input[inp] for inp, out in name_map.items()})

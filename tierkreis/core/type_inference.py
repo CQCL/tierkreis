@@ -1,3 +1,5 @@
+"""Type inference for Tierkreis graphs, depends on the `tierkreis_typecheck` package."""
+
 from importlib.util import find_spec
 from typing import Optional, Tuple, Union, overload
 
@@ -19,6 +21,8 @@ except ModuleNotFoundError:
 
 
 class TypeCheckNotInstalled(ImportError):
+    """Raised when tierkreis_typecheck is not installed."""
+
     pass
 
 
@@ -48,6 +52,13 @@ def infer_graph_types(
     funcs: Signature,
     inputs: Optional[StructValue] = None,
 ) -> Union[TierkreisGraph, Tuple[TierkreisGraph, StructValue]]:
+    """Infer the types in a graph and its inputs given a signature to check
+    against.
+    If succesful both the graph and inputs are returned, with type annotations
+    added.
+    If inputs are not provided, only the graph is returned.
+    Raises `TierkreisTypeErrors` if the inference fails.
+    """
     if not _TYPE_CHECK:
         raise _ERR
     else:
@@ -76,6 +87,7 @@ def infer_graph_types(
 
 
 def builtin_namespace() -> Namespace:
+    """The namespace of built-in functions."""
     if _TYPE_CHECK:
         import tierkreis_typecheck
 

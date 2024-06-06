@@ -17,6 +17,7 @@ profile_worker: bool
 
 
 def setup_tracing(service_name: str):
+    """If the TIERKREIS_OTLP environment variable is set, set up tracing using opentelemetry."""
     endpoint = os.environ.get("TIERKREIS_OTLP")
     global profile_worker
     profile_worker = bool(os.environ.get("TIERKREIS_PROFILE_WORKER"))
@@ -46,7 +47,8 @@ def setup_tracing(service_name: str):
 def start_worker_server(worker_name: str, namespace: Namespace):
     """Set up tracing and run the worker server with the provided namespaces.
     Expects a port specified on the command line, and reports succesful start to
-    stdout"""
+    stdout
+    """
 
     async def main():
         args = parser.parse_args()

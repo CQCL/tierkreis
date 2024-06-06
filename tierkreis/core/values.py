@@ -1,3 +1,5 @@
+"""Tierkreis values and utilities for converting between Python and Tierkreis values."""
+
 from __future__ import annotations
 
 import inspect
@@ -25,7 +27,7 @@ from uuid import UUID
 import betterproto
 
 import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
-from tierkreis.core.internal import (
+from tierkreis.core._internal import (
     ClassField,
     FieldExtractionError,
     generic_origin,
@@ -55,6 +57,8 @@ TKVal2 = TypeVar("TKVal2", bound="TierkreisValue")
 
 @dataclass
 class IncompatiblePyValue(Exception):
+    """Python value could not be converted to a Tierkreis value."""
+
     value: Any
 
     def __str__(self) -> str:
@@ -66,6 +70,8 @@ class IncompatiblePyValue(Exception):
 
 @dataclass
 class IncompatibleAnnotatedValue(IncompatiblePyValue):
+    """Could not convert value to type declared by annotation."""
+
     type_: typing.Type
 
     def __str__(self) -> str:
@@ -77,6 +83,8 @@ class IncompatibleAnnotatedValue(IncompatiblePyValue):
 
 @dataclass
 class ToPythonFailure(Exception):
+    """Could not convert a Tierkreis value to a python value."""
+
     value: TierkreisValue
 
     def __str__(self) -> str:
@@ -84,6 +92,8 @@ class ToPythonFailure(Exception):
 
 
 class TierkreisValue(ABC):
+    """Abstract base class for all Tierkreis compatible values."""
+
     _proto_map: Dict[str, typing.Type["TierkreisValue"]] = dict()
 
     def __init_subclass__(cls, **kwargs) -> None:
@@ -100,13 +110,12 @@ class TierkreisValue(ABC):
 
     @abstractmethod
     def viz_str(self) -> str:
+        """String representation used in graph visualisation."""
         pass
 
     @classmethod
     def from_proto(cls, value: Any) -> "TierkreisValue":
-        """
-        Parses a tierkreis type from its protobuf representation.
-        """
+        """Parses a tierkreis type from its protobuf representation."""
         name, out_value = betterproto.which_one_of(value, "value")
 
         try:
@@ -117,12 +126,12 @@ class TierkreisValue(ABC):
     @abstractmethod
     def _to_python_impl(self, type_: typing.Type[T]) -> T | None:
         """Each subclass should implement this method to convert to associated
-        python type if possible."""
+        python type if possible.
+        """
         ...
 
     def to_python(self, type_: typing.Type[T]) -> T:
-        """
-        Converts a tierkreis value to a python value given the desired python type.
+        """Converts a tierkreis value to a python value given the desired python type.
 
         When the specified python type is a type variable, the original
         `TierkreisValue` is returned unchanged. This allows us to write generic
@@ -202,6 +211,8 @@ class TierkreisValue(ABC):
 
 @dataclass(frozen=True)
 class BoolValue(TierkreisValue):
+    """Boolean."""
+
     _proto_name: ClassVar[str] = "boolean"
 
     value: bool
@@ -230,6 +241,8 @@ class BoolValue(TierkreisValue):
 
 @dataclass(frozen=True)
 class StringValue(TierkreisValue):
+    """UTF-8 encoded string."""
+
     _proto_name: ClassVar[str] = "str"
     value: str
 
@@ -259,6 +272,8 @@ class StringValue(TierkreisValue):
 
 @dataclass(frozen=True)
 class IntValue(TierkreisValue):
+    """Signed integer."""
+
     _proto_name: ClassVar[str] = "integer"
     value: int
 
@@ -286,6 +301,8 @@ class IntValue(TierkreisValue):
 
 @dataclass(frozen=True)
 class FloatValue(TierkreisValue):
+    """IEEE 754 double precision floating point number."""
+
     _proto_name: ClassVar[str] = "flt"
     value: float
 
@@ -313,6 +330,8 @@ class FloatValue(TierkreisValue):
 
 @dataclass(frozen=True)
 class PairValue(Generic[TKVal1, TKVal2], TierkreisValue):
+    """A pair of two types."""
+
     _proto_name: ClassVar[str] = "pair"
     first: TKVal1
     second: TKVal2
@@ -360,6 +379,8 @@ class PairValue(Generic[TKVal1, TKVal2], TierkreisValue):
 
 @dataclass(frozen=True)
 class VecValue(Generic[TKVal1], TierkreisValue):
+    """A vector of elements of the same type."""
+
     _proto_name: ClassVar[str] = "vec"
     values: list[TKVal1]
 
@@ -402,6 +423,8 @@ class VecValue(Generic[TKVal1], TierkreisValue):
 
 @dataclass(frozen=True)
 class MapValue(Generic[TKVal1, TKVal2], TierkreisValue):
+    """A map from keys of one type to values of another. The key type must be hashable."""
+
     _proto_name: ClassVar[str] = "map"
     values: Dict[TKVal1, TKVal2]
 
@@ -480,6 +503,8 @@ RowStruct = TypeVar("RowStruct", bound=DataclassInstance)
 
 
 class StructValue(Generic[RowStruct], TierkreisValue):
+    """A composite structure of named fields."""
+
     _proto_name: ClassVar[str] = "struct"
     _struct: RowStruct
 
@@ -567,6 +592,7 @@ class StructValue(Generic[RowStruct], TierkreisValue):
 
     @classmethod
     def from_object(cls, value: Any, type_: typing.Type | None = None) -> "StructValue":
+        """Generate a `StructValue` from a python object using object member names as labels."""
         struct_type = type_ or type(value)
         try:
             class_fields = python_struct_fields(struct_type)
@@ -664,7 +690,9 @@ def _labeled_dict_to_tuple(labeled_d: dict[str, V]) -> list[tuple[int, V]]:
 
 @dataclass(frozen=True)
 class TierkreisVariant(typing.Generic[T]):
-    """Used to represent a Tierkreis Variant as a native python value"""
+    """Used to represent a Tierkreis Variant as a native python value. Defined
+    by string tag and value.
+    """
 
     tag: str
     value: T

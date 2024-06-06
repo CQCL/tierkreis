@@ -51,6 +51,8 @@ def _qps_from_pytket(tkqps: "PytketQubitPauliString") -> QubitPauliString:
 
 @dataclass(frozen=True)
 class MeasurementBitMap:
+    """Legacy Tierkreis-compatible version of pytket's MeasurementBitMap."""
+
     circ_index: int
     bits: list[int]
     invert: bool
@@ -68,6 +70,8 @@ class MeasurementBitMap:
 
 @dataclass(frozen=True)
 class MeasurementSetup:
+    """Legacy Tierkreis-compatible version of pytket's MeasurementSetup."""
+
     measurement_circs: list[CircuitWrapper]  # using the wrapper to avoid pytket import
     results: list[tuple[QubitPauliString, list[MeasurementBitMap]]]
 

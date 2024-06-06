@@ -199,11 +199,10 @@ def tierkreis_to_graphviz(
     merge_copies: bool = True,
     unbox_graph_names: Optional[set[str]] = None,
 ) -> gv.Digraph:
-    """
-    Return a visual representation of the TierkreisGraph as a graphviz object.
+    """Return a visual representation of the TierkreisGraph as a graphviz object.
 
-    :returns:   Representation of the TierkreisGraph
-    :rtype:     graphviz.DiGraph
+    Returns:
+        graphviz.DiGraph: Representation of the TierkreisGraph
     """
     if merge_copies:
         tk_graph = _merge_copies(tk_graph)
@@ -420,13 +419,12 @@ def render_graph(
 ) -> None:
     """Use graphviz to render a graph visualisation to file
 
-    :param graph: Graph to render
-    :type graph: TierkreisGraph
-    :param filename: Filename root to write render to
-    :type filename: str
-    :param format_st: Format string, e.g. "png", refer to Graphviz render
+    Args:
+        graph: Graph to render
+        filename: Filename root to write render to
+        format_st: Format string, e.g. "png", refer to Graphviz
+            render
     documentation for full list.
-    :type format_st: str
     """
     gv_graph = tierkreis_to_graphviz(graph, **kwargs)
 

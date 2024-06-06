@@ -1,3 +1,5 @@
+"""Opaquely encode a Pydantic model as a JSON string in a StructType."""
+
 import re
 
 import pydantic as pyd
@@ -15,7 +17,8 @@ class OpaqueModel(pyd.BaseModel):
     """A type that is opaque to the Tierkreis system. Mapped to a StructType
     with a single field (field name may be customise by overloading
     `tierkreis_field`) with a string value holding the JSON serialized
-    model."""
+    model.
+    """
 
     @classmethod
     def tierkreis_field(cls) -> str:

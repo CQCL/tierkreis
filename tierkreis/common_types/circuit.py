@@ -54,7 +54,8 @@ class PytketDependencyError(Exception):
 @dataclass(frozen=True)
 class UnitID:
     """Used for BackendResult.{qubits, bits} and also for Node.
-    Not serializable on its own. Returns / takes a list."""
+    Not serializable on its own. Returns / takes a list.
+    """
 
     reg_name: str
     index: List[int]
@@ -98,6 +99,8 @@ T = TypeVar("T", bound=PytketType)
 
 
 class PytketWrapper(OpaqueModel, ABC, Generic[T]):
+    """Generic wrapper around pytket types with to_dict and from_dict methods."""
+
     json_str: str
 
     @classmethod
@@ -114,12 +117,16 @@ class PytketWrapper(OpaqueModel, ABC, Generic[T]):
 
 
 class CircuitWrapper(PytketWrapper["Circuit"]):
+    """Tierkreis wrapper for pytket Circuit."""
+
     @classmethod
     def get_pytket_type(cls) -> Type["Circuit"]:
         return _pytket().circuit.Circuit  # type: ignore
 
 
 class ResultWrapper(PytketWrapper["BackendResult"]):
+    """Tierkreis wrapper for pytket BackendResult."""
+
     @classmethod
     def get_pytket_type(cls) -> Type["BackendResult"]:
         return _pytket().backends.backendresult.BackendResult  # type: ignore

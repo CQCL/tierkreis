@@ -1,3 +1,5 @@
+"""Namespace and Signature classes for Tierkreis."""
+
 from dataclasses import dataclass, field
 
 import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
@@ -10,6 +12,8 @@ from tierkreis.core.utils import map_vals
 
 @dataclass(frozen=True)
 class Namespace:
+    """A namespace containing named functions and child namespaces."""
+
     functions: dict[str, FunctionDeclaration]
     subspaces: dict[str, "Namespace"] = field(default_factory=dict)
 
@@ -32,9 +36,13 @@ class Namespace:
         )
 
     def get(self, ns: list[str]):
+        """Get a child namespace by specifying the qualified namespace as a list of strings."""
         return self if ns == [] else self.subspaces[ns[0]].get(ns[1:])
 
     def all_namespaces(self) -> list[list[str]]:
+        """Return a list of all namespaces in the namespace tree, as a list of
+        qualified names.
+        """
         root: list[list[str]] = [[]]
         return root + [
             [k] + x for k, v in self.subspaces.items() for x in v.all_namespaces()
@@ -42,11 +50,16 @@ class Namespace:
 
     @classmethod
     def empty(cls) -> "Namespace":
+        """Create an empty namespace."""
         return cls({})
 
 
 @dataclass(frozen=True)
 class Signature:
+    """A Tierkreis worker signature. Defined primarily by a root namespace, also
+    defines type aliases and available execution scopes.
+    """
+
     root: Namespace
     aliases: dict[str, TypeScheme] = field(default_factory=dict)
     scopes: list[Location] = field(default_factory=list)
@@ -68,4 +81,5 @@ class Signature:
 
     @classmethod
     def empty(cls) -> "Signature":
+        """Create an empty Signature"""
         return cls(Namespace.empty())

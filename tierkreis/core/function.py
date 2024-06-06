@@ -1,4 +1,4 @@
-"""TierkreisFunction encapsulation of available function signatures"""
+"""FunctionName class."""
 
 from dataclasses import dataclass, field
 from typing import List
@@ -9,6 +9,10 @@ import tierkreis.core.protos.tierkreis.v1alpha1.signature as ps
 
 @dataclass
 class FunctionName:
+    """A unique identifier for a function, specified by it's name and the
+    qualified namespace it belongs to.
+    """
+
     name: str
     namespaces: List[str] = field(default_factory=list)
 
@@ -27,6 +31,7 @@ class FunctionName:
 
     @classmethod
     def parse(cls, to_parse: str) -> "FunctionName":
+        """Parse from a string in the format \"namespace::name\"."""
         atoms = to_parse.split("::")
         name = atoms.pop(-1)
         return cls(name, atoms)

@@ -85,6 +85,8 @@ class PyRuntime(RuntimeClient):
         edge: TierkreisEdge,
         val: TierkreisValue,
     ):
+        """If a callback function is set, call it with an edge and the value on
+        the edge."""
         if self._callback:
             self._callback(edge, val)
 

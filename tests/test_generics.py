@@ -10,7 +10,7 @@ from test_worker.main import (
 
 from tierkreis.builder import Const, Output, graph
 from tierkreis.client.runtime_client import RuntimeClient
-from tierkreis.core.internal import generic_origin
+from tierkreis.core._internal import generic_origin
 from tierkreis.core.types import (
     IntType,
     Row,

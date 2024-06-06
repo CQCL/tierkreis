@@ -42,11 +42,15 @@ lint = [
 test = [
     "pytest>=6.2,<7",
     "pytest-asyncio>=0.16,<0.17",
+    "pytest-cov>=5.0,<6",
     "tierkreis[commontypes,typecheck]",
 ]
 sc22-example = ["numpy>=1.20,<2", "pytket>=1.0"]
 
 typecheck = ["tierkreis_typecheck>=0.2,<0.3"]
+
+
+docs = ["sphinx>=4.3", "sphinx-book-theme>=1.1.2"]
 
 [tool.pytest.ini_options]
 markers = ["pytket"]

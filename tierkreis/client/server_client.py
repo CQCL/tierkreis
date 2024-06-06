@@ -64,13 +64,15 @@ StubType = TypeVar("StubType", bound="ServiceStub")
 
 
 class ServerRuntime(RuntimeClient):
-    """Client for tierkreis server."""
+    """Client for a tierkreis server connected over a GRPC channel."""
 
     def __init__(self, channel: "Channel") -> None:
+        """Initialize the client with a GRPC channel to a runtime server."""
         self._channel = channel
         self._stubs: dict[str, ServiceStub] = {}
 
     def socket_address(self) -> str:
+        """Socket address (host and port) of the server."""
         return f"{self._channel._host}:{self._channel._port}"
 
     def _stub_gen(self, key: str, stub_t: Type[StubType]) -> StubType:
@@ -93,6 +95,7 @@ class ServerRuntime(RuntimeClient):
         return self._stub_gen("type", ps.TypeInferenceStub)
 
     async def get_signature(self, loc: Location = Location([])) -> Signature:
+        """Retrieve the namespaces and functions available on the runtime."""
         return Signature.from_proto(
             await self._signature_stub.list_functions(ps.ListFunctionsRequest(loc))
         )
@@ -104,14 +107,6 @@ class ServerRuntime(RuntimeClient):
         /,
         **py_inputs: Any,
     ) -> Dict[str, TierkreisValue]:
-        """
-        Run a graph and return results.
-
-        :param gb: Graph to run.
-        :param inputs: Inputs to graph as map from label to value.
-        :param type_check: Whether to type check the graph.
-        :return: Outputs as map from label to value.
-        """
         inputs = {}
         for key, val in py_inputs.items():
             try:
@@ -144,6 +139,8 @@ class ServerRuntime(RuntimeClient):
         /,
         **py_inputs: Any,
     ) -> Dict[str, TierkreisValue]:
+        """Blocking version of `run_graph`."""
+
         async def _run(
             host: str,
             port: int,
@@ -156,6 +153,7 @@ class ServerRuntime(RuntimeClient):
     async def type_check_graph(
         self, graph: TierkreisGraph, loc: Location = Location([])
     ) -> TierkreisGraph:
+        """Type check the graph on the runtime and return a new type-annotated graph."""
         value = TierkreisValue.from_python(graph).to_proto()
 
         response = await self._type_stub.infer_type(

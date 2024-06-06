@@ -1,3 +1,7 @@
+"""The builder module allows Tierkreis graphs to be constructed concisely using
+decorated functions and context managers.
+"""
+
 import inspect
 from abc import ABC, abstractmethod
 from contextlib import AbstractContextManager
@@ -55,8 +59,9 @@ if TYPE_CHECKING:
     from tierkreis.core.types import GraphType, TierkreisType
 
 
-# magic for lazily creating nodes (and returning ports thereof)
 class PortFunc(ABC):
+    """Magic for lazily creating nodes (and returning ports thereof)."""
+
     @abstractmethod
     def resolve(self) -> NodePort:
         """Return a NodePort, creating nodes as necessary in source graph."""
@@ -112,6 +117,7 @@ class InvalidContext(Exception):
 
 
 def current_builder() -> "GraphBuilder":
+    """The current GraphBuilder context."""
     try:
         return __state.get()
     except LookupError as e:
@@ -119,6 +125,7 @@ def current_builder() -> "GraphBuilder":
 
 
 def current_graph() -> TierkreisGraph:
+    """The current GraphBuilder's graph."""
     return current_builder().graph
 
 
@@ -135,12 +142,16 @@ def _capture_label(idx: int) -> PortID:
 
 
 @dataclass(frozen=True)
-class CaptureOutwards:
+class _CaptureOutwards:
+    # Utility to allow capturing values from inner scopes to outer scopes.
+
     source_graph: TierkreisGraph
     ref: NodeRef
-    contained: Optional["CaptureOutwards"] = None
+    contained: Optional["_CaptureOutwards"] = None
 
     def capture(self, incoming: ValueSource) -> ValueSource:
+        """Convert a ValueSource from the inner scope to the outer scope by adding an output to the inner."""
+
         if self.contained is not None:
             incoming = self.contained.capture(incoming)
         new_name = _capture_label(len(self.source_graph.outputs()))
@@ -152,10 +163,13 @@ TGBuilder = TypeVar("TGBuilder", bound="GraphBuilder")
 
 
 class GraphBuilder(AbstractContextManager):
+    """Builder context that maintains a graph state and allows adding nodes
+    within the context."""
+
     graph: TierkreisGraph
     inputs: list[str]
     outputs: list[str]
-    inner_scopes: dict[TierkreisGraph, CaptureOutwards]
+    inner_scopes: dict[TierkreisGraph, _CaptureOutwards]
     debug_info: dict[NodeRef, str]
     _state_token: Token["GraphBuilder"]
 
@@ -166,6 +180,14 @@ class GraphBuilder(AbstractContextManager):
         name: str = "",
         debug: bool = True,
     ) -> None:
+        """Create a new GraphBuilder context.
+
+        Args:
+            inputs: Optional list of input port names, defaults to None (i.e. the empty list).
+            outputs: Optional list of output port names, defaults to None (i.e. the empty list).
+            name: _description_. Name the graph being built.
+            debug: _description_. Whether to store debug info while building..
+        """
         self.graph = TierkreisGraph(name)
         self.inputs = inputs or []
         self.outputs = outputs or []
@@ -174,6 +196,7 @@ class GraphBuilder(AbstractContextManager):
         self.debug_info = {self.graph.input: _debug_str()} if debug else {}
 
     def input(self, name: str) -> NodePort:
+        """Get a port from the input node by name."""
         if name in self.inputs:
             return self.graph.input[name]
         raise RuntimeError("Input not declared.")
@@ -203,6 +226,7 @@ class GraphBuilder(AbstractContextManager):
     def capture(
         self, incoming: ValueSource, allow_existing: bool = False
     ) -> ValueSource:
+        """Capture an input from an outer scope."""
         if (ret_val := self._inner_capture(incoming)) is None:
             raise InvalidContext(
                 f"ValueSource {incoming} does not belong to current graph."
@@ -225,6 +249,8 @@ class GraphBuilder(AbstractContextManager):
         /,
         **incoming_wires: ValueSource,
     ) -> NodeRef:
+        """Add a node to the graph and connect incoming wires, which are
+        specified via keyword arguments."""
         nr = self.graph.add_node(_tk_node)
         self._add_edges(nr, **incoming_wires)
         if self.debug_info:
@@ -232,11 +258,15 @@ class GraphBuilder(AbstractContextManager):
         return nr
 
     def set_graph_outputs(self, **incoming_wires: ValueSource) -> None:
+        """Set the outputs of the graph by specifying incoming wires as keyword arguments."""
         if len(self.graph.outputs()) != 0:
             raise RuntimeError("Outputs set multiple times for same graph.")
         self._add_edges(self.graph.output, **incoming_wires)
 
     def type_check(self, sig: Signature) -> TierkreisGraph:
+        """Type check a graph against a provided signature and return a new graph with
+        type annotations. Throws an exception if  `typecheck` optional
+        dependencies not installed)."""
         try:
             return infer_graph_types(self.graph, sig)
         except TierkreisTypeErrors as te:
@@ -244,6 +274,8 @@ class GraphBuilder(AbstractContextManager):
 
 
 class CaptureBuilder(GraphBuilder):
+    """Graph builder for closures which capture inputs from outer scopes."""
+
     captured: dict[ValueSource, PortID]
 
     def __init__(
@@ -261,6 +293,9 @@ class CaptureBuilder(GraphBuilder):
     def capture(
         self, incoming: ValueSource, allow_existing: bool = False
     ) -> ValueSource:
+        """Capture input from an outer scope, wiring it through the input
+        node.
+        """
         if (valsrc := self._inner_capture(incoming)) is not None:
             return valsrc
         if incoming in self.captured and not allow_existing:
@@ -305,6 +340,8 @@ def Const(
     val: Any,
     type_: Type | None = None,
 ) -> NodePort:
+    """Add a constant value to the graph. If a type is provided, it will be used
+    in the conversion, otherwise the type will be inferred from the value."""
     if isinstance(val, LazyGraph):
         val = val.graph
     n = current_builder().add_node_to_graph(
@@ -328,7 +365,8 @@ def UnionConst(
     ],
 ) -> NodePort:
     """Add a constant as a variant value tagged by its type, to be used
-    with `Union` type annotations."""
+    with `Union` type annotations.
+    """
     union_tag = UnionTag.value_type_tag(val)
     return Tag(union_tag, Const(val))
 
@@ -348,6 +386,8 @@ class _CallAddNode:
 
 
 class Scope(CaptureBuilder, ABC):
+    """Build a sub graph to be executed at a specific `Location`."""
+
     location: Location
 
     def __init__(self, location: Union[str, Location] = Location([])):
@@ -370,17 +410,26 @@ class Scope(CaptureBuilder, ABC):
             inputs = {v: k for k, v in self.captured.items()}
             node_ref = _build_box(graph, self.location, **inputs)
             for inner_graph, captured in self.inner_scopes.items():
-                current_builder().inner_scopes[inner_graph] = CaptureOutwards(
+                current_builder().inner_scopes[inner_graph] = _CaptureOutwards(
                     graph, node_ref, captured
                 )
-            current_builder().inner_scopes[graph] = CaptureOutwards(graph, node_ref)
+            current_builder().inner_scopes[graph] = _CaptureOutwards(graph, node_ref)
 
 
 def Tag(tag: str, value: ValueSource) -> NodePort:
+    """Add a tag node to the graph, tagging the value with the provided tag
+    string and producing a :class:`~tierkreis.core.values.VariantValue` from the output port.
+    """
     return current_builder().add_node_to_graph(TagNode(tag), value=value)[Labels.VALUE]
 
 
 class Output(NodeRef):
+    """Set the outputs of a graph to the provided values. Return this object
+    when terminating a graph building context. Positional arguments are mapped to any output
+    names annotated on the graph being built, keyword arguments are used to
+    explicitly set outputs.
+    """
+
     def __init__(self, *args: ValueSource, **kwargs: ValueSource) -> None:
         s = current_builder()
 
@@ -404,11 +453,17 @@ class _LoopOutput(Output):
 
 
 class Continue(_LoopOutput):
+    """Exit the current iteration of a loop and continue to the next with the
+    provided output.
+    """
+
     def __init__(self, loopout: ValueSource) -> None:
         super().__init__(Tag(Labels.CONTINUE, loopout))
 
 
 class Break(_LoopOutput):
+    """Exit the loop with the provided output."""
+
     def __init__(self, loopout: ValueSource) -> None:
         super().__init__(Tag(Labels.BREAK, loopout))
 
@@ -424,12 +479,12 @@ def _get_input_names(f: _GraphDef) -> list[str]:
     return list(inspect.signature(f).parameters.keys())
 
 
-class CapturedError(Exception):
-    pass
-
-
 @dataclass(frozen=True)
 class LazyGraph:
+    """Context to lazily build a graph from a decorated function. A graph is only
+    built when the function is called.
+    """
+
     _builder: Callable[[], TierkreisGraph]
 
     @cached_property
@@ -448,11 +503,24 @@ _LazyGraphDecoratorType = Callable[[_GraphDef], LazyGraph]
 
 
 def lazy_graph(
-    name: Optional[str] = None,
+    name: str | None = None,
     type_check_sig: Signature | None = None,
     output_order: list[str] | None = None,
     debug: bool = True,
 ) -> _LazyGraphDecoratorType:
+    """Decorate a function to build a `TierkreisGraph` when it is called.
+
+    Args:
+        name: Optionally name the graph,
+            defaults to None
+        type_check_sig: If a type signature
+            is provided, the graph will be type checked when built,
+            defaults to None
+        output_order: Optional list of
+            output ports, inputs are inferred from function arguments,
+            defaults to None
+    """
+
     def decorator_graph(f: _GraphDef) -> LazyGraph:
         input_order = _get_input_names(f)
         # Use getattr as _GraphDef doesn't specify that it has a __name__
@@ -482,6 +550,10 @@ def graph(
     output_order: list[str] | None = None,
     debug: bool = True,
 ) -> _GraphDecoratorType:
+    """Convert a function into a `TierkreisGraph`. See `lazy_graph` for details.
+    This function is equivalent except that the graph is built when the module is loaded and replaces
+    the original function.
+    """
     dec = lazy_graph(name, type_check_sig, output_order, debug)
 
     def decorator_graph(f: _GraphDef) -> TierkreisGraph:
@@ -491,6 +563,8 @@ def graph(
 
 
 class Thunk(_CallAddNode, PortFunc):
+    """Utility to call a thunk (a graph) as a function. Adds an eval node when called."""
+
     graph_src: ValueSource
 
     def __init__(
@@ -521,6 +595,15 @@ def closure(
     debug: bool = True,
     output_order: list[str] | None = None,
 ) -> Callable[[_GraphDef], Thunk]:
+    """Decorator to build a closure `TierkreisGraph` inside a builder context.
+
+    Args:
+        name: Optionally name the closure,
+            defaults to None
+        output_order: Optional list of
+            output ports, defaults to None
+    """
+
     def decorator_graph(f: _GraphDef) -> Thunk:
         input_order = _get_input_names(f)
 
@@ -538,6 +621,10 @@ def closure(
 
 
 def loop(name: Optional[str] = None, debug: bool = True):
+    """Decorator to build a loop body `TierkreisGraph` inside a builder context.
+    Must have exactly one input argument, the loop variable.
+    """
+
     def decorator_graph(f: _GraphDef):
         inps = _get_input_names(f)
         if len(inps) != 1:
@@ -565,6 +652,8 @@ def loop(name: Optional[str] = None, debug: bool = True):
 
 
 class If(CaptureBuilder):
+    """Utility to build an if/else block, adds a `Match` node when called."""
+
     def __init__(self) -> None:
         super().__init__()
         self.graph.name = "if"
@@ -572,6 +661,8 @@ class If(CaptureBuilder):
 
 
 class Else(CaptureBuilder):
+    """Utility to build an if/else block, adds a `Match` node when called."""
+
     def __init__(self) -> None:
         super().__init__()
         self.graph.name = "else"
@@ -647,6 +738,8 @@ class _CaseScope(GraphBuilder, ABC):
 
 
 class Match(_CaseScope):
+    """Pattern match on a variant value by providing a `Case` for each variant."""
+
     variant_value: ValueSource
 
     def __init__(self, variant_value: ValueSource):
@@ -669,6 +762,8 @@ class Match(_CaseScope):
 
 
 class Case(CaptureBuilder):
+    """Define a graph to handle a specific variant in a `Match` block."""
+
     var_value: NodePort
 
     def __init__(self, tag: str) -> None:
@@ -680,6 +775,8 @@ class Case(CaptureBuilder):
 
 
 class IfElse(_CaseScope):
+    """Define an if/else block. Must contain exactly one `If` block and exactly one `Else` blocks."""
+
     predicate: ValueSource
 
     def __init__(self, predicate: ValueSource):
@@ -707,7 +804,8 @@ class IfElse(_CaseScope):
 def _combine_captures(thunks: list[CaptureBuilder]) -> dict[ValueSource, PortID]:
     """Given a list of thunks with captured inputs, remove their existing input
     names, common up any shared sources (up to == equality), and add all those
-    inputs to all graphs, discarding any unused."""
+    inputs to all graphs, discarding any unused.
+    """
     old_names = frozenset([v for bg in thunks for v in bg.captured.values()])
     # Generate a sparsely numbered list of names that won't conflict:
     names = filter(lambda x: x not in old_names, map(_capture_label, count()))
@@ -769,6 +867,8 @@ class Copyable(PortFunc):
 
 @dataclass(frozen=True)
 class Unpack(StablePortFunc):
+    """Utility class representing an unpacked field of a struct."""
+
     src: Union[NodePort, StablePortFunc]
     field_name: str
 
@@ -817,6 +917,8 @@ def _func_sig(name: str, func: FunctionDeclaration):
 
 
 class Function(_CallAddNode):
+    """A Tierkreis function - i.e. provided by a worker, or a builtin."""
+
     f: FunctionDeclaration
     name: FunctionName
 
@@ -840,6 +942,8 @@ class Function(_CallAddNode):
 
 
 class Namespace(Mapping[str, "Namespace"]):
+    """Namespace of functions and sub-namespaces."""
+
     @overload
     def __init__(self, args: Signature, /): ...
 
@@ -892,10 +996,12 @@ def _rename_ports(
 
 
 def RenameInputs(thunk: ValueSource, rename_map: dict[str, str]) -> NodePort:
+    """Utility function to rename the inputs of a thunk (runtime graph value)."""
     return _rename_ports(thunk, {v: k for k, v in rename_map.items()}, True)
 
 
-def RenameOuputs(thunk: ValueSource, rename_map: dict[str, str]) -> NodePort:
+def RenameOutputs(thunk: ValueSource, rename_map: dict[str, str]) -> NodePort:
+    """Utility to rename the outputs of a thunk (runtime graph value)."""
     return _rename_ports(thunk, rename_map, False)
 
 
@@ -928,7 +1034,8 @@ def UnpackTuple(src: ValueSource, first_n: int) -> Iterator[NodePort]:
 
 def MakeTuple(*args: ValueSource) -> NodePort:
     """Make a struct from some values, treating them like a python tuple, with
-    member position indices used to generate the field labels."""
+    member position indices used to generate the field labels.
+    """
     make_node = current_builder().add_node_to_graph(
         FunctionNode(FunctionName("make_struct")),
         **{TupleLabel.index_label(i): v for i, v in enumerate(args)},

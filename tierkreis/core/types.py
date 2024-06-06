@@ -1,3 +1,7 @@
+"""Python representations of Tierkreis types, and utilities to convert to and
+from known python types.
+"""
+
 import inspect
 import typing
 from abc import ABC, abstractmethod
@@ -12,7 +16,7 @@ import betterproto
 from typing_extensions import Self
 
 import tierkreis.core.protos.tierkreis.v1alpha1.graph as pg
-from tierkreis.core.internal import FieldExtractionError, python_struct_fields
+from tierkreis.core._internal import FieldExtractionError, python_struct_fields
 from tierkreis.core.opaque_model import _to_snake_case
 
 
@@ -26,12 +30,14 @@ def _get_union_args(
 
 
 def _extract_literal_args(type_: typing.Type) -> Optional[tuple]:
+    """If the type annotation is `Literal`, extract the arguments."""
     if typing.get_origin(type_) is typing.Literal:
         return typing.get_args(type_)
     return None
 
 
 def _extract_literal_type(type_: typing.Type) -> Optional[typing.Type]:
+    """Extract the type of a `Literal` annotation."""
     if args := _extract_literal_args(type_):
         # all args of literal must be the same type
         return type(args[0])
@@ -39,18 +45,23 @@ def _extract_literal_type(type_: typing.Type) -> Optional[typing.Type]:
 
 
 def _is_enum(type_: typing.Type) -> Optional[typing.Type[Enum]]:
+    """If the annotation is an Enum, return the Enum type."""
     if inspect.isclass(type_) and issubclass(type_, Enum):
         return type_
     return None
 
 
 def _is_annotated(type_: typing.Type) -> Optional[typing.Type]:
+    """If the annotation is an Annotated, return the inner annotation."""
     if typing.get_origin(type_) is typing.Annotated:
         return typing.get_args(type_)[0]
     return None
 
 
 def _is_var_length_tuple(args: tuple) -> Optional[typing.Type]:
+    """If the annotation is an arbitrary length tuple of the same type, return
+    the type.
+    """
     if len(args) == 2 and args[1] == ...:
         return args[0]
     return None
@@ -75,6 +86,8 @@ class SerializeAs(Protocol[Base]):
 
 @dataclass
 class IncompatiblePyType(Exception):
+    """Python type cannot be converted to a Tierkreis type."""
+
     type_: Any
 
     def __str__(self) -> str:
@@ -83,6 +96,8 @@ class IncompatiblePyType(Exception):
 
 @dataclass
 class IncompatibleUnionType(IncompatiblePyType):
+    """Unable to convert Union annotation."""
+
     def __str__(self) -> str:
         return (
             f"Could not generate unique names for all possible variants of union type {self.type_}."
@@ -92,6 +107,8 @@ class IncompatibleUnionType(IncompatiblePyType):
 
 
 class TierkreisType(ABC):
+    """Abstract base class for all Tierkreis types."""
+
     _convert_as: dict[typing.Type, typing.Type[SerializeAs]] = dict()
 
     @abstractmethod
@@ -104,7 +121,21 @@ class TierkreisType(ABC):
         type_: typing.Type,
         visited_types: typing.Optional[dict[typing.Type, "TierkreisType"]] = None,
     ) -> "TierkreisType":
-        "Converts a python type to its corresponding tierkreis type."
+        """Create a TierkreisType from a corresponding Python type.
+
+        Args:
+            type_: The Python type.
+            visited_types: An optional map from previously visited Python types
+            to TierkreisType, used when converting recursively.
+
+        Raises:
+            IncompatibleUnionType: Failure to convert a Union.
+            IncompatiblePyType: Python type cannot be converted to a
+                Tierkreis type.
+
+        Returns:
+            TierkreisType
+        """
 
         if alternative := TierkreisType._convert_as.get(type_):
             return TierkreisType.from_python(alternative, visited_types)
@@ -194,12 +225,14 @@ class TierkreisType(ABC):
         visited_types[type_] = result
 
         if not isinstance(result, cls):
-            raise TypeError()
+            # should not happen
+            raise IncompatiblePyType(type_)
 
         return result
 
     @classmethod
     def from_proto(cls, type_: pg.Type) -> "TierkreisType":
+        """Attempts to convert a protobuf type to a TierkreisType subclass."""
         name, out_type = betterproto.which_one_of(type_, "type")
 
         result: TierkreisType
@@ -249,6 +282,9 @@ class TierkreisType(ABC):
         return result
 
     def children(self) -> list["TierkreisType"]:
+        """For composite types (e.g. Struct, Vec, Map), list the child types
+        that define it concretely.
+        """
         return []
 
     def contained_vartypes(self) -> set[str]:
@@ -268,6 +304,8 @@ class TierkreisType(ABC):
 
 @dataclass
 class IntType(TierkreisType):
+    """Signed integer."""
+
     def to_proto(self) -> pg.Type:
         return pg.Type(int=pg.Empty())
 
@@ -277,6 +315,8 @@ class IntType(TierkreisType):
 
 @dataclass
 class BoolType(TierkreisType):
+    """Boolean."""
+
     def to_proto(self) -> pg.Type:
         return pg.Type(bool=pg.Empty())
 
@@ -286,6 +326,8 @@ class BoolType(TierkreisType):
 
 @dataclass
 class StringType(TierkreisType):
+    """UTF-8 encoded string."""
+
     def to_proto(self) -> pg.Type:
         return pg.Type(str=pg.Empty())
 
@@ -295,6 +337,8 @@ class StringType(TierkreisType):
 
 @dataclass
 class FloatType(TierkreisType):
+    """IEEE 754 double precision floating point number."""
+
     def to_proto(self) -> pg.Type:
         return pg.Type(flt=pg.Empty())
 
@@ -304,6 +348,8 @@ class FloatType(TierkreisType):
 
 @dataclass
 class VarType(TierkreisType):
+    """Named type variable."""
+
     name: str
 
     def to_proto(self) -> pg.Type:
@@ -330,6 +376,8 @@ class TierkreisPair(Generic[First, Second]):
 
 @dataclass
 class PairType(TierkreisType):
+    """A pair of two types."""
+
     first: TierkreisType
     second: TierkreisType
 
@@ -350,6 +398,8 @@ class PairType(TierkreisType):
 
 @dataclass
 class VecType(TierkreisType):
+    """A vector of elements of the same type."""
+
     element: TierkreisType
 
     def to_proto(self) -> pg.Type:
@@ -364,6 +414,8 @@ class VecType(TierkreisType):
 
 @dataclass
 class MapType(TierkreisType):
+    """A map from keys of one type to values of another. The key type must be hashable."""
+
     key: TierkreisType
     value: TierkreisType
 
@@ -388,6 +440,10 @@ class UnpackRow:
 
 @dataclass
 class Row(TierkreisType):
+    """A row of fields, each with a label and a type. Used to define inputs and
+    outputs of a function or the fields of a Struct.
+    """
+
     content: dict[str, TierkreisType] = field(default_factory=dict)
     rest: typing.Optional[str] = None
 
@@ -458,6 +514,8 @@ class Row(TierkreisType):
 
 @dataclass
 class GraphType(TierkreisType):
+    """A higher order graph type."""
+
     inputs: Row
     outputs: Row
 
@@ -478,6 +536,8 @@ class GraphType(TierkreisType):
 
 @dataclass
 class StructType(TierkreisType):
+    """A composite structure of named fields."""
+
     shape: Row
     name: Optional[str] = None
 
@@ -523,6 +583,8 @@ class StructType(TierkreisType):
 
 @dataclass
 class VariantType(TierkreisType):
+    """A discriminated union type with named variants."""
+
     shape: Row
 
     def to_proto(self) -> pg.Type:
@@ -538,6 +600,8 @@ class VariantType(TierkreisType):
 
 @dataclass(frozen=True)
 class UnionTag:
+    """Utility to generate tags for Union types, to convert them to VariantType."""
+
     prefix: ClassVar[str] = "__py_union_"
 
     @dataclass
@@ -599,6 +663,8 @@ class TupleLabel:
 
 
 class Constraint(ABC):
+    """A Tierkreis type constraint."""
+
     @abstractmethod
     def to_proto(self) -> pg.Constraint:
         pass
@@ -625,6 +691,8 @@ class Constraint(ABC):
 
 @dataclass
 class LacksConstraint(Constraint):
+    """Constraint that a row lacks a particular label."""
+
     row: TierkreisType
     label: str
 
@@ -636,6 +704,8 @@ class LacksConstraint(Constraint):
 
 @dataclass
 class PartitionConstraint(Constraint):
+    """A type is constrained to be a union of two other types."""
+
     left: TierkreisType
     right: TierkreisType
     union: TierkreisType
@@ -651,6 +721,8 @@ class PartitionConstraint(Constraint):
 
 
 class Kind(ABC):
+    """Type kind base class."""
+
     @abstractmethod
     def to_proto(self) -> pg.Kind:
         pass
@@ -665,18 +737,26 @@ class Kind(ABC):
 
 @dataclass
 class StarKind(Kind):
+    """Used to denote individual types."""
+
     def to_proto(self) -> pg.Kind:
         return pg.Kind(star=pg.Empty())
 
 
 @dataclass
 class RowKind(Kind):
+    """Used to denote row variables."""
+
     def to_proto(self) -> pg.Kind:
         return pg.Kind(row=pg.Empty())
 
 
 @dataclass
 class TypeScheme:
+    """A polymorphic type scheme, defined by a TierkreisType body, outer type
+    variables, and constraints.
+    """
+
     variables: dict[str, Kind]
     constraints: list[Constraint]
     body: TierkreisType
@@ -731,7 +811,8 @@ def _from_disc_field(
     visited_types: Optional[dict[typing.Type, TierkreisType]],
 ) -> TierkreisType:
     """If a dataclass field is a discriminated union, map it to a variant type,
-    else compute it's type normally."""
+    else compute it's type normally.
+    """
     var_row = _get_discriminators(field_type, disc)
     if var_row is None:
         return TierkreisType.from_python(field_type, visited_types)

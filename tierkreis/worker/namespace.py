@@ -58,8 +58,7 @@ CALLBACK_ARG = "client"
 
 @dataclass
 class Function:
-    """Registered python function.
-    The second (bytes) argument is an encoded stack-trace."""
+    """Registered python function defined by a callable and a tierkreis function declaration."""
 
     run: Callable[[RuntimeClient, Metadata, StructValue], Awaitable[StructValue]]
     declaration: FunctionDeclaration
@@ -92,7 +91,9 @@ def _check_tkstruct_hint(hint: Type) -> bool:
 
 
 class Namespace(Mapping[str, "Namespace"]):
-    """Namespace containing Tierkreis Functions"""
+    """Namespace containing Tierkreis Functions, keyed by function name.
+    Used to construct Tierkreis namespaces from python defined functions in workers.
+    """
 
     functions: dict[str, Function]
     aliases: dict[str, TypeScheme]
@@ -113,6 +114,8 @@ class Namespace(Mapping[str, "Namespace"]):
         return self.subspaces.__len__()
 
     def merge_namespace(self, other: "Namespace"):
+        """Merge two namespaces together, joining on keys.
+        On collisions raises :class:`~tierkreis.worker.exceptions.NamespaceClash`."""
         self._merge_namespace(other, [])
 
     def _merge_namespace(self, other: "Namespace", prefix: list[str]):
@@ -127,11 +130,13 @@ class Namespace(Mapping[str, "Namespace"]):
             else:
                 x._merge_namespace(v, prefix + ["k"])
 
-    def add_alias(self, name, type_: Type) -> Type:
+    def add_alias(self, name: str, type_: Type) -> Type:
+        """Add a type alias to the namespace."""
         self.aliases[name] = TypeScheme({}, [], TierkreisType.from_python(type_))
         return type_
 
     def add_named_struct(self, name, type_: Type) -> Type:
+        """Add a named struct to the namespace."""
         tk_type = TierkreisType.from_python(type_)
         if not isinstance(tk_type, StructType):
             raise ValueError(f"{type_} cannot be converted to a Tierkreis Struct Type.")
@@ -140,12 +145,14 @@ class Namespace(Mapping[str, "Namespace"]):
         return type_
 
     def extract_contents(self) -> SigNamespace:
+        """Convert to a generic namespace used to define Tierkreis signatures."""
         return SigNamespace(
             functions={k: v.declaration for k, v in self.functions.items()},
             subspaces={k: v.extract_contents() for k, v in self.subspaces.items()},
         )
 
     def extract_aliases(self) -> dict[str, TypeScheme]:
+        """Get a mapping from type alias names to type schemes."""
         return self.aliases | {
             f"{name}::{k}": v
             for name, ns in self.subspaces.items()
@@ -153,6 +160,7 @@ class Namespace(Mapping[str, "Namespace"]):
         }
 
     def extract_signature(self, can_scope: bool) -> Signature:
+        """Convert to a Tierkreis signature."""
         return Signature(
             root=self.extract_contents(),
             aliases=self.extract_aliases(),
@@ -160,6 +168,7 @@ class Namespace(Mapping[str, "Namespace"]):
         )
 
     def get_function(self, name: FunctionName) -> Optional[Function]:
+        """Recursively search namespace tree for function by name."""
         ns = self
         for x in name.namespaces:
             if (subns := ns.subspaces.get(x)) is None:
@@ -175,7 +184,27 @@ class Namespace(Mapping[str, "Namespace"]):
         callback: bool = False,
         metadata_keys: list[str] | None = None,
     ) -> Callable[[Callable], Callable]:
-        """Decorator to mark python function as available Namespace."""
+        """Decorator to register a python function as a Tierkreis function
+        within the namespace.
+
+        Args:
+            name: Optionally explicitly set
+                the name of the function, defaults to None (in which
+                case the function name is used)
+            constraints: Type constraints needed to define the type scheme of the
+                function.
+            type_vars:
+                Declare type variables used in the function signature.
+            callback: Whether the function expects a
+                callback client as the first argument, in order to make
+                graph execution requests.
+            metadata_keys: List of keys in
+                the metadata dictionary that the function uses. If
+                present, the function should expect a parameter named
+                `tierkreis_metadata` which is a dictionary with
+                specified keys, mapped to the values present in the
+                function request GRPC metadata.
+        """
 
         def decorator(func: Callable) -> Callable:
             func_name = name or func.__name__

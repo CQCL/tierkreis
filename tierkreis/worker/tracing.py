@@ -1,8 +1,11 @@
+"""Utilities to manage tracing."""
+
 from contextlib import AbstractContextManager, contextmanager, nullcontext
 from importlib.util import find_spec
 from typing import Iterator
 
 try:
+    # Check if opentelemetry is installed.
     _TRACING = (
         find_spec("opentelemetry.context") and find_spec("opentelemetry.trace")
     ) is not None
@@ -11,6 +14,7 @@ except ModuleNotFoundError:
 
 
 def span(_tracer, **kwargs) -> AbstractContextManager:
+    """Context manager for creating a span."""
     if _TRACING:
         return _tracer.start_as_current_span(**kwargs)
     else:
@@ -19,6 +23,7 @@ def span(_tracer, **kwargs) -> AbstractContextManager:
 
 @contextmanager
 def context_token(context) -> Iterator[None]:
+    """Context manager for a tracing context."""
     if context is None:
         yield
         return
@@ -33,6 +38,7 @@ def context_token(context) -> Iterator[None]:
 
 
 def get_tracer(_name: str):
+    """Retrieve a tracer by name."""
     if _TRACING:
         import opentelemetry.trace
 

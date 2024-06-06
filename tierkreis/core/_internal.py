@@ -1,3 +1,5 @@
+# Utitlities to extract fields from a class
+
 import inspect
 from dataclasses import dataclass, fields, is_dataclass
 from typing import (

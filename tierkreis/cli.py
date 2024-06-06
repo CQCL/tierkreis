@@ -1,3 +1,5 @@
+"""Implementation of `tkrs` CLI tool, for command line graph execution and visualisation."""
+
 import asyncio
 import re
 import sys

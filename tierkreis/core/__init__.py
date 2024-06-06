@@ -1,4 +1,9 @@
+"""Core definitions, including the TierkreisGraph, Types and Values."""
+
+
 class Labels:
+    """Special port labels used by builtin functions."""
+
     def __init__(self):
         raise RuntimeError("Do not instantiate")
 

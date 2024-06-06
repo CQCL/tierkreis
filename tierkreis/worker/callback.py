@@ -1,3 +1,5 @@
+"""Callback client."""
+
 from contextlib import asynccontextmanager
 from typing import Any, AsyncIterator, Dict
 from urllib.parse import urlparse
@@ -13,6 +15,10 @@ from tierkreis.core.values import TierkreisValue
 
 
 class Callback(RuntimeClient):
+    """Runtime client for use within a worker function, to submit graphs back to
+    the parent runtime.
+    """
+
     def __init__(self, channel: Channel, loc: Location):
         self.runtime = ServerRuntime(channel)
         self.loc = loc
@@ -34,6 +40,7 @@ class Callback(RuntimeClient):
 
 @asynccontextmanager
 async def callback_server(callback: pr.Callback) -> AsyncIterator[RuntimeClient]:
+    """Context manager for connection to a callback server."""
     url = urlparse(callback.uri)
     host, port = url.hostname, url.port
     assert host is not None

@@ -32,7 +32,7 @@ jobs:
       - name: Install Protoc
         uses: arduino/setup-protoc@v2
       - name: Install Tierkreis
-        run: pip install '.[typecheck]'
+        run: pip install '.[typecheck,docs]'
       - name: Build docs
         run: |
           cd docs

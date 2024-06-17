@@ -29,8 +29,10 @@ jobs:
         with:
           python-version: '3.10'
           cache: "pip"
+      - name: Install Protoc
+        uses: arduino/setup-protoc@v2
       - name: Install Tierkreis
-        run: pip install ."[typecheck]"
+        run: pip install '.[typecheck]'
       - name: Build docs
         run: |
           cd docs

@@ -1,2 +1,4 @@
 ./venv
 tierkreis/core/protos/
+*.egg-info/
+**/__pycache__/

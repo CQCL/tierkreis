@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import base64
 import json
+import zlib
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from importlib.util import find_spec
@@ -98,6 +100,16 @@ class PytketType(Protocol):
 T = TypeVar("T", bound=PytketType)
 
 
+def json_zip(j: dict[str, Any]) -> str:
+    return base64.b64encode(zlib.compress(json.dumps(j).encode("utf-8"))).decode(
+        "ascii"
+    )
+
+
+def json_unzip(j: str) -> dict[str, Any]:
+    return json.loads(zlib.decompress(base64.b64decode(j)))
+
+
 class PytketWrapper(OpaqueModel, ABC, Generic[T]):
     """Generic wrapper around pytket types with to_dict and from_dict methods."""
 
@@ -110,10 +122,10 @@ class PytketWrapper(OpaqueModel, ABC, Generic[T]):
 
     @classmethod
     def new_tierkreis_compatible(cls, value: T) -> Self:
-        return cls(json_str=json.dumps(value.to_dict()))
+        return cls(json_str=json_zip(value.to_dict()))
 
     def from_tierkreis_compatible(self) -> T:
-        return self.get_pytket_type().from_dict(json.loads(self.json_str))  # type: ignore
+        return self.get_pytket_type().from_dict(json_unzip(self.json_str))
 
 
 class CircuitWrapper(PytketWrapper["Circuit"]):

@@ -123,7 +123,7 @@ async def cli(ctx: click.Context, runtime: str, port: Optional[int]):
     ctx.obj["client_manager"] = client_manager
 
 
-@cli.command()
+@cli.command()  # type: ignore
 @click.argument("proto", type=click.Path(exists=True))
 @click.pass_context
 @coro
@@ -135,7 +135,7 @@ async def check(ctx: click.Context, proto: str) -> TierkreisGraph:
     return tkg
 
 
-@cli.command()
+@cli.command()  # type: ignore
 @click.argument("proto", type=click.Path(exists=True))
 @click.argument(
     "view_path",
@@ -186,7 +186,7 @@ def _print_typeerrs(errs: str):
     print(chalk.red(errs), file=sys.stderr)
 
 
-@cli.command()
+@cli.command()  # type: ignore
 @click.argument("proto", type=click.Path(exists=True))
 @click.argument("inputs", default="")
 @click.option("-p", "--py-inputs", default="")
@@ -248,7 +248,7 @@ def _print_func(name: str, func: "FunctionDeclaration"):
         print(chalk.green(func.description))
 
 
-@cli.command()
+@cli.command()  # type: ignore
 @click.pass_context
 @click.option("--namespace", type=str, help="Show only signatures of this namespace.")
 @click.option(

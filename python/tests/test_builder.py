@@ -90,9 +90,9 @@ def _structs_graph() -> TierkreisGraph:
         "make_struct",
         **map_vals(dict(height=12.3, name="hello", age=23), tg.add_const),
     )
-    sturct = tg.add_func("unpack_struct", struct=factory["struct"])
+    struct = tg.add_func("unpack_struct", struct=factory["struct"])
 
-    tg.set_outputs(value=sturct["age"])
+    tg.set_outputs(value=struct["age"])
     tg.output_order = [Labels.VALUE]
 
     return tg
@@ -197,7 +197,7 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
         p2: IntValue
 
     @graph()
-    def struc_id(in_st: ValueSource) -> Output:
+    def struct_id(in_st: ValueSource) -> Output:
         return Output(in_st)
 
     @graph()
@@ -228,7 +228,7 @@ def _big_sample_builder(bi: Namespace) -> TierkreisGraph:
                     Break(initial)
             return Output(loop_ifelse.nref)
 
-        _disc = struc_id(Const(Point(FloatValue(4.3e1), IntValue(3))))
+        _disc = struct_id(Const(Point(FloatValue(4.3e1), IntValue(3))))
 
         return Output(o1=ifelse.nref, o2=loop_def(other_total))
 
@@ -512,23 +512,23 @@ async def test_unpacking(
     def foo(a: ValueSource, b: ValueSource) -> Output:
         f = bi.make_struct(foo=a, bar=b)
         id_: "NodeRef" = pn.id_py(value=f["struct"])
-        sturct: "NodePort" = id_["value"]
+        struct: "NodePort" = id_["value"]
         old_proto = current_graph().to_proto()
 
-        foo: "StablePortFunc" = sturct["foo"]
+        foo: "StablePortFunc" = struct["foo"]
         assert num_unpacks() == 0
         assert current_graph().to_proto() == old_proto  # Nothing changed yet
 
         first = bi.id(foo)
         assert num_unpacks() == 1
-        second = bi.iadd(a=sturct["bar"], b=Const(1))
+        second = bi.iadd(a=struct["bar"], b=Const(1))
         assert num_unpacks() == 1
 
         # Repeated uses of the same struct member need an explicit copy
         proto = current_graph().to_proto()
         with pytest.raises(ValueError, match="Already an edge from"):
             current_graph().add_edge(
-                sturct["foo"].resolve(), current_graph().output["second"]
+                struct["foo"].resolve(), current_graph().output["second"]
             )
         assert proto == current_graph().to_proto()  # Did nothing
         return Output(first=first, second=second)
@@ -547,19 +547,19 @@ def num_copies_unpacks() -> Tuple[int, int]:
 def test_cant_unpack_original_after_copy(bi: Namespace) -> None:
     @graph()
     def foo(a: ValueSource, b: ValueSource) -> Output:
-        sturct: ValueSource = bi.make_struct(foo=a, bar=b)["struct"]
+        struct: ValueSource = bi.make_struct(foo=a, bar=b)["struct"]
 
-        bi.discard(sturct["foo"])
+        bi.discard(struct["foo"])
         assert num_copies_unpacks() == (0, 1)
 
-        cp = Copyable(sturct)
+        cp = Copyable(struct)
         o: Output = Output(whole=cp)
         assert num_copies_unpacks() == (1, 1)
 
         proto = current_graph().to_proto()
         with pytest.raises(ValueError, match="Cannot unpack"):
             current_graph().add_edge(
-                sturct["bar"].resolve(), current_graph().output["second"]
+                struct["bar"].resolve(), current_graph().output["second"]
             )
         assert proto == current_graph().to_proto()  # Did nothing
         return o
@@ -571,12 +571,12 @@ async def test_can_unpack_copy_with_resolve(
 ) -> None:
     @graph()
     def foo(a: ValueSource, b: ValueSource) -> Output:
-        sturct = bi.make_struct(foo=a, bar=b)["struct"]
+        struct = bi.make_struct(foo=a, bar=b)["struct"]
 
-        s = bi.iadd(a=sturct["foo"], b=sturct["bar"])
+        s = bi.iadd(a=struct["foo"], b=struct["bar"])
         assert num_copies_unpacks() == (0, 1)
 
-        cp = Copyable(sturct).resolve()
+        cp = Copyable(struct).resolve()
 
         o: Output = Output(sum=s, product=bi.imul(a=cp["foo"], b=cp["bar"]))
         assert num_copies_unpacks() == (1, 2)
@@ -590,14 +590,14 @@ async def test_can_unpack_copy_with_resolve(
 async def test_Copyable_fields(bi: Namespace, client: RuntimeClient) -> None:
     @graph()
     def foo(a: ValueSource, b: ValueSource) -> Output:
-        sturct = bi.make_struct(foo=a, bar=b)["struct"]
+        struct = bi.make_struct(foo=a, bar=b)["struct"]
 
-        s = bi.iadd(a=sturct["foo"], b=sturct["bar"])
+        s = bi.iadd(a=struct["foo"], b=struct["bar"])
         assert num_copies_unpacks() == (0, 1)
 
         return Output(
             sum=s,
-            product=bi.imul(a=Copyable(sturct["foo"]), b=Copyable(sturct["bar"])),
+            product=bi.imul(a=Copyable(struct["foo"]), b=Copyable(struct["bar"])),
         )
 
     outputs = await client.run_graph(foo, a=3, b=4)

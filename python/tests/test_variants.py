@@ -2,6 +2,7 @@ import re
 import warnings
 from dataclasses import dataclass, field
 from enum import Enum
+from types import UnionType
 from typing import Any, Literal, Type, Union
 
 import pydantic as pyd
@@ -31,9 +32,9 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
     # through worker functions that process them as unions, and converted back
     # to unions.
     iv = TierkreisValue.from_python(1)
-    assert iv.to_python(float | int) == 1
+    assert iv.to_python_union(float | int) == 1
     fv = TierkreisValue.from_python(2.3)
-    assert fv.to_python(int | float) == 2.3
+    assert fv.to_python_union(int | float) == 2.3
 
     @dataclass
     class StructWithUnion:
@@ -87,8 +88,8 @@ async def test_union_types(bi, client: RuntimeClient) -> None:
 
     out = await client.run_graph(g2)
     a, b = out["a"], out["b"]
-    assert a.to_python(int | float) == 1
-    assert b.to_python(int | float) == 1.0
+    assert a.to_python_union(int | float) == 1
+    assert b.to_python_union(int | float) == 1.0
 
 
 @pyd.dataclasses.dataclass(frozen=True, kw_only=True)
@@ -146,6 +147,24 @@ class OpaqueContainsVariant(OpaqueModel):
     n: int
     enum: EnumExample
     variant: ComplexVariant | SimpleVariant = pyd.Field(discriminator="disc_name")
+
+
+def _tktype_from_py(py_type: UnionType | Type) -> TierkreisType:
+    if isinstance(py_type, UnionType):
+        return TierkreisType.from_python_union(py_type)
+    return TierkreisType.from_python(py_type)
+
+
+def _tkval_from_py(py_val: Any, py_type: UnionType | Type | None) -> TierkreisValue:
+    if isinstance(py_type, UnionType):
+        return TierkreisValue.from_python_union(py_val, py_type)
+    return TierkreisValue.from_python(py_val, py_type)
+
+
+def _tkval_to_py(tkv: TierkreisValue, py_type: UnionType | Type) -> Any:
+    if isinstance(py_type, UnionType):
+        return tkv.to_python_union(py_type)
+    return tkv.to_python(py_type)
 
 
 @pytest.mark.asyncio
@@ -237,7 +256,7 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
     def mk_mygeneric_variant(typ: Type, val: TierkreisValue) -> StructValue:
         return StructValue({"x": VariantValue(UnionTag.type_tag(typ), val)})
 
-    samples: list[tuple[Type, Any, TierkreisValue]] = [
+    samples: list[tuple[Type | UnionType, Any, TierkreisValue]] = [
         (ConstrainedField, constrained, tk_constrained),
         (SimpleVariant, simple, tk_simple),
         (EnumExample, EnumExample.First, tk_first),
@@ -261,11 +280,11 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
     ]
 
     for py_type, py_val, expected_tk_val in samples:
-        _ = TierkreisType.from_python(py_type)
+        _ = _tktype_from_py(py_type)
         converted_tk_val = TierkreisValue.from_python(py_val)
         assert converted_tk_val == expected_tk_val
-        assert TierkreisValue.from_python(py_val, py_type) == expected_tk_val
-        assert converted_tk_val.to_python(py_type) == py_val
+        assert _tkval_from_py(py_val, py_type) == expected_tk_val
+        assert _tkval_to_py(converted_tk_val, py_type) == py_val
 
         pn = bi["python_nodes"]
 
@@ -275,7 +294,7 @@ async def test_pydantic_types(bi, client: RuntimeClient) -> None:
 
         out = (await client.run_graph(g))["value"]
 
-        assert out.to_python(py_type) == py_val
+        assert _tkval_to_py(out, py_type) == py_val
 
 
 def test_union_over_arguments() -> None:
@@ -288,11 +307,11 @@ def test_union_over_arguments() -> None:
 
     for val in values:
         for typ in types:
-            tk_val = TierkreisValue.from_python(val, typ)
-            assert tk_val.to_python(typ) == val
+            tk_val = TierkreisValue.from_python_union(val, typ)
+            assert tk_val.to_python_union(typ) == val
 
             # Separately test value+typ embedded together in an outer MyGeneric
-            typ2 = MyGeneric[typ]
+            typ2 = MyGeneric[typ]  # type: ignore
             val2 = typ2(x=val)
             tk_val2 = TierkreisValue.from_python(val2, typ2)
             assert tk_val2.to_python(typ2) == val2
@@ -306,9 +325,9 @@ def test_reversed_union_enum() -> None:
     py_type, py_val, expected_tk_val = (None | EnumExample, EnumExample.First, tk_first)
     assert TierkreisValue.from_python(py_val) == expected_tk_val
     # Works the right way around:
-    assert expected_tk_val.to_python(EnumExample | None) == py_val
+    assert expected_tk_val.to_python_union(EnumExample | None) == py_val
     # But reverse the union and it does not (result is "None")
-    assert expected_tk_val.to_python(py_type) == py_val
+    assert expected_tk_val.to_python_union(py_type) == py_val
 
 
 def test_pydantic_generic_union() -> None:
@@ -342,9 +361,9 @@ async def test_return_union(bi, client: RuntimeClient) -> None:
     assert b.tag == UnionTag.type_tag(EmptyStruct)
 
     # to_python is tag-driven so ordering of union elements makes no difference
-    assert a.to_python(IntStruct | EmptyStruct) == IntStruct(1)
-    assert a.to_python(EmptyStruct | IntStruct) == IntStruct(1)
-    assert b.to_python(IntStruct | EmptyStruct) == EmptyStruct()
+    assert a.to_python_union(IntStruct | EmptyStruct) == IntStruct(1)
+    assert a.to_python_union(EmptyStruct | IntStruct) == IntStruct(1)
+    assert b.to_python_union(IntStruct | EmptyStruct) == EmptyStruct()
 
 
 # Make sure that the ordering of Union elements doesn't affect anything here
@@ -382,5 +401,7 @@ async def test_union_generic_basemodel(sig, bi, client: RuntimeClient) -> None:
         return Output(res)
 
     res = await client.run_graph(main)
-    assert res.pop("value").to_python(MyGeneric[str] | int) == MyGeneric[str](x=msg)
+    assert res.pop("value").to_python_union(MyGeneric[str] | int) == MyGeneric[str](
+        x=msg
+    )
     assert res == {}  # No other outputs besides x

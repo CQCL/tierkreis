@@ -1,5 +1,6 @@
 #!/bin/sh
 "exec" "$(dirname $0)/../.venv/bin/python" "$0" "$@"
+
 from __future__ import annotations
 
 import json

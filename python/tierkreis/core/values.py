@@ -9,6 +9,7 @@ import warnings
 from abc import ABC, abstractmethod
 from dataclasses import Field, dataclass, fields, make_dataclass
 from enum import Enum
+from types import UnionType
 from typing import (
     Any,
     Callable,
@@ -162,11 +163,15 @@ class TierkreisValue(ABC):
                     continue
         raise ToPythonFailure(self)
 
+    def to_python_union(self, type_: UnionType) -> Any:
+        """Converts a tierkreis value to a python value given the desired union type."""
+        return self.to_python(type_)  # type: ignore
+
     @classmethod
     def from_python(
         cls, value: Any, type_: typing.Type | None = None
     ) -> "TierkreisValue":
-        "Converts a python value to a tierkreis value. If `type_` is not provided, it is inferred from the value."
+        """Converts a python value to a tierkreis value. If `type_` is not provided, it is inferred from the value."""
         try:
             some_type = type_ or type(value)
             # TODO find workaround for delayed imports
@@ -194,13 +199,19 @@ class TierkreisValue(ABC):
                 raise IncompatibleAnnotatedValue(value, type_) from e
             raise e
 
+    @classmethod
+    def from_python_union(cls, value: Any, type_: UnionType) -> "TierkreisValue":
+        """Converts a python value to a tierkreis value, given a target python Union type."""
+
+        return cls.from_python(value, type_)  # type: ignore
+
     def try_autopython(self) -> Optional[Any]:
         """Try to automatically convert to a python type without specifying the
         target types.
-        Returns None if unsuccesful. Expected to be succesful for "simple" or "leaf"
+        Returns None if unsuccessful. Expected to be successful for "simple" or "leaf"
         types, that are not made up component types.
 
-                :return: Python value if succesful, None if not.
+                :return: Python value if successful, None if not.
                 :rtype: Optional[Any]
         """
         try:

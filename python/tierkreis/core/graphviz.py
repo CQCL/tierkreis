@@ -1,9 +1,11 @@
 """Visualise TierkreisGraph using graphviz."""
 
+import copy
 import textwrap
 from typing import Iterable, NewType, Optional, Tuple, cast
 
 import graphviz as gv
+import networkx as nx
 
 from tierkreis.core.tierkreis_graph import (
     BoxNode,
@@ -19,7 +21,7 @@ from tierkreis.core.tierkreis_graph import (
     TierkreisNode,
 )
 
-# old palettte: https://colorhunt.co/palette/343a407952b3ffc107e1e8eb
+# old palette: https://colorhunt.co/palette/343a407952b3ffc107e1e8eb
 # _COLOURS = {
 #     "background": "white",
 #     "node": "#7952B3",
@@ -439,6 +441,11 @@ def _merge_copies(g: TierkreisGraph) -> _CopyMergedGraph:
     """Merge adjacent copy nodes - adds extra ports to copy nodes so won't pass
     type check."""
     candidates = {idx for idx, node in enumerate(g.nodes()) if node.is_copy_node()}
+    if len(candidates) == 0:
+        # no need to deepcopy graph
+        return _CopyMergedGraph(g)
+
+    g = copy.deepcopy(g)
     while candidates:
         node_name = candidates.pop()
         copy_children = (
@@ -467,4 +474,6 @@ def _merge_copies(g: TierkreisGraph) -> _CopyMergedGraph:
                 node_name, e.target.node_ref.idx, ("", e.target.port), type=e.type_
             )
 
+    # make node indices contiguous again
+    g._graph = nx.convert_node_labels_to_integers(g._graph)
     return _CopyMergedGraph(g)

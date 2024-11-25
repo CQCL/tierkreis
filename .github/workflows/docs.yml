@@ -20,6 +20,9 @@ concurrency:
 
 jobs:
   build:
+    defaults:
+      run:
+        working-directory: python
     name: Build docs.
     runs-on: ubuntu-latest
     steps:
@@ -44,6 +47,9 @@ jobs:
 
   publish:
     name: Publish docs.
+    defaults:
+      run:
+        working-directory: python
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -1,62 +1,117 @@
 syntax = "proto3";
-package tierkreis.v1alpha1.signature;
 import "v1alpha1/graph.proto";
 
+// Messages for querying a Runtime about what functions and graphs it can run
+// (for graphs this means type-checking).
+package tierkreis.v1alpha1.signature;
+
+// Information about a function: its polymorphic [TypeScheme], user-readable
+// description, and port ordering (for debug/display purposes, not used by
+// the typechecker).
 message FunctionDeclaration {
+  /// Polymorphic type scheme describing all possible input/output types
   tierkreis.v1alpha1.graph.TypeScheme type_scheme = 2;
+  // Human-readable documentation
   string description = 3;
+  // Order in which to display input ports
   repeated string input_order = 4;
+  // Order in which to display output ports
   repeated string output_order = 5;
 }
 
+// Request to list the functions known to a Runtime, optionally filtering by a Location
 message ListFunctionsRequest {
+  // Filter to only report functions available in the specified location or children
+  // thereof. (The default/empty location means the root, i.e. all functions.)
   tierkreis.v1alpha1.graph.Location loc = 1;
 }
 
+// aka the "Signature" of a Runtime: the `FunctionDeclaration`s and
+// descendant `Location`s that it knows.
 message ListFunctionsResponse {
+  // Every function the runtime can run, and the locations in which it can run each
   Namespace root = 1;
+  // Named aliases for polymorphic types
   map<string, tierkreis.v1alpha1.graph.TypeScheme> aliases = 2;
+  // All the locations the Runtime knows.
   repeated tierkreis.v1alpha1.graph.Location scopes = 3;
 }
 
+// Service for querying a Runtime for the functions and locations that it knows
 service Signature {
+  // List the `FunctionDeclaration`s and descendant `Location`s of a given `Location`
   rpc ListFunctions (ListFunctionsRequest) returns (ListFunctionsResponse) {};
 }
 
+// Service for inferring the type of a value (e.g. graph). (Usually
+// implemented by a Runtime but can be separate.)
 service TypeInference {
+  // Infers the type of a value, e.g. a graph. (A graph with inputs can be
+  // encoded by placing the inputs into the graph as constants.)
+  // If successful, the value returned will be the same, except that if a graph,
+  // edges within it will have type annotations.
   rpc InferType (InferTypeRequest) returns (InferTypeResponse) {};
 }
 
+// Request to infer the type of a graph (used for `TypeInference::InferType`)
 message InferTypeRequest {
+  // Value whose type (scheme) to infer
   tierkreis.v1alpha1.graph.Value value = 1;
+  // Sub-location of the runtime in to which to check. If this leads to
+  // `ErrorVariant::unknown_function` errors that do not occur without the
+  // location, this indicates usage of functions available only outside that
+  // location i.e. these would use an escape hatch if the Graph were run.
   tierkreis.v1alpha1.graph.Location loc = 2;
 }
 
+// Result of inferring the type of a value via `TypeInference::InferType`
 message InferTypeResponse {
+  // Success or failure of `TypeInference::InferType`
   oneof response {
+    // Inference succeeded, return the type-annotated value and inferred type (scheme)
     InferTypeSuccess success = 1;
+    // Type inference failed because of one or more type errors
     TypeErrors error = 2;
   }
 }
 
+// A type successfully inferred by `TypeInference::InferType`
 message InferTypeSuccess {
+  // The value whose type was inferred. The same as the value passed in,
+  // except that any `Value::graph`s within will have their edges annotated
+  // with the inferred types (`Edge::edge_type`).
   tierkreis.v1alpha1.graph.Value value = 1;
+  // Type scheme inferred for the value, i.e. explicitly listing any type variables
+  // over which the value is polymorphic. (E.g. if the value is an empty list.)
   tierkreis.v1alpha1.graph.TypeScheme type_scheme = 2;
 }
 
+// A graph with (optionally) input values for it. Used for
+// `InferGraphTypesRequest`s and `InferGraphTypesResponse`.
 message GraphWithInputs {
+  // The graph
   tierkreis.v1alpha1.graph.Graph graph = 1;
+  // Optionally, input values to feed to the graph
   optional tierkreis.v1alpha1.graph.StructValue inputs = 2;
 }
 
+// Used by `tierkreis-typecheck` Rust(PYO3)/python interop library
+// to request type inference of a graph with input values.
 message InferGraphTypesRequest {
+  // Graph and inputs whose types to infer
   GraphWithInputs gwi = 1;
+  // The signature of functions to check against.
   Namespace functions = 2;
 }
 
+// Used by `tierkreis-typecheck` Rust(PYO3)/python interop library
+// to report results of type inference on a graph with input values.
 message InferGraphTypesResponse {
+  // Success or failure of type inference PYO3 API
   oneof response {
+    // Inference was successful, return the type
     GraphWithInputs success = 1;
+    // Inference failed due to one or more `TierkreisTypeError`s
     TypeErrors error = 2;
   }
 }
@@ -66,60 +121,109 @@ message InferGraphTypesResponse {
 message Empty {
 }
 
+// A series of these identifies where in a `Value::graph` or `GraphWithInputs`
+// was the cause of a `TierkreisTypeError`.
 message GraphLocation {
   oneof location {
-    Empty root = 1;
+    //Empty root = 1; // REMOVED, was redundant, always the first element
+
+    // Where the previous location(s) identify a `Value::vec`, identifies one element by index
     uint32 vec_index = 2;
+    // Where the previous location(s) identify a graph, the error is in the indexed node.
+    // (If-and-only-if the node is a Box or Const, may be followed by more `GraphLocation`s.)
     uint32 node_idx = 4;
+    // Where the previous location(s) identify a graph, the error is on the indicated edge.
+    // (Will end the sequence of `GraphLocation`s.)
     tierkreis.v1alpha1.graph.Edge edge = 5;
+    // Where previous location(s) identify a graph, the error is in the input node
     Empty input = 6;
+    // Where previous location(s) identify a graph, the error is in the output node
     Empty output = 7;
+    // Where the previous location(s) identify a struct value (e.g. inside a Const),
+    // the error is in the named field of that struct
     string struct_field = 8;
+    // Where the previous location(s) identify a `Value::pair`, the error is in the first element
     Empty pair_first = 9;
+    // Where the previous location(s) identify a `Value::pair`, the error is in the second element
     Empty pair_second = 10;
+    // Where the previous location(s) identify a `Value::map`, the error is in one of the keys
+    // (does not specify which)
     Empty map_key = 11;
+    // Where the previous location(s) identify a `Value::map`, the error is in one of the values
+    // (does not specify which)
     Empty map_value = 12;
+    // For `TypeInference::InferType`,
+    // indicates the error is in one of the `GraphWithInputs::inputs`
     string input_value = 13;
   }
 }
 
+// A Collection of `TypeError`s
 message TypeErrors {
+  // List of errors
   repeated TierkreisTypeError errors = 1;
 }
 
+// `ErrorVariant` that two types failed to unify.
 message UnifyError {
+  // The type that was expected.
   tierkreis.v1alpha1.graph.Type expected = 1;
+  // The type that was actually inferred.
   tierkreis.v1alpha1.graph.Type found = 2;
 }
 
+// `ErrorVariant` that a type scheme is ill-formed because it refers to an unknown
+// type variable.
 message TypeVarError {
+  // The unknown type variable.
   tierkreis.v1alpha1.graph.TypeSchemeVar variable = 1;
+  // The ill-formed type scheme.
   tierkreis.v1alpha1.graph.TypeScheme type_scheme = 2;
 }
 
+// Errors that can occur during type checking.
 message ErrorVariant {
+  // Errors that can occur during type checking.
   oneof error {
+    // Two types failed to unify.
     UnifyError unify = 1;
+    // A type scheme is ill-formed due to a kind mismatch.
     string kind = 2;
+    // A graph referred to an unknown function.
     tierkreis.v1alpha1.graph.FunctionName unknown_function = 3;
+    // A type scheme is ill-formed because it refers to an unknown type variable.
     TypeVarError unknown_type_var = 4;
+    // A type constraint (`LacksConstraint` or `PartitionConstraint`) is unsatisfiable.
     string bound = 5;
   }
 }
 
+// An error preventing type inference in a graph passed to `TypeInference::InferType`
+// or `tierkreis.v1alpha1.runtime.Runime.RunGraph`
 message TierkreisTypeError {
+  // Detail of the error
   ErrorVariant variant = 1;
-  // locations go from outermost to innermost
-  // in nested const/box graphs
+  // Identifies where in the value/graph the error occurred.
+  // Locations go from outermost to innermost in nested const/box graphs.
   repeated GraphLocation location = 2;
 }
 
+// A `FunctionDeclaration` with a set of `Location`s at which
+// the function is supported.
 message NamespaceItem {
+  // Declaration of the function, including typescheme;
+  // identical at all `locations`
   FunctionDeclaration decl = 1;
+  // The locations (aka scopes) at which the function is supported
   repeated tierkreis.v1alpha1.graph.Location locations = 2;
 }
 
+// Tree-structured mapping (sharing common prefixes) from
+// `tierkreis.v1alpha1.graph.FunctionName`s to `NamespaceItem`s
 message Namespace {
+  // `NamespaceItem`s at this level of the qualified-name hierarchy
   map<string, NamespaceItem> functions = 1;
+  // Mappings for subtrees of the name hierarchy, i.e. for qualnames
+  // with a longer prefix (the map key being the next atom of prefix)
   map<string, Namespace> subspaces = 2;
 }

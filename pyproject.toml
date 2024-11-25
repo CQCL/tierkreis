@@ -1,0 +1,26 @@
+[tool.uv.workspace]
+members = ["python", "integration", "type_check"]
+
+[dependency-groups]
+# Default dev dependency group
+dev = [
+    { include-group = "lint" },
+    { include-group = "test" },
+    { include-group = "docs" },
+]
+lint = [
+    "ruff~=0.5",
+    "pyright==1.1.373",
+]
+test = [
+    "pytest>=6.2,<9",
+    "pytest-asyncio>=0.16,<0.17",
+    "pytest-cov>=5.0,<6",
+    "pydantic>=2.9.2",
+]
+docs = ["sphinx>=4.3", "sphinx-book-theme>=1.1.2"]
+
+[tool.uv]
+extra-index-url = [
+    "https://quantinuumsw.jfrog.io/artifactory/api/pypi/pypi_local/simple",
+]

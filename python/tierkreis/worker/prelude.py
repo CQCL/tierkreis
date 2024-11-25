@@ -46,7 +46,7 @@ def setup_tracing(service_name: str):
 
 def start_worker_server(worker_name: str, namespace: Namespace):
     """Set up tracing and run the worker server with the provided namespaces.
-    Expects a port specified on the command line, and reports succesful start to
+    Expects a port specified on the command line, and reports successful start to
     stdout
     """
 

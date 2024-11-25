@@ -231,6 +231,15 @@ class TierkreisType(ABC):
         return result
 
     @classmethod
+    def from_python_union(
+        cls,
+        type_: UnionType,
+        visited_types: typing.Optional[dict[typing.Type, "TierkreisType"]] = None,
+    ) -> "TierkreisType":
+        """Create a TierkreisType from a Union type."""
+        return cls.from_python(type_, visited_types)  # type: ignore
+
+    @classmethod
     def from_proto(cls, type_: pg.Type) -> "TierkreisType":
         """Attempts to convert a protobuf type to a TierkreisType subclass."""
         name, out_type = betterproto.which_one_of(type_, "type")

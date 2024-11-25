@@ -1,19 +1,35 @@
 syntax = "proto3";
 import "v1alpha1/graph.proto";
 import "v1alpha1/runtime.proto";
+
+// Messages for running functions on a worker
 package tierkreis.v1alpha1.worker;
 
+// Request for `Worker::RunFunction` to run a named function
 message RunFunctionRequest {
+  // Name of the function to run
   tierkreis.v1alpha1.graph.FunctionName function = 1;
+  // Inputs to pass to the function
   tierkreis.v1alpha1.graph.StructValue inputs = 2;
+  // Identifies a child location/Worker to run the function
+  // (or identifies a forwarding chain for `run_function` requests from a
+  // `tierkreis.v1alpha1.runtime.RunGraphRequest.escape` back up to a parent).
+  // If absent, function can be run at any child location supporting it.
   tierkreis.v1alpha1.graph.Location loc = 3;
+  // Allows code executing the function to call `tierkreis.v1alpha1.runtime.Runtime.RunGraph`
+  // on the root node where the user originally `RunGraph`d, perhaps via forwarding.
   tierkreis.v1alpha1.runtime.Callback callback = 4;
 }
 
+// Result of `Worker::RunFunction` (success case - errors are reported as GRPC errors)
 message RunFunctionResponse {
+    // Result values named by port
     tierkreis.v1alpha1.graph.StructValue outputs = 1;
 }
 
+// A worker is anything that can run functions (typically including any Runtime,
+// which can run functions itself and also on behalf of any child workers)
 service Worker {
+    // Runs a named function, blocking until completion
     rpc RunFunction (RunFunctionRequest) returns (RunFunctionResponse) {}
 }

@@ -800,15 +800,15 @@ def _combine_captures(thunks: list[CaptureBuilder]) -> dict[ValueSource, PortID]
     combined_inputs: dict[ValueSource, str] = {
         vs: next(names) for bg in thunks for vs in bg.captured
     }  # Duplicate ValueSources overwrite earlier entries, making even sparser.
-    for vs, nam in combined_inputs.items():
+    for vs, name in combined_inputs.items():
         for bg in thunks:
             if in_name := bg.captured.get(vs):
                 in_edge = bg.graph.out_edge_from_port(bg.graph.input[in_name])
                 assert in_edge is not None
                 bg.graph._graph.remove_edge(*in_edge.to_edge_handle())
-                bg.graph.add_edge(bg.graph.input[nam], in_edge.target)
+                bg.graph.add_edge(bg.graph.input[name], in_edge.target)
             else:
-                bg.graph.discard(bg.graph.input[nam])
+                bg.graph.discard(bg.graph.input[name])
 
     return combined_inputs
 
@@ -993,10 +993,10 @@ def RenameOutputs(thunk: ValueSource, rename_map: dict[str, str]) -> NodePort:
 
 
 def _build_box(
-    g: TierkreisGraph, __tk_loc: Location, *args: ValueSource, **kwargs: ValueSource
+    g: TierkreisGraph, _tk_loc: Location, *args: ValueSource, **kwargs: ValueSource
 ) -> NodeRef:
     bx = _CallAddNode(
-        BoxNode(g, __tk_loc),
+        BoxNode(g, _tk_loc),
         g.input_order,
         g.output_order,
     )

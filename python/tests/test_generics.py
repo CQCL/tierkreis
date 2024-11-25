@@ -45,15 +45,15 @@ async def test_generic(bi, client: RuntimeClient) -> None:
     with pytest.raises(IncompatibleAnnotatedValue, match="~G"):
         # value doesn't know it is instance of concrete type so fails.
         TierkreisValue.from_python(py_val)
-    # whereas the pydantic-validated instantation records its own concrete type
+    # whereas the pydantic-validated instantiation records its own concrete type
     assert TierkreisValue.from_python(py_val_explicit_type) == tk_val
     assert tk_val.to_python(py_type) == py_val
 
-    pn = bi["python_nodes"]
+    on = bi["python_nodes"]
 
     @graph()
     def g() -> Output:
-        return Output(pn.generic_int_to_str(Const(py_val, py_type)))
+        return Output(on.generic_int_to_str(Const(py_val, py_type)))
 
     out = (await client.run_graph(g))["value"]
 
@@ -77,15 +77,15 @@ async def test_generic_list(bi, client: RuntimeClient) -> None:
     with pytest.raises(IncompatibleAnnotatedValue, match="~G"):
         # value doesn't know it is instance of concrete type so fails.
         TierkreisValue.from_python(py_val)
-    # whereas the pydantic-validated instantation records its own concrete type
+    # whereas the pydantic-validated instantiation records its own concrete type
     assert TierkreisValue.from_python(py_val_explicit_type) == tk_val
     assert tk_val.to_python(py_type) == py_val
 
-    pn = bi["python_nodes"]
+    on = bi["python_nodes"]
 
     @graph()
     def g() -> Output:
-        return Output(pn.generic_int_to_str_list(Const(py_val, py_type)))
+        return Output(on.generic_int_to_str_list(Const(py_val, py_type)))
 
     out = (await client.run_graph(g))["value"]
 
@@ -160,7 +160,7 @@ def test_pydantic_nested() -> None:
 
 
 def test_generic_origin() -> None:
-    assert generic_origin(list[int]) == list
+    assert generic_origin(list[int]) is list
     assert generic_origin(list) is None
 
     @dataclass

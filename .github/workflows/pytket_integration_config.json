@@ -1,0 +1,13 @@
+{
+    "port": 8090,
+    "worker_path": [
+        {
+            "location": "pytket",
+            "path": "python/pytket_worker/pytket_worker"
+        },
+        {
+            "location": "sc22",
+            "path": "python/examples/sc22_worker"
+        }
+    ]
+}

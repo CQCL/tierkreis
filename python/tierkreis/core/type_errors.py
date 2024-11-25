@@ -123,9 +123,9 @@ class TierkreisTypeError(Exception):
             elif name == "input_value":
                 locs.append(f"InputValue({out_type})")
             elif name == "edge":
-                tke = cast(pg.Edge, out_type)
-                src = _node_port_str(tke.node_from, tke.port_from, current_g)
-                tgt = _node_port_str(tke.node_to, tke.port_to, current_g)
+                edge = cast(pg.Edge, out_type)
+                src = _node_port_str(edge.node_from, edge.port_from, current_g)
+                tgt = _node_port_str(edge.node_to, edge.port_to, current_g)
                 locs.append(f"Edge({src} -> {tgt})")
             elif name == "node_idx":
                 idx = cast(int, out_type)

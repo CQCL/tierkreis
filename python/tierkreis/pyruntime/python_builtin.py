@@ -47,7 +47,7 @@ class CopyOut(Generic[a], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind()})
 async def copy(value: a) -> CopyOut[a]:
-    "Copies its input value."
+    "Copies its input value to each of its two outputs."
     return CopyOut(value, deepcopy(value))
 
 
@@ -58,7 +58,7 @@ class EmptyOut(Generic[a], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind()})
 async def discard(value: a) -> EmptyOut[a]:
-    """Deletes its input value."""
+    """Ignores its input value, has no outputs."""
     # things won't actually be deleted until python decides to
     return EmptyOut()
 
@@ -70,7 +70,8 @@ class EqOut(UnpackRow):
 
 @namespace.function(type_vars={"val": StarKind()})
 async def eq(value_0: val, value_1: val) -> EqOut:
-    """Check two values for equality."""
+    """Check two input values of the same type for equality, \
+producing a boolean."""
     return EqOut(value_0 == value_1)
 
 
@@ -104,7 +105,8 @@ namespace.functions["eval"] = Function(
                 )
             ),
         ),
-        description="Evaluates a graph.",
+        description="Evaluates the graph on the `thunk` input with other inputs "
+        "matching the graph inputs, producing outputs matching those of the graph.",
         input_order=["thunk"],
     ),
 )
@@ -184,7 +186,7 @@ async def iadd(a: int, b: int) -> int:
 
 @namespace.function("id", type_vars={"a": StarKind()})
 async def _id(value: a) -> a:
-    """Passes on an arbitrary value unchanged."""
+    """Passes a single, arbitrary, value from input to output."""
     return value
 
 
@@ -244,8 +246,8 @@ class _InsertOut(Generic[a, b], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
 async def insert_key(map: dict[a, b], key: a, val: b) -> _InsertOut[a, b]:
-    """Insert a key value pair in to a map.\
- Existing keys will have their values replaced."""
+    """Transforms an input `Map` into an output by adding an \
+entry (or replacing an existing one) for an input key and value."""
     map[key] = val
     return _InsertOut(map)
 
@@ -313,8 +315,9 @@ namespace.functions["loop"] = Function(
                 )
             ),
         ),
-        description="Run a looping thunk while it returns"
-        " `continue` i.e. until it returns `break`.",
+        description="Repeatedly applies a `Graph` input while it produces \
+a `Variant` tagged `continue`, i.e. until it returns a value tagged `break`, \
+and then returns that value.",
         input_order=["body", "value"],
         output_order=["value"],
     ),
@@ -328,7 +331,7 @@ class _MakePairOut(Generic[a, b], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
 async def make_pair(first: a, second: b) -> _MakePairOut[a, b]:
-    "Creates a new pair."
+    """Makes an output `Pair` from two separate inputs."""
     return _MakePairOut(TierkreisPair(first, second))
 
 
@@ -355,7 +358,8 @@ namespace.functions["make_struct"] = Function(
                 )
             ),
         ),
-        description="Construct a struct from incoming ports.",
+        description="Takes any number of inputs and produces a single `Struct` "
+        "output with a field for each input, field names matching input ports.",
         output_order=["struct"],
     ),
 )
@@ -446,7 +450,9 @@ class _PopOut(Generic[a], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind()})
 async def pop(vec: list[a]) -> _PopOut[a]:
-    """Split the last item from a Vec."""
+    """Pops the first element from an input `Vec`, returning said \
+element separately from the remainder `Vec`. Fails at runtime if the input `Vec` \
+is empty."""
     item = vec.pop()
     return _PopOut(vec, item)
 
@@ -458,7 +464,7 @@ class _PushOut(Generic[a], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind()})
 async def push(vec: list[a], item: a) -> _PushOut[a]:
-    """Push an item on to end of a Vec."""
+    """Adds an input element onto an input `Vec` to give an output `Vec`."""
     vec.append(item)
     return _PushOut(vec)
 
@@ -471,7 +477,7 @@ class _RemoveOut(Generic[a, b], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
 async def remove_key(map: dict[a, b], key: a) -> _RemoveOut[a, b]:
-    """Remove a key value pair from a map and return the map and value."""
+    """Remove a key (input) from a map (input), return the map and value."""
     val = map.pop(key)
     return _RemoveOut(map, val)
 
@@ -611,7 +617,8 @@ namespace.functions["parallel"] = Function(
                 )
             ),
         ),
-        description="Compose two graphs in parallel.",
+        description="Merges two input `Graph`s into a single output `Graph` "
+        "with the disjoint union of their inputs and similarly their outputs.",
         input_order=["left", "right"],
         output_order=["value"],
     ),
@@ -620,7 +627,8 @@ namespace.functions["parallel"] = Function(
 
 @namespace.function(type_vars={"a": StarKind()})
 async def switch(pred: bool, if_true: a, if_false: a) -> a:
-    """Chooses a value depending on a boolean predicate."""
+    """Passes one or other of two inputs through according to a \
+third, boolean, input."""
     return if_true if pred else if_false
 
 
@@ -632,7 +640,7 @@ class _UnpackPairOut(Generic[a, b], UnpackRow):
 
 @namespace.function(type_vars={"a": StarKind(), "b": StarKind()})
 async def unpack_pair(pair: TierkreisPair[a, b]) -> _UnpackPairOut[a, b]:
-    "Unpacks a pair."
+    "Splits an input `Pair` into two separate outputs."
     return _UnpackPairOut(pair.first, pair.second)
 
 
@@ -658,7 +666,8 @@ namespace.functions["unpack_struct"] = Function(
                 )
             ),
         ),
-        description="Destructure a struct in to outgoing ports.",
+        description="Destructure a single `Struct` input, outputting one value "
+        "per field in the input, output ports matching field names.",
         input_order=["struct"],
     ),
 )
@@ -682,7 +691,8 @@ class GraphOut(Generic[b], UnpackRow):
 
 @namespace.function(name="map", type_vars={"a": StarKind(), "b": StarKind()})
 async def _map(thunk: RuntimeGraph[GraphIn[a], GraphOut[b]], value: list[a]) -> list[b]:
-    """Runs a graph on each element of a Vec and collects the results in a Vec"""
+    """Runs a Graph input on each element of a `Vec` input and \
+collects the results into a `Vec` output."""
     # We avoid the use of callbacks in the python builtins and so must
     # define map in the pyruntime
     raise NotImplementedError()

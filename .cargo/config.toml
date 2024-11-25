@@ -1,0 +1,13 @@
+[registries.artifactory]
+index = "https://quantinuumsw.jfrog.io/artifactory/git/rust_local.git"
+
+[net]
+git-fetch-with-cli = true
+
+# This allows building the type-check (pyo3) module on MacOSX "Apple Silicon"
+# (cargo build from root directory ignores any config.toml in subdirectories.)
+[target.aarch64-apple-darwin]
+rustflags = [
+  "-C", "link-arg=-undefined",
+  "-C", "link-arg=dynamic_lookup",
+]

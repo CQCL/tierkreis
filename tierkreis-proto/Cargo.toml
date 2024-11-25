@@ -1,0 +1,48 @@
+[package]
+name = "tierkreis-proto"
+description = "Protobuf generated crate for the tierkreis quantum-classical hybrid workflow orchestration tool."
+version = "0.1.0"
+authors = [
+    "Seyon Sivarajah <seyon.sivarajah@quantinuum.com>",
+    "Lukas Heidemann <lukas.heidemann@quantinuum.com>",
+    "John Children <john.children@quantinuum.com>",
+    "Alan Lawrence <alan.lawrence@quantinuum.com>",
+]
+edition = { workspace = true }
+rust-version = { workspace = true }
+license = { workspace = true }
+readme = "README.md"
+homepage = { workspace = true }
+repository = { workspace = true }
+
+# The following line determines which files maturin puts into the python sdist
+# Note the protos/* has the effect of copying the files there,
+# so the source distribution ends up with a folder protos/ rather than a symlink.
+include = ["src/**/*", "Cargo.toml", "build.rs", "protos/*"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.65"
+http = { workspace = true }
+indexmap = "1.7.0"
+prost = { workspace = true }
+prost-types = { workspace = true }
+rand = "0.8.5"
+thiserror = "1.0.28"
+tierkreis-core = { path = "../tierkreis-core", version = "0.1.0" }
+tonic = { workspace = true }
+tracing = { workspace = true }
+uuid = { version = "1.1.2", features = ["serde"] }
+warp = "0.3.3"
+serde = { workspace = true, features = ["derive"] }
+
+[build-dependencies]
+prost-build = { workspace = true }
+tonic-build = { workspace = true }
+
+[dev-dependencies]
+rstest.workspace = true
+
+[lints]
+workspace = true

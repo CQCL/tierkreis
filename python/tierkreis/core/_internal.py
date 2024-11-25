@@ -1,4 +1,4 @@
-# Utitlities to extract fields from a class
+# Utilities to extract fields from a class
 
 import inspect
 from dataclasses import dataclass, fields, is_dataclass

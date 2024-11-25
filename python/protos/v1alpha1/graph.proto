@@ -1,148 +1,294 @@
 syntax = "proto3";
 
+// The core Tierkreis language of `Graph`s, `Value`s and `Type`s.
 package tierkreis.v1alpha1.graph;
 
+// Structured name identifying a path from a root to a Runtime
 message Location {
+  // Atoms in the name, each identifying a Runtime that is a child
+  // of the previous Runtime
   repeated string location = 1;
 }
 
+// A `Value::struct` of unordered fields named by distinct strings
 message StructValue {
+  // Fields keyed by name
   map<string, Value> map = 1;
 }
 
+// Contents of a `Value::pair` or one entry in a `MapValue`, i.e. two values
 message PairValue {
+  // First element of the `Value::pair` or key of the map entry
   Value first = 1;
+
+  // Second element of the `Value::pair` or value/RHS of the map entry
   Value second = 2;
 }
 
+// Contents of a `Value::map`: a collection of (key, value) pairs
 message MapValue {
+  // List of mappings.
+  // (Note: keys of a protobuf `map` cannot be message types like `Value`.)
   repeated PairValue pairs = 1;
 }
 
+// Contents of a `Value::vec`: a list of values
 message VecValue {
+  // Elements of the list
   repeated Value vec = 2;
 }
 
+// A `Value` tagged with a string to make a disjoint union of component types
 message VariantValue {
+  // Label, selects the appropriate handler of a `Node::match`
+  // destructuring the variant
   string tag = 1;
+
+  // Contents
   Value value = 2;
 }
 
+// A value that can be passed around a Tierkreis graph.
 message Value {
+  // Which kind of Value
   oneof value {
+    // A Tierkreis Graph (i.e., a higher-order function value)
     Graph graph = 1;
 
+    // Signed 64-bit integer value
     int64 integer = 2;
+
+    // Boolean value
     bool boolean = 3;
 
+    // String value
     string str = 9;
 
+    // Double-precision (64-bit) floating-point value
     double flt = 10;
 
     // OptionValue option = 11;  // REMOVED
 
+    // A pair of two other values
     PairValue pair = 4;
 
+    // An arbitrary-length list of values
     VecValue vec = 5;
 
+    // A map from keys (values) to values. Keys must be hashable, i.e. must not
+    // be or contain `graph`s, `map`s, `struct`s or `float`s
     MapValue map = 7;
+
+    // A structure (aka record) value with string-named fields (each storing a `Value`)
     StructValue struct = 8;
+
+    // A value tagged with a string to make a value of sum type (see `Type::Variant`)
     VariantValue variant = 12;
   }
 }
 
+// A value was placed onto an edge - used for visualization by the Python runtime.
 message Output {
+  // The edge (of the outermost graph) onto which the value was placed
   Edge edge  = 1;
+  // The value, i.e. an intermediate during graph execution
   Value value = 2;
 }
 
+// A list of all the `Output`s, used for visualization by the Python runtime.
 message OutputStream {
+  // All the `Output`s so far.
   repeated Output stream = 1;
 }
 
+/// A type of values (generally of `Kind::Star`) that can be passed around a Tierkreis graph
+// (except `Row`, of `Kind::Row`, describing a row of values which is not a value itself).
 message Type {
+  // which variety (and thus also `Kind`) of Type
   oneof type {
+    // Type variable, used inside polymorphic `TypeScheme`s only.
+    // Can be of [Kind::Row] or [Kind::Star].
     string var = 1;
+    // Type of signed integers (values must be `Value::int`)
     Empty int = 2;
+    // Type of booleans (values must be `Value::bool`)
     Empty bool = 3;
+    // Type of `Value::graph`s, with a specified row of inputs and outputs
     GraphType graph = 4;
+    // Type of `Value::pair`s, with types for the two elements
     PairType pair = 5;
+    // Type of arbitrary-length homogeneous lists, with the type for all elements.
+    // Values must be `Value::vec`.
     Type vec = 6;
+    // An unordered row of named types. Unlike the other variants (except possibly
+    // `Type::Var`), this is a `Kind::Row`, not a type of values (`Kind::Star`), so
+    // cannot be used as a member of any other Type (e.g. `Type::Vec`). However,
+    // this can appear in a `LacksConstraint` or `PartitionConstraint`, or in a
+    // `tierkreis.v1alpha.signature.UnifyError`.
     RowType row = 7;
+    // Type of maps, containing two types - one for all the keys and one for the values.
+    // We do nothing to rule out key types that are not hashable, only the actual
+    // `Value`s used as keys.
     PairType map = 9;
+    // Type of `Value::struct`s with a specified row of field names and types.
+    // Optionally, the struct type itself may have a name.
     StructType struct = 10;
+    // Type of strings (values must be `Value::str`)
     Empty str = 11;
+    // Type of double-precision floats ()
     Empty flt = 12;
+
     // Type option = 13;  // REMOVED
+
+    // A disjoint (tagged) union of other types, given as a row.
+    // May be open, for the output of a `Tag` operation, or closed,
+    // for the input to match (where the handlers are known).
     RowType variant = 14;
   }
 }
 
+// Describes the type of a graph by specifying the input and output rows
 message GraphType {
+  // The inputs to the graph (known and/or variable)
   RowType inputs = 1;
+  // The outputs to the graph (known and/or variable)
   RowType outputs = 2;
 }
 
+// Used to describe the type of a pair, or of a map (key + value)
 message PairType {
+  // Type of the first element of the pair, or the keys in the map
   Type first = 1;
+  // Type of the second element of the pair, or the values in the map
   Type second = 2;
 }
 
+// An unordered set of names (strings), each with a type; possibly
+// plus a variable (of `Kind::Row`) to stand for an unknown portion.
 message RowType {
+  // Known labels, and types for each (of course these may contain variables)
   map<string, Type> content = 1;
+  // May contain the name of a variable (of `Kind::Row`), in which case the `RowType`
+  // is an "open row" and also includes any number of other fields stood for by that
+  // variable (with names disjoint from those in `content`).
+  // Otherwise, a "closed row" i.e. exactly/only the fields in `content`
   string rest = 2;
 }
 
+// Describes a `Type::Struct`: the row of fields, optionally with a name for the type.
 message StructType {
+  // The fields in the struct
   RowType shape = 1;
+  // Wrapper to make name optional
   oneof name_opt {
+    // Optional name of the struct type. (TODO how is this used?)
     string name = 2;
   }
 }
 
+// Qualified name of a function
 message FunctionName {
+  // Identifies a `tierkreis.v1alpha1.signature.Namespace` (perhaps a subspace)
+  // by traversing downwards from the root
   repeated string namespaces = 1;
+  // Name of the function within that subspace
   string name = 2;
 }
 
+// Describes a `Node::function`, identifying the function to call,
+// and optionally a time after which execution should be retried
 message FunctionNode {
+  // Qualified name of the function
   FunctionName name = 1;
+  // Time after which execution of the function may be assumed to have
+  // failed and should be retried (in due course)
   optional uint32 retry_secs = 2;
 }
 
+// Describes a `Node::box`: a location at which to run a graph
 message BoxNode {
+  // On which runtime to run the subgraph
   Location loc = 1;
+  // Definition of the graph to run
   Graph graph = 2;
 }
 
+// A node in a `Graph`
 message Node {
+  // Basic varieties of node, most leaf nodes are different `Node::function`s
   oneof node {
+    // The node that emits a graph's input values.
     Empty input = 1;
+
+    // The node that receives a graph's output values.
     Empty output = 2;
+  
+    // A node that emits a constant value (contained within).
     Value const = 3;
+  
+    // A subgraph embedded as a single node. The ports of the node are the ports
+    // of the embedded graph. Box nodes can be used to conveniently compose common
+    // subgraphs. The box also specifies a location at which to run the graph.
     BoxNode box = 4;
+
+    // A node that executes a function with a specified name. The type and runtime
+    // behavior of a function node depend on the functions provided by the environment
+    // in which the graph is interpreted.
     FunctionNode function = 5;
+
+    // Perform pattern matching on a variant value, with handlers according to the
+    // input `Type::variant`
     Empty match = 6;
+
+    // Create a variant. Tag(tag) :: forall T. T -> Variant(tag:T | ...)
     string tag = 7;
   }
 }
 
+// An edge in a `Graph`
 message Edge {
+  // Source (out-)port of `node_from`
   string port_from = 1;
+
+  // Target/destination (in-)port of `node_to`
   string port_to = 2;
+
+  // Source node
   uint32 node_from = 3;
+
+  // Source port
   uint32 node_to = 4;
+
+  // Explicit annotation of the type of the edge. Client may (optionally)
+  // provide; typechecking will (always) fill in.
   Type edge_type = 5;
 }
 
+//  A computation graph is a directed acyclic port graph in which data flows along
+// the edges and as it is processed by the nodes.  Nodes in the graph are densely numbered
+// starting from 0. The inputs of the graph are emitted by a `Node::input` at index 0,
+// and the outputs are received by a `Node::output` at index 1.
+// Each node has labelled input and output ports, encoded implicitly as the endpoints of the
+// graph's edges. The port labels are unique among a node's input and output ports individually,
+// but input and output ports with the same label are considered different. Any port in the graph
+// has exactly one edge connected to it.
 message Graph {
+  // The nodes in the graph. The first two must be a `Node::input` and a `Node::output`,
+  // and there must not be any other such nodes at any other index.
   repeated Node nodes = 1;
+
+  // The edges in the graph. Each can optionally be annotated with a type.
   repeated Edge edges = 2;
+
+  // User-provided name of the graph. Used for debug/display, does not affect execution.
   string name = 3;
-  // below orderings are optional and used by graph builders if available
-  // listed ports will be reported and wired up in the listed order
+
+  // Optional ordering of input ports used by graph builders if available.
+  // Listed ports will be reported and wired up in the order given
   // and before ports that are not listed
   repeated string input_order = 4;
+
+  // Like `input_order` but for the output ports.
   repeated string output_order = 5;
 }
 
@@ -151,38 +297,68 @@ message Graph {
 message Empty {
 }
 
+// A polymorphic type scheme. Usually (but not necessarily) for a function.
 message TypeScheme {
+    // Variables over which the scheme is polymorphic, each with its `Kind`.
+    // A concrete type (usable for a port or edge) can be obtained by giving
+    // a type or row (according to the `Kind`) for each.
     repeated TypeSchemeVar variables = 1;
+    // Constraints restricting the legal instantiations of the [Self::variables]
     repeated Constraint constraints = 2;
+    // The body of the type scheme, i.e. potentially containing occurrences of the
+    // `variables`, into which values (`Type`s or `RowTypes`) for the variables
+    // are substituted in order to instantiate the scheme into a concrete type.
     Type body = 3;
 }
 
+// Describes a variable bound by a `TypeScheme`
 message TypeSchemeVar {
+    // Name of the variable
     string name = 1;
+    // Whether the variable is a `Type` of `Value`s or a `RowType`
     Kind kind = 2;
 }
 
+// Specifies a restriction on possible instantiations of type variables in a [TypeScheme]
 message Constraint {
+    // The two varieties of constraint
     oneof constraint {
+        // A type variable of `Kind::Row` does *not* have a specified label
         LacksConstraint lacks = 1;
+        // A row is the union of two other rows (we expect at least two of the three
+        // rows to contain variables)
         PartitionConstraint partition = 2;
     }
 }
 
+// `Constraint` that a row is the union of two other rows (which for any label in common,
+// must have `Type`s that can be made the same)
 message PartitionConstraint {
+    // One input to the union - a `Type::Row` or a `Type::Var` of `Kind::Row`
     Type left = 1;
+    // The other input to the union - a `Type::Row` or a `Type::Var` of `Kind::Row`
     Type right = 2;
+    // The result, i.e. `left` and `right` merged together.
+    // Could be a `Type::Row` or a `Type::Var` of `Kind::Row`
     Type union = 3;
 }
 
+// `Constraint` that a row does not contain an element with the specified name
 message LacksConstraint {
+    // A `Type::row` or a `Type::var` of `Kind::row`
     Type row = 1;
+    // Field name that must not be present in `row`
     string label = 2;
 }
 
+// The kind of a type variable - i.e. whether the "type" variable stands for
+// a single type, or (some part of) a row.
 message Kind {
+    // The two possible kinds
     oneof kind {
+        // Kind of types (describing sets of values)
         Empty star = 1;
+        // Kind of rows (unordered names each with a type)
         Empty row = 2;
     }
 }

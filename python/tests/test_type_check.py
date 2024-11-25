@@ -88,7 +88,7 @@ async def test_infer_errors(client: RuntimeClient) -> None:
         locs = (e.proto_err.location for e in errs)
 
         locations = {
-            betterproto.which_one_of(loc[1], "location")[0]: loc[1] for loc in locs
+            betterproto.which_one_of(loc[0], "location")[0]: loc[0] for loc in locs
         }
         assert set(locations.keys()) == {"input", "node_idx"}
         assert locations["node_idx"].node_idx == node_1.idx
@@ -188,10 +188,10 @@ async def test_infer_graph_types_with_inputs(
     assert len(err.value) == 1
     e = err.value.errors[0]
     assert isinstance(e, UnifyError)
-    # TODO location sometimes
-    assert betterproto.which_one_of(e.proto_err.location[-1], "location")[0] in (
-        "input",
-        "root",
+    # TODO location sometimes absent
+    assert (
+        len(e.proto_err.location) == 0
+        or betterproto.which_one_of(e.proto_err.location[-1], "location")[0] == "input"
     )
     # deep copy (above) has no annotations yet, so ok
     tg2, inputs_ = infer_graph_types(tg2, funcs, graph_inputs)
@@ -240,7 +240,7 @@ def _extract_dbg_info(errstrings: str) -> Iterator[tuple[str, int]]:
 @pytest.mark.asyncio
 async def test_builder_debug(bi: "BuilderNS", sig: Signature):
     # test debug string is correctly found
-    # checks that "ERROR" preceeds the location of reported errors
+    # checks that "ERROR" precedes the location of reported errors
     def _bad_nod():
         # ERROR
         return bi.iadd(Const(1), Const(1.0))

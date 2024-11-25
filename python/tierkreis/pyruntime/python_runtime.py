@@ -37,9 +37,9 @@ if TYPE_CHECKING:
 
 
 class _ValueNotFound(Exception):
-    def __init__(self, tke: TierkreisEdge) -> None:
-        self.edge = tke
-        super().__init__(f"Value not found on edge {tke.source} -> {tke.target}")
+    def __init__(self, edge: TierkreisEdge) -> None:
+        self.edge = edge
+        super().__init__(f"Value not found on edge {edge.source} -> {edge.target}")
 
 
 class OutputNotFound(_ValueNotFound):
@@ -283,7 +283,7 @@ class PyRuntime(RuntimeClient):
 
 class VizRuntime(PyRuntime):
     """Child class of ``PyRuntime`` that can interact with a tierkreis-viz instance
-    for live graph visulization."""
+    for live graph visualization."""
 
     def __init__(self, url: str, roots: Iterable["Namespace"], num_workers: int = 1):
         """`url` is the address of the running tierkreis-viz instance. See
@@ -303,7 +303,7 @@ class VizRuntime(PyRuntime):
 
     async def type_check_graph(self, graph: TierkreisGraph) -> TierkreisGraph:
         """See ``PyRuntime.type_check_graph``. Additionally updates
-        vizualized graph with type annotations."""
+        visualized graph with type annotations."""
         try:
             typedg = await super().type_check_graph(graph)
         except TierkreisTypeErrors as e:

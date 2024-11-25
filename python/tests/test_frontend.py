@@ -188,7 +188,7 @@ async def test_vec_sequence(client: RuntimeClient) -> None:
         outputs["sequenced"].to_python(TierkreisGraph).inline_boxes()
     )
 
-    # check composition is succesful
+    # check composition is successful
     functions = {
         node.function_name.name
         for node in sequenced_g.nodes()
@@ -219,6 +219,26 @@ def test_merge_copies():
 
     assert tg.n_nodes == 3
     assert sum(1 for _ in tg.edges()) == 6
+
+
+# https://github.com/CQCL-DEV/tierkreis/issues/526
+def test_merge_copies_bug():
+    tg = TierkreisGraph()
+    x1, x2 = tg.copy_value(tg.input["x"])
+    x3, x4 = tg.copy_value(x1)
+    tg.discard(x2)
+    tg.discard(x4)
+    tg.set_outputs(value=x3)
+
+    assert tg.n_nodes == 6
+    assert len(list(tg.nodes())) == 6
+    assert sum(1 for _ in tg.edges()) == 5
+
+    tg = _merge_copies(tg)
+
+    assert tg.n_nodes == 5
+    assert len(list(tg.nodes())) == 5
+    assert sum(1 for _ in tg.edges()) == 4
 
 
 @pytest.mark.asyncio

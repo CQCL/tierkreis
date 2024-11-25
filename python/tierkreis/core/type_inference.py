@@ -54,7 +54,7 @@ def infer_graph_types(
 ) -> Union[TierkreisGraph, Tuple[TierkreisGraph, StructValue]]:
     """Infer the types in a graph and its inputs given a signature to check
     against.
-    If succesful both the graph and inputs are returned, with type annotations
+    If successful both the graph and inputs are returned, with type annotations
     added.
     If inputs are not provided, only the graph is returned.
     Raises `TierkreisTypeErrors` if the inference fails.

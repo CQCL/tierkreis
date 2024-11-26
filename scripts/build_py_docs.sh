@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # run from root directory
 export DOCS_DIR=$(pwd)/python/docs
 mkdir -p $DOCS_DIR/build

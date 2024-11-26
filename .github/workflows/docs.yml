@@ -18,38 +18,33 @@ concurrency:
   group: "pages"
   cancel-in-progress: true
 
+
+env:
+  UV_VERSION: "0.4.29"
+
 jobs:
   build:
-    defaults:
-      run:
-        working-directory: python
     name: Build docs.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python '3.10'
-        uses: actions/setup-python@v5
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v3
         with:
-          python-version: '3.10'
-          cache: "pip"
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
       - name: Install Protoc
         uses: arduino/setup-protoc@v2
-      - name: Install Tierkreis
-        run: pip install '.[typecheck,docs]'
+
       - name: Build docs
-        run: |
-          cd docs
-          ./build.sh
+        run:  uv run --group docs scripts/build_py_docs.sh
       - name: Upload artifact.
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ./docs/build/
+          path: ./python/docs/build/
 
   publish:
     name: Publish docs.
-    defaults:
-      run:
-        working-directory: python
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -385,6 +385,21 @@ wheels = [
 ]
 
 [[package]]
+name = "hugr"
+version = "0.10.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "graphviz" },
+    { name = "pydantic" },
+    { name = "pydantic-extra-types" },
+    { name = "semver" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/56/c9/9ff0220c11af06ca012cb3eb3f57a050e0c5c825050276489bfcce03e939/hugr-0.10.2.tar.gz", hash = "sha256:36426d295e278319719852dc65b9adb9290d4b95aef286381e237625da486add", size = 130343 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bc/e8/39d0019eec82cfbaebf3efc8af643f6fc482bebabe0fbb31ca6cf6e2810f/hugr-0.10.2-py3-none-any.whl", hash = "sha256:3190ce37682e3412110c6e024d0c63d99137e315e9c8e4b59622482e35f6762e", size = 84067 },
+]
+
+[[package]]
 name = "hyperframe"
 version = "6.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -878,6 +893,19 @@ wheels = [
 ]
 
 [[package]]
+name = "pydantic-extra-types"
+version = "2.10.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/23/ed/69f3f3de12c02ebd58b2f66ffb73d0f5a1b10b322227897499753cebe818/pydantic_extra_types-2.10.2.tar.gz", hash = "sha256:934d59ab7a02ff788759c3a97bc896f5cfdc91e62e4f88ea4669067a73f14b98", size = 86893 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/08/da/86bc9addde8a24348ac15f8f7dcb853f78e9573c7667800dd9bc60558678/pydantic_extra_types-2.10.2-py3-none-any.whl", hash = "sha256:9eccd55a2b7935cea25f0a67f6ff763d55d80c41d86b887d88915412ccf5b7fa", size = 35473 },
+]
+
+[[package]]
 name = "pydata-sphinx-theme"
 version = "0.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1107,6 +1135,15 @@ wheels = [
 ]
 
 [[package]]
+name = "semver"
+version = "3.0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/72/d1/d3159231aec234a59dd7d601e9dd9fe96f3afff15efd33c1070019b26132/semver-3.0.4.tar.gz", hash = "sha256:afc7d8c584a5ed0a11033af086e8af226a9c0b206f313e0301f8dd7b6b589602", size = 269730 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/a6/24/4d91e05817e92e3a61c8a21e08fd0f390f5301f1c448b137c57c4bc6e543/semver-3.0.4-py3-none-any.whl", hash = "sha256:9c824d87ba7f7ab4a1890799cec8596f15c1241cb473404ea1cb0c55e4b04746", size = 17912 },
+]
+
+[[package]]
 name = "setuptools"
 version = "75.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1251,13 +1288,14 @@ wheels = [
 
 [[package]]
 name = "tierkreis"
-version = "0.7.2"
+version = "0.7.3"
 source = { editable = "python" }
 dependencies = [
     { name = "betterproto", extra = ["compiler"] },
     { name = "click" },
     { name = "graphviz" },
     { name = "grpclib" },
+    { name = "hugr" },
     { name = "networkx" },
     { name = "pydantic" },
     { name = "requests" },
@@ -1300,6 +1338,7 @@ requires-dist = [
     { name = "docker", marker = "extra == 'docker'", specifier = ">=6,<7" },
     { name = "graphviz", specifier = ">=0.20,<0.21" },
     { name = "grpclib", specifier = ">=0.4.3rc0,<0.5" },
+    { name = "hugr", specifier = ">=0.10.2,<0.11" },
     { name = "networkx", specifier = ">=2.6.3,<4" },
     { name = "numpy", marker = "extra == 'sc22-example'", specifier = ">=1.20,<2" },
     { name = "opentelemetry-exporter-otlp", marker = "extra == 'telemetry'", specifier = ">=1.15.0,<2" },

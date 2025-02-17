@@ -2,7 +2,7 @@
 
 import asyncio
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, Sequence, TypeVar
 
 from hugr import Hugr, Node, InPort, OutPort, ops, tys, val
 from hugr.val import Sum, Value
@@ -114,10 +114,8 @@ class PyRuntime:
 
         async def get_inputs(node: Node, wait: bool = True) -> list[Value]:
             return [
-                await get_output(outp, wait=wait)
-                for (inp, outps) in run_g.incoming_links(node)
-                if isinstance(run_g.port_kind(inp), tys.ValueKind)
-                for outp in outps  # Should only be one for a ValueKind
+                await get_output(_single(run_g.linked_ports(InPort(node, inp))), wait=wait)
+                for inp in range(_num_value_inputs(run_g, node))
             ]
 
         async def run_node(node: Node) -> list[Value]:
@@ -193,11 +191,9 @@ class PyRuntime:
             if n in scheduled:
                 return
             scheduled.add(n)  # Ok as acyclic
-            for inp, outps in run_g.incoming_links(n):
-                # Exclude non-executed predecessors (const/function edges)
-                if isinstance(inp, (tys.ValueKind, tys.OrderKind)):
-                    for outp in outps:
-                        schedule(outp.node)
+            for inp in range(-1, _num_value_inputs(run_g, n)):  # Include Order
+                for src in run_g.linked_ports(InPort(n, inp)):
+                    schedule(src.node)
             que.put_nowait(n)
 
         for n in run_g.children(
@@ -236,6 +232,23 @@ def unpack_first(*vals: Value) -> tuple[int, list[Value]]:
     assert isinstance(pred, Sum)
     pred.vals.extend(vals[1:])
     return (pred.tag, pred.vals)
+
+def _num_value_inputs(h: Hugr, n: Node) -> int:
+    op = h[n].op
+    if isinstance(op, ops.DataflowOp):
+        sig = op.outer_signature()
+    elif isinstance(op, ops.Call):
+        sig = op.instantiation
+    elif isinstance(op, (ops.Const, ops.FuncDefn)):
+        return 0
+    else:
+        raise RuntimeError(f"Unknown dataflow op {op}")
+    return len(sig.input)
+
+T = TypeVar("T")
+def _single(vals: Iterable[T]) -> T:
+    (val,) = vals
+    return val
 
 def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
     if op.extension == "arithmetic.int":

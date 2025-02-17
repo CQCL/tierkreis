@@ -4,8 +4,6 @@ import asyncio
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, Sequence
 
-import networkx as nx
-
 from hugr import Hugr, Node, InPort, OutPort, ops, tys
 from hugr.val import Sum, Value
 
@@ -60,16 +58,22 @@ class PyRuntime:
                 return v
             raise RuntimeError("Don't know how to convert python value: {v}")
 
-        return await self._run_container(
-            run_g, run_g.root, [make_val(p) for p in py_inputs]
-        )
+        main = run_g.root
+        if isinstance(run_g[main].op, ops.Module):
+            (main,) = (
+                n
+                for n in run_g.children(main)
+                for op in [run_g[n].op]
+                if isinstance(op, ops.FuncDefn) and op.f_name == "main"
+            )
+        return await self._run_container(run_g, main, [make_val(p) for p in py_inputs])
 
     async def _run_container(
         self, run_g: Hugr, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
         """parent is a DataflowOp"""
-        parent_node = run_g[parent]
-        if isinstance(parent_node, ops.DFG):
+        parent_node = run_g[parent].op
+        if isinstance(parent_node, (ops.DFG, ops.FuncDefn)):
             return await self._run_dataflow_subgraph(run_g, parent, inputs)
         if isinstance(parent_node, ops.CFG):
             pc = run_g.children(parent)[0]
@@ -98,9 +102,8 @@ class PyRuntime:
     async def _run_dataflow_subgraph(
         self, run_g: Hugr, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
-        # assert isinstance(run_g[parent], ops.DfParentOp)
+        # assert isinstance(run_g[parent], ops.DfParentOp) # DfParentOp is a Protocal so no can do
         # FuncDefn corresponds to a Call, but inputs are the arguments
-        total_nodes = len(run_g.children(parent))
         runtime_state: dict[OutPort, Value] = {}
 
         async def get_output(src: OutPort, wait: bool) -> Value:
@@ -118,7 +121,7 @@ class PyRuntime:
             ]
 
         async def run_node(node: Node) -> list[Value]:
-            tk_node = run_g[node]
+            tk_node = run_g[node].op
 
             # ops.Input, ops.Output
             # ops.Custom, ops.ExtOp, ops.RegisteredOp
@@ -144,7 +147,7 @@ class PyRuntime:
                 return []
             if isinstance(tk_node, ops.LoadConst):
                 (const_src,) = run_g.linked_ports(InPort(node, 0))
-                cst = run_g[const_src.node]
+                cst = run_g[const_src.node].op
                 assert isinstance(cst, ops.Const)
                 return [cst.val]
 
@@ -179,13 +182,29 @@ class PyRuntime:
                 # signal this node is now done
                 queue.task_done()
 
-        que: asyncio.Queue[Node] = asyncio.Queue(total_nodes)
-        for node in nx.topological_sort(run_g.children(parent)):
-            # add all node names to the queue in topsort order
-            # if there are fewer workers than nodes, and the queue is populated
-            # in a non-topsort order, some worker may just wait forever for it's
-            # node's inputs to become available.
-            que.put_nowait(node)
+        que: asyncio.Queue[Node] = asyncio.Queue(len(run_g.children(parent)))
+
+        # add all node names to the queue in topsort order
+        # if there are fewer workers than nodes, and the queue is populated
+        # in a non-topsort order, some worker may just wait forever for it's
+        # node's inputs to become available.
+        scheduled: set[Node] = set()
+
+        def schedule(n: Node):
+            if n in scheduled:
+                return
+            scheduled.add(n)  # Ok as acyclic
+            for inp, outps in run_g.incoming_links(n):
+                # Exclude non-executed predecessors (const/function edges)
+                if isinstance(inp, (tys.ValueKind, tys.OrderKind)):
+                    for outp in outps:
+                        schedule(outp.node)
+            que.put_nowait(n)
+
+        for n in run_g.children(
+            parent
+        ):  # Input, then Output, then any unreachable from Output
+            schedule(n)
 
         workers = [asyncio.create_task(worker(que)) for _ in range(self.num_workers)]
         queue_complete = asyncio.create_task(que.join())

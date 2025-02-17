@@ -5,15 +5,9 @@ from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, Sequence
 
 import networkx as nx
-import requests
 
 from hugr import Hugr, Node, InPort, OutPort, ops, tys
 from hugr.val import Sum, Value
-
-from tierkreis.pyruntime import python_builtin
-
-if TYPE_CHECKING:
-    from tierkreis.worker.namespace import Namespace
 
 
 class FunctionNotFound(Exception):
@@ -23,25 +17,20 @@ class FunctionNotFound(Exception):
         self.function = fname
         super().__init__(f"Function {fname} not found in namespace.")
 
+
 # ALAN can we implement RuntimeClient somehow,
 # e.g. type_check -> we support all ops as in Hugr, and can run?
 class PyRuntime:
     """A simplified python-only Tierkreis runtime. Can be used with builtin
     operations and python only namespaces that are locally available."""
 
-    def __init__(self, roots: Iterable["Namespace"], num_workers: int = 1):
+    def __init__(self, num_workers: int = 1):
         """Initialise with locally available namespaces, and the number of
         workers (asyncio tasks) to use in execution."""
-        self.root = deepcopy(python_builtin.namespace)
-        for root in roots:
-            self.root.merge_namespace(root)
         self.num_workers = num_workers
         self._callback: Optional[Callable[[OutPort, Value], None]] = None
-        self.set_callback(None)
 
-    def set_callback(
-        self, callback: Optional[Callable[[OutPort, Value], None]]
-    ):
+    def set_callback(self, callback: Optional[Callable[[OutPort, Value], None]]):
         """Set a callback function that takes an OutPort and Value,
         which will be called every time a value is output.
         Can be used to inspect intermediate values."""
@@ -58,26 +47,27 @@ class PyRuntime:
             self._callback(out_port, val)
 
     async def run_graph(
-        self,         # ALAN next line we've changed sig, does ignore work?
+        self,  # ALAN next line we've changed sig, does ignore work?
         run_g: Hugr,  # type:ignore
         *py_inputs: Any,
     ) -> list[Value]:
         """Run a tierkreis graph using the python runtime, and provided inputs.
-           Returns the outputs of the graph.
+        Returns the outputs of the graph.
         """
-        def make_val(v: Any) -> Value: # TODO take desired type also, e.g. int width
+
+        def make_val(v: Any) -> Value:  # TODO take desired type also, e.g. int width
             if isinstance(v, Value):
                 return v
             raise RuntimeError("Don't know how to convert python value: {v}")
-        return await self._run_container(run_g, run_g.root, [make_val(p) for p in py_inputs])
+
+        return await self._run_container(
+            run_g, run_g.root, [make_val(p) for p in py_inputs]
+        )
 
     async def _run_container(
-        self,
-        run_g: Hugr,
-        parent: Node,
-        inputs: Sequence[Value]
+        self, run_g: Hugr, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
-        """ parent is a DataflowOp """
+        """parent is a DataflowOp"""
         parent_node = run_g[parent]
         if isinstance(parent_node, ops.DFG):
             return await self._run_dataflow_subgraph(run_g, parent, inputs)
@@ -85,7 +75,9 @@ class PyRuntime:
             pc = run_g.children(parent)[0]
             assert isinstance(pc, ops.DataflowBlock)
             while True:
-                (tag, inputs) = unpack_first(*await self._run_dataflow_subgraph(run_g, pc, inputs))
+                (tag, inputs) = unpack_first(
+                    *await self._run_dataflow_subgraph(run_g, pc, inputs)
+                )
                 (bb,) = run_g.linked_ports(pc[tag])  # Should only be 1
                 pc = bb.node
                 if isinstance(pc, ops.ExitBlock):
@@ -96,18 +88,17 @@ class PyRuntime:
             return await self._run_dataflow_subgraph(run_g, case_node, inputs)
         if isinstance(parent_node, ops.TailLoop):
             while True:
-                (tag, inputs) = unpack_first(*await self._run_dataflow_subgraph(run_g, parent, inputs))
+                (tag, inputs) = unpack_first(
+                    *await self._run_dataflow_subgraph(run_g, parent, inputs)
+                )
                 if tag == ops.Break.tag:
                     return inputs
         raise RuntimeError("Unknown container type")
-    
+
     async def _run_dataflow_subgraph(
-        self,
-        run_g: Hugr,
-        parent: Node,
-        inputs: Sequence[Value]
+        self, run_g: Hugr, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
-        #assert isinstance(run_g[parent], ops.DfParentOp)
+        # assert isinstance(run_g[parent], ops.DfParentOp)
         # FuncDefn corresponds to a Call, but inputs are the arguments
         total_nodes = len(run_g.children(parent))
         runtime_state: dict[OutPort, Value] = {}
@@ -118,12 +109,13 @@ class PyRuntime:
                 await asyncio.sleep(0)
             return runtime_state[src]
 
-        async def get_inputs(node: Node, wait: bool=True) -> list[Value]:
-            return [await get_output(outp, wait=wait)
+        async def get_inputs(node: Node, wait: bool = True) -> list[Value]:
+            return [
+                await get_output(outp, wait=wait)
                 for (inp, outps) in run_g.incoming_links(node)
                 if isinstance(run_g.port_kind(inp), tys.ValueKind)
-                for outp in outps # Should only be one for a ValueKind
-            ]   
+                for outp in outps  # Should only be one for a ValueKind
+            ]
 
         async def run_node(node: Node) -> list[Value]:
             tk_node = run_g[node]
@@ -144,7 +136,10 @@ class PyRuntime:
             if isinstance(tk_node, ops.Input):
                 return list(inputs)
 
-            if isinstance(tk_node, (ops.Const, ops.FuncDefn, ops.FuncDecl, ops.AliasDefn, ops.AliasDecl)):
+            if isinstance(
+                tk_node,
+                (ops.Const, ops.FuncDefn, ops.FuncDecl, ops.AliasDefn, ops.AliasDecl),
+            ):
                 # These are static only, no value outputs
                 return []
             if isinstance(tk_node, ops.LoadConst):
@@ -177,7 +172,7 @@ class PyRuntime:
 
                 # assign outputs to edges
                 assert len(outs) == run_g.num_out_ports(node)
-                for (outport_idx, val) in enumerate(outs):
+                for outport_idx, val in enumerate(outs):
                     outp = OutPort(node, outport_idx)
                     self.callback(outp, val)
                     runtime_state[outp] = val
@@ -213,7 +208,9 @@ class PyRuntime:
         await asyncio.gather(*workers, return_exceptions=True)
 
         out_node = run_g.children(parent)[1]
-        return await get_inputs(out_node, wait=False) # No need to wait, all nodes finishing executing.
+        return await get_inputs(
+            out_node, wait=False
+        )  # No need to wait, all nodes finishing executing.
 
 
 def unpack_first(*vals: Value) -> tuple[int, list[Value]]:

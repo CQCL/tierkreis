@@ -4,7 +4,7 @@ import asyncio
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, Sequence
 
-from hugr import Hugr, Node, InPort, OutPort, ops, tys
+from hugr import Hugr, Node, InPort, OutPort, ops, tys, val
 from hugr.val import Sum, Value
 
 
@@ -146,6 +146,9 @@ class PyRuntime:
             inps = await get_inputs(node, wait=True)
             if isinstance(tk_node, (ops.Conditional, ops.CFG, ops.DFG, ops.TailLoop)):
                 return await self._run_container(run_g, node, inputs)
+            elif isinstance(tk_node, ops.Call):
+                (func_tgt,) = run_g.linked_ports(InPort(node, tk_node._function_port_offset())) # TODO Make this non-private?
+                return await self._run_dataflow_subgraph(run_g, func_tgt.node, inps)
             elif isinstance(tk_node, ops.Tag):
                 return [Sum(tk_node.tag, tk_node.sum_ty, inps)]
             elif isinstance(tk_node, ops.MakeTuple):
@@ -154,6 +157,10 @@ class PyRuntime:
                 (sum_val,) = inps
                 assert isinstance(sum_val, Sum)
                 return sum_val.vals
+            elif isinstance(tk_node, ops.Custom):
+                return run_ext_op(tk_node, inps)
+            elif isinstance(tk_node, ops.AsExtOp):
+                return run_ext_op(tk_node.ext_op.to_custom_op(), inps)
             else:
                 raise RuntimeError("Unknown node type.")
 
@@ -166,7 +173,7 @@ class PyRuntime:
                 outs = await run_node(node)
 
                 # assign outputs to edges
-                assert len(outs) == run_g.num_out_ports(node)
+                # assert len(outs) == run_g.num_out_ports(node) # No, must exclude ConstKind etc.
                 for outport_idx, val in enumerate(outs):
                     outp = OutPort(node, outport_idx)
                     self.callback(outp, val)
@@ -229,3 +236,18 @@ def unpack_first(*vals: Value) -> tuple[int, list[Value]]:
     assert isinstance(pred, Sum)
     pred.vals.extend(vals[1:])
     return (pred.tag, pred.vals)
+
+def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
+    if op.extension == "arithmetic.int":
+        if op.op_name == "ilt_u":
+            (a,b) = inputs
+            assert isinstance(a, val.Extension)
+            a = a.val['value']
+            assert isinstance(a, int)
+            assert isinstance(b, val.Extension)
+            b = b.val['value']
+            assert isinstance(b, int)
+            # TODO need to implement overflow/wrapping according to type(argument)
+            return [val.TRUE if a < b else val.FALSE]
+    raise RuntimeError(f"Unknown op {op}")
+    

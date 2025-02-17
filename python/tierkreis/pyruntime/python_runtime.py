@@ -123,16 +123,8 @@ class PyRuntime:
         async def run_node(node: Node) -> list[Value]:
             tk_node = run_g[node].op
 
-            # ops.Input, ops.Output
-            # ops.Custom, ops.ExtOp, ops.RegisteredOp
-            # ops.MakeTuple, ops.UnpackTuple, ops.Tag
-            # ops.Const (IGNORE?), ops.LoadConst (find static input)
-            # ops.Conditional (select appropriate ops.Case) - just run_graph?
-            # ops.CFG, ops.DFG, ops.TailLoop - just run_graph?
-            # ops.FuncDefn - IGNORE, it's just a definition
-
-            # ops.Call, ops.CallIndirect, ops.LoadFunc
-            # IGNORE (as child): ops.FuncDefn, ops.Module (?),
+            # TODO: ops.Custom, ops.ExtOp, ops.RegisteredOp,
+            # ops.CallIndirect, ops.LoadFunc
 
             if isinstance(tk_node, ops.Output):
                 return []

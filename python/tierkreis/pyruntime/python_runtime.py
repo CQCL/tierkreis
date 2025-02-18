@@ -130,7 +130,6 @@ class PyRuntime:
     async def _run_dataflow_subgraph(
         self, outer_st: _RuntimeState, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
-        print(f"****Beginning DFG with parent {parent}")
         # assert isinstance(st.h[parent], ops.DfParentOp) # DfParentOp is a Protocal so no can do
         # FuncDefn corresponds to a Call, but inputs are the arguments
         st = _RuntimeState(outer_st)
@@ -151,7 +150,6 @@ class PyRuntime:
 
         async def run_node(node: Node) -> list[Value]:
             assert st.h[node].parent == parent
-            print(f"*run_node under parent {parent}: node {node}")
             tk_node = st.h[node].op
 
             # TODO: ops.Custom, ops.ExtOp, ops.RegisteredOp,
@@ -229,12 +227,9 @@ class PyRuntime:
             for inp in range(-1, _num_value_inputs(st.h[n].op)):  # Include Order
                 for src in st.h.linked_ports(InPort(n, inp)):
                     if st.h[src.node].parent == parent:
-                        print(f"**Scheduling under parent {parent}: {n} requires inner {src.node}")
                         schedule(src.node)
                     else:
-                        print(f"**Scheduling under parent {parent}: {n} requires outer {src.node}")
                         st.edge_vals[src] = outer_st.find(src)
-            print(f"**Scheduling under parent {parent}: node {n}")
             que.put_nowait(n)
 
         for n in st.h.children(

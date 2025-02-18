@@ -1,20 +1,18 @@
 """Implementation of simple python-only runtime."""
 
 import asyncio
-from copy import deepcopy
 from typing import (
-    TYPE_CHECKING,
     Any,
     Callable,
     Iterable,
     Optional,
-    Tuple,
     Sequence,
     TypeVar,
 )
 
 from hugr import Hugr, Node, InPort, OutPort, ops, tys, val
 from hugr.val import Sum, Value
+from hugr.std.int import IntVal
 
 
 class FunctionNotFound(Exception):
@@ -298,15 +296,29 @@ BREAK_TAG = ops.Break(tys.Either([tys.Unit], [tys.Unit])).tag
 
 
 def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
+    def two_ints_logwidth() -> tuple[int, int, int]:
+        (a, b) = inputs
+        assert isinstance(a, val.Extension)
+        av = a.val["value"]
+        assert isinstance(av, int)
+        assert isinstance(b, val.Extension)
+        bv = b.val["value"]
+        assert isinstance(bv, int)
+        lw = a.val["log_width"]
+        assert isinstance(lw, int)
+        assert lw == b.val["log_width"]
+        return av, bv, lw
+
     if op.extension == "arithmetic.int":
         if op.op_name == "ilt_u":
-            (a, b) = inputs
-            assert isinstance(a, val.Extension)
-            a = a.val["value"]
-            assert isinstance(a, int)
-            assert isinstance(b, val.Extension)
-            b = b.val["value"]
-            assert isinstance(b, int)
-            # TODO need to implement overflow/wrapping according to type(argument)
+            (a, b, _) = two_ints_logwidth()
             return [val.TRUE if a < b else val.FALSE]
+        if op.op_name == "isub":
+            (a, b, lw) = two_ints_logwidth()
+            # TODO: wrap/underflow to appropriate width
+            return [IntVal(a - b, lw).to_value()]
+        if op.op_name == "imul":
+            (a, b, lw) = two_ints_logwidth()
+            # TODO: wrap/overflow to appropriate width
+            return [IntVal(a * b, lw).to_value()]
     raise RuntimeError(f"Unknown op {op}")

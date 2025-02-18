@@ -143,7 +143,7 @@ class PyRuntime:
 
             inps = await get_inputs(node, wait=True)
             if isinstance(tk_node, (ops.Conditional, ops.CFG, ops.DFG, ops.TailLoop)):
-                return await self._run_container(run_g, node, inputs)
+                return await self._run_container(run_g, node, inps)
             elif isinstance(tk_node, ops.Call):
                 (func_tgt,) = run_g.linked_ports(InPort(node, tk_node._function_port_offset())) # TODO Make this non-private?
                 return await self._run_dataflow_subgraph(run_g, func_tgt.node, inps)

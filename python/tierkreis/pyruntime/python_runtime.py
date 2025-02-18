@@ -26,10 +26,20 @@ class FunctionNotFound(Exception):
 class _RuntimeState:
     h: Hugr
     edge_vals: dict[OutPort, Value]
+    parent: "_RuntimeState | None"
 
-    def __init__(self, h: Hugr):
-        self.h = h
+    def __init__(self, h_or_p: "Hugr | _RuntimeState"):
         self.edge_vals = {}
+        (self.h, self.parent) = (
+            (h_or_p, None) if isinstance(h_or_p, Hugr) else (h_or_p.h, h_or_p)
+        )
+
+    def find(self, outp: OutPort) -> Value:
+        if (v := self.edge_vals.get(outp)) is not None:
+            return v
+        if self.parent is None:
+            raise RuntimeError(f"Not found: {outp}")
+        return self.parent.find(outp)
 
 
 # ALAN can we implement RuntimeClient somehow,
@@ -118,10 +128,11 @@ class PyRuntime:
         raise RuntimeError("Unknown container type")
 
     async def _run_dataflow_subgraph(
-        self, st: _RuntimeState, parent: Node, inputs: Sequence[Value]
+        self, outer_st: _RuntimeState, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
         # assert isinstance(st.h[parent], ops.DfParentOp) # DfParentOp is a Protocal so no can do
         # FuncDefn corresponds to a Call, but inputs are the arguments
+        st = _RuntimeState(outer_st)
 
         async def get_output(src: OutPort, wait: bool) -> Value:
             while wait and (src not in st.edge_vals):
@@ -138,6 +149,7 @@ class PyRuntime:
             ]
 
         async def run_node(node: Node) -> list[Value]:
+            assert st.h[node].parent == parent
             tk_node = st.h[node].op
 
             # TODO: ops.Custom, ops.ExtOp, ops.RegisteredOp,
@@ -200,20 +212,24 @@ class PyRuntime:
                 # signal this node is now done
                 queue.task_done()
 
+        que: asyncio.Queue[Node] = asyncio.Queue(len(st.h.children(parent)))
+
         # add all node names to the queue in topsort order
         # if there are fewer workers than nodes, and the queue is populated
         # in a non-topsort order, some worker may just wait forever for it's
         # node's inputs to become available.
-        scheduleable: set[Node] = set(st.h.children(parent))
-        que: asyncio.Queue[Node] = asyncio.Queue(len(scheduleable))
+        scheduled: set[Node] = set()
 
         def schedule(n: Node):
-            if n not in scheduleable:
+            if n in scheduled:
                 return
-            scheduleable.remove(n)  # Ok as acyclic
+            scheduled.add(n)  # Ok as acyclic
             for inp in range(-1, _num_value_inputs(st.h[n].op)):  # Include Order
                 for src in st.h.linked_ports(InPort(n, inp)):
-                    schedule(src.node)
+                    if st.h[src.node].parent == parent:
+                        schedule(src.node)
+                    else:
+                        st.edge_vals[src] = outer_st.find(src)
             que.put_nowait(n)
 
         for n in st.h.children(
@@ -244,11 +260,6 @@ class PyRuntime:
         out_node = st.h.children(parent)[1]
         # No need to wait here, all nodes finishing executing:
         result = await get_inputs(out_node, wait=False)
-
-        # Clean out temps (saves memory, and necessary in case of e.g. another loop iteration)
-        for n in st.h.children(parent):
-            for out in range(_num_value_outputs(st.h[n].op)):
-                del st.edge_vals[OutPort(n, out)]
 
         return result
 

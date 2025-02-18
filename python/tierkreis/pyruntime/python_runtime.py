@@ -179,18 +179,16 @@ class PyRuntime:
                 # signal this node is now done
                 queue.task_done()
 
-        que: asyncio.Queue[Node] = asyncio.Queue(len(run_g.children(parent)))
-
         # add all node names to the queue in topsort order
         # if there are fewer workers than nodes, and the queue is populated
         # in a non-topsort order, some worker may just wait forever for it's
         # node's inputs to become available.
-        scheduled: set[Node] = set()
+        scheduleable: set[Node] = set(run_g.children(parent))
+        que: asyncio.Queue[Node] = asyncio.Queue(len(scheduleable))
 
         def schedule(n: Node):
-            if n in scheduled:
-                return
-            scheduled.add(n)  # Ok as acyclic
+            if n not in scheduleable: return
+            scheduleable.remove(n)  # Ok as acyclic
             for inp in range(-1, _num_value_inputs(run_g, n)):  # Include Order
                 for src in run_g.linked_ports(InPort(n, inp)):
                     schedule(src.node)

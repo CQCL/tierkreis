@@ -115,7 +115,7 @@ class PyRuntime:
         async def get_inputs(node: Node, wait: bool = True) -> list[Value]:
             return [
                 await get_output(_single(run_g.linked_ports(InPort(node, inp))), wait=wait)
-                for inp in range(_num_value_inputs(run_g, node))
+                for inp in range(_num_value_inputs(run_g[node].op))
             ]
 
         async def run_node(node: Node) -> list[Value]:
@@ -171,7 +171,7 @@ class PyRuntime:
                 outs = await run_node(node)
 
                 # assign outputs to edges
-                # assert len(outs) == run_g.num_out_ports(node) # No, must exclude ConstKind etc.
+                assert len(outs) == _num_value_outputs(run_g[node].op)
                 for outport_idx, val in enumerate(outs):
                     outp = OutPort(node, outport_idx)
                     self.callback(outp, val)
@@ -189,7 +189,7 @@ class PyRuntime:
         def schedule(n: Node):
             if n not in scheduleable: return
             scheduleable.remove(n)  # Ok as acyclic
-            for inp in range(-1, _num_value_inputs(run_g, n)):  # Include Order
+            for inp in range(-1, _num_value_inputs(run_g[n].op)):  # Include Order
                 for src in run_g.linked_ports(InPort(n, inp)):
                     schedule(src.node)
             que.put_nowait(n)
@@ -231,8 +231,8 @@ def unpack_first(*vals: Value) -> tuple[int, list[Value]]:
     pred.vals.extend(vals[1:])
     return (pred.tag, pred.vals)
 
-def _num_value_inputs(h: Hugr, n: Node) -> int:
-    op = h[n].op
+
+def _num_value_inputs(op: ops.Op) -> int:
     if isinstance(op, ops.DataflowOp):
         sig = op.outer_signature()
     elif isinstance(op, ops.Call):
@@ -242,6 +242,17 @@ def _num_value_inputs(h: Hugr, n: Node) -> int:
     else:
         raise RuntimeError(f"Unknown dataflow op {op}")
     return len(sig.input)
+
+def _num_value_outputs(op: ops.Op) -> int:
+    if isinstance(op, ops.DataflowOp):
+        sig = op.outer_signature()
+    elif isinstance(op, ops.Call):
+        sig = op.instantiation
+    elif isinstance(op, (ops.Const, ops.FuncDefn)):
+        return 0
+    else:
+        raise RuntimeError(f"Unknown dataflow op {op}")
+    return len(sig.output)
 
 T = TypeVar("T")
 def _single(vals: Iterable[T]) -> T:

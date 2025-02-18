@@ -15,3 +15,11 @@ async def test_factorial():
         h = Hugr._from_serial(SerialHugr.load_json(json.loads(f.read())))
     outs = await PyRuntime().run_graph(h)
     assert outs == [IntVal(120, 5).to_value()]
+
+
+@pytest.mark.asyncio
+async def test_fibonacci():
+    with open("/Users/alanlawrence/fibonacci_hugr.json") as f:
+        h = Hugr._from_serial(SerialHugr.load_json(json.loads(f.read())))
+    outs = await PyRuntime().run_graph(h)
+    assert outs == [IntVal(8, 5).to_value()]

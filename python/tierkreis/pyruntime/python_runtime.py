@@ -2,7 +2,16 @@
 
 import asyncio
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, Callable, Iterable, Optional, Tuple, Sequence, TypeVar
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Callable,
+    Iterable,
+    Optional,
+    Tuple,
+    Sequence,
+    TypeVar,
+)
 
 from hugr import Hugr, Node, InPort, OutPort, ops, tys, val
 from hugr.val import Sum, Value
@@ -14,6 +23,15 @@ class FunctionNotFound(Exception):
     def __init__(self, fname: str) -> None:
         self.function = fname
         super().__init__(f"Function {fname} not found in namespace.")
+
+
+class _RuntimeState:
+    h: Hugr
+    edge_vals: dict[OutPort, Value]
+
+    def __init__(self, h: Hugr):
+        self.h = h
+        self.edge_vals = {}
 
 
 # ALAN can we implement RuntimeClient somehow,
@@ -66,60 +84,63 @@ class PyRuntime:
                 for op in [run_g[n].op]
                 if isinstance(op, ops.FuncDefn) and op.f_name == "main"
             )
-        return await self._run_container(run_g, main, [make_val(p) for p in py_inputs])
+        return await self._run_container(
+            _RuntimeState(run_g), main, [make_val(p) for p in py_inputs]
+        )
 
     async def _run_container(
-        self, run_g: Hugr, parent: Node, inputs: Sequence[Value]
+        self, st: _RuntimeState, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
         """parent is a DataflowOp"""
-        parent_node = run_g[parent].op
+        parent_node = st.h[parent].op
         if isinstance(parent_node, (ops.DFG, ops.FuncDefn)):
-            return await self._run_dataflow_subgraph(run_g, parent, inputs)
+            return await self._run_dataflow_subgraph(st, parent, inputs)
         if isinstance(parent_node, ops.CFG):
-            pc = run_g.children(parent)[0]
+            pc = st.h.children(parent)[0]
             assert isinstance(pc, ops.DataflowBlock)
             while True:
                 (tag, inputs) = unpack_first(
-                    *await self._run_dataflow_subgraph(run_g, pc, inputs)
+                    *await self._run_dataflow_subgraph(st, pc, inputs)
                 )
-                (bb,) = run_g.linked_ports(pc[tag])  # Should only be 1
+                (bb,) = st.h.linked_ports(pc[tag])  # Should only be 1
                 pc = bb.node
                 if isinstance(pc, ops.ExitBlock):
                     return inputs
         if isinstance(parent_node, ops.Conditional):
             (tag, inputs) = unpack_first(*inputs)
-            case_node = run_g.children(parent)[tag]
-            return await self._run_dataflow_subgraph(run_g, case_node, inputs)
+            case_node = st.h.children(parent)[tag]
+            return await self._run_dataflow_subgraph(st, case_node, inputs)
         if isinstance(parent_node, ops.TailLoop):
             while True:
                 (tag, inputs) = unpack_first(
-                    *await self._run_dataflow_subgraph(run_g, parent, inputs)
+                    *await self._run_dataflow_subgraph(st, parent, inputs)
                 )
                 if tag == ops.Break.tag:
                     return inputs
         raise RuntimeError("Unknown container type")
 
     async def _run_dataflow_subgraph(
-        self, run_g: Hugr, parent: Node, inputs: Sequence[Value]
+        self, st: _RuntimeState, parent: Node, inputs: Sequence[Value]
     ) -> list[Value]:
-        # assert isinstance(run_g[parent], ops.DfParentOp) # DfParentOp is a Protocal so no can do
+        # assert isinstance(st.h[parent], ops.DfParentOp) # DfParentOp is a Protocal so no can do
         # FuncDefn corresponds to a Call, but inputs are the arguments
-        runtime_state: dict[OutPort, Value] = {}
 
         async def get_output(src: OutPort, wait: bool) -> Value:
-            while wait and (src not in runtime_state):
+            while wait and (src not in st.edge_vals):
                 assert self.num_workers > 1
                 await asyncio.sleep(0)
-            return runtime_state[src]
+            return st.edge_vals[src]
 
         async def get_inputs(node: Node, wait: bool = True) -> list[Value]:
             return [
-                await get_output(_single(run_g.linked_ports(InPort(node, inp))), wait=wait)
-                for inp in range(_num_value_inputs(run_g[node].op))
+                await get_output(
+                    _single(st.h.linked_ports(InPort(node, inp))), wait=wait
+                )
+                for inp in range(_num_value_inputs(st.h[node].op))
             ]
 
         async def run_node(node: Node) -> list[Value]:
-            tk_node = run_g[node].op
+            tk_node = st.h[node].op
 
             # TODO: ops.Custom, ops.ExtOp, ops.RegisteredOp,
             # ops.CallIndirect, ops.LoadFunc
@@ -136,17 +157,19 @@ class PyRuntime:
                 # These are static only, no value outputs
                 return []
             if isinstance(tk_node, ops.LoadConst):
-                (const_src,) = run_g.linked_ports(InPort(node, 0))
-                cst = run_g[const_src.node].op
+                (const_src,) = st.h.linked_ports(InPort(node, 0))
+                cst = st.h[const_src.node].op
                 assert isinstance(cst, ops.Const)
                 return [cst.val]
 
             inps = await get_inputs(node, wait=True)
             if isinstance(tk_node, (ops.Conditional, ops.CFG, ops.DFG, ops.TailLoop)):
-                return await self._run_container(run_g, node, inps)
+                return await self._run_container(st, node, inps)
             elif isinstance(tk_node, ops.Call):
-                (func_tgt,) = run_g.linked_ports(InPort(node, tk_node._function_port_offset())) # TODO Make this non-private?
-                return await self._run_dataflow_subgraph(run_g, func_tgt.node, inps)
+                (func_tgt,) = st.h.linked_ports(
+                    InPort(node, tk_node._function_port_offset())
+                )  # TODO Make this non-private?
+                return await self._run_dataflow_subgraph(st, func_tgt.node, inps)
             elif isinstance(tk_node, ops.Tag):
                 return [Sum(tk_node.tag, tk_node.sum_ty, inps)]
             elif isinstance(tk_node, ops.MakeTuple):
@@ -171,11 +194,11 @@ class PyRuntime:
                 outs = await run_node(node)
 
                 # assign outputs to edges
-                assert len(outs) == _num_value_outputs(run_g[node].op)
+                assert len(outs) == _num_value_outputs(st.h[node].op)
                 for outport_idx, val in enumerate(outs):
                     outp = OutPort(node, outport_idx)
                     self.callback(outp, val)
-                    runtime_state[outp] = val
+                    st.edge_vals[outp] = val
                 # signal this node is now done
                 queue.task_done()
 
@@ -183,18 +206,19 @@ class PyRuntime:
         # if there are fewer workers than nodes, and the queue is populated
         # in a non-topsort order, some worker may just wait forever for it's
         # node's inputs to become available.
-        scheduleable: set[Node] = set(run_g.children(parent))
+        scheduleable: set[Node] = set(st.h.children(parent))
         que: asyncio.Queue[Node] = asyncio.Queue(len(scheduleable))
 
         def schedule(n: Node):
-            if n not in scheduleable: return
+            if n not in scheduleable:
+                return
             scheduleable.remove(n)  # Ok as acyclic
-            for inp in range(-1, _num_value_inputs(run_g[n].op)):  # Include Order
-                for src in run_g.linked_ports(InPort(n, inp)):
+            for inp in range(-1, _num_value_inputs(st.h[n].op)):  # Include Order
+                for src in st.h.linked_ports(InPort(n, inp)):
                     schedule(src.node)
             que.put_nowait(n)
 
-        for n in run_g.children(
+        for n in st.h.children(
             parent
         ):  # Input, then Output, then any unreachable from Output
             schedule(n)
@@ -219,10 +243,16 @@ class PyRuntime:
         # Wait until all worker tasks are cancelled.
         await asyncio.gather(*workers, return_exceptions=True)
 
-        out_node = run_g.children(parent)[1]
-        return await get_inputs(
-            out_node, wait=False
-        )  # No need to wait, all nodes finishing executing.
+        out_node = st.h.children(parent)[1]
+        # No need to wait here, all nodes finishing executing:
+        result = await get_inputs(out_node, wait=False)
+
+        # Clean out temps (saves memory, and necessary in case of e.g. another loop iteration)
+        for n in st.h.children(parent):
+            for out in range(_num_value_outputs(st.h[n].op)):
+                del st.edge_vals[OutPort(n, out)]
+
+        return result
 
 
 def unpack_first(*vals: Value) -> tuple[int, list[Value]]:
@@ -243,6 +273,7 @@ def _num_value_inputs(op: ops.Op) -> int:
         raise RuntimeError(f"Unknown dataflow op {op}")
     return len(sig.input)
 
+
 def _num_value_outputs(op: ops.Op) -> int:
     if isinstance(op, ops.DataflowOp):
         sig = op.outer_signature()
@@ -254,22 +285,25 @@ def _num_value_outputs(op: ops.Op) -> int:
         raise RuntimeError(f"Unknown dataflow op {op}")
     return len(sig.output)
 
+
 T = TypeVar("T")
+
+
 def _single(vals: Iterable[T]) -> T:
     (val,) = vals
     return val
 
+
 def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
     if op.extension == "arithmetic.int":
         if op.op_name == "ilt_u":
-            (a,b) = inputs
+            (a, b) = inputs
             assert isinstance(a, val.Extension)
-            a = a.val['value']
+            a = a.val["value"]
             assert isinstance(a, int)
             assert isinstance(b, val.Extension)
-            b = b.val['value']
+            b = b.val["value"]
             assert isinstance(b, int)
             # TODO need to implement overflow/wrapping according to type(argument)
             return [val.TRUE if a < b else val.FALSE]
     raise RuntimeError(f"Unknown op {op}")
-    

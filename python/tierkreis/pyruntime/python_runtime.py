@@ -145,7 +145,7 @@ class PyRuntime:
                 await get_output(
                     _single(st.h.linked_ports(InPort(node, inp))), wait=wait
                 )
-                for inp in range(_num_value_inputs(st.h[node].op))
+                for inp in _node_inputs(st.h[node].op, False)
             ]
 
         async def run_node(node: Node) -> list[Value]:
@@ -224,7 +224,7 @@ class PyRuntime:
             if n in scheduled:
                 return
             scheduled.add(n)  # Ok as acyclic
-            for inp in range(-1, _num_value_inputs(st.h[n].op)):  # Include Order
+            for inp in _node_inputs(st.h[n].op, True):
                 for src in st.h.linked_ports(InPort(n, inp)):
                     if st.h[src.node].parent == parent:
                         schedule(src.node)
@@ -271,16 +271,22 @@ def unpack_first(*vals: Value) -> tuple[int, list[Value]]:
     return (pred.tag, pred.vals)
 
 
-def _num_value_inputs(op: ops.Op) -> int:
+def _node_inputs(op: ops.Op, include_order: bool = False) -> Iterable[int]:
+    if include_order:
+        yield -1
     if isinstance(op, ops.DataflowOp):
-        sig = op.outer_signature()
+        n = len(op.outer_signature().input)
+        yield from range(n)
     elif isinstance(op, ops.Call):
-        sig = op.instantiation
+        n = len(op.instantiation.input)
+        yield from range(n)
+        n += 1  # Skip Function input
     elif isinstance(op, (ops.Const, ops.FuncDefn)):
-        return 0
+        n = 0
     else:
         raise RuntimeError(f"Unknown dataflow op {op}")
-    return len(sig.input)
+    if include_order:
+        yield n
 
 
 def _num_value_outputs(op: ops.Op) -> int:

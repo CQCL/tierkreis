@@ -338,4 +338,8 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
             (a, b, lw) = two_ints_logwidth()
             # TODO: wrap/overflow to appropriate width
             return [IntVal(a * b, lw).to_value()]
+        if op.op_name == "iadd":
+            (a, b, lw) = two_ints_logwidth()
+            # TODO: wrap/underflow to appropriate width
+            return [IntVal(a + b, lw).to_value()]
     raise RuntimeError(f"Unknown op {op}")

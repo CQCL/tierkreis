@@ -115,7 +115,7 @@ class PyRuntime:
                 (tag, inputs) = unpack_first(
                     *await self._run_dataflow_subgraph(st, parent, inputs)
                 )
-                if tag == ops.Break.tag:
+                if tag == BREAK_TAG:
                     return inputs
         raise RuntimeError("Unknown container type")
 
@@ -292,6 +292,9 @@ T = TypeVar("T")
 def _single(vals: Iterable[T]) -> T:
     (val,) = vals
     return val
+
+
+BREAK_TAG = ops.Break(tys.Either([tys.Unit], [tys.Unit])).tag
 
 
 def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:

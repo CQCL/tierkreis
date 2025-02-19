@@ -63,10 +63,10 @@ async def test_break_different_types1a():
         return 3 if z else x
 
     (h,) = foo.compile().package.modules
-    outs = await PyRuntime().run_graph(h, IntVal(3, 6))
+    outs = await PyRuntime().run_graph(h, 3)
     assert outs == [IntVal(11, width=6).to_value()]
-    outs = await PyRuntime().run_graph(h, IntVal(6, 6))
-    assert outs == [IntVal(6, width=6)]
+    outs = await PyRuntime().run_graph(h, 6)
+    assert outs == [IntVal(6, width=6).to_value()]
 
 
 @pytest.mark.asyncio

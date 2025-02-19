@@ -13,7 +13,7 @@ from typing import (
 
 from hugr import Hugr, Node, InPort, OutPort, ops, tys, val
 from hugr.val import Sum, Value
-from hugr.std.int import IntVal
+from hugr.std.int import IntVal, INT_T_DEF
 
 
 class FunctionNotFound(Exception):
@@ -41,6 +41,20 @@ class _RuntimeState:
         if self.parent is None:
             raise RuntimeError(f"Not found: {outp}")
         return self.parent.find(outp)
+
+
+def make_val(v: Any, ty: tys.Type) -> Value:
+    if isinstance(v, Value):
+        return v
+    if isinstance(v, bool) and ty == tys.Bool:
+        return val.TRUE if v else val.FALSE
+    if isinstance(v, int):
+        assert isinstance(ty, tys.ExtType)
+        assert ty.type_def == INT_T_DEF
+        (width_arg,) = ty.args
+        assert isinstance(width_arg, tys.BoundedNatArg)
+        return IntVal(v, width_arg.n).to_value()
+    raise RuntimeError("Don't know how to convert python value: {v}")
 
 
 # ALAN can we implement RuntimeClient somehow,
@@ -80,13 +94,6 @@ class PyRuntime:
         Returns the outputs of the graph.
         """
 
-        def make_val(v: Any) -> Value:  # TODO take desired type also, e.g. int width
-            if isinstance(v, Value):
-                return v
-            if isinstance(v, bool):
-                return val.TRUE if v else val.FALSE
-            raise RuntimeError("Don't know how to convert python value: {v}")
-
         main = run_g.root
         if isinstance(run_g[main].op, ops.Module):
             funcs = [
@@ -99,8 +106,19 @@ class PyRuntime:
                     n for n in funcs if cast(ops.FuncDefn, run_g[n].op).f_name == "main"
                 )
             )
+        op = run_g[main].op
+        inputs: tys.TypeRow
+        if isinstance(op, ops.DataflowOp):
+            inputs = op.outer_signature().input
+        else:
+            assert isinstance(op, ops.FuncDefn)
+            assert op.params == []
+            inputs = op.inputs
+
         return await self._run_container(
-            _RuntimeState(run_g), main, [make_val(p) for p in py_inputs]
+            _RuntimeState(run_g),
+            main,
+            [make_val(p, t) for p, t in zip(py_inputs, inputs, strict=True)],
         )
 
     async def _run_container(

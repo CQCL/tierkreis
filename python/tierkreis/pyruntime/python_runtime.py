@@ -4,16 +4,17 @@ import asyncio
 from typing import (
     Any,
     Callable,
-    cast,
     Iterable,
     Optional,
-    Sequence,
     TypeVar,
+    cast,
 )
 
-from hugr import Hugr, Node, InPort, OutPort, ops, tys, val
+from hugr import Hugr, InPort, Node, OutPort, ops, tys, val
+from hugr.std.int import INT_T_DEF, IntVal
 from hugr.val import Sum, Value
-from hugr.std.int import IntVal, INT_T_DEF
+
+from .python_builtin import run_ext_op
 
 
 class FunctionNotFound(Exception):
@@ -339,43 +340,3 @@ def _single(vals: Iterable[T]) -> T:
 
 
 BREAK_TAG = ops.Break(tys.Either([tys.Unit], [tys.Unit])).tag
-
-
-def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
-    def two_ints_logwidth() -> tuple[int, int, int]:
-        (a, b) = inputs
-        if not isinstance(a, val.Extension):
-            a = cast(val.ExtensionValue, a).to_value()
-        av = a.val["value"]
-        assert isinstance(av, int)
-
-        if not isinstance(b, val.Extension):
-            b = cast(val.ExtensionValue, b).to_value()
-        bv = b.val["value"]
-        assert isinstance(bv, int)
-
-        lw = a.val["log_width"]
-        assert isinstance(lw, int)
-        assert lw == b.val["log_width"]
-        return av, bv, lw
-
-    if op.extension == "arithmetic.int":
-        if op.op_name in ["ilt_u", "ilt_s"]:  # TODO how does signedness work here
-            (a, b, _) = two_ints_logwidth()
-            return [val.TRUE if a < b else val.FALSE]
-        if op.op_name in ["igt_u", "igt_s"]:  # TODO how does signedness work here
-            (a, b, _) = two_ints_logwidth()
-            return [val.TRUE if a > b else val.FALSE]
-        if op.op_name == "isub":
-            (a, b, lw) = two_ints_logwidth()
-            # TODO: wrap/underflow to appropriate width
-            return [IntVal(a - b, lw).to_value()]
-        if op.op_name == "imul":
-            (a, b, lw) = two_ints_logwidth()
-            # TODO: wrap/overflow to appropriate width
-            return [IntVal(a * b, lw).to_value()]
-        if op.op_name == "iadd":
-            (a, b, lw) = two_ints_logwidth()
-            # TODO: wrap/underflow to appropriate width
-            return [IntVal(a + b, lw).to_value()]
-    raise RuntimeError(f"Unknown op {op}")

@@ -1,13 +1,8 @@
-from typing import Iterable
 
 import pytest
-
 from guppylang.decorator import guppy
 from guppylang.module import GuppyModule
-
-from hugr import Hugr, val
-from hugr.ext import ExtensionRegistry
-from hugr.package import Package
+from hugr import Hugr
 from hugr.std.int import IntVal
 
 from tierkreis.pyruntime import PyRuntime

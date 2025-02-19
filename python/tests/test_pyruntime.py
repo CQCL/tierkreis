@@ -1,4 +1,3 @@
-
 import pytest
 from guppylang.decorator import guppy
 from guppylang.module import GuppyModule
@@ -80,3 +79,39 @@ async def test_calls_tuples():
     h = module.compile().module
     outs = await PyRuntime().run_graph(h, IntVal(3, 6))
     assert outs == [IntVal(3, 6)]
+
+
+@pytest.mark.asyncio
+async def test_exec_array():
+    module = GuppyModule("test")
+
+    @guppy(module)
+    def main() -> int:
+        a = array(1, 2, 3)
+        return a[0] + a[1] + a[2]
+
+    h = module.compile().module
+    outs = await PyRuntime().run_graph(h)
+    assert outs == [IntVal(6, 6).to_value()]
+
+
+@pytest.mark.asyncio
+async def test_subscript_assign():
+    from guppylang.std.builtins import array, owned
+
+    module = GuppyModule("test")
+
+    @guppy(module)
+    def foo(xs: array[int, 3] @ owned, idx: int, n: int) -> array[int, 3]:
+        xs[idx] = n
+        return xs
+
+    @guppy(module)
+    def main() -> int:
+        xs = array(0, 0, 0)
+        xs = foo(xs, 0, 2)
+        return xs[0]
+
+    h = module.compile().module
+    outs = await PyRuntime().run_graph(h)
+    assert outs == [IntVal(2, 6)]

@@ -1,8 +1,11 @@
-"""Implementation of Hugr std lib in python."""
+"""Implementation of builtin namespace in python."""
+
 from dataclasses import dataclass
+from copy import deepcopy
 from typing import cast
 
 from hugr import ops, tys, val
+from hugr.std.collections.array import ArrayVal
 from hugr.std.int import IntVal
 from hugr.val import Value
 
@@ -15,11 +18,21 @@ class USizeVal(val.ExtensionValue):
         return val.Extension(
             "ConstUSize",
             typ=tys.USize(),
-            val = {"value": self.v} # or just the int without the dict?
+            val={"value": self.v},  # or just the int without the dict?
         )
-    
+
     def __str(self) -> str:
         return f"{self.v}"
+
+
+def usize_to_py(v: Value) -> int:
+    ev: val.Extension = (
+        v if isinstance(v, val.Extension) else cast(val.ExtensionValue, v).to_value()
+    )
+    u = ev.val["value"]
+    assert isinstance(u, int)
+    return u
+
 
 def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
     def two_ints_logwidth() -> tuple[int, int, int]:
@@ -38,6 +51,7 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
         assert isinstance(lw, int)
         assert lw == b.val["log_width"]
         return av, bv, lw
+
     def one_int_logwidth() -> tuple[int, int]:
         (a,) = inputs
         if not isinstance(a, val.Extension):
@@ -51,7 +65,7 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
 
     if op.extension == "arithmetic.conversions":
         if op.op_name == "itousize":
-            (a,_) = one_int_logwidth()
+            (a, _) = one_int_logwidth()
             return [USizeVal(a).to_value()]
     elif op.extension == "arithmetic.int":
         if op.op_name in ["ilt_u", "ilt_s"]:  # TODO how does signedness work here
@@ -74,7 +88,7 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
             return [IntVal(a + b, lw).to_value()]
         if op.op_name in ["idiv_s", "idiv_u"]:  # TODO how does signedness work here
             (a, b, lw) = two_ints_logwidth()
-            return [IntVal(a//b, lw).to_value()]
+            return [IntVal(a // b, lw).to_value()]
         if op.op_name in ["imod_s", "imod_u"]:  # TODO how does signedness work here
             (a, b, lw) = two_ints_logwidth()
             return [IntVal(a % b, lw).to_value()]
@@ -87,8 +101,43 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
             assert a in [val.TRUE, val.FALSE]
             return [val.FALSE if a == val.TRUE else val.TRUE]
         if op.op_name == "Eq":  # Yeah, presumably case sensitive, so why not 'eq'
-            (a,b) = inputs
+            (a, b) = inputs
             assert a in [val.TRUE, val.FALSE]
             assert b in [val.TRUE, val.FALSE]
             return [val.TRUE if (a == b) else val.FALSE]
+    elif op.extension == "collections.array":
+        if op.op_name == "new_array":
+            (length, elem_type) = op.args
+            assert length == tys.BoundedNatArg(len(inputs))
+            assert isinstance(elem_type, tys.TypeTypeArg)
+            return [ArrayVal(inputs, elem_type.ty)]
+        elif op.op_name == "get":
+            (array, index) = inputs
+            idx = usize_to_py(index)
+            if isinstance(array, ArrayVal):
+                return [
+                    val.None_(array.ty.ty)
+                    if idx >= len(array.v)
+                    else val.Some(array.v[idx])
+                ]
+            raise RuntimeError("YES THIS HAPPENS - non-ArrayVal array")
+            assert isinstance(array, val.Extension)
+            ar = array.val["values"]
+            ty = array.val["typ"].deserialize()
+            return [
+                val.None_(ty) if idx >= len(ar) else val.Some(ar[idx].deserialize())
+            ]
+        elif op.op_name == "set":
+            (array, index, new_val) = inputs
+            idx = usize_to_py(index)
+            if isinstance(array, ArrayVal):
+                other_tys = [array.ty.ty, array.ty]
+                if idx >= len(array.v):
+                    return [val.Left([new_val, array], other_tys)]
+                else:
+                    array = deepcopy(array)
+                    old_val = array.v[idx]
+                    array.v[idx] = new_val
+                    return [val.Right(other_tys, [old_val, array])]
+            raise RuntimeError("YES THIS HAPPENS - non-ArrayVal array")
     raise RuntimeError(f"Unknown op {op}")

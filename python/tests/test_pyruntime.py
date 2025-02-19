@@ -8,7 +8,7 @@ from guppylang.module import GuppyModule
 from hugr import Hugr, val
 from hugr.ext import ExtensionRegistry
 from hugr.package import Package
-from hugr.std.int import IntVal, INT_TYPES_EXTENSION
+from hugr.std.int import IntVal
 
 from tierkreis.pyruntime import PyRuntime
 
@@ -28,18 +28,6 @@ async def test_fibonacci():
     outs = await PyRuntime().run_graph(h)
     assert outs == [IntVal(8, 5).to_value()]
 
-reg = ExtensionRegistry()
-# reg.add_extension(INT_OPS_EXTENSION)  # not needed while we are only resolving types
-reg.add_extension(INT_TYPES_EXTENSION)
-
-def resolve_all(vals: Iterable[val.Value]):
-    for v in vals:
-        if isinstance(v, val.Extension):
-            v.typ = v.typ.resolve(reg)
-
-def roundtrip(p: Package) -> Package:
-    return Package.from_json(p.to_json())
-
 @pytest.mark.asyncio
 async def test_double_type_change():
     module = GuppyModule("module")
@@ -48,10 +36,8 @@ async def test_double_type_change():
         y = 4
         (y := 1) if (y := b) else (y := 6)
         return y
-    (h,) = roundtrip(foo.compile().package).modules
+    (h,) = foo.compile().package.modules
     outs = await PyRuntime().run_graph(h, True)
-    resolve_all(outs)
-    assert outs == [IntVal(1, width=6).to_value()]
+    assert outs == [IntVal(1, width=6)]
     outs = await PyRuntime().run_graph(h, False)
-    resolve_all(outs)
-    assert outs == [IntVal(6, width=6).to_value()]
+    assert outs == [IntVal(6, width=6)]

@@ -4,6 +4,7 @@ import asyncio
 from typing import (
     Any,
     Callable,
+    cast,
     Iterable,
     Optional,
     Sequence,
@@ -82,15 +83,21 @@ class PyRuntime:
         def make_val(v: Any) -> Value:  # TODO take desired type also, e.g. int width
             if isinstance(v, Value):
                 return v
+            if isinstance(v, bool):
+                return val.TRUE if v else val.FALSE
             raise RuntimeError("Don't know how to convert python value: {v}")
 
         main = run_g.root
         if isinstance(run_g[main].op, ops.Module):
+            funcs = [
+                n for n in run_g.children(main) if isinstance(run_g[n].op, ops.FuncDefn)
+            ]
             (main,) = (
-                n
-                for n in run_g.children(main)
-                for op in [run_g[n].op]
-                if isinstance(op, ops.FuncDefn) and op.f_name == "main"
+                funcs
+                if len(funcs) == 1
+                else (
+                    n for n in funcs if cast(ops.FuncDefn, run_g[n].op).f_name == "main"
+                )
             )
         return await self._run_container(
             _RuntimeState(run_g), main, [make_val(p) for p in py_inputs]
@@ -104,15 +111,15 @@ class PyRuntime:
         if isinstance(parent_node, (ops.DFG, ops.FuncDefn)):
             return await self._run_dataflow_subgraph(st, parent, inputs)
         if isinstance(parent_node, ops.CFG):
-            pc = st.h.children(parent)[0]
-            assert isinstance(pc, ops.DataflowBlock)
+            pc: Node = st.h.children(parent)[0]
+            assert isinstance(st.h[pc].op, ops.DataflowBlock)
             while True:
                 (tag, inputs) = unpack_first(
                     *await self._run_dataflow_subgraph(st, pc, inputs)
                 )
                 (bb,) = st.h.linked_ports(pc[tag])  # Should only be 1
                 pc = bb.node
-                if isinstance(pc, ops.ExitBlock):
+                if isinstance(st.h[pc].op, ops.ExitBlock):
                     return inputs
         if isinstance(parent_node, ops.Conditional):
             (tag, inputs) = unpack_first(*inputs)

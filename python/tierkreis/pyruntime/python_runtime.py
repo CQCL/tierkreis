@@ -104,7 +104,7 @@ class PyRuntime:
         )
 
     async def _run_container(
-        self, st: _RuntimeState, parent: Node, inputs: Sequence[Value]
+        self, st: _RuntimeState, parent: Node, inputs: list[Value]
     ) -> list[Value]:
         """parent is a DataflowOp"""
         parent_node = st.h[parent].op
@@ -112,8 +112,8 @@ class PyRuntime:
             return await self._run_dataflow_subgraph(st, parent, inputs)
         if isinstance(parent_node, ops.CFG):
             pc: Node = st.h.children(parent)[0]
-            assert isinstance(st.h[pc].op, ops.DataflowBlock)
             while True:
+                assert isinstance(st.h[pc].op, ops.DataflowBlock)
                 (tag, inputs) = unpack_first(
                     *await self._run_dataflow_subgraph(st, pc, inputs)
                 )
@@ -135,7 +135,7 @@ class PyRuntime:
         raise RuntimeError("Unknown container type")
 
     async def _run_dataflow_subgraph(
-        self, outer_st: _RuntimeState, parent: Node, inputs: Sequence[Value]
+        self, outer_st: _RuntimeState, parent: Node, inputs: list[Value]
     ) -> list[Value]:
         # assert isinstance(st.h[parent], ops.DfParentOp) # DfParentOp is a Protocal so no can do
         # FuncDefn corresponds to a Call, but inputs are the arguments
@@ -165,7 +165,7 @@ class PyRuntime:
             if isinstance(tk_node, ops.Output):
                 return []
             if isinstance(tk_node, ops.Input):
-                return list(inputs)
+                return inputs
 
             if isinstance(
                 tk_node,
@@ -274,8 +274,7 @@ class PyRuntime:
 def unpack_first(*vals: Value) -> tuple[int, list[Value]]:
     pred = vals[0]
     assert isinstance(pred, Sum)
-    pred.vals.extend(vals[1:])
-    return (pred.tag, pred.vals)
+    return (pred.tag, pred.vals + list(vals[1:]))
 
 
 def _node_inputs(op: ops.Op, include_order: bool = False) -> Iterable[int]:

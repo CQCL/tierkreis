@@ -133,14 +133,21 @@ class PyRuntime:
         """parent is a DataflowOp"""
         parent_node = st.h[parent].op
         if isinstance(parent_node, (ops.DFG, ops.FuncDefn)):
-            return await self._run_dataflow_subgraph(st, parent, inputs)
+            results, _ = await self._run_dataflow_subgraph(st, parent, inputs)
+            return results
         if isinstance(parent_node, ops.CFG):
             pc: Node = st.h.children(parent)[0]
+            last_inp_state = {}
+            next_st = st
             while True:
                 assert isinstance(st.h[pc].op, ops.DataflowBlock)
-                (tag, inputs) = unpack_first(
-                    *await self._run_dataflow_subgraph(st, pc, inputs)
+                if (prev_st := last_inp_state.get(pc)) is not None:
+                    next_st = remove_keys_since(next_st, prev_st)
+                last_inp_state[pc] = next_st
+                results, next_st = await self._run_dataflow_subgraph(
+                    next_st, pc, inputs
                 )
+                (tag, inputs) = unpack_first(*results)
                 (bb,) = st.h.linked_ports(pc[tag])  # Should only be 1
                 pc = bb.node
                 if isinstance(st.h[pc].op, ops.ExitBlock):
@@ -148,19 +155,19 @@ class PyRuntime:
         if isinstance(parent_node, ops.Conditional):
             (tag, inputs) = unpack_first(*inputs)
             case_node = st.h.children(parent)[tag]
-            return await self._run_dataflow_subgraph(st, case_node, inputs)
+            results, _ = await self._run_dataflow_subgraph(st, case_node, inputs)
+            return results
         if isinstance(parent_node, ops.TailLoop):
             while True:
-                (tag, inputs) = unpack_first(
-                    *await self._run_dataflow_subgraph(st, parent, inputs)
-                )
+                results, _ = await self._run_dataflow_subgraph(st, parent, inputs)
+                (tag, inputs) = unpack_first(*results)
                 if tag == BREAK_TAG:
                     return inputs
         raise RuntimeError("Unknown container type")
 
     async def _run_dataflow_subgraph(
         self, outer_st: _RuntimeState, parent: Node, inputs: list[Value]
-    ) -> list[Value]:
+    ) -> tuple[list[Value], _RuntimeState]:
         # assert isinstance(st.h[parent], ops.DfParentOp) # DfParentOp is a Protocal so no can do
         # FuncDefn corresponds to a Call, but inputs are the arguments
         st = _RuntimeState(outer_st)
@@ -210,7 +217,8 @@ class PyRuntime:
                 (func_tgt,) = st.h.linked_ports(
                     InPort(node, tk_node._function_port_offset())
                 )  # TODO Make this non-private?
-                return await self._run_dataflow_subgraph(st, func_tgt.node, inps)
+                results, _ = await self._run_dataflow_subgraph(st, func_tgt.node, inps)
+                return results
             elif isinstance(tk_node, ops.Tag):
                 return [Sum(tk_node.tag, tk_node.sum_ty, inps)]
             elif isinstance(tk_node, ops.MakeTuple):
@@ -292,7 +300,7 @@ class PyRuntime:
         # No need to wait here, all nodes finishing executing:
         result = await get_inputs(out_node, wait=False)
 
-        return result
+        return result, st
 
 
 def unpack_first(*vals: Value) -> tuple[int, list[Value]]:
@@ -340,3 +348,32 @@ def _single(vals: Iterable[T]) -> T:
 
 
 BREAK_TAG = ops.Break(tys.Either([tys.Unit], [tys.Unit])).tag
+
+
+def remove_keys_since(new_st: _RuntimeState, tmpl_st: _RuntimeState) -> _RuntimeState:
+    """Construct a new state like `new_st` but containing only keys also in `tmpl_st`."""
+
+    def list_frames(st: _RuntimeState) -> list[_RuntimeState]:
+        lst = [] if st.parent is None else list_frames(st.parent)
+        lst.append(st)
+        return lst
+
+    new_frames = list_frames(new_st)
+    old_frames = list_frames(new_st)
+    i = 0
+    while new_frames[i] is old_frames[i]:
+        i += 1
+        if i == len(old_frames):
+            return old_frames[-1]
+        if i == len(new_frames):
+            return new_frames[-1]  #
+    assert i > 0
+    keys_can_keep = frozenset.union(
+        *(frozenset(old_frame.edge_vals.keys()) for old_frame in old_frames[i:])
+    )
+    condensed_frame = _RuntimeState(old_frames[i - 1])
+    for new_frame in new_frames[i:]:
+        condensed_frame.edge_vals.update(
+            {k: v for k, v in new_frame.edge_vals.items() if k in keys_can_keep}
+        )
+    return condensed_frame

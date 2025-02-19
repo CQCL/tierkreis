@@ -1,7 +1,7 @@
 """Implementation of builtin namespace in python."""
 
-from dataclasses import dataclass
 from copy import deepcopy
+from dataclasses import dataclass
 from typing import cast
 
 from hugr import ops, tys, val
@@ -92,6 +92,10 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
         if op.op_name in ["imod_s", "imod_u"]:  # TODO how does signedness work here
             (a, b, lw) = two_ints_logwidth()
             return [IntVal(a % b, lw).to_value()]
+        if op.op_name in ["idivmod_s", "idivmod_u"]:
+            # TODO how does signedness work here
+            (a, b, lw) = two_ints_logwidth()
+            return [IntVal(a // b, lw).to_value(), IntVal(a % b, lw).to_value()]
         if op.op_name == "ineg":
             (a, lw) = one_int_logwidth()
             return [IntVal(-a, lw).to_value()]

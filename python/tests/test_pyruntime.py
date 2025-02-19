@@ -1,8 +1,9 @@
 import pytest
 from guppylang.decorator import guppy
 from guppylang.module import GuppyModule
-from hugr import Hugr
-from hugr.std.int import IntVal
+from hugr import Hugr, tys, val
+from hugr.build import Cfg
+from hugr.std.int import INT_T, DivMod, IntVal
 
 from tierkreis.pyruntime import PyRuntime
 
@@ -83,6 +84,8 @@ async def test_calls_tuples():
 
 @pytest.mark.asyncio
 async def test_exec_array():
+    from guppylang.std.builtins import array
+
     module = GuppyModule("test")
 
     @guppy(module)
@@ -115,3 +118,31 @@ async def test_subscript_assign():
     h = module.compile().module
     outs = await PyRuntime().run_graph(h)
     assert outs == [IntVal(2, 6)]
+
+
+@pytest.mark.asyncio
+async def test_dom_edges():
+    c = Cfg(tys.Bool, INT_T)
+
+    entry = c.add_entry()
+    cst = entry.load(IntVal(6))
+    entry.set_block_outputs(*entry.inputs())  # Use Bool to branch, so INT_T
+
+    middle_1 = c.add_successor(entry[0])
+    dm = middle_1.add(DivMod(*middle_1.inputs(), cst))
+    middle_1.set_single_succ_outputs(dm[0])
+
+    middle_2 = c.add_successor(entry[1])
+    middle_2.set_single_succ_outputs(*middle_2.inputs())
+
+    merge = c.add_successor(middle_1)
+    c.branch(middle_2[0], merge)
+    merge.set_single_succ_outputs(*merge.inputs(), cst)
+
+    c.branch_exit(merge)
+
+    outs = await PyRuntime().run_graph(c.hugr, val.TRUE, 12)
+    assert outs == [IntVal(12).to_value(), IntVal(6)]
+
+    outs = await PyRuntime().run_graph(c.hugr, val.FALSE, 18)
+    assert outs == [IntVal(3).to_value(), IntVal(6)]

@@ -2,12 +2,15 @@ from typing import Iterable
 
 import pytest
 
-from tierkreis.pyruntime import PyRuntime
+from guppylang.decorator import guppy
+from guppylang.module import GuppyModule
 
 from hugr import Hugr, val
 from hugr.ext import ExtensionRegistry
 from hugr.package import Package
 from hugr.std.int import IntVal, INT_TYPES_EXTENSION
+
+from tierkreis.pyruntime import PyRuntime
 
 
 @pytest.mark.asyncio
@@ -34,11 +37,18 @@ def resolve_all(vals: Iterable[val.Value]):
         if isinstance(v, val.Extension):
             v.typ = v.typ.resolve(reg)
 
+def roundtrip(p: Package) -> Package:
+    return Package.from_json(p.to_json())
+
 @pytest.mark.asyncio
 async def test_double_type_change():
-    with open("/Users/alanlawrence/double_type_change_hugr.json") as f:
-        p = Package.from_json(f.read())
-    (h,) = p.modules
+    module = GuppyModule("module")
+    @guppy(module)
+    def foo(b: bool) -> int:
+        y = 4
+        (y := 1) if (y := b) else (y := 6)
+        return y
+    (h,) = roundtrip(foo.compile().package).modules
     outs = await PyRuntime().run_graph(h, True)
     resolve_all(outs)
     assert outs == [IntVal(1, width=6).to_value()]

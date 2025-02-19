@@ -363,6 +363,23 @@ wheels = [
 ]
 
 [[package]]
+name = "guppylang"
+version = "0.15.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "graphviz" },
+    { name = "hugr" },
+    { name = "networkx" },
+    { name = "pydantic" },
+    { name = "tket2-exts" },
+    { name = "typing-extensions" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/2f/a6/1ae8d0bbc0cadbfc218c2c030c9cdb2314fa5419180b047f7ac409e390fa/guppylang-0.15.0.tar.gz", hash = "sha256:ebcb16c5b5c62f63104875e77c8ab395bbb78dadf5cf603480f82288c5f658be", size = 367882 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/97/a7/245435d0fccfa00471c060619c02416dae6b99341bd000c8a60aa455fc71/guppylang-0.15.0-py3-none-any.whl", hash = "sha256:4ac4b849f4438ac6c69d76285c0a47996f50d6a8d384545953debf2a0587a3cf", size = 186956 },
+]
+
+[[package]]
 name = "h2"
 version = "4.1.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1324,6 +1341,7 @@ typecheck = [
 [package.dev-dependencies]
 dev = [
     { name = "docker" },
+    { name = "guppylang" },
     { name = "numpy" },
     { name = "opentelemetry-exporter-otlp" },
     { name = "opentelemetry-sdk" },
@@ -1353,12 +1371,27 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]
-dev = [{ name = "tierkreis", extras = ["telemetry", "typecheck", "docker", "sc22-example", "commontypes"] }]
+dev = [
+    { name = "guppylang", specifier = ">=0.15,<0.16" },
+    { name = "tierkreis", extras = ["telemetry", "typecheck", "docker", "sc22-example", "commontypes"] },
+]
 
 [[package]]
 name = "tierkreis-typecheck"
 version = "0.2.0"
 source = { editable = "type_check" }
+
+[[package]]
+name = "tket2-exts"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "hugr" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/26/b4/fb7a861794ba9a3cce6ea94be74627fc83dac946029e67e31ab918e21a57/tket2_exts-0.3.0.tar.gz", hash = "sha256:ddfe1a410059675fad960f8ff6fc3110914a46edf1d29ef59403f242d50551f0", size = 9562 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/af/de/8dce94965f71bf33aac68c69e9c383307d57e1f955fa6e1b1ae67e059aba/tket2_exts-0.3.0-py3-none-any.whl", hash = "sha256:5bc144fcc18aacfa26f3ae68c81aa154db5479097c38a75cde12bccc03d6a8cd", size = 14691 },
+]
 
 [[package]]
 name = "tomli"

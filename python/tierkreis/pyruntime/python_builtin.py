@@ -95,16 +95,6 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
         if op.op_name == "ineg":
             (a, lw) = one_int_logwidth()
             return [IntVal(-a, lw).to_value()]
-    elif op.extension == "logic":
-        if op.op_name == "Not":
-            (a,) = inputs
-            assert a in [val.TRUE, val.FALSE]
-            return [val.FALSE if a == val.TRUE else val.TRUE]
-        if op.op_name == "Eq":  # Yeah, presumably case sensitive, so why not 'eq'
-            (a, b) = inputs
-            assert a in [val.TRUE, val.FALSE]
-            assert b in [val.TRUE, val.FALSE]
-            return [val.TRUE if (a == b) else val.FALSE]
     elif op.extension == "collections.array":
         if op.op_name == "new_array":
             (length, elem_type) = op.args
@@ -140,4 +130,19 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
                     array.v[idx] = new_val
                     return [val.Right(other_tys, [old_val, array])]
             raise RuntimeError("YES THIS HAPPENS - non-ArrayVal array")
+    elif op.extension == "logic":
+        if op.op_name == "Not":
+            (a,) = inputs
+            assert a in [val.TRUE, val.FALSE]
+            return [val.FALSE if a == val.TRUE else val.TRUE]
+        if op.op_name == "Eq":  # Yeah, presumably case sensitive, so why not 'eq'
+            (a, b) = inputs
+            assert a in [val.TRUE, val.FALSE]
+            assert b in [val.TRUE, val.FALSE]
+            return [val.TRUE if (a == b) else val.FALSE]
+    elif op.extension == "prelude":
+        if op.op_name == "load_nat":
+            (v,) = op.args
+            assert isinstance(v, tys.BoundedNatArg)
+            return [USizeVal(v.n)]
     raise RuntimeError(f"Unknown op {op}")

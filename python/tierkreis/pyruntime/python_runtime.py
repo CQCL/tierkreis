@@ -89,6 +89,7 @@ class PyRuntime:
         self,  # ALAN next line we've changed sig, does ignore work?
         run_g: Hugr,  # type:ignore
         *py_inputs: Any,
+        fn_name: str | None = None,
     ) -> list[Value]:
         """Run a tierkreis graph using the python runtime, and provided inputs.
         Returns the outputs of the graph.
@@ -99,11 +100,15 @@ class PyRuntime:
             funcs = [
                 n for n in run_g.children(main) if isinstance(run_g[n].op, ops.FuncDefn)
             ]
+            if fn_name is None and len(funcs) > 1:
+                fn_name = "main"
             (main,) = (
                 funcs
-                if len(funcs) == 1
+                if fn_name is None
                 else (
-                    n for n in funcs if cast(ops.FuncDefn, run_g[n].op).f_name == "main"
+                    n
+                    for n in funcs
+                    if cast(ops.FuncDefn, run_g[n].op).f_name == fn_name
                 )
             )
         op = run_g[main].op

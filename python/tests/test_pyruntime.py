@@ -13,7 +13,7 @@ async def test_factorial():
     with open("/Users/alanlawrence/factorial_hugr.json") as f:
         h = Hugr.load_json(f.read())
     outs = await PyRuntime().run_graph(h)
-    assert outs == [IntVal(120, 5).to_value()]
+    assert outs == [IntVal(120, 5)]
 
 
 @pytest.mark.asyncio
@@ -21,7 +21,7 @@ async def test_fibonacci():
     with open("/Users/alanlawrence/fibonacci_hugr.json") as f:
         h = Hugr.load_json(f.read())
     outs = await PyRuntime().run_graph(h)
-    assert outs == [IntVal(8, 5).to_value()]
+    assert outs == [IntVal(8, 5)]
 
 
 @pytest.mark.asyncio
@@ -59,9 +59,9 @@ async def test_break_different_types1a():
 
     (h,) = foo.compile().package.modules
     outs = await PyRuntime().run_graph(h, 3)
-    assert outs == [IntVal(11, width=6).to_value()]
+    assert outs == [IntVal(11, width=6)]
     outs = await PyRuntime().run_graph(h, 6)
-    assert outs == [IntVal(6, width=6).to_value()]
+    assert outs == [IntVal(6, width=6)]
 
 
 @pytest.mark.asyncio
@@ -95,7 +95,7 @@ async def test_exec_array():
 
     h = module.compile().module
     outs = await PyRuntime().run_graph(h)
-    assert outs == [IntVal(6, 6).to_value()]
+    assert outs == [IntVal(6, 6)]
 
 
 @pytest.mark.asyncio
@@ -142,7 +142,7 @@ async def test_dom_edges():
     c.branch_exit(merge)
 
     outs = await PyRuntime().run_graph(c.hugr, val.TRUE, 12)
-    assert outs == [IntVal(12).to_value(), IntVal(6)]
+    assert outs == [IntVal(12), IntVal(6)]
 
     outs = await PyRuntime().run_graph(c.hugr, val.FALSE, 18)
-    assert outs == [IntVal(3).to_value(), IntVal(6)]
+    assert outs == [IntVal(3), IntVal(6)]

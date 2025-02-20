@@ -54,7 +54,7 @@ def make_val(v: Any, ty: tys.Type) -> Value:
         assert ty.type_def == INT_T_DEF
         (width_arg,) = ty.args
         assert isinstance(width_arg, tys.BoundedNatArg)
-        return IntVal(v, width_arg.n).to_value()
+        return IntVal(v, width_arg.n)
     raise RuntimeError("Don't know how to convert python value: {v}")
 
 

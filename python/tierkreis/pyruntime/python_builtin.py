@@ -66,7 +66,7 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
     if op.extension == "arithmetic.conversions":
         if op.op_name == "itousize":
             (a, _) = one_int_logwidth()
-            return [USizeVal(a).to_value()]
+            return [USizeVal(a)]
     elif op.extension == "arithmetic.int":
         if op.op_name in ["ilt_u", "ilt_s"]:  # TODO how does signedness work here
             (a, b, _) = two_ints_logwidth()
@@ -77,28 +77,28 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
         if op.op_name == "isub":
             (a, b, lw) = two_ints_logwidth()
             # TODO: wrap/underflow to appropriate width
-            return [IntVal(a - b, lw).to_value()]
+            return [IntVal(a - b, lw)]
         if op.op_name == "imul":
             (a, b, lw) = two_ints_logwidth()
             # TODO: wrap/overflow to appropriate width
-            return [IntVal(a * b, lw).to_value()]
+            return [IntVal(a * b, lw)]
         if op.op_name == "iadd":
             (a, b, lw) = two_ints_logwidth()
             # TODO: wrap/underflow to appropriate width
-            return [IntVal(a + b, lw).to_value()]
+            return [IntVal(a + b, lw)]
         if op.op_name in ["idiv_s", "idiv_u"]:  # TODO how does signedness work here
             (a, b, lw) = two_ints_logwidth()
-            return [IntVal(a // b, lw).to_value()]
+            return [IntVal(a // b, lw)]
         if op.op_name in ["imod_s", "imod_u"]:  # TODO how does signedness work here
             (a, b, lw) = two_ints_logwidth()
-            return [IntVal(a % b, lw).to_value()]
+            return [IntVal(a % b, lw)]
         if op.op_name in ["idivmod_s", "idivmod_u"]:
             # TODO how does signedness work here
             (a, b, lw) = two_ints_logwidth()
-            return [IntVal(a // b, lw).to_value(), IntVal(a % b, lw).to_value()]
+            return [IntVal(a // b, lw), IntVal(a % b, lw)]
         if op.op_name == "ineg":
             (a, lw) = one_int_logwidth()
-            return [IntVal(-a, lw).to_value()]
+            return [IntVal(-a, lw)]
     elif op.extension == "collections.array":
         if op.op_name == "new_array":
             (length, elem_type) = op.args

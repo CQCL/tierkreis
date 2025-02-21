@@ -23,6 +23,14 @@ async def test_fibonacci():
     outs = await PyRuntime().run_graph(h)
     assert outs == [IntVal(8, 5)]
 
+@pytest.mark.asyncio
+async def test_xor_and_cfg():
+    with open("/Users/alanlawrence/xor_and_cfg.json") as f:
+        h = Hugr.load_json(f.read())
+    for a in [False, True]:
+        for b in [False, True]:
+            outs = await PyRuntime().run_graph(h, a, b)
+            assert outs == [val.TRUE if a ^ b else val.FALSE, val.TRUE if a and b else val.FALSE]
 
 @pytest.mark.asyncio
 async def test_double_type_change():

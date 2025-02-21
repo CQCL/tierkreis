@@ -34,7 +34,7 @@ def usize_to_py(v: Value) -> int:
     return u
 
 
-def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
+async def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
     def two_ints_logwidth() -> tuple[int, int, int]:
         (a, b) = inputs
         if not isinstance(a, val.Extension):
@@ -120,6 +120,29 @@ def run_ext_op(op: ops.Custom, inputs: list[Value]) -> list[Value]:
             ty = array.val["typ"].deserialize()
             return [
                 val.None_(ty) if idx >= len(ar) else val.Some(ar[idx].deserialize())
+            ]
+        elif op.op_name in ["pop_left", "pop_right"]:
+            (array,) = inputs
+            assert isinstance(array, ArrayVal)
+            if len(array.v) == 0:
+                return [val.None_(array.ty.ty)]
+            elem, rest = (
+                (array.v[0], array.v[1:])
+                if op.op_name == "pop_left"
+                else (array.v[-1], array.v[:-1])
+            )
+            return [val.Some(elem, ArrayVal(rest, array.ty.ty))]
+        elif op.op_name == "repeat":
+            from .python_runtime import do_eval, _single
+
+            (func,) = inputs
+            (length, elem_ty, _exts) = op.args
+            assert isinstance(length, tys.BoundedNatArg)
+            assert isinstance(elem_ty, tys.TypeTypeArg)
+            return [
+                ArrayVal(
+                    [_single(await do_eval(func)) for _ in range(length.n)], elem_ty.ty
+                )
             ]
         elif op.op_name == "set":
             (array, index, new_val) = inputs

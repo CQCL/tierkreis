@@ -239,9 +239,9 @@ class PyRuntime:
                 assert isinstance(sum_val, Sum)
                 return sum_val.vals
             elif isinstance(tk_node, ops.Custom):
-                return run_ext_op(tk_node, inps)
+                return await run_ext_op(tk_node, inps)
             elif isinstance(tk_node, ops.AsExtOp):
-                return run_ext_op(tk_node.ext_op.to_custom_op(), inps)
+                return await run_ext_op(tk_node.ext_op.to_custom_op(), inps)
             else:
                 raise RuntimeError("Unknown node type.")
 

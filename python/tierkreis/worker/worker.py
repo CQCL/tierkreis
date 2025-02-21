@@ -26,7 +26,6 @@ from tierkreis.core.protos.tierkreis.v1alpha1.worker import (
 from tierkreis.core.tierkreis_graph import TierkreisGraph
 from tierkreis.core.type_errors import TierkreisTypeErrors
 from tierkreis.core.values import StructValue
-from tierkreis.pyruntime.python_runtime import PyRuntime
 from tierkreis.worker.callback import callback_server
 
 from .exceptions import (
@@ -98,15 +97,11 @@ class Worker:
 
     root: Namespace
     server: Server
-    pyruntime: PyRuntime
     metadata: ContextVar[Metadata]
 
     def __init__(self, root_namespace):
         self.root = root_namespace
-        self.pyruntime = PyRuntime([root_namespace])
-        self.server = Server(
-            [SignatureServerImpl(self), WorkerServerImpl(self), RuntimeServerImpl(self)]
-        )
+        self.server = Server([SignatureServerImpl(self), WorkerServerImpl(self)])
         self.metadata = ContextVar("metadata")
 
         # Attach event listener for tracing
@@ -237,33 +232,3 @@ class SignatureServerImpl(ps.SignatureBase):
         signature = self.worker.root.extract_signature(True)
 
         return signature.to_proto()
-
-
-class RuntimeServerImpl(pr.RuntimeBase):
-    worker: Worker
-
-    def __init__(self, worker: Worker):
-        self.worker = worker
-
-    async def run_graph(
-        self, run_graph_request: pr.RunGraphRequest
-    ) -> pr.RunGraphResponse:
-        graph = TierkreisGraph.from_proto(run_graph_request.graph)
-        inputs = StructValue.from_proto_dict(run_graph_request.inputs.map)
-        try:
-            if run_graph_request.type_check:
-                (
-                    graph,
-                    inputs,
-                ) = await self.worker.pyruntime.type_check_graph_with_inputs(
-                    graph, inputs
-                )
-
-            outputs = await self.worker.pyruntime.run_graph(graph, **inputs.values)
-            return pr.RunGraphResponse(
-                success=pg.StructValue(map=StructValue(outputs).to_proto_dict())
-            )
-        except TierkreisTypeErrors as err:
-            return pr.RunGraphResponse(type_errors=err.to_proto())
-        except Exception as err:
-            return pr.RunGraphResponse(error=str(err))

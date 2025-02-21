@@ -209,6 +209,11 @@ class PyRuntime:
                 cst = st.h[const_src.node].op
                 assert isinstance(cst, ops.Const)
                 return [cst.val]
+            if isinstance(tk_node, ops.LoadFunc):
+                (funcp,) = st.h.linked_ports(InPort(node, 0))
+                assert isinstance(st.h[funcp.node].op, ops.FuncDefn)
+                assert tk_node.type_args == [], "Must monomorphize first"
+                return [LoadedFunc(st.h, funcp.node)]
 
             inps = await get_inputs(node, wait=True)
             if isinstance(tk_node, (ops.Conditional, ops.CFG, ops.DFG, ops.TailLoop)):
@@ -315,6 +320,8 @@ def _node_inputs(op: ops.Op, include_order: bool = False) -> Iterable[int]:
     if isinstance(op, ops.DataflowOp):
         n = len(op.outer_signature().input)
         yield from range(n)
+        if isinstance(op, ops.LoadFunc):
+            n += 1  # Skip Function input
     elif isinstance(op, ops.Call):
         n = len(op.instantiation.input)
         yield from range(n)
@@ -377,3 +384,21 @@ def remove_keys_since(new_st: _RuntimeState, tmpl_st: _RuntimeState) -> _Runtime
             {k: v for k, v in new_frame.edge_vals.items() if k in keys_can_keep}
         )
     return condensed_frame
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class LoadedFunc(val.ExtensionValue):
+    h: Hugr
+    n: Node
+
+    def to_value(self) -> val.Extension:
+        raise RuntimeError("Do we have to?")
+
+    def type_(self) -> tys.Type:
+        fd = self.h[self.n].op
+        assert isinstance(fd, ops.FuncDefn)
+        assert fd.signature.params == []
+        return fd.signature.body

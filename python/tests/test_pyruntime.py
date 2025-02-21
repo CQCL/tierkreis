@@ -10,7 +10,7 @@ from tierkreis.pyruntime import PyRuntime
 
 @pytest.mark.asyncio
 async def test_factorial():
-    with open("/Users/alanlawrence/factorial_hugr.json") as f:
+    with open("factorial_hugr.json") as f:
         h = Hugr.load_json(f.read())
     outs = await PyRuntime().run_graph(h)
     assert outs == [IntVal(120, 5)]
@@ -18,14 +18,14 @@ async def test_factorial():
 
 @pytest.mark.asyncio
 async def test_fibonacci():
-    with open("/Users/alanlawrence/fibonacci_hugr.json") as f:
+    with open("fibonacci_hugr.json") as f:
         h = Hugr.load_json(f.read())
     outs = await PyRuntime().run_graph(h)
     assert outs == [IntVal(8, 5)]
 
 @pytest.mark.asyncio
 async def test_xor_and_cfg():
-    with open("/Users/alanlawrence/xor_and_cfg.json") as f:
+    with open("xor_and_cfg.json") as f:
         h = Hugr.load_json(f.read())
     for a in [False, True]:
         for b in [False, True]:

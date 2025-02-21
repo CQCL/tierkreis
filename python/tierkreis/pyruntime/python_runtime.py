@@ -90,16 +90,19 @@ class PyRuntime:
         self,  # ALAN next line we've changed sig, does ignore work?
         run_g: Hugr,  # type:ignore
         *py_inputs: Any,
-        fn_name: str | None = None,
+        fn_name: str | Node | None = None,
     ) -> list[Value]:
         """Run a tierkreis graph using the python runtime, and provided inputs.
         Returns the outputs of the graph.
         """
 
-        main = run_g.root
-        if isinstance(run_g[main].op, ops.Module):
+        if isinstance(fn_name, Node):
+            main = fn_name
+        elif isinstance(run_g[run_g.root].op, ops.Module):
             funcs = [
-                n for n in run_g.children(main) if isinstance(run_g[n].op, ops.FuncDefn)
+                n
+                for n in run_g.children(run_g.root)
+                if isinstance(run_g[n].op, ops.FuncDefn)
             ]
             if fn_name is None and len(funcs) > 1:
                 fn_name = "main"
@@ -112,6 +115,8 @@ class PyRuntime:
                     if cast(ops.FuncDefn, run_g[n].op).f_name == fn_name
                 )
             )
+        else:  # Ignore fn_name...could require it to be None
+            main = run_g.root
         op = run_g[main].op
         inputs: tys.TypeRow
         if isinstance(op, ops.DataflowOp):
@@ -191,7 +196,6 @@ class PyRuntime:
             tk_node = st.h[node].op
 
             # TODO: ops.Custom, ops.ExtOp, ops.RegisteredOp,
-            # ops.CallIndirect, ops.LoadFunc
 
             if isinstance(tk_node, ops.Output):
                 return []
@@ -224,6 +228,8 @@ class PyRuntime:
                 )  # TODO Make this non-private?
                 results, _ = await self._run_dataflow_subgraph(st, func_tgt.node, inps)
                 return results
+            elif isinstance(tk_node, ops.CallIndirect):
+                return await do_eval(*inps)  # Function first
             elif isinstance(tk_node, ops.Tag):
                 return [Sum(tk_node.tag, tk_node.sum_ty, inps)]
             elif isinstance(tk_node, ops.MakeTuple):
@@ -402,3 +408,11 @@ class LoadedFunc(val.ExtensionValue):
         assert isinstance(fd, ops.FuncDefn)
         assert fd.signature.params == []
         return fd.signature.body
+
+
+async def do_eval(func: Value, *args: Value) -> list[Value]:
+    if isinstance(func, LoadedFunc):
+        return await PyRuntime().run_graph(func.h, *args, fn_name=func.n)
+    if isinstance(func, val.Function):
+        return await PyRuntime().run_graph(func.body, *args)
+    raise RuntimeError(f"Don't know how to eval {func}")

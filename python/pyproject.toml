@@ -27,16 +27,12 @@ tkrs = 'tierkreis.cli:cli'
 
 [project.optional-dependencies]
 docker = ["docker>=6,<7"]
-
 telemetry = [
     "opentelemetry-sdk>=1.15.0,<2",
     "opentelemetry-exporter-otlp>=1.15.0,<2",
 ]
-
 commontypes = ["pytket>=1.0"]
-
 sc22-example = ["numpy>=1.20,<2", "pytket>=1.0"]
-
 typecheck = ["tierkreis_typecheck"]
 
 [dependency-groups]

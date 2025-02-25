@@ -62,8 +62,6 @@ if __name__ == "__main__":
     elif node_definition.function_name == "igt":
         with open(node_definition.inputs["a"], "rb") as fh:
             a: int = Value.FromString(fh.read()).integer
-        with open(node_definition.inputs["a"], "rb") as fh:
-            a: int = Value.FromString(fh.read()).integer
         with open(node_definition.inputs["b"], "rb") as fh:
             b: int = Value.FromString(fh.read()).integer
 

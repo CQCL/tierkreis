@@ -116,11 +116,9 @@ def start_function_node(
     elif name == "switch":
         pred = storage.read_output(*inputs["pred"]).boolean
         if pred:
-            if_true = storage.read_output(*inputs["if_true"])
-            storage.write_output(node_location, Labels.VALUE, if_true)
+            storage.link_outputs(node_location, Labels.VALUE, *inputs["if_true"])
         else:
-            if_false = storage.read_output(*inputs["if_false"])
-            storage.write_output(node_location, Labels.VALUE, if_false)
+            storage.link_outputs(node_location, Labels.VALUE, *inputs["if_false"])
         storage.mark_node_finished(node_location)
 
     elif name == "discard":

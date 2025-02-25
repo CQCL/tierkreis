@@ -5,7 +5,7 @@ from tierkreis.controller.start import start
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
-from tierkreis.core.tierkreis_graph import FunctionNode, TierkreisGraph
+from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 
 logger = getLogger(__name__)
 
@@ -75,21 +75,22 @@ def resume_loop(storage: ControllerStorage, node_location: NodeLocation):
         return
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
-    variant_value = storage.read_output(new_location, Labels.VALUE).variant
-    logger.debug(f"variant_value {variant_value}")
-    if variant_value.tag == Labels.BREAK:
-        storage.write_output(node_location, Labels.VALUE, variant_value.value)
+    pointer_struct = storage.read_output(new_location, Labels.VALUE).struct.map
+    tag: str = pointer_struct["tag"].str
+    old_loc = NodeLocation.from_str(pointer_struct["node_location"].str)
+    old_port: PortID = pointer_struct["port"].str
+    logger.debug(f"tagged node location {tag}, {old_loc}, {old_port}")
+    if tag == Labels.BREAK:
+        storage.link_outputs(node_location, Labels.VALUE, old_loc, old_port)
         storage.mark_node_finished(node_location)
 
     else:
-        # Extract the value from the variant. We might want to reconsider this wrapping.
-        storage.write_output(new_location, "unwrapped_value", variant_value.value)
         start(
             storage,
             node_location.append_loop(i + 1),
             FunctionNode(FunctionName("eval")),
             {
-                Labels.VALUE: (new_location, "unwrapped_value"),
+                Labels.VALUE: (old_loc, old_port),
                 Labels.THUNK: (new_location.append_node(0), Labels.THUNK),
             },
             [Labels.VALUE],

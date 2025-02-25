@@ -1,10 +1,13 @@
 from enum import Enum
+from logging import getLogger
 from pathlib import Path
 
 from pydantic import BaseModel
 
 from tierkreis.core.tierkreis_graph import PortID
 from tierkreis.exceptions import TierkreisError
+
+logger = getLogger(__name__)
 
 
 class NodeDefinition(BaseModel):
@@ -28,6 +31,18 @@ class NodeType(Enum):
             case NodeType.MAP:
                 return "M"
 
+    @staticmethod
+    def from_str(type: str) -> "NodeType":
+        match type:
+            case "N":
+                return NodeType.NODE
+            case "L":
+                return NodeType.LOOP
+            case "M":
+                return NodeType.MAP
+            case _:
+                raise TierkreisError("Unknown node type.")
+
 
 class NodeStep(BaseModel):
     node_type: NodeType
@@ -35,6 +50,15 @@ class NodeStep(BaseModel):
 
     def __str__(self) -> str:
         return f"{self.node_type}{self.idx}"
+
+    @staticmethod
+    def from_str(frame: str) -> "NodeStep":
+        try:
+            c, idx = frame[0], int(frame[1:])
+            return NodeStep(node_type=NodeType.from_str(c), idx=idx)
+        except (IndexError, ValueError) as exc:
+            logger.exception(exc)
+            raise TierkreisError(f"Invalid NodeStep {frame}")
 
 
 class NodeLocation(BaseModel):
@@ -67,6 +91,13 @@ class NodeLocation(BaseModel):
     def __str__(self) -> str:
         frame_strs = [str(x) for x in self.location]
         return ".".join(frame_strs)
+
+    @staticmethod
+    def from_str(location: str) -> "NodeLocation":
+        if not location:
+            return NodeLocation(location=[])
+        frames = location.split(".")
+        return NodeLocation(location=[NodeStep.from_str(x) for x in frames])
 
 
 OutputLocation = tuple[NodeLocation, PortID]

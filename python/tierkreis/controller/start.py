@@ -18,6 +18,7 @@ from tierkreis.core.tierkreis_graph import (
 )
 from tierkreis.core.values import TierkreisValue, VariantValue
 from tierkreis.exceptions import TierkreisError
+from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value, StructValue, MapValue
 
 logger = getLogger(__name__)
 
@@ -50,9 +51,18 @@ def start(
 
     elif isinstance(tk_node, TagNode):
         loc, port = inputs[Labels.VALUE]
-        v = TierkreisValue.from_proto(storage.read_output(loc, port))
         storage.write_output(
-            node_location, Labels.VALUE, VariantValue(tk_node.tag_name, v).to_proto()
+            node_location,
+            Labels.VALUE,
+            Value(
+                struct=StructValue(
+                    map={
+                        "tag": Value(str=str(tk_node.tag_name)),
+                        "node_location": Value(str=str(loc)),
+                        "port": Value(str=str(port)),
+                    }
+                )
+            ),
         )
         storage.mark_node_finished(node_location)
 

@@ -64,8 +64,7 @@ def start(
             storage.read_output(*inputs[Labels.VARIANT_VALUE]).variant
         )
         assert isinstance(variant, VariantValue)
-        thunk = storage.read_output(*inputs[variant.tag])
-        storage.write_output(node_location, Labels.THUNK, thunk)
+        storage.link_outputs(node_location, Labels.THUNK, *inputs[variant.tag])
         storage.mark_node_finished(node_location)
 
     else:

@@ -37,7 +37,7 @@ commontypes = ["pytket>=1.0"]
 
 sc22-example = ["numpy>=1.20,<2", "pytket>=1.0"]
 
-typecheck = ["tierkreis_typecheck>=0.2,<0.3"]
+typecheck = ["tierkreis_typecheck"]
 
 [dependency-groups]
 dev = [
@@ -46,11 +46,6 @@ dev = [
     "tierkreis[telemetry,typecheck,docker,sc22-example,commontypes]",
 ]
 build = ["build[uv]"]
-# [tool.uv]
-# default-groups = ["typecheck", "telemetry", "commontypes", "sc22-example", "docker"]
-
-[tool.uv.sources]
-tierkreis_typecheck = { workspace = true }
 
 [tool.pytest.ini_options]
 markers = ["pytket"]
@@ -81,3 +76,6 @@ extend-exclude = ["tierkreis/core/protos", "examples"]
 include = ["."]
 exclude = ["tierkreis/core/protos", "build"]
 ignore = ["^build/", "pytket_worker"]
+
+[tool.uv.sources]
+tierkreis_typecheck = { workspace = true }

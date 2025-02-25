@@ -34,13 +34,13 @@ def sample_graph() -> TierkreisGraph:
     one_graph = TierkreisGraph()
     one_graph.set_outputs(
         value=one_graph.add_func(
-            "iadd", a=one_graph.input["value"], b=one_graph.input["other"]
+            "iadd", a=one_graph.input["thunk"], b=one_graph.input["other"]
         )
     )
     many_graph = TierkreisGraph()
     many_graph.discard(many_graph.input["other"])
     many_graph.set_outputs(
-        value=many_graph.add_func("id", value=many_graph.input["value"])
+        value=many_graph.add_func("id", value=many_graph.input["thunk"])
     )
 
     tg = TierkreisGraph()
@@ -48,9 +48,7 @@ def sample_graph() -> TierkreisGraph:
         out=tg.input["inp"],
         b=tg.add_func("iadd", a=tg.add_const(1), b=tg.add_const(3)),
         tag=tg.add_tag("boo", value=tg.add_const("world")),
-        add=tg.add_func(
-            "python_nodes::python_add", a=tg.add_const(23), b=tg.add_const(123)
-        ),
+        add=tg.add_func("iadd", a=tg.add_const(23), b=tg.add_const(123)),
         _and=tg.add_func("and", a=tg.add_const(True), b=tg.add_const(False)),
         result=tg.add_func(
             "eval",

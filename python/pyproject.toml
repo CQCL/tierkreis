@@ -74,4 +74,4 @@ exclude = ["tierkreis/core/protos", "build"]
 ignore = ["^build/", "pytket_worker"]
 
 [tool.uv.sources]
-tierkreis_typecheck = { workspace = true }
+tierkreis-typecheck = { workspace = true }

@@ -1,5 +1,6 @@
-from logging import getLogger
 import subprocess
+from logging import getLogger
+
 from tierkreis.controller.models import NodeLocation, OutputLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels

@@ -1,6 +1,5 @@
 from logging import getLogger
 
-
 from tierkreis.controller.models import NodeLocation
 from tierkreis.controller.start import start
 from tierkreis.controller.storage.protocol import ControllerStorage

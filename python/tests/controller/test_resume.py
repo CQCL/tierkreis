@@ -7,8 +7,8 @@ from tierkreis.controller.start import start
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
-from tierkreis.core.tierkreis_graph import FunctionNode
 from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value, VariantValue
+from tierkreis.core.tierkreis_graph import FunctionNode
 
 root_loc = NodeLocation(location=[])
 

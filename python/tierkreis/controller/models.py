@@ -1,4 +1,4 @@
-from enum import StrEnum
+from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -14,10 +14,19 @@ class NodeDefinition(BaseModel):
     done_path: Path
 
 
-class NodeType(StrEnum):
-    NODE = "N"
-    LOOP = "L"
-    MAP = "M"
+class NodeType(Enum):
+    NODE = 0
+    LOOP = 1
+    MAP = 2
+
+    def __str__(self) -> str:
+        match self:
+            case NodeType.NODE:
+                return "N"
+            case NodeType.LOOP:
+                return "L"
+            case NodeType.MAP:
+                return "M"
 
 
 class NodeStep(BaseModel):

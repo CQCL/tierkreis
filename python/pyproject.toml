@@ -33,7 +33,7 @@ telemetry = [
 ]
 commontypes = ["pytket>=1.0"]
 sc22-example = ["numpy>=1.20,<2", "pytket>=1.0"]
-typecheck = ["tierkreis_typecheck"]
+typecheck = ["tierkreis-typecheck"]
 
 [dependency-groups]
 dev = [

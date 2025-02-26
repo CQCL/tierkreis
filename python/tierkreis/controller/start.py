@@ -126,7 +126,7 @@ def start_function_node(
 
     elif name == name:
         logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
-        subprocess.run(["uv", "run", "python", "numerical-worker/main.py", def_path])
+        subprocess.Popen(["uv", "run", "examples/numerical-worker", def_path])
 
 
 def pipe_inputs_to_output_location(

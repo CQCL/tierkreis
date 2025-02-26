@@ -1,3 +1,4 @@
+from contextlib import redirect_stderr
 import json
 from logging import getLogger
 from pathlib import Path
@@ -32,11 +33,7 @@ def igt(a: int, b: int) -> bool:
     return a > b
 
 
-if __name__ == "__main__":
-    worker_definition_path = argv[1]
-    with open(worker_definition_path, "r") as fh:
-        node_definition = NodeDefinition(**json.loads(fh.read()))
-
+def run(node_definition: NodeDefinition):
     if node_definition.function_name == "iadd":
         with open(node_definition.inputs["a"], "rb") as fh:
             a: int = Value.FromString(fh.read()).integer
@@ -90,3 +87,14 @@ if __name__ == "__main__":
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")
     node_definition.done_path.touch()
+
+
+if __name__ == "__main__":
+    worker_definition_path = argv[1]
+    with open(worker_definition_path, "r") as fh:
+        node_definition = NodeDefinition(**json.loads(fh.read()))
+
+    # with open(node_definition.stderr, "w") as fh:
+    #     with redirect_stderr(fh):
+    #         run(node_definition)
+    run(node_definition)

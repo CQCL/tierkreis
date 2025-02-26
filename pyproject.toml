@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["python", "integration", "type_check", "python/numerical-worker"]
+members = ["python", "integration", "type_check"]
 
 [dependency-groups]
 # Default dev dependency group

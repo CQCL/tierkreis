@@ -4,7 +4,7 @@ from uuid import UUID
 
 import pytest
 
-from tests.sample_graph import sample_graph, nexus_polling_graph
+from tests.sample_graph import sample_graph_without_match, nexus_polling_graph
 from tierkreis.controller.models import NodeLocation
 from tierkreis.controller.resume import resume
 from tierkreis.controller.start import start
@@ -27,12 +27,12 @@ def get_circ_str() -> str:
 
 
 def test_resume_sample_graph():
-    g = sample_graph()
+    g = sample_graph_without_match()
     storage = ControllerFileStorage(UUID(int=0))
     storage.clean_graph_files()
     inp_loc = storage.add_input("inp", Value(integer=4))
     vv_loc = storage.add_input(
-        "vv", Value(variant=VariantValue("many", Value(integer=2)))
+        "vv", Value(variant=VariantValue("one", Value(integer=2)))
     )
     value_loc = storage.add_input("value", Value(integer=2))
 

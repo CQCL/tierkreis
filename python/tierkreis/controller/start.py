@@ -17,7 +17,6 @@ from tierkreis.core.tierkreis_graph import (
     TagNode,
     TierkreisNode,
 )
-from tierkreis.core.values import TierkreisValue, VariantValue
 from tierkreis.exceptions import TierkreisError
 from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value, StructValue, MapValue
 
@@ -71,12 +70,7 @@ def start(
         raise NotImplementedError("box node")
 
     elif isinstance(tk_node, MatchNode):
-        variant = VariantValue.from_proto(
-            storage.read_output(*inputs[Labels.VARIANT_VALUE]).variant
-        )
-        assert isinstance(variant, VariantValue)
-        storage.link_outputs(node_location, Labels.THUNK, *inputs[variant.tag])
-        storage.mark_node_finished(node_location)
+        NotImplementedError("Graph includes match node; try to use switch instead.")
 
     else:
         raise TierkreisError(f"Unknown node type {tk_node}.")

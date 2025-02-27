@@ -30,7 +30,7 @@ def get_circ_str() -> str:
 def test_resume_sample_graph():
     g = sample_graph_without_match()
     storage = ControllerFileStorage(UUID(int=0))
-    executor = ShellExecutor(Path("./examples/launchers"))
+    executor = ShellExecutor(Path("./examples/launchers"), Path("./_stderr"))
 
     storage.clean_graph_files()
     inp_loc = storage.add_input("inp", json.dumps(4).encode())
@@ -63,7 +63,9 @@ def test_resume_sample_graph():
 def test_resume_nexus_polling():
     g = nexus_polling_graph()
     storage = ControllerFileStorage(UUID(int=0))
-    executor = ShellExecutor(Path("./examples/launchers"))
+    executor = ShellExecutor(
+        Path("./examples/launchers"), std_err_path=Path("./_stderr")
+    )
 
     storage.clean_graph_files()
     circuit_loc = storage.add_input("circuit", get_circ_str().encode())

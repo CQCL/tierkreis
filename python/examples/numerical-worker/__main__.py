@@ -33,6 +33,7 @@ def igt(a: int, b: int) -> bool:
 
 
 def run(node_definition: NodeDefinition):
+    logger.debug(node_definition)
     if node_definition.function_name == "iadd":
         with open(node_definition.inputs["a"], "rb") as fh:
             a: int = json.loads(fh.read())
@@ -105,7 +106,4 @@ if __name__ == "__main__":
     with open(worker_definition_path, "r") as fh:
         node_definition = NodeDefinition(**json.loads(fh.read()))
 
-    # with open(node_definition.stderr, "w") as fh:
-    #     with redirect_stderr(fh):
-    #         run(node_definition)
     run(node_definition)

@@ -52,8 +52,7 @@ def get_result(job_ref: ExecuteJobRef) -> dict[str, int]:
 
 def run(node_definition: NodeDefinition):
     name = node_definition.function_name
-    print(node_definition)
-    if name == "./examples/nexus-worker/submit":
+    if name == "submit":
         with open(node_definition.inputs["circuit"], "rb") as fh:
             circuit = Circuit.from_dict(json.loads(fh.read()))  # type:ignore
 
@@ -62,7 +61,7 @@ def run(node_definition: NodeDefinition):
         with open(node_definition.outputs["execute_ref"], "w+") as fh:
             fh.write(execute_ref.model_dump_json())
 
-    elif name == "./examples/nexus-worker/check_status":
+    elif name == "check_status":
         with open(node_definition.inputs["execute_ref"], "rb") as fh:
             execute_ref = ExecuteJobRef(**json.loads(fh.read()))
 
@@ -71,7 +70,7 @@ def run(node_definition: NodeDefinition):
         with open(node_definition.outputs["status_enum"], "w+") as fh:
             fh.write(json.dumps(status_enum.name))
 
-    elif name == "./examples/nexus-worker/get_result":
+    elif name == "get_result":
         with open(node_definition.inputs["execute_ref"], "rb") as fh:
             execute_ref = ExecuteJobRef(**json.loads(fh.read()))
 

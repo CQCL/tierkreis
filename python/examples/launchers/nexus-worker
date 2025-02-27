@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+LAUNCHER_DIR=$(dirname "$0")
+uv run "$LAUNCHER_DIR/../nexus-worker" $1

@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import Protocol
 
 from tierkreis.controller.models import NodeDefinition, NodeLocation, OutputLocation
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value
 from tierkreis.core.tierkreis_graph import PortID
 
 

@@ -5,7 +5,7 @@ from logging import getLogger
 
 from betterproto import which_one_of
 
-from tests.sample_graph import TierkreisGraph
+from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation, OutputLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
@@ -23,13 +23,13 @@ from tierkreis.core.tierkreis_graph import (
 )
 from tierkreis.core.values import TierkreisValue
 from tierkreis.exceptions import TierkreisError
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value, StructValue, MapValue
 
 logger = getLogger(__name__)
 
 
 def start(
     storage: ControllerStorage,
+    executor: ControllerExecutor,
     node_location: NodeLocation,
     tk_node: TierkreisNode,
     inputs: dict[PortID, OutputLocation],
@@ -38,7 +38,7 @@ def start(
     logger.debug(f"start {node_location} {tk_node} {inputs} {output_list}")
     if isinstance(tk_node, FunctionNode):
         name = tk_node.function_name.name
-        start_function_node(storage, node_location, name, inputs, output_list)
+        start_function_node(storage, executor, node_location, name, inputs, output_list)
 
     elif isinstance(tk_node, InputNode):
         storage.mark_node_finished(node_location)
@@ -62,10 +62,10 @@ def start(
         storage.mark_node_finished(node_location)
 
     elif isinstance(tk_node, BoxNode):
-        raise NotImplementedError("box node")
+        raise NotImplementedError("box node not implemented")
 
     elif isinstance(tk_node, MatchNode):
-        NotImplementedError("Graph includes match node; try to use switch instead.")
+        NotImplementedError("Controller does not support MatchNodes.")
 
     else:
         raise TierkreisError(f"Unknown node type {tk_node}.")
@@ -73,11 +73,17 @@ def start(
 
 def start_function_node(
     storage: ControllerStorage,
+    executor: ControllerExecutor,
     node_location: NodeLocation,
     name: str,
     inputs: dict[PortID, OutputLocation],
     output_list: list[PortID],
 ):
+    launcher_name = ".".join(name.split(".")[:-1])
+    name = name.split(".")[-1]
+    print("-------")
+    print(launcher_name)
+    print(name)
     def_path = storage.write_node_definition(node_location, name, inputs, output_list)
 
     if name == "eval":
@@ -88,6 +94,7 @@ def start_function_node(
         eval_inputs["thunk"] = inputs["body"]
         start(
             storage,
+            executor,
             node_location.append_loop(0),
             FunctionNode(FunctionName("eval")),
             eval_inputs,
@@ -116,10 +123,7 @@ def start_function_node(
 
     elif name == name:
         logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
-        if name.startswith("./"):
-            subprocess.run(["uv", "run", Path(name).parent, def_path])
-        else:
-            subprocess.run(["uv", "run", "examples/numerical-worker", def_path])
+        executor.run(launcher_name, def_path)
 
 
 def pipe_inputs_to_output_location(

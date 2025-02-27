@@ -1,4 +1,3 @@
-from contextlib import redirect_stderr
 import json
 from logging import getLogger
 from pathlib import Path
@@ -84,6 +83,16 @@ def run(node_definition: NodeDefinition):
 
         with open(node_definition.outputs["value"], "wb+") as fh:
             fh.write(Value(integer=value).SerializeToString())
+
+    elif node_definition.function_name == "str_eq":
+        with open(node_definition.inputs["a"], "rb") as fh:
+            str_a = Value.FromString(fh.read()).str
+
+        with open(node_definition.inputs["b"], "rb") as fh:
+            str_b = Value.FromString(fh.read()).str
+
+        with open(node_definition.outputs["value"], "wb+") as fh:
+            fh.write(Value(boolean=(str_a == str_b)).SerializeToString())
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")
     node_definition.done_path.touch()

@@ -64,3 +64,45 @@ def sample_graph() -> TierkreisGraph:
         )["value"],
     )
     return tg
+
+
+def nexus_polling_graph() -> TierkreisGraph:
+    def polling_loop() -> TierkreisGraph:
+        tg = TierkreisGraph()
+
+        v1, v2 = tg.copy_value(tg.input["value"])
+        v3, v4 = tg.copy_value(v1)
+        pred = tg.add_func(
+            "str_eq",
+            a=tg.add_func(
+                "./examples/nexus-worker/check_status",
+                execute_ref=v2,
+            )["status_enum"],
+            b=tg.add_const("COMPLETED"),
+        )
+        tg.set_outputs(
+            value=tg.add_func(
+                "switch",
+                pred=pred,
+                if_true=tg.add_tag(Labels.BREAK, value=v3),
+                if_false=tg.add_tag(Labels.CONTINUE, value=v4),
+            )
+        )
+        return tg
+
+    tg = TierkreisGraph()
+
+    initial_execute_ref = tg.add_func(
+        "./examples/nexus-worker/submit", circuit=tg.input["circuit"]
+    )["execute_ref"]
+    final_execute_ref = tg.add_func(
+        "loop", body=tg.add_const(polling_loop()), value=initial_execute_ref
+    )
+
+    tg.set_outputs(
+        distribution=tg.add_func(
+            "./examples/nexus-worker/get_result", execute_ref=final_execute_ref
+        )["distribution"]
+    )
+
+    return tg

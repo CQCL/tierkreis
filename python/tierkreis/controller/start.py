@@ -1,3 +1,4 @@
+from pathlib import Path
 import subprocess
 from logging import getLogger
 
@@ -126,7 +127,10 @@ def start_function_node(
 
     elif name == name:
         logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
-        subprocess.Popen(["uv", "run", "examples/numerical-worker", def_path])
+        if name.startswith("./"):
+            subprocess.Popen(["uv", "run", Path(name).parent, def_path])
+        else:
+            subprocess.Popen(["uv", "run", "examples/numerical-worker", def_path])
 
 
 def pipe_inputs_to_output_location(

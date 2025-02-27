@@ -1,7 +1,11 @@
+import json
 from pathlib import Path
 import subprocess
 from logging import getLogger
 
+from betterproto import which_one_of
+
+from tests.sample_graph import TierkreisGraph
 from tierkreis.controller.models import NodeLocation, OutputLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
@@ -17,6 +21,7 @@ from tierkreis.core.tierkreis_graph import (
     TagNode,
     TierkreisNode,
 )
+from tierkreis.core.values import TierkreisValue
 from tierkreis.exceptions import TierkreisError
 from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value, StructValue, MapValue
 
@@ -46,24 +51,14 @@ def start(
         storage.mark_node_finished(parent_loc)
 
     elif isinstance(tk_node, ConstNode):
-        storage.write_output(node_location, Labels.VALUE, tk_node.value.to_proto())
+        bs = bytes_from_value(tk_node.value)
+        storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)
 
     elif isinstance(tk_node, TagNode):
         loc, port = inputs[Labels.VALUE]
-        storage.write_output(
-            node_location,
-            Labels.VALUE,
-            Value(
-                struct=StructValue(
-                    map={
-                        "tag": Value(str=str(tk_node.tag_name)),
-                        "node_location": Value(str=str(loc)),
-                        "port": Value(str=str(port)),
-                    }
-                )
-            ),
-        )
+        tag = {"tag": tk_node.tag_name, "node_location": str(loc), "port": port}
+        storage.write_output(node_location, Labels.VALUE, json.dumps(tag).encode())
         storage.mark_node_finished(node_location)
 
     elif isinstance(tk_node, BoxNode):
@@ -109,7 +104,7 @@ def start_function_node(
         storage.mark_node_finished(node_location)
 
     elif name == "switch":
-        pred = storage.read_output(*inputs["pred"]).boolean
+        pred = json.loads(storage.read_output(*inputs["pred"]))
         if pred:
             storage.link_outputs(node_location, Labels.VALUE, *inputs["if_true"])
         else:
@@ -122,9 +117,9 @@ def start_function_node(
     elif name == name:
         logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
         if name.startswith("./"):
-            subprocess.Popen(["uv", "run", Path(name).parent, def_path])
+            subprocess.run(["uv", "run", Path(name).parent, def_path])
         else:
-            subprocess.Popen(["uv", "run", "examples/numerical-worker", def_path])
+            subprocess.run(["uv", "run", "examples/numerical-worker", def_path])
 
 
 def pipe_inputs_to_output_location(
@@ -134,3 +129,11 @@ def pipe_inputs_to_output_location(
 ) -> None:
     for new_port, (old_loc, old_port) in inputs.items():
         storage.link_outputs(output_loc, new_port, old_loc, old_port)
+
+
+def bytes_from_value(proto: TierkreisValue) -> bytes:
+    if which_one_of(proto.to_proto(), "value")[0] == "graph":
+        return proto.to_proto().graph.SerializeToString()
+
+    py_value = proto.try_autopython()
+    return json.dumps(py_value).encode()

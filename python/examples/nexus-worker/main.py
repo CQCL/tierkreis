@@ -55,34 +55,30 @@ def run(node_definition: NodeDefinition):
     print(node_definition)
     if name == "./examples/nexus-worker/submit":
         with open(node_definition.inputs["circuit"], "rb") as fh:
-            circuit_str = Value.FromString(fh.read()).str
-            circuit = Circuit.from_dict(json.loads(circuit_str))  # type:ignore
+            circuit = Circuit.from_dict(json.loads(fh.read()))  # type:ignore
 
         execute_ref = submit(circuit)
 
-        with open(node_definition.outputs["execute_ref"], "wb+") as fh:
-            fh.write(Value(str=execute_ref.model_dump_json()).SerializeToString())
+        with open(node_definition.outputs["execute_ref"], "w+") as fh:
+            fh.write(execute_ref.model_dump_json())
 
     elif name == "./examples/nexus-worker/check_status":
         with open(node_definition.inputs["execute_ref"], "rb") as fh:
-            z = fh.read()
-            ref_str = Value.FromString(z).str
-            execute_ref = ExecuteJobRef(**json.loads(ref_str))
+            execute_ref = ExecuteJobRef(**json.loads(fh.read()))
 
         status_enum = check_status(execute_ref)
 
-        with open(node_definition.outputs["status_enum"], "wb+") as fh:
-            fh.write(Value(str=status_enum.name).SerializeToString())
+        with open(node_definition.outputs["status_enum"], "w+") as fh:
+            fh.write(json.dumps(status_enum.name))
 
     elif name == "./examples/nexus-worker/get_result":
         with open(node_definition.inputs["execute_ref"], "rb") as fh:
-            ref_str = Value.FromString(fh.read()).str
-            execute_ref = ExecuteJobRef(**json.loads(ref_str))
+            execute_ref = ExecuteJobRef(**json.loads(fh.read()))
 
         distribution = get_result(execute_ref)
 
-        with open(node_definition.outputs["distribution"], "wb+") as fh:
-            fh.write(Value(str=json.dumps(distribution)).SerializeToString())
+        with open(node_definition.outputs["distribution"], "w+") as fh:
+            fh.write(json.dumps(distribution))
 
     else:
         raise ValueError(f"nexus-worker: unknown function: {name}")

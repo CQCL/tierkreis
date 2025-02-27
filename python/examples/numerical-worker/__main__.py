@@ -35,64 +35,66 @@ def igt(a: int, b: int) -> bool:
 def run(node_definition: NodeDefinition):
     if node_definition.function_name == "iadd":
         with open(node_definition.inputs["a"], "rb") as fh:
-            a: int = Value.FromString(fh.read()).integer
+            a: int = json.loads(fh.read())
         with open(node_definition.inputs["b"], "rb") as fh:
-            b: int = Value.FromString(fh.read()).integer
+            b: int = json.loads(fh.read())
 
         c = iadd(a, b)
 
-        with open(node_definition.outputs["value"], "wb+") as fh:
-            fh.write(Value(integer=c).SerializeToString())
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(c))
 
     elif node_definition.function_name == "itimes":
         with open(node_definition.inputs["a"], "rb") as fh:
-            a: int = Value.FromString(fh.read()).integer
+            a: int = json.loads(fh.read())
         with open(node_definition.inputs["b"], "rb") as fh:
-            b: int = Value.FromString(fh.read()).integer
+            b: int = json.loads(fh.read())
 
         c = itimes(a, b)
 
-        with open(node_definition.outputs["value"], "wb+") as fh:
-            fh.write(Value(integer=c).SerializeToString())
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(c))
 
     elif node_definition.function_name == "igt":
         with open(node_definition.inputs["a"], "rb") as fh:
-            a: int = Value.FromString(fh.read()).integer
+            a: int = json.loads(fh.read())
         with open(node_definition.inputs["b"], "rb") as fh:
-            b: int = Value.FromString(fh.read()).integer
+            b: int = json.loads(fh.read())
 
         c = igt(a, b)
 
-        with open(node_definition.outputs["value"], "wb+") as fh:
-            fh.write(Value(boolean=c).SerializeToString())
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(c))
 
     elif node_definition.function_name == "and":
         with open(node_definition.inputs["a"], "rb") as fh:
-            a = Value.FromString(fh.read()).boolean
+            a = json.loads(fh.read())
         with open(node_definition.inputs["b"], "rb") as fh:
-            b = Value.FromString(fh.read()).boolean
+            b = json.loads(fh.read())
 
         c = a and b
 
-        with open(node_definition.outputs["value"], "wb+") as fh:
-            fh.write(Value(boolean=c).SerializeToString())
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(c))
 
     elif node_definition.function_name == "id":
         with open(node_definition.inputs["value"], "rb") as fh:
-            value = Value.FromString(fh.read()).boolean
+            value = json.loads(fh.read())
 
-        with open(node_definition.outputs["value"], "wb+") as fh:
-            fh.write(Value(integer=value).SerializeToString())
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(value))
 
     elif node_definition.function_name == "str_eq":
         with open(node_definition.inputs["a"], "rb") as fh:
-            str_a = Value.FromString(fh.read()).str
+            str_a = json.loads(fh.read())
 
         with open(node_definition.inputs["b"], "rb") as fh:
-            str_b = Value.FromString(fh.read()).str
+            str_b = json.loads(fh.read())
 
-        with open(node_definition.outputs["value"], "wb+") as fh:
-            fh.write(Value(boolean=(str_a == str_b)).SerializeToString())
+        ans = str_a == str_b
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(ans))
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")
     node_definition.done_path.touch()

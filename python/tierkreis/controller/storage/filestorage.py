@@ -5,7 +5,6 @@ from pathlib import Path
 from uuid import UUID, uuid4
 
 from tierkreis.controller.models import NodeDefinition, NodeLocation, OutputLocation
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value
 from tierkreis.core.tierkreis_graph import PortID
 
 
@@ -35,7 +34,7 @@ class ControllerFileStorage:
         if self.workflow_dir.exists():
             shutil.move(self.workflow_dir, f"/tmp/{uuid4()}")
 
-    def add_input(self, port_name: PortID, value: Value) -> NodeLocation:
+    def add_input(self, port_name: PortID, value: bytes) -> NodeLocation:
         input_loc = NodeLocation(location=[]).append_node(-1)
         path = self._output_path(input_loc, port_name)
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -85,14 +84,14 @@ class ControllerFileStorage:
         return self._output_path(node_location, output_name).exists()
 
     def write_output(
-        self, node_location: NodeLocation, output_name: PortID, value: Value
+        self, node_location: NodeLocation, output_name: PortID, value: bytes
     ) -> None:
         with open(self._output_path(node_location, output_name), "wb+") as fh:
             fh.write(bytes(value))
 
-    def read_output(self, node_location: NodeLocation, output_name: PortID) -> Value:
+    def read_output(self, node_location: NodeLocation, output_name: PortID) -> bytes:
         with open(self._output_path(node_location, output_name), "rb") as fh:
-            return Value.FromString(fh.read())
+            return fh.read()
 
     def is_node_started(self, node_location: NodeLocation) -> bool:
         return Path(self._definition_path(node_location)).exists()

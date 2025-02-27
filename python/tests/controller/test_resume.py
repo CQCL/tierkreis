@@ -30,13 +30,9 @@ def test_resume_sample_graph():
     g = sample_graph_without_match()
     storage = ControllerFileStorage(UUID(int=0))
     storage.clean_graph_files()
-    inp_loc = storage.add_input("inp", Value(integer=4))
-    vv_loc = storage.add_input(
-        "vv", Value(variant=VariantValue("one", Value(integer=2)))
-    )
-    value_loc = storage.add_input("value", Value(integer=2))
-
-    thunk_loc = storage.add_input(Labels.THUNK, Value(graph=g.to_proto()))
+    inp_loc = storage.add_input("inp", json.dumps(4).encode())
+    value_loc = storage.add_input("value", json.dumps(2).encode())
+    thunk_loc = storage.add_input(Labels.THUNK, g.to_proto().SerializeToString())
     start(
         storage,
         root_loc,
@@ -44,7 +40,6 @@ def test_resume_sample_graph():
         {
             "inp": (inp_loc, "inp"),
             Labels.THUNK: (thunk_loc, Labels.THUNK),
-            "vv": (vv_loc, "vv"),
             "value": (value_loc, "value"),
         },
         g.outputs(),
@@ -56,16 +51,16 @@ def test_resume_sample_graph():
             break
 
     c = storage.read_output(root_loc, "loop_out")
-    assert c.integer == 6
+    assert c == b"6"
 
 
-@pytest.mark.skip
+# @pytest.mark.skip
 def test_resume_nexus_polling():
     g = nexus_polling_graph()
     storage = ControllerFileStorage(UUID(int=0))
     storage.clean_graph_files()
-    circuit_loc = storage.add_input("circuit", Value(str=get_circ_str()))
-    thunk_loc = storage.add_input(Labels.THUNK, Value(graph=g.to_proto()))
+    circuit_loc = storage.add_input("circuit", get_circ_str().encode())
+    thunk_loc = storage.add_input(Labels.THUNK, g.to_proto().SerializeToString())
     start(
         storage,
         root_loc,
@@ -82,4 +77,4 @@ def test_resume_nexus_polling():
         sleep(1)
 
     c = storage.read_output(root_loc, "distribution")
-    assert "(0, 0)" in json.loads(c.str)
+    assert "(0, 0)" in json.loads(c)

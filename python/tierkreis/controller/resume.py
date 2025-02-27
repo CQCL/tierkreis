@@ -1,3 +1,4 @@
+import json
 from logging import getLogger
 
 from tierkreis.controller.models import NodeLocation
@@ -6,6 +7,8 @@ from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
+
+from tierkreis.core.protos.tierkreis.v1alpha1.graph import Graph, Value
 
 logger = getLogger(__name__)
 
@@ -31,7 +34,7 @@ def resume(storage: ControllerStorage, node_location: NodeLocation) -> None:
 
 def resume_eval(storage: ControllerStorage, node_location: NodeLocation):
     message = storage.read_output(node_location.append_node(0), Labels.THUNK)
-    graph = TierkreisGraph.from_proto(message.graph)
+    graph = TierkreisGraph.from_proto(Graph.FromString(message))
 
     logger.debug(graph.n_nodes)
     for i in range(graph.n_nodes):
@@ -75,10 +78,10 @@ def resume_loop(storage: ControllerStorage, node_location: NodeLocation):
         return
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
-    pointer_struct = storage.read_output(new_location, Labels.VALUE).struct.map
-    tag: str = pointer_struct["tag"].str
-    old_loc = NodeLocation.from_str(pointer_struct["node_location"].str)
-    old_port: PortID = pointer_struct["port"].str
+    pointer_struct = json.loads(storage.read_output(new_location, Labels.VALUE))
+    tag: str = pointer_struct["tag"]
+    old_loc = NodeLocation.from_str(pointer_struct["node_location"])
+    old_port: PortID = pointer_struct["port"]
     logger.debug(f"tagged node location {tag}, {old_loc}, {old_port}")
     if tag == Labels.BREAK:
         storage.link_outputs(node_location, Labels.VALUE, old_loc, old_port)

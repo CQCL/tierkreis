@@ -1,5 +1,5 @@
-import os
 from pathlib import Path
+import subprocess
 
 from tierkreis.exceptions import TierkreisError
 
@@ -16,6 +16,10 @@ class ShellExecutor:
 
         if not launcher_path.is_file():
             raise TierkreisError(f"Expected launcher file. Found: {launcher_path}.")
-
-        cmd = f"{self.launchers_path}/{launcher_name} {node_definition_path} >>{self.std_err_path} 2>&1"
-        os.system(cmd)
+        with open(self.std_err_path, "a") as fh:
+            subprocess.Popen(
+                [f"{self.launchers_path}/{launcher_name}", node_definition_path],
+                start_new_session=True,
+                stderr=fh,
+                stdout=fh,
+            )

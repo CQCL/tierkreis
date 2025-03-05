@@ -81,9 +81,6 @@ def start_function_node(
 ):
     launcher_name = ".".join(name.split(".")[:-1])
     name = name.split(".")[-1]
-    print("-------")
-    print(launcher_name)
-    print(name)
     def_path = storage.write_node_definition(node_location, name, inputs, output_list)
 
     if name == "eval":

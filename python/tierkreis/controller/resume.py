@@ -99,16 +99,19 @@ def resume_loop(
     if tag == Labels.BREAK:
         storage.link_outputs(node_location, Labels.VALUE, old_loc, old_port)
         storage.mark_node_finished(node_location)
+        return
 
-    else:
-        start(
-            storage,
-            executor,
-            node_location.append_loop(i + 1),
-            FunctionNode(FunctionName("eval")),
-            {
-                Labels.VALUE: (old_loc, old_port),
-                Labels.THUNK: (new_location.append_node(0), Labels.THUNK),
-            },
-            [Labels.VALUE],
-        )
+    # Include old inputs. The .value is the only one that can change.
+    input_paths = storage.read_node_definition(node_location).inputs
+    inputs = {k: (new_location.append_node(0), v.name) for k, v in input_paths.items()}
+    inputs[Labels.VALUE] = (old_loc, old_port)
+    inputs[Labels.THUNK] = (new_location.append_node(0), Labels.THUNK)
+
+    start(
+        storage,
+        executor,
+        node_location.append_loop(i + 1),
+        FunctionNode(FunctionName("eval")),
+        inputs,
+        [Labels.VALUE],
+    )

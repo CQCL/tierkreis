@@ -9,7 +9,7 @@ from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Graph, Value
+from tierkreis.core.protos.tierkreis.v1alpha1.graph import Graph
 
 logger = getLogger(__name__)
 

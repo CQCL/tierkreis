@@ -1,6 +1,4 @@
 import json
-from pathlib import Path
-import subprocess
 from logging import getLogger
 
 from betterproto import which_one_of

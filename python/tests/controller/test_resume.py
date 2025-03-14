@@ -1,5 +1,7 @@
 import json
+import os
 from pathlib import Path
+import stat
 from time import sleep
 from uuid import UUID
 
@@ -22,13 +24,16 @@ def get_circ_str() -> str:
     """Build a test circuit."""
     circ = Circuit(2, 2)
     circ.Rx(0.2, 0).CX(0, 1).Rz(-0.7, 1).measure_all()
-    return json.dumps(circ.to_dict())
+    return json.dumps(circ.to_dict())  # type: ignore
 
 
 def test_resume_sample_graph():
     g = sample_graph_without_match()
     storage = ControllerFileStorage(UUID(int=0))
     executor = ShellExecutor(Path("./examples/launchers"), Path("./_stderr"))
+
+    st = os.stat("./examples/launchers/numerical-worker")
+    os.chmod("./examples/launchers/numerical-worker", st.st_mode | stat.S_IEXEC)
 
     storage.clean_graph_files()
     inp_loc = storage.add_input("inp", json.dumps(4).encode())
@@ -51,7 +56,7 @@ def test_resume_sample_graph():
         resume(storage, executor, root_loc)
         if storage.is_node_finished(root_loc):
             break
-        sleep(0.1)
+        sleep(0.001)
 
     c = storage.read_output(root_loc, "loop_out")
     assert c == b"6"

@@ -35,4 +35,8 @@ node_location_4 = NodeLocation(location=[])
     ],
 )
 def test_to_str(node_location: NodeLocation, loc_str: str):
-    assert str(node_location) == loc_str
+    node_location_str = str(node_location)
+    assert node_location_str == loc_str
+
+    new_loc = NodeLocation.from_str(node_location_str)
+    assert new_loc == node_location

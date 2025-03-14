@@ -15,16 +15,7 @@ from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import FunctionNode
 
-from pytket._tket.circuit import Circuit
-
 root_loc = NodeLocation(location=[])
-
-
-def get_circ_str() -> str:
-    """Build a test circuit."""
-    circ = Circuit(2, 2)
-    circ.Rx(0.2, 0).CX(0, 1).Rz(-0.7, 1).measure_all()
-    return json.dumps(circ.to_dict())  # type: ignore
 
 
 def test_resume_sample_graph():

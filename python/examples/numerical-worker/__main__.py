@@ -85,17 +85,6 @@ def run(node_definition: NodeDefinition):
         with open(node_definition.outputs["value"], "w+") as fh:
             fh.write(json.dumps(value))
 
-    elif node_definition.function_name == "str_eq":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            str_a = json.loads(fh.read())
-
-        with open(node_definition.inputs["b"], "rb") as fh:
-            str_b = json.loads(fh.read())
-
-        ans = str_a == str_b
-
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(ans))
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")
     node_definition.done_path.touch()

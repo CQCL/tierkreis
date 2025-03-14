@@ -56,7 +56,7 @@ def test_resume_sample_graph():
         resume(storage, executor, root_loc)
         if storage.is_node_finished(root_loc):
             break
-        sleep(0.001)
+        sleep(0.01)
 
     c = storage.read_output(root_loc, "loop_out")
     assert c == b"6"

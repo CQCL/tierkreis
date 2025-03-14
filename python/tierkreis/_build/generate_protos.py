@@ -6,7 +6,6 @@ import subprocess
 from setuptools import build_meta as default_backend  # type : ignore
 
 # PEP 517 / 518 local (aka in-tree) backend for pip/build/etc.
-# We expect to be run from the project root, i.e. python/
 tierkreis_python_dir = Path(__file__).parent.parent.parent
 PROTO_INPUT_DIR = str(tierkreis_python_dir / "protos")
 PROTO_OUTPUT_DIR = str(tierkreis_python_dir / "tierkreis/core/protos")

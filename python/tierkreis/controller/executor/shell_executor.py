@@ -16,6 +16,7 @@ class ShellExecutor:
 
         if not launcher_path.is_file():
             raise TierkreisError(f"Expected launcher file. Found: {launcher_path}.")
+
         with open(self.std_err_path, "a") as fh:
             subprocess.Popen(
                 [f"{self.launchers_path}/{launcher_name}", node_definition_path],

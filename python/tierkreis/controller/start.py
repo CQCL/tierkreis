@@ -39,9 +39,11 @@ def start(
         start_function_node(storage, executor, node_location, name, inputs, output_list)
 
     elif isinstance(tk_node, InputNode):
+        storage.write_node_definition(node_location, "InputNode", inputs, output_list)
         storage.mark_node_finished(node_location)
 
     elif isinstance(tk_node, OutputNode):
+        storage.write_node_definition(node_location, "OutputNode", inputs, output_list)
         storage.mark_node_finished(node_location)
 
         parent_loc = NodeLocation(location=node_location.location[:-1])
@@ -49,11 +51,13 @@ def start(
         storage.mark_node_finished(parent_loc)
 
     elif isinstance(tk_node, ConstNode):
+        storage.write_node_definition(node_location, "ConstNode", inputs, output_list)
         bs = bytes_from_value(tk_node.value)
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)
 
     elif isinstance(tk_node, TagNode):
+        storage.write_node_definition(node_location, "TagNode", inputs, output_list)
         loc, port = inputs[Labels.VALUE]
         tag = {"tag": tk_node.tag_name, "node_location": str(loc), "port": port}
         storage.write_output(node_location, Labels.VALUE, json.dumps(tag).encode())

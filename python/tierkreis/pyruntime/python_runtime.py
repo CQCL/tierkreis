@@ -102,6 +102,8 @@ class PyRuntime(RuntimeClient):
         total_nodes = run_g._graph.number_of_nodes()
         runtime_state: dict["_EdgeData", TierkreisValue] = {}
 
+        run_g._graph.add_edge()
+
         async def run_node(node: int) -> dict[str, TierkreisValue]:
             tk_node = run_g[node]
 

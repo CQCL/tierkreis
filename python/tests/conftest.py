@@ -5,7 +5,7 @@ from typing import AsyncIterator
 import pytest
 from grpclib.client import Channel
 
-from tests.test_worker import main
+from test_worker import main
 from tierkreis.builder import Namespace
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.client.server_client import ServerRuntime

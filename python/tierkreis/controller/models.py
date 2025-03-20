@@ -1,6 +1,7 @@
 from enum import Enum
 from logging import getLogger
 from pathlib import Path
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -15,6 +16,7 @@ class NodeDefinition(BaseModel):
     inputs: dict[str, Path]
     outputs: dict[str, Path]
     done_path: Path
+    logs_path: Optional[Path]
 
 
 class NodeType(Enum):

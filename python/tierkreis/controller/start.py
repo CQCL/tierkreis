@@ -115,6 +115,7 @@ def start_function_node(
 
     elif name == "discard":
         storage.mark_node_finished(node_location)
+
     else:
         logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
         executor.run(launcher_name, def_path)

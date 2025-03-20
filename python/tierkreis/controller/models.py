@@ -82,12 +82,6 @@ class NodeLocation(BaseModel):
             + [NodeStep(node_type=NodeType.MAP, idx=idx)]
         )
 
-    def peek_node(self) -> int:
-        frame = self.location[len(self.location) - 1]
-        if frame.node_type != NodeType.NODE:
-            raise TierkreisError(f"Location {self} does not end in an N.")
-        return frame.idx
-
     def __str__(self) -> str:
         frame_strs = [str(x) for x in self.location]
         return ".".join(frame_strs)

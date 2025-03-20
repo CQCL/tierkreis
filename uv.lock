@@ -1334,8 +1334,6 @@ build = [
     { name = "build", extra = ["uv"] },
 ]
 dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
     { name = "tierkreis", extra = ["commontypes", "docker", "sc22-example", "telemetry", "typecheck"] },
 ]
 
@@ -1361,11 +1359,7 @@ provides-extras = ["docker", "telemetry", "commontypes", "sc22-example", "typech
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]
-dev = [
-    { name = "pytest", specifier = ">=8.3.3" },
-    { name = "pytest-asyncio", specifier = ">=0.16.0" },
-    { name = "tierkreis", extras = ["telemetry", "typecheck", "docker", "sc22-example", "commontypes"] },
-]
+dev = [{ name = "tierkreis", extras = ["telemetry", "typecheck", "docker", "sc22-example", "commontypes"] }]
 
 [[package]]
 name = "tierkreis-typecheck"

@@ -37,8 +37,6 @@ typecheck = ["tierkreis-typecheck"]
 
 [dependency-groups]
 dev = [
-    "pytest-asyncio>=0.16.0",
-    "pytest>=8.3.3",
     "tierkreis[telemetry,typecheck,docker,sc22-example,commontypes]",
 ]
 build = ["build[uv]"]

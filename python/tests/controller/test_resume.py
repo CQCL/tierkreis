@@ -20,13 +20,27 @@ root_loc = NodeLocation(location=[])
 
 def test_resume_sample_graph():
     g = sample_graph_without_match()
-    storage = ControllerFileStorage(UUID(int=0))
-    executor = ShellExecutor(Path("./examples/launchers"), Path("./_stderr"))
+    workflow_id = UUID(int=0)
+    checkpoints_dir = "/tmp/tierkreis/checkpoints"
 
-    st = os.stat("./examples/launchers/numerical-worker")
-    os.chmod("./examples/launchers/numerical-worker", st.st_mode | stat.S_IEXEC)
+    checkpoints_path = Path(checkpoints_dir)
+    checkpoints_path.mkdir(exist_ok=True, parents=True)
+    storage = ControllerFileStorage(
+        workflow_id, tierkreis_directory=checkpoints_path
+    )
 
     storage.clean_graph_files()
+
+    err_path = Path(checkpoints_dir) / str(workflow_id) / "logs"
+    err_path.mkdir(exist_ok=True, parents=True)
+    std_err_path = err_path / "controller_logs"
+    std_err_path.touch()
+    print(std_err_path)
+    executor = ShellExecutor(Path("./python/examples/launchers"), std_err_path=std_err_path)
+
+    st = os.stat("./python/examples/launchers/numerical-worker")
+    os.chmod("./python/examples/launchers/numerical-worker", st.st_mode | stat.S_IEXEC)
+
     inp_loc = storage.add_input("inp", json.dumps(4).encode())
     value_loc = storage.add_input("value", json.dumps(2).encode())
     thunk_loc = storage.add_input(Labels.THUNK, g.to_proto().SerializeToString())

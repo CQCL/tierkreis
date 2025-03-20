@@ -36,7 +36,6 @@ def test_resume_sample_graph():
     err_path.mkdir(exist_ok=True, parents=True)
     std_err_path = err_path / "controller_logs"
     std_err_path.touch()
-    print(std_err_path)
     executor = ShellExecutor(Path("./python/examples/launchers"), std_err_path=std_err_path)
 
     st = os.stat("./python/examples/launchers/numerical-worker")

@@ -50,8 +50,7 @@ class NodeStep(BaseModel):
             c, idx = frame[0], int(frame[1:])
             return NodeStep(node_type=NodeType.from_str(c), idx=idx)
         except (IndexError, ValueError) as exc:
-            logger.exception(exc)
-            raise TierkreisError(f"Invalid NodeStep {frame}")
+            raise TierkreisError(f"Invalid NodeStep {frame}") from exc
 
 
 class NodeLocation(BaseModel):

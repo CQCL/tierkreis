@@ -5,8 +5,6 @@ from sys import argv
 
 from pydantic import BaseModel
 
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Value
-
 logger = getLogger(__name__)
 
 

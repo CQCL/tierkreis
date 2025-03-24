@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 from logging import getLogger
 from pathlib import Path
 from typing import Optional
@@ -19,19 +19,10 @@ class NodeDefinition(BaseModel):
     logs_path: Optional[Path]
 
 
-class NodeType(Enum):
-    NODE = 0
-    LOOP = 1
-    MAP = 2
-
-    def __str__(self) -> str:
-        match self:
-            case NodeType.NODE:
-                return "N"
-            case NodeType.LOOP:
-                return "L"
-            case NodeType.MAP:
-                return "M"
+class NodeType(StrEnum):
+    NODE = "N"
+    LOOP = "L"
+    MAP = "M"
 
     @staticmethod
     def from_str(type: str) -> "NodeType":

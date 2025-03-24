@@ -2,7 +2,8 @@ import json
 import os
 import shutil
 from pathlib import Path
-from uuid import UUID, uuid4
+from time import time_ns
+from uuid import UUID
 
 from tierkreis.controller.models import NodeDefinition, NodeLocation, OutputLocation
 from tierkreis.core.tierkreis_graph import PortID
@@ -10,8 +11,11 @@ from tierkreis.core.tierkreis_graph import PortID
 
 class ControllerFileStorage:
     def __init__(
-        self, workflow_id: UUID, tierkreis_directory: Path = Path("/tmp/tierkreis")
+        self,
+        workflow_id: UUID,
+        tierkreis_directory: Path = Path.home() / ".tierkreis" / "checkpoints",
     ) -> None:
+        self.workflow_id = workflow_id
         self.workflow_dir: Path = tierkreis_directory / str(workflow_id)
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
 
@@ -31,8 +35,10 @@ class ControllerFileStorage:
         return path
 
     def clean_graph_files(self) -> None:
+        tmp_dir = Path(f"/tmp/tierkreis/archive/{self.workflow_id}/{time_ns()}")
+        tmp_dir.mkdir(parents=True)
         if self.workflow_dir.exists():
-            shutil.move(self.workflow_dir, f"/tmp/{uuid4()}")
+            shutil.move(self.workflow_dir, tmp_dir)
 
     def add_input(self, port_name: PortID, value: bytes) -> NodeLocation:
         input_loc = NodeLocation(location=[]).append_node(-1)

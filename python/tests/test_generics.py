@@ -3,7 +3,7 @@ from typing import Generic, Type, TypeVar, cast
 
 import pydantic as pyd
 import pytest
-from test_worker.main import (
+from tests.test_worker.main import (
     MyGeneric,
     MyGenericList,
 )

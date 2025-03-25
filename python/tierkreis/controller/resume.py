@@ -32,10 +32,10 @@ def get_nodes_to_start(
     name = storage.read_node_definition(node_location).function_name
 
     if name == "eval":
-        return get_nodes_to_start_eval(storage, node_location)
+        return get_nodes_to_start_in_eval(storage, node_location)
 
     elif name == "loop":
-        return get_nodes_to_start_loop(storage, node_location)
+        return get_nodes_to_start_in_loop(storage, node_location)
 
     elif name == "map":
         raise NotImplementedError("MAP not implemented.")
@@ -45,7 +45,7 @@ def get_nodes_to_start(
         return []
 
 
-def get_nodes_to_start_eval(
+def get_nodes_to_start_in_eval(
     storage: ControllerStorage, node_location: NodeLocation
 ) -> list[NodeRunData]:
     nodes_to_start: list[NodeRunData] = []
@@ -86,7 +86,7 @@ def get_nodes_to_start_eval(
     return nodes_to_start
 
 
-def get_nodes_to_start_loop(
+def get_nodes_to_start_in_loop(
     storage: ControllerStorage, node_location: NodeLocation
 ) -> list[NodeRunData]:
     i = 0

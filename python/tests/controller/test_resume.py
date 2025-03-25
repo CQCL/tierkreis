@@ -9,7 +9,7 @@ from tests.sample_graph import sample_graph_without_match
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.models import NodeLocation
 from tierkreis.controller.resume import resume
-from tierkreis.controller.start import start
+from tierkreis.controller.start import start, NodeRunData
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
@@ -46,14 +46,16 @@ def test_resume_sample_graph():
     start(
         storage,
         executor,
-        root_loc,
-        FunctionNode(FunctionName("eval")),
-        {
-            "inp": (inp_loc, "inp"),
-            Labels.THUNK: (thunk_loc, Labels.THUNK),
-            "value": (value_loc, "value"),
-        },
-        g.outputs(),
+        NodeRunData(
+            root_loc,
+            FunctionNode(FunctionName("eval")),
+            {
+                "inp": (inp_loc, "inp"),
+                Labels.THUNK: (thunk_loc, Labels.THUNK),
+                "value": (value_loc, "value"),
+            },
+            g.outputs(),
+        ),
     )
 
     for _ in range(400):

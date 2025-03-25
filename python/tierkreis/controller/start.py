@@ -1,7 +1,9 @@
 import json
+from dataclasses import dataclass
 from logging import getLogger
 
 from betterproto import which_one_of
+from pydantic import BaseModel
 
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation, OutputLocation
@@ -25,14 +27,22 @@ from tierkreis.exceptions import TierkreisError
 logger = getLogger(__name__)
 
 
+@dataclass
+class NodeRunData:
+    node_location: NodeLocation
+    tk_node: TierkreisNode
+    inputs: dict[PortID, OutputLocation]
+    output_list: list[PortID]
+
+
 def start(
-    storage: ControllerStorage,
-    executor: ControllerExecutor,
-    node_location: NodeLocation,
-    tk_node: TierkreisNode,
-    inputs: dict[PortID, OutputLocation],
-    output_list: list[PortID],
+    storage: ControllerStorage, executor: ControllerExecutor, node_run_data: NodeRunData
 ) -> None:
+    node_location = node_run_data.node_location
+    tk_node = node_run_data.tk_node
+    inputs = node_run_data.inputs
+    output_list = node_run_data.output_list
+
     logger.debug(f"start {node_location} {tk_node} {inputs} {output_list}")
     if isinstance(tk_node, FunctionNode):
         name = tk_node.function_name.name
@@ -94,10 +104,12 @@ def start_function_node(
         start(
             storage,
             executor,
-            node_location.append_loop(0),
-            FunctionNode(FunctionName("eval")),
-            eval_inputs,
-            output_list,
+            NodeRunData(
+                node_location.append_loop(0),
+                FunctionNode(FunctionName("eval")),
+                eval_inputs,
+                output_list,
+            ),
         )
 
     elif name == "map":

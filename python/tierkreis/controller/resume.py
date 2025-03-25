@@ -3,7 +3,7 @@ from logging import getLogger
 
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation
-from tierkreis.controller.start import start
+from tierkreis.controller.start import start, NodeRunData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
@@ -68,7 +68,8 @@ def resume_eval(
         if all(storage.is_node_finished(loc) for (loc, _) in inputs.values()):
             logger.debug(f"{new_location} is_ready_to_start")
             output_list = [x.source.port for x in graph.out_edges(i)]
-            start(storage, executor, new_location, graph[i], inputs, output_list)
+            node_run_data = NodeRunData(new_location, graph[i], inputs, output_list)
+            start(storage, executor, node_run_data)
             return
 
         logger.debug(f"node not ready to start {new_location}")
@@ -109,8 +110,10 @@ def resume_loop(
     start(
         storage,
         executor,
-        node_location.append_loop(i + 1),
-        FunctionNode(FunctionName("eval")),
-        inputs,
-        [Labels.VALUE],
+        NodeRunData(
+            node_location.append_loop(i + 1),
+            FunctionNode(FunctionName("eval")),
+            inputs,
+            [Labels.VALUE],
+        ),
     )

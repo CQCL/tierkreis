@@ -3,11 +3,11 @@ from typing import Generic, Type, TypeVar, cast
 
 import pydantic as pyd
 import pytest
+
 from tests.test_worker.main import (
     MyGeneric,
     MyGenericList,
 )
-
 from tierkreis.builder import Const, Output, graph
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core._internal import generic_origin

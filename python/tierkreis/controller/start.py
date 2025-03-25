@@ -35,6 +35,15 @@ class NodeRunData:
     output_list: list[PortID]
 
 
+def start_nodes(
+    storage: ControllerStorage,
+    executor: ControllerExecutor,
+    node_run_data: list[NodeRunData],
+) -> None:
+    for node_run_datum in node_run_data:
+        start(storage, executor, node_run_datum)
+
+
 def start(
     storage: ControllerStorage, executor: ControllerExecutor, node_run_data: NodeRunData
 ) -> None:

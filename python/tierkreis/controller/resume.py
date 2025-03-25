@@ -3,7 +3,7 @@ from logging import getLogger
 
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation
-from tierkreis.controller.start import start, NodeRunData
+from tierkreis.controller.start import NodeRunData, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
@@ -18,29 +18,38 @@ def resume(
     executor: ControllerExecutor,
     node_location: NodeLocation,
 ) -> None:
+    nodes_to_start = get_nodes_to_start(storage, node_location)
+    start_nodes(storage, executor, nodes_to_start)
+
+
+def get_nodes_to_start(
+    storage: ControllerStorage,
+    node_location: NodeLocation,
+) -> list[NodeRunData]:
     """Should only be called when a node has started and has not finished."""
 
     logger.debug(f"\n\nRESUME {node_location}")
     name = storage.read_node_definition(node_location).function_name
 
     if name == "eval":
-        resume_eval(storage, executor, node_location)
+        return get_nodes_to_start_eval(storage, node_location)
 
     elif name == "loop":
-        resume_loop(storage, executor, node_location)
+        return get_nodes_to_start_loop(storage, node_location)
 
     elif name == "map":
         raise NotImplementedError("MAP not implemented.")
 
     else:
         logger.debug(f"{name} already started")
+        return []
 
 
-def resume_eval(
-    storage: ControllerStorage,
-    executor: ControllerExecutor,
-    node_location: NodeLocation,
-):
+def get_nodes_to_start_eval(
+    storage: ControllerStorage, node_location: NodeLocation
+) -> list[NodeRunData]:
+    nodes_to_start: list[NodeRunData] = []
+
     message = storage.read_output(node_location.append_node(0), Labels.THUNK)
     graph = TierkreisGraph.from_proto(Graph.FromString(message))
 
@@ -55,7 +64,7 @@ def resume_eval(
 
         if storage.is_node_started(new_location):
             logger.debug(f"{new_location} is started")
-            resume(storage, executor, new_location)
+            nodes_to_start.extend(get_nodes_to_start(storage, new_location))
             continue
 
         inputs = {
@@ -69,17 +78,17 @@ def resume_eval(
             logger.debug(f"{new_location} is_ready_to_start")
             output_list = [x.source.port for x in graph.out_edges(i)]
             node_run_data = NodeRunData(new_location, graph[i], inputs, output_list)
-            start(storage, executor, node_run_data)
-            return
+            nodes_to_start.append(node_run_data)
+            continue
 
         logger.debug(f"node not ready to start {new_location}")
 
+    return nodes_to_start
 
-def resume_loop(
-    storage: ControllerStorage,
-    executor: ControllerExecutor,
-    node_location: NodeLocation,
-):
+
+def get_nodes_to_start_loop(
+    storage: ControllerStorage, node_location: NodeLocation
+) -> list[NodeRunData]:
     i = 0
     while storage.is_node_started(node_location.append_loop(i + 1)):
         i += 1
@@ -87,8 +96,7 @@ def resume_loop(
     logger.debug(f"found latest iteration of loop: {new_location}")
 
     if not storage.is_node_finished(new_location):
-        resume(storage, executor, new_location)
-        return
+        return get_nodes_to_start(storage, new_location)
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
     pointer_struct = json.loads(storage.read_output(new_location, Labels.VALUE))
@@ -99,7 +107,7 @@ def resume_loop(
     if tag == Labels.BREAK:
         storage.link_outputs(node_location, Labels.VALUE, old_loc, old_port)
         storage.mark_node_finished(node_location)
-        return
+        return []
 
     # Include old inputs. The .value is the only one that can change.
     input_paths = storage.read_node_definition(node_location).inputs
@@ -107,13 +115,11 @@ def resume_loop(
     inputs[Labels.VALUE] = (old_loc, old_port)
     inputs[Labels.THUNK] = (new_location.append_node(0), Labels.THUNK)
 
-    start(
-        storage,
-        executor,
+    return [
         NodeRunData(
             node_location.append_loop(i + 1),
             FunctionNode(FunctionName("eval")),
             inputs,
             [Labels.VALUE],
-        ),
-    )
+        )
+    ]

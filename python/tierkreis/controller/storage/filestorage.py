@@ -18,6 +18,7 @@ class ControllerFileStorage:
         self.workflow_id = workflow_id
         self.workflow_dir: Path = tierkreis_directory / str(workflow_id)
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
+        self.logs_path = self.workflow_dir / "logs"
 
     def _definition_path(self, node_location: NodeLocation) -> Path:
         path = self.workflow_dir / str(node_location) / "definition"
@@ -64,7 +65,7 @@ class ControllerFileStorage:
             },
             outputs={k: self._output_path(node_location, k) for k in output_list},
             done_path=self._done_path(node_location),
-            logs_path=self.workflow_dir / "logs" / "controller_logs",
+            logs_path=self.logs_path,
         )
         with open(node_definition_path, "w+") as fh:
             fh.write(node_definition.model_dump_json())

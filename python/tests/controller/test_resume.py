@@ -1,10 +1,9 @@
 import json
 import os
-from pathlib import Path
 import stat
+from pathlib import Path
 from time import sleep
 from uuid import UUID
-
 
 from tests.sample_graph import sample_graph_without_match
 from tierkreis.controller.executor.shell_executor import ShellExecutor

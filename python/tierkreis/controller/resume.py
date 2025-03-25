@@ -7,9 +7,8 @@ from tierkreis.controller.start import start
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
-from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
-
 from tierkreis.core.protos.tierkreis.v1alpha1.graph import Graph
+from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 
 logger = getLogger(__name__)
 

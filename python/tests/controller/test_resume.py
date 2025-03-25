@@ -26,9 +26,7 @@ def test_resume_sample_graph():
 
     checkpoints_path = Path(checkpoints_dir)
     checkpoints_path.mkdir(exist_ok=True, parents=True)
-    storage = ControllerFileStorage(
-        workflow_id, tierkreis_directory=checkpoints_path
-    )
+    storage = ControllerFileStorage(workflow_id, tierkreis_directory=checkpoints_path)
 
     storage.clean_graph_files()
 
@@ -36,7 +34,9 @@ def test_resume_sample_graph():
     err_path.mkdir(exist_ok=True, parents=True)
     std_err_path = err_path / "controller_logs"
     std_err_path.touch()
-    executor = ShellExecutor(Path("./python/examples/launchers"), std_err_path=std_err_path)
+    executor = ShellExecutor(
+        Path("./python/examples/launchers"), std_err_path=std_err_path
+    )
 
     st = os.stat("./python/examples/launchers/numerical-worker")
     os.chmod("./python/examples/launchers/numerical-worker", st.st_mode | stat.S_IEXEC)

@@ -484,7 +484,7 @@ class TierkreisGraph:
             incoming_ports = {edge.target.port: edge.source for edge in curr_inputs}
             curr_outputs = [
                 graph._to_tkedge(e)
-                for e in _to_edgedata(graph._graph.out_edges(node_idx, keys=True))
+                for e in _to_edgedata(graph._graph.out_edges(node_idx, keys=True))  # type: ignore
             ]
             # Removal all incident edges
             graph._graph.remove_edges_from(
@@ -514,7 +514,7 @@ class TierkreisGraph:
 
     def edges(self) -> Iterator[TierkreisEdge]:
         """Iterator over all edges in the graph."""
-        return map(self._to_tkedge, _to_edgedata(self._graph.edges(keys=True)))
+        return map(self._to_tkedge, _to_edgedata(self._graph.edges(keys=True)))  # type: ignore
 
     def __getitem__(self, key: Union[int, NodeRef]) -> TierkreisNode:
         name = key.idx if isinstance(key, NodeRef) else key
@@ -601,11 +601,11 @@ class TierkreisGraph:
         """Annotate an input port of the graph with a type."""
         (in_edge,) = [
             e
-            for e in _to_edgedata(self._graph.out_edges(self.input_node_idx, keys=True))
+            for e in _to_edgedata(self._graph.out_edges(self.input_node_idx, keys=True))  # type: ignore
             if e[2][0] == input_port
         ]
         tk_type = _to_tierkreis_type(edge_type)
-        self._graph.edges[in_edge]["type"] = tk_type
+        self._graph.edges[in_edge]["type"] = tk_type  # type: ignore
 
     def annotate_output(
         self, output_port: str, edge_type: Optional[Union[Type, TierkreisType]]
@@ -613,12 +613,12 @@ class TierkreisGraph:
         """Annotate an output port of the graph with a type."""
         (out_edge,) = [
             e
-            for e in _to_edgedata(self._graph.in_edges(self.output_node_idx, keys=True))
+            for e in _to_edgedata(self._graph.in_edges(self.output_node_idx, keys=True))  # type: ignore
             if e[2][1] == output_port
         ]
 
         tk_type = _to_tierkreis_type(edge_type)
-        self._graph.edges[out_edge]["type"] = tk_type
+        self._graph.edges[out_edge]["type"] = tk_type  # type: ignore
 
     def get_edge(self, source: NodePort, target: NodePort) -> TierkreisEdge:
         """Retrieve an edge from the graph by source and target ports.
@@ -653,7 +653,8 @@ class TierkreisGraph:
         """Iterator over incoming edges to a node."""
         node_name = node if isinstance(node, int) else node.idx
         return map(
-            self._to_tkedge, _to_edgedata(self._graph.in_edges(node_name, keys=True))
+            self._to_tkedge,
+            _to_edgedata(self._graph.in_edges(node_name, keys=True)),  # type: ignore
         )
 
     def out_edges(self, node: Union[NodeRef, int]) -> Iterator[TierkreisEdge]:
@@ -661,7 +662,7 @@ class TierkreisGraph:
         node_idx = node if isinstance(node, int) else node.idx
         return map(
             self._to_tkedge,
-            _to_edgedata(self._graph.out_edges(node_idx, keys=True)),
+            _to_edgedata(self._graph.out_edges(node_idx, keys=True)),  # type: ignore
         )
 
     def discard(self, out_port: NodePort) -> None:

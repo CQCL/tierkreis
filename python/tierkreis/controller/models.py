@@ -1,9 +1,10 @@
 from enum import Enum
 from logging import getLogger
 from pathlib import Path
-from typing import Optional, assert_never
+from typing import Optional
 
 from pydantic import BaseModel
+from typing_extensions import assert_never
 
 from tierkreis.core.tierkreis_graph import PortID
 from tierkreis.exceptions import TierkreisError

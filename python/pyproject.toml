@@ -10,7 +10,7 @@ authors = [
     { name = "Alan Lawrence", email = "alan.lawrence@quantinuum.com" },
 ]
 
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.10,<3.13"
 dependencies = [
     "betterproto[compiler]==2.0.0b6",
     "grpclib>=0.4.3rc,<0.5",          # pre-release to support python 3.10

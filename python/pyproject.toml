@@ -2,7 +2,7 @@
 name = "tierkreis"
 description = "Python client and utilities for tierkreis."
 readme = "README.md"
-version = "0.7.6"
+version = "0.7.8"
 authors = [
     { name = "Seyon Sivarajah", email = "seyon.sivarajah@quantinuum.com" },
     { name = "Lukas Heidemann", email = "lukas.heidemann@quantinuum.com" },
@@ -42,14 +42,9 @@ build = ["build[uv]"]
 [tool.pytest.ini_options]
 markers = ["pytket"]
 
-
 [build-system]
-requires = ["setuptools>=65.5.0", "betterproto[compiler]==2.0.0b6"]
-build-backend = "generate_protos"
-backend-path = ["tierkreis/_build"]
-
-[tool.setuptools.packages.find]
-include = ["tierkreis*", "tierkreis/py.typed"]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 
 [tool.ruff]

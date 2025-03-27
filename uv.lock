@@ -1298,7 +1298,7 @@ wheels = [
 
 [[package]]
 name = "tierkreis"
-version = "0.7.5"
+version = "0.7.8"
 source = { editable = "python" }
 dependencies = [
     { name = "betterproto", extra = ["compiler"] },

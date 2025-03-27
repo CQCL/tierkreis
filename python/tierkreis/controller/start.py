@@ -1,11 +1,10 @@
 import json
-from dataclasses import dataclass
 from logging import getLogger
 
 from betterproto import which_one_of
 
 from tierkreis.controller.executor.protocol import ControllerExecutor
-from tierkreis.controller.models import NodeLocation, OutputLocation
+from tierkreis.controller.models import NodeLocation, OutputLocation, NodeRunData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
@@ -18,20 +17,11 @@ from tierkreis.core.tierkreis_graph import (
     OutputNode,
     PortID,
     TagNode,
-    TierkreisNode,
 )
 from tierkreis.core.values import TierkreisValue
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
-
-
-@dataclass
-class NodeRunData:
-    node_location: NodeLocation
-    tk_node: TierkreisNode
-    inputs: dict[PortID, OutputLocation]
-    output_list: list[PortID]
 
 
 def start_nodes(
@@ -142,10 +132,7 @@ def start_function_node(
 
     else:
         logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
-        executor.run(
-            launcher_name,
-            def_path,
-        )
+        executor.run(launcher_name, def_path)
 
 
 def pipe_inputs_to_output_location(

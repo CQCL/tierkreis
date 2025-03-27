@@ -93,9 +93,11 @@ class ControllerFileStorage:
 
     def write_output(
         self, node_location: NodeLocation, output_name: PortID, value: bytes
-    ) -> None:
-        with open(self._output_path(node_location, output_name), "wb+") as fh:
+    ) -> Path:
+        output_path = self._output_path(node_location, output_name)
+        with open(output_path, "wb+") as fh:
             fh.write(bytes(value))
+        return output_path
 
     def read_output(self, node_location: NodeLocation, output_name: PortID) -> bytes:
         with open(self._output_path(node_location, output_name), "rb") as fh:

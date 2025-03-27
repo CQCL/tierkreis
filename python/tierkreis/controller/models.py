@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from enum import Enum
 from logging import getLogger
 from pathlib import Path
@@ -6,7 +7,7 @@ from typing import Optional
 from pydantic import BaseModel
 from typing_extensions import assert_never
 
-from tierkreis.core.tierkreis_graph import PortID
+from tierkreis.core.tierkreis_graph import PortID, TierkreisNode
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -37,8 +38,8 @@ class NodeType(Enum):
                 assert_never(self)
 
     @staticmethod
-    def from_str(type: str) -> "NodeType":
-        match type:
+    def from_str(node_type: str) -> "NodeType":
+        match node_type:
             case "N":
                 return NodeType.NODE
             case "L":
@@ -99,3 +100,11 @@ class NodeLocation(BaseModel):
 
 
 OutputLocation = tuple[NodeLocation, PortID]
+
+
+@dataclass
+class NodeRunData:
+    node_location: NodeLocation
+    tk_node: TierkreisNode
+    inputs: dict[PortID, OutputLocation]
+    output_list: list[PortID]

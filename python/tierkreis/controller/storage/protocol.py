@@ -30,7 +30,7 @@ class ControllerStorage(Protocol):
 
     def write_output(
         self, node_location: NodeLocation, output_name: PortID, value: bytes
-    ) -> None: ...
+    ) -> Path: ...
 
     def read_output(
         self, node_location: NodeLocation, output_name: PortID

@@ -1,9 +1,7 @@
 import json
 from logging import getLogger
 
-from tierkreis.controller.executor.protocol import ControllerExecutor
-from tierkreis.controller.models import NodeLocation
-from tierkreis.controller.start import NodeRunData, start_nodes
+from tierkreis.controller.models import NodeLocation, NodeRunData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
@@ -13,18 +11,8 @@ from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 logger = getLogger(__name__)
 
 
-def resume(
-    storage: ControllerStorage,
-    executor: ControllerExecutor,
-    node_location: NodeLocation,
-) -> None:
-    nodes_to_start = get_nodes_to_start(storage, node_location)
-    start_nodes(storage, executor, nodes_to_start)
-
-
 def get_nodes_to_start(
-    storage: ControllerStorage,
-    node_location: NodeLocation,
+    storage: ControllerStorage, node_location: NodeLocation
 ) -> list[NodeRunData]:
     """Should only be called when a node has started and has not finished."""
 

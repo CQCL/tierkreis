@@ -39,8 +39,8 @@ def resume_graph(
     polling_interval_seconds: float = 0.01,
 ) -> None:
     for i in range(n_iterations):
-        nodes_to_start = get_nodes_to_start(storage, root_loc)
-        start_nodes(storage, executor, nodes_to_start)
+        walk_results = get_nodes_to_start(storage, root_loc)
+        start_nodes(storage, executor, walk_results.inputs_ready)
         if storage.is_node_finished(root_loc):
             break
         sleep(polling_interval_seconds)

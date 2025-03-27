@@ -1,4 +1,5 @@
 import json
+from dataclasses import dataclass
 from logging import getLogger
 
 from tierkreis.controller.models import NodeLocation, NodeRunData
@@ -11,9 +12,19 @@ from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 logger = getLogger(__name__)
 
 
+@dataclass
+class WalkResult:
+    inputs_ready: list[NodeRunData]
+    started: list[NodeLocation]
+
+    def extend(self, walk_result: "WalkResult") -> None:
+        self.inputs_ready.extend(walk_result.inputs_ready)
+        self.started.extend(walk_result.started)
+
+
 def get_nodes_to_start(
     storage: ControllerStorage, node_location: NodeLocation
-) -> list[NodeRunData]:
+) -> WalkResult:
     """Should only be called when a node has started and has not finished."""
 
     logger.debug(f"\n\nRESUME {node_location}")
@@ -30,13 +41,13 @@ def get_nodes_to_start(
 
     else:
         logger.debug(f"{name} already started")
-        return []
+        return WalkResult([], [node_location])
 
 
 def get_nodes_to_start_in_eval(
     storage: ControllerStorage, node_location: NodeLocation
-) -> list[NodeRunData]:
-    nodes_to_start: list[NodeRunData] = []
+) -> WalkResult:
+    walk_result = WalkResult([], [])
 
     message = storage.read_output(node_location.append_node(0), Labels.THUNK)
     graph = TierkreisGraph.from_proto(Graph.FromString(message))
@@ -52,7 +63,7 @@ def get_nodes_to_start_in_eval(
 
         if storage.is_node_started(new_location):
             logger.debug(f"{new_location} is started")
-            nodes_to_start.extend(get_nodes_to_start(storage, new_location))
+            walk_result.extend(get_nodes_to_start(storage, new_location))
             continue
 
         inputs = {
@@ -66,17 +77,17 @@ def get_nodes_to_start_in_eval(
             logger.debug(f"{new_location} is_ready_to_start")
             output_list = [x.source.port for x in graph.out_edges(i)]
             node_run_data = NodeRunData(new_location, graph[i], inputs, output_list)
-            nodes_to_start.append(node_run_data)
+            walk_result.inputs_ready.append(node_run_data)
             continue
 
         logger.debug(f"node not ready to start {new_location}")
 
-    return nodes_to_start
+    return walk_result
 
 
 def get_nodes_to_start_in_loop(
     storage: ControllerStorage, node_location: NodeLocation
-) -> list[NodeRunData]:
+) -> WalkResult:
     i = 0
     while storage.is_node_started(node_location.append_loop(i + 1)):
         i += 1
@@ -95,7 +106,7 @@ def get_nodes_to_start_in_loop(
     if tag == Labels.BREAK:
         storage.link_outputs(node_location, Labels.VALUE, old_loc, old_port)
         storage.mark_node_finished(node_location)
-        return []
+        return WalkResult([], [])
 
     # Include old inputs. The .value is the only one that can change.
     input_paths = storage.read_node_definition(node_location).inputs
@@ -103,11 +114,10 @@ def get_nodes_to_start_in_loop(
     inputs[Labels.VALUE] = (old_loc, old_port)
     inputs[Labels.THUNK] = (new_location.append_node(0), Labels.THUNK)
 
-    return [
-        NodeRunData(
-            node_location.append_loop(i + 1),
-            FunctionNode(FunctionName("eval")),
-            inputs,
-            [Labels.VALUE],
-        )
-    ]
+    node_run_data = NodeRunData(
+        node_location.append_loop(i + 1),
+        FunctionNode(FunctionName("eval")),
+        inputs,
+        [Labels.VALUE],
+    )
+    return WalkResult([node_run_data], [])

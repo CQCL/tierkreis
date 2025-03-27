@@ -30,14 +30,14 @@ from tierkreis.client.server_client import ServerRuntime
 
 def runtime_client_from_args(args: list[str]) -> Optional[RuntimeClient]:
     if len(args) == 0:
-        import sc22_worker.main
+        import examples.sc22_worker.main
 
         import pytket_worker.main  # type: ignore
         from tierkreis.pyruntime import PyRuntime
 
         return PyRuntime(
             [
-                sc22_worker.main.root,
+                examples.sc22_worker.main.root,
                 pytket_worker.main.root,
             ]
         )

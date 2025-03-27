@@ -2,9 +2,9 @@ from time import sleep
 
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation, OutputLocation
-from tierkreis.controller.storage.walk import walk_node
-from tierkreis.controller.start import start, NodeRunData, start_nodes
+from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
+from tierkreis.controller.storage.walk import walk_node
 from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 

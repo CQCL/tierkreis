@@ -4,7 +4,7 @@ from logging import getLogger
 from betterproto import which_one_of
 
 from tierkreis.controller.executor.protocol import ControllerExecutor
-from tierkreis.controller.models import NodeLocation, OutputLocation, NodeRunData
+from tierkreis.controller.models import NodeLocation, NodeRunData, OutputLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName

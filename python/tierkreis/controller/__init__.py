@@ -2,7 +2,7 @@ from time import sleep
 
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation, OutputLocation
-from tierkreis.controller.storage.walk import get_nodes_to_start
+from tierkreis.controller.storage.walk import walk_node
 from tierkreis.controller.start import start, NodeRunData, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core.function import FunctionName
@@ -39,7 +39,7 @@ def resume_graph(
     polling_interval_seconds: float = 0.01,
 ) -> None:
     for i in range(n_iterations):
-        walk_results = get_nodes_to_start(storage, root_loc)
+        walk_results = walk_node(storage, root_loc)
         start_nodes(storage, executor, walk_results.inputs_ready)
         if storage.is_node_finished(root_loc):
             break

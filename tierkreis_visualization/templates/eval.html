@@ -1,0 +1,54 @@
+{% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
+
+<html>
+<head>
+    <title>Tierkreis visualization: EVAL node</title>
+    <script
+      type="text/javascript"
+      src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"
+    ></script>
+    <style type="text/css">
+      #mynetwork {
+        border: 1px solid lightgray;
+      }
+    </style>
+</head>
+<body>
+    {{ breadcrumbs_macro(breadcrumbs) }}
+    <div id="mynetwork"></div>
+    <dialog>
+      <p>Greetings, one and all!</p>
+      <form method="dialog">
+        <button>OK</button>
+      </form>
+    </dialog>
+
+
+    <script type="text/javascript">
+      var nodes = new vis.DataSet({{ nodes|safe }});
+      var edges = new vis.DataSet({{ edges|safe }});
+
+      var container = document.getElementById("mynetwork");
+      var data = { nodes: nodes, edges: edges };
+      var options = {
+        physics: {
+            enabled: true,
+            hierarchicalRepulsion: { springLength: 200, nodeDistance: 250 },
+            solver: 'hierarchicalRepulsion',
+        },
+        layout: { hierarchical: { direction: "LR", sortMethod: "directed", shakeTowards: "roots", edgeMinimization:false } }
+      };
+
+      var network = new vis.Network(container, data, options);
+      network.on("doubleClick", function (params) {
+        let nodes = params.nodes;
+        if (nodes.length === 1) {
+            window.location.href = `${window.location.href}.N${nodes[0]}`;
+        }
+
+        let edges = params.edges;
+      });
+
+    </script>
+</body>
+</html>

@@ -1,7 +1,6 @@
 import json
 from logging import getLogger
 
-from betterproto import which_one_of
 from pydantic import BaseModel
 
 from tierkreis.controller.data.graph_data import Eval, Jsonable
@@ -9,18 +8,7 @@ from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation, NodeRunData, OutputLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
-from tierkreis.core.function import FunctionName
-from tierkreis.core.tierkreis_graph import (
-    BoxNode,
-    ConstNode,
-    FunctionNode,
-    InputNode,
-    MatchNode,
-    OutputNode,
-    PortID,
-    TagNode,
-)
-from tierkreis.core.values import TierkreisValue
+from tierkreis.core.tierkreis_graph import PortID
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -67,20 +55,12 @@ def start(
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)
 
-    elif node.type == "tag":
-        storage.write_node_definition(node_location, "tag", inputs, output_list)
-        loc, port = inputs[Labels.VALUE]
-        tag = {"tag": node.tag_name, "node_location": str(loc), "port": port}
-        storage.write_output(node_location, Labels.VALUE, json.dumps(tag).encode())
-        storage.mark_node_finished(node_location)
-
     elif node.type == "eval":
         pipe_inputs_to_output_location(storage, node_location.append_node(0), inputs)
 
     elif node.type == "loop":
         eval_inputs = {k: v for k, v in inputs.items()}
         eval_inputs["thunk"] = inputs["body"]
-        logger.info(eval_inputs)
         start(
             storage,
             executor,
@@ -94,12 +74,6 @@ def start(
 
     elif node.type == "map":
         raise NotImplementedError("MAP not implemented.")
-
-    elif isinstance(node, BoxNode):
-        raise NotImplementedError("box node not implemented")
-
-    elif isinstance(node, MatchNode):
-        NotImplementedError("Controller does not support MatchNodes.")
 
     else:
         raise TierkreisError(f"Unknown node type {node}.")

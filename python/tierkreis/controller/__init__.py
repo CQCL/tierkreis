@@ -1,10 +1,12 @@
 from time import sleep
 
+from tierkreis.controller.data.graph_data import Eval
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.models import NodeLocation, OutputLocation
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node
+from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 
@@ -14,7 +16,6 @@ root_loc = NodeLocation(location=[])
 def run_graph(
     storage: ControllerStorage,
     executor: ControllerExecutor,
-    graph: TierkreisGraph,
     graph_inputs: dict[str, bytes],
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
@@ -26,8 +27,8 @@ def run_graph(
         k: (root_loc.append_node(-1), k) for k, v in graph_inputs.items()
     }
     node_run_data = NodeRunData(
-        root_loc, FunctionNode(FunctionName("eval")), inputs, graph.outputs()
-    )
+        root_loc, Eval((0, Labels.THUNK), {}, []), inputs, ["a"]
+    )  # TODO: put inputs in Eval
     start(storage, executor, node_run_data)
     resume_graph(storage, executor, n_iterations, polling_interval_seconds)
 

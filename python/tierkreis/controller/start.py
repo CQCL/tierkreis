@@ -38,11 +38,9 @@ def start(
         start_function_node(storage, executor, node_location, name, inputs, output_list)
 
     elif node.type == "input":
-        storage.write_node_definition(node_location, "input", inputs, output_list)
         storage.mark_node_finished(node_location)
 
     elif node.type == "output":
-        storage.write_node_definition(node_location, "output", inputs, output_list)
         storage.mark_node_finished(node_location)
 
         parent_loc = NodeLocation(location=node_location.location[:-1])
@@ -50,7 +48,6 @@ def start(
         storage.mark_node_finished(parent_loc)
 
     elif node.type == "const":
-        storage.write_node_definition(node_location, "const", inputs, output_list)
         bs = bytes_from_value(node.value)
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)

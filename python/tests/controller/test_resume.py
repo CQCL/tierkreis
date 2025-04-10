@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import UUID
 
-from tests.controller.test_data import k
+from tests.controller.sample_graphdata import sample_graphdata
 from tierkreis.controller import run_graph
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.data.location import NodeLocation
@@ -10,7 +10,7 @@ from tierkreis.core import Labels
 
 
 def test_resume_sample_graph():
-    g = k()
+    g = sample_graphdata()
     storage = ControllerFileStorage(UUID(int=0))
     executor = ShellExecutor(
         Path("./python/examples/launchers"), logs_path=storage.logs_path

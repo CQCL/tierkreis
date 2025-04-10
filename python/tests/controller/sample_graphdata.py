@@ -21,16 +21,10 @@ def g() -> GraphData:
     return g
 
 
-def k() -> GraphData:
+def sample_graphdata() -> GraphData:
     t = GraphData()
     six = t.add(Const(6))(Labels.VALUE)
     g_const = t.add(Const(g()))(Labels.VALUE)
     l = t.add(Loop(g_const, {"value": six, "body": g_const}, "tag", Labels.VALUE))
     t.add(Output({"a": l(Labels.VALUE)}))
     return t
-
-
-def test_k_graph():
-    graph = k()
-    print(graph)
-    assert False

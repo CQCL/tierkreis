@@ -94,12 +94,6 @@ def start_function_node(
     name = name.split(".")[-1]
     def_path = storage.write_node_definition(node_location, name, inputs, output_list)
 
-    # if name == "copy":
-    #     input_loc, input_port = list(inputs.values())[0]
-    #     for output in output_list:
-    #         storage.link_outputs(node_location, output, input_loc, input_port)
-    #     storage.mark_node_finished(node_location)
-
     if name == "switch":
         pred = json.loads(storage.read_output(*inputs["pred"]))
         if pred:

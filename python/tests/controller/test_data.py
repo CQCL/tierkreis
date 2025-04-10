@@ -1,4 +1,4 @@
-from tierkreis.controller.data.graph_data import (
+from tierkreis.controller.data.graph import (
     Const,
     Func,
     GraphData,
@@ -25,7 +25,7 @@ def k() -> GraphData:
     t = GraphData()
     six = t.add(Const(6))(Labels.VALUE)
     g_const = t.add(Const(g()))(Labels.VALUE)
-    l = t.add(Loop(g_const, {"value": six, "body": g_const}, "value", "tag"))
+    l = t.add(Loop(g_const, {"value": six, "body": g_const}, "tag", Labels.VALUE))
     t.add(Output({"a": l(Labels.VALUE)}))
     return t
 

@@ -4,13 +4,12 @@ from typing import assert_never
 
 from pydantic import BaseModel
 
-from tierkreis.controller.data.graph_data import Eval, Jsonable
+from tierkreis.controller.data.graph import Eval, Jsonable
 from tierkreis.controller.executor.protocol import ControllerExecutor
-from tierkreis.controller.models import NodeLocation, NodeRunData, OutputLocation
+from tierkreis.controller.data.location import NodeLocation, NodeRunData, OutputLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.tierkreis_graph import PortID
-from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
 
@@ -39,6 +38,8 @@ def start(
         start_function_node(storage, executor, node_location, name, inputs, output_list)
 
     elif node.type == "input":
+        input_loc = node_location.parent().append_node(-1)
+        storage.link_outputs(node_location, node.name, input_loc, node.name)
         storage.mark_node_finished(node_location)
 
     elif node.type == "output":
@@ -54,7 +55,7 @@ def start(
         storage.mark_node_finished(node_location)
 
     elif node.type == "eval":
-        pipe_inputs_to_output_location(storage, node_location.append_node(0), inputs)
+        pipe_inputs_to_output_location(storage, node_location.append_node(-1), inputs)
 
     elif node.type == "loop":
         eval_inputs = {k: v for k, v in inputs.items()}

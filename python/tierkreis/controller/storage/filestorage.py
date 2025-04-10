@@ -5,7 +5,11 @@ from pathlib import Path
 from time import time_ns
 from uuid import UUID
 
-from tierkreis.controller.models import NodeDefinition, NodeLocation, OutputLocation
+from tierkreis.controller.data.location import (
+    NodeDefinition,
+    NodeLocation,
+    OutputLocation,
+)
 from tierkreis.core.tierkreis_graph import PortID
 
 

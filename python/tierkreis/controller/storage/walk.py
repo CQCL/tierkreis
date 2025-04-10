@@ -2,13 +2,10 @@ import json
 from dataclasses import dataclass
 from logging import getLogger
 
-from tierkreis.controller.data.graph_data import Eval, GraphData, Loop
-from tierkreis.controller.models import NodeLocation, NodeRunData
+from tierkreis.controller.data.graph import Eval, GraphData
+from tierkreis.controller.data.location import NodeLocation, NodeRunData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
-from tierkreis.core.function import FunctionName
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Graph
-from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 
 logger = getLogger(__name__)
 
@@ -47,7 +44,7 @@ def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
     logger.debug("walk_eval")
     walk_result = WalkResult([], [])
 
-    message = storage.read_output(node_location.append_node(0), Labels.THUNK)
+    message = storage.read_output(node_location.append_node(-1), Labels.THUNK)
     graph = GraphData(**json.loads(message))
 
     logger.debug(len(graph.nodes))
@@ -102,9 +99,9 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
 
     # Include old inputs. The .value is the only one that can change.
     input_paths = storage.read_node_definition(node_location).inputs
-    inputs = {k: (new_location.append_node(0), v.name) for k, v in input_paths.items()}
+    inputs = {k: (new_location.append_node(-1), v.name) for k, v in input_paths.items()}
     inputs[Labels.VALUE] = (new_location, Labels.VALUE)
-    inputs[Labels.THUNK] = (new_location.append_node(0), Labels.THUNK)
+    inputs[Labels.THUNK] = (new_location.append_node(-1), Labels.THUNK)
 
     node_run_data = NodeRunData(
         node_location.append_loop(i + 1),

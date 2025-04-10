@@ -88,9 +88,9 @@ class NodeLocation(BaseModel):
             + [NodeStep(node_type=NodeType.MAP, idx=idx)]
         )
 
-    def parent(self) -> "NodeLocation":
+    def parent(self) -> "NodeLocation | None":
         if not self.location:
-            raise TierkreisError("Location has no parent.")
+            return None
         return NodeLocation(location=self.location[:-1])
 
     def __str__(self) -> str:

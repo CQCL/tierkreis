@@ -38,7 +38,11 @@ def start(
         start_function_node(storage, executor, node_location, name, inputs, output_list)
 
     elif node.type == "input":
-        input_loc = node_location.parent().append_node(-1)
+        parent = node_location.parent()
+        if parent is None:
+            return
+
+        input_loc = parent.append_node(-1)
         storage.link_outputs(node_location, node.name, input_loc, node.name)
         storage.mark_node_finished(node_location)
 

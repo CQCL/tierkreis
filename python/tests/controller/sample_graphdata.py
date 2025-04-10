@@ -25,6 +25,6 @@ def sample_graphdata() -> GraphData:
     t = GraphData()
     six = t.add(Const(6))(Labels.VALUE)
     g_const = t.add(Const(g()))(Labels.VALUE)
-    l = t.add(Loop(g_const, {"value": six, "body": g_const}, "tag", Labels.VALUE))
-    t.add(Output({"a": l(Labels.VALUE)}))
+    loop = t.add(Loop(g_const, {"value": six, "body": g_const}, "tag", Labels.VALUE))
+    t.add(Output({"a": loop(Labels.VALUE)}))
     return t

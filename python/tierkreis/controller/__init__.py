@@ -1,8 +1,8 @@
 from time import sleep
 
 from tierkreis.controller.data.graph import Eval, GraphData
-from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.data.location import NodeLocation, OutputLocation
+from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node

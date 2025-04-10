@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
-from pydantic import BaseModel
 
-from tierkreis.core import Labels
+from pydantic import BaseModel
 
 Jsonable = Any
 PortID = str

@@ -3,8 +3,8 @@ from uuid import UUID
 
 from tests.controller.sample_graphdata import sample_graphdata
 from tierkreis.controller import run_graph
-from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.data.location import NodeLocation
+from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.core import Labels
 

@@ -5,8 +5,8 @@ from typing import assert_never
 from pydantic import BaseModel
 
 from tierkreis.controller.data.graph import Eval, Jsonable
-from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.data.location import NodeLocation, NodeRunData, OutputLocation
+from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.tierkreis_graph import PortID

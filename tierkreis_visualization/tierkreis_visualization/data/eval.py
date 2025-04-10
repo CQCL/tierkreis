@@ -55,8 +55,8 @@ def get_eval_node(
 
     py_edges: list[PyEdge] = []
     for idx, node in enumerate(graph.nodes):
-        for l, (i, p) in node.inputs.items():
-            py_edge = PyEdge(from_node=i, from_port=p, to_node=idx, to_port=l)
+        for p0, (i, p1) in node.inputs.items():
+            py_edge = PyEdge(from_node=i, from_port=p1, to_node=idx, to_port=p0)
             py_edges.append(py_edge)
 
     return EvalNodeData(nodes=pynodes, edges=py_edges)

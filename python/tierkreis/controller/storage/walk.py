@@ -69,12 +69,12 @@ def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
             for (i, _) in node.inputs.values()
         ):
             logger.debug(f"{new_location} is_ready_to_start")
-            output_list = node.outputs
+            outputs = graph.outputs[i]
             input_paths = {
                 k: (node_location.append_node(i), p)
                 for k, (i, p) in node.inputs.items()
             }
-            node_run_data = NodeRunData(new_location, node, input_paths, output_list)
+            node_run_data = NodeRunData(new_location, node, input_paths, list(outputs))
             walk_result.inputs_ready.append(node_run_data)
             continue
 
@@ -108,7 +108,7 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
 
     node_run_data = NodeRunData(
         node_location.append_loop(i + 1),
-        Eval((0, Labels.THUNK), {}, []),  # TODO: put inputs in Eval
+        Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
         inputs,
         [Labels.VALUE],
     )

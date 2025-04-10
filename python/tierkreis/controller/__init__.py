@@ -27,7 +27,7 @@ def run_graph(
         k: (root_loc.append_node(-1), k) for k, v in graph_inputs.items()
     }
     node_run_data = NodeRunData(
-        root_loc, Eval((0, Labels.THUNK), {}, []), inputs, ["a"]
+        root_loc, Eval((0, Labels.THUNK), {}), inputs, ["a"]
     )  # TODO: put inputs in Eval
     start(storage, executor, node_run_data)
     resume_graph(storage, executor, n_iterations, polling_interval_seconds)

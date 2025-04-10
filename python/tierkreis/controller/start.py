@@ -64,7 +64,7 @@ def start(
             executor,
             NodeRunData(
                 node_location.append_loop(0),
-                Eval((0, Labels.THUNK), {}, []),  # TODO: put inputs in Eval
+                Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
                 eval_inputs,
                 output_list,
             ),

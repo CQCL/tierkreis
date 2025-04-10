@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import Any, Callable, Literal
 from pydantic import BaseModel
 
 from tierkreis.core import Labels
@@ -15,7 +15,6 @@ ValueRef = tuple[NodeIndex, PortID]
 class Func:
     function_name: str
     inputs: dict[PortID, ValueRef]
-    outputs: list[PortID]
     type: Literal["function"] = field(default_factory=lambda: "function")
 
 
@@ -23,7 +22,6 @@ class Func:
 class Eval:
     graph: OutputLoc
     inputs: dict[PortID, ValueRef]
-    outputs: list[PortID]
     type: Literal["eval"] = field(default_factory=lambda: "eval")
 
 
@@ -34,7 +32,6 @@ class Loop:
     tag_port: PortID  # Used to check break or continue
     output_port: PortID  # Variable that is allowed to change
     type: Literal["loop"] = field(default_factory=lambda: "loop")
-    outputs: list[PortID] = field(default_factory=lambda: [Labels.VALUE])
 
 
 @dataclass
@@ -42,14 +39,12 @@ class Map:
     value_locs: list[OutputLoc]
     body_loc: OutputLoc
     inputs: dict[PortID, ValueRef]
-    outputs: list[PortID]
     type: Literal["map"] = field(default_factory=lambda: "map")
 
 
 @dataclass
 class Const:
     value: Jsonable
-    outputs: list[PortID]
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default_factory=lambda: "const")
 
@@ -57,7 +52,6 @@ class Const:
 @dataclass
 class Input:
     name: str
-    outputs: list[PortID]
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["input"] = field(default_factory=lambda: "input")
 
@@ -65,7 +59,6 @@ class Input:
 @dataclass
 class Output:
     inputs: dict[PortID, ValueRef]
-    outputs: list[PortID]
     type: Literal["output"] = field(default_factory=lambda: "output")
 
 
@@ -74,8 +67,14 @@ NodeDef = Func | Eval | Loop | Map | Const | Input | Output
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
+    outputs: list[set[PortID]] = []
 
-    def add(self, node: NodeDef) -> dict[PortID, ValueRef]:
+    def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
         self.nodes.append(node)
-        return {k: (idx, k) for k in node.outputs}
+        self.outputs.append(set())
+
+        for i, port in node.inputs.values():
+            self.outputs[i].add(port)
+
+        return lambda k: (idx, k)

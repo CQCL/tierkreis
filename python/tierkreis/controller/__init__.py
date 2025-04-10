@@ -27,12 +27,8 @@ def run_graph(
     inputs: dict[PortID, OutputLocation] = {
         k: (root_loc.append_node(-2), k) for k, v in graph_inputs.items()
     }
-    node_run_data = NodeRunData(
-        root_loc,
-        Eval((0, Labels.THUNK), {}),
-        inputs,
-        list(g.outputs[-1]),  # TODO: remove magic value -1
-    )  # TODO: put inputs in Eval
+    # TODO: move inputs into Eval
+    node_run_data = NodeRunData(root_loc, Eval((0, Labels.THUNK), {}), inputs, [])
     start(storage, executor, node_run_data)
     resume_graph(storage, executor, n_iterations, polling_interval_seconds)
 

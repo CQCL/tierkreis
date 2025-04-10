@@ -164,3 +164,4 @@ cqcpython-secret.txt
 
 
 *.DS_Store
+*.code-workspace

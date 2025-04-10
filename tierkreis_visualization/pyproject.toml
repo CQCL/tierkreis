@@ -12,4 +12,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-tierkreis = { path = "../python" }
+tierkreis = { path = "../python", editable = true }

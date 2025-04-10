@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from tierkreis.controller.models import NodeLocation
+from tierkreis.controller.data.location import NodeLocation
 
 
 def breadcrumb_links(crumbs: list[str]) -> list[tuple[str, str]]:

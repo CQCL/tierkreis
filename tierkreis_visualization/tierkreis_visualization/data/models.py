@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, field_serializer
+from pydantic import BaseModel
 
 
 class NodeStatus(StrEnum):

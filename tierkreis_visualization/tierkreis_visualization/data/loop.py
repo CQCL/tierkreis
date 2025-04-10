@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from tierkreis.controller.models import NodeLocation
+from tierkreis.controller.data.location import NodeLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 

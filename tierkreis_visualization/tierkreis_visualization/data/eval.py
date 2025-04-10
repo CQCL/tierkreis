@@ -1,11 +1,11 @@
-from typing import Optional
+import json
+from typing import Optional, assert_never
 
 from pydantic import BaseModel
-from tierkreis import TierkreisGraph
-from tierkreis.controller.models import NodeDefinition, NodeLocation
+from tierkreis.controller.data.location import NodeDefinition, NodeLocation
+from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Graph
 
 from tierkreis_visualization.data.models import PyNode, NodeStatus, PyEdge
 
@@ -28,12 +28,11 @@ def node_status(is_finished: bool, definition: Optional[NodeDefinition]) -> Node
 def get_eval_node(
     storage: ControllerStorage, node_location: NodeLocation
 ) -> EvalNodeData:
-    thunk = storage.read_output(node_location.append_node(0), Labels.THUNK)
-    graph_value = Graph.FromString(thunk)
-    graph = TierkreisGraph.from_proto(graph_value)
+    thunk = storage.read_output(node_location.append_node(-1), Labels.THUNK)
+    graph = GraphData(**json.loads(thunk))
 
     pynodes: list[PyNode] = []
-    for i in range(graph.n_nodes):
+    for i, node in enumerate(graph.nodes):
         new_location = node_location.append_node(i)
         is_finished = storage.is_node_finished(new_location)
         try:
@@ -42,19 +41,22 @@ def get_eval_node(
             definition = None
 
         status = node_status(is_finished, definition)
-        name = definition.function_name if definition else graph[i].__class__.__name__
+
+        match node.type:
+            case "function":
+                name = node.function_name
+            case "const" | "map" | "eval" | "input" | "output" | "loop":
+                name = node.type
+            case _:
+                assert_never(node)
 
         pynode = PyNode(id=i, status=status, function_name=name)
         pynodes.append(pynode)
 
     py_edges: list[PyEdge] = []
-    for edge in graph.edges():
-        py_edge = PyEdge(
-            from_node=edge.source.node_ref.idx,
-            from_port=edge.source.port,
-            to_node=edge.target.node_ref.idx,
-            to_port=edge.target.port,
-        )
-        py_edges.append(py_edge)
+    for idx, node in enumerate(graph.nodes):
+        for l, (i, p) in node.inputs.items():
+            py_edge = PyEdge(from_node=i, from_port=p, to_node=idx, to_port=l)
+            py_edges.append(py_edge)
 
     return EvalNodeData(nodes=pynodes, edges=py_edges)

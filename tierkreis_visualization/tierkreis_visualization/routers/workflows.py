@@ -1,10 +1,11 @@
 import json
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
-from tierkreis.controller.models import NodeLocation, NodeDefinition
+from tierkreis.controller.data.location import NodeLocation, NodeDefinition
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.protocol import ControllerStorage
 
@@ -56,7 +57,9 @@ def get_node(request: Request, workflow_id: UUID, node_location_str: str):
     if function_name == "eval":
         data = get_eval_node(storage, node_location)
         name = "eval.html"
-        ctx = JSGraph.from_python(data.nodes, data.edges).model_dump(by_alias=True)
+        ctx: dict[str, Any] = JSGraph.from_python(data.nodes, data.edges).model_dump(
+            by_alias=True
+        )
 
     elif function_name == "loop":
         data = get_loop_node(storage, node_location)
@@ -83,7 +86,7 @@ def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/outputs/{port_name}")
-def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
+def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
     definition = storage.read_node_definition(node_location)
@@ -93,12 +96,16 @@ def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/logs")
-def get_input(workflow_id: UUID, node_location_str: str):
+def get_logs(workflow_id: UUID, node_location_str: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
     definition = storage.read_node_definition(node_location)
 
+    if definition.logs_path is None:
+        return PlainTextResponse("Node definition not found.")
+
     messages = ""
+
     with open(definition.logs_path, "rb") as fh:
         for line in fh:
             messages += line.decode()

@@ -1,5 +1,6 @@
 import json
 from logging import getLogger
+from typing import assert_never
 
 from pydantic import BaseModel
 
@@ -73,7 +74,7 @@ def start(
         raise NotImplementedError("MAP not implemented.")
 
     else:
-        raise TierkreisError(f"Unknown node type {node}.")
+        assert_never(node)
 
 
 def start_function_node(

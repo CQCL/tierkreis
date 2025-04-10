@@ -7,7 +7,8 @@ from typing import Optional
 from pydantic import BaseModel
 from typing_extensions import assert_never
 
-from tierkreis.core.tierkreis_graph import PortID, TierkreisNode
+from tierkreis.controller.data.graph import NodeDef
+from tierkreis.core.tierkreis_graph import PortID
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -87,6 +88,11 @@ class NodeLocation(BaseModel):
             + [NodeStep(node_type=NodeType.MAP, idx=idx)]
         )
 
+    def parent(self) -> "NodeLocation | None":
+        if not self.location:
+            return None
+        return NodeLocation(location=self.location[:-1])
+
     def __str__(self) -> str:
         frame_strs = [str(x) for x in self.location]
         return ".".join(frame_strs)
@@ -105,6 +111,6 @@ OutputLocation = tuple[NodeLocation, PortID]
 @dataclass
 class NodeRunData:
     node_location: NodeLocation
-    tk_node: TierkreisNode
+    node: NodeDef
     inputs: dict[PortID, OutputLocation]
     output_list: list[PortID]

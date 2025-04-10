@@ -1,25 +1,15 @@
 import json
 from logging import getLogger
+from typing import assert_never
 
-from betterproto import which_one_of
+from pydantic import BaseModel
 
+from tierkreis.controller.data.graph import Eval, Jsonable
 from tierkreis.controller.executor.protocol import ControllerExecutor
-from tierkreis.controller.models import NodeLocation, NodeRunData, OutputLocation
+from tierkreis.controller.data.location import NodeLocation, NodeRunData, OutputLocation
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
-from tierkreis.core.function import FunctionName
-from tierkreis.core.tierkreis_graph import (
-    BoxNode,
-    ConstNode,
-    FunctionNode,
-    InputNode,
-    MatchNode,
-    OutputNode,
-    PortID,
-    TagNode,
-)
-from tierkreis.core.values import TierkreisValue
-from tierkreis.exceptions import TierkreisError
+from tierkreis.core.tierkreis_graph import PortID
 
 logger = getLogger(__name__)
 
@@ -37,48 +27,59 @@ def start(
     storage: ControllerStorage, executor: ControllerExecutor, node_run_data: NodeRunData
 ) -> None:
     node_location = node_run_data.node_location
-    tk_node = node_run_data.tk_node
+    node = node_run_data.node
     inputs = node_run_data.inputs
     output_list = node_run_data.output_list
+    storage.write_node_definition(node_location, node.type, inputs, output_list)
 
-    logger.debug(f"start {node_location} {tk_node} {inputs} {output_list}")
-    if isinstance(tk_node, FunctionNode):
-        name = tk_node.function_name.name
+    logger.debug(f"start {node_location} {node} {inputs} {output_list}")
+    if node.type == "function":
+        name = node.function_name
         start_function_node(storage, executor, node_location, name, inputs, output_list)
 
-    elif isinstance(tk_node, InputNode):
-        storage.write_node_definition(node_location, "InputNode", inputs, output_list)
+    elif node.type == "input":
+        parent = node_location.parent()
+        if parent is None:
+            return
+
+        input_loc = parent.append_node(-1)
+        storage.link_outputs(node_location, node.name, input_loc, node.name)
         storage.mark_node_finished(node_location)
 
-    elif isinstance(tk_node, OutputNode):
-        storage.write_node_definition(node_location, "OutputNode", inputs, output_list)
+    elif node.type == "output":
         storage.mark_node_finished(node_location)
 
         parent_loc = NodeLocation(location=node_location.location[:-1])
         pipe_inputs_to_output_location(storage, parent_loc, inputs)
         storage.mark_node_finished(parent_loc)
 
-    elif isinstance(tk_node, ConstNode):
-        storage.write_node_definition(node_location, "ConstNode", inputs, output_list)
-        bs = bytes_from_value(tk_node.value)
+    elif node.type == "const":
+        bs = bytes_from_value(node.value)
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)
 
-    elif isinstance(tk_node, TagNode):
-        storage.write_node_definition(node_location, "TagNode", inputs, output_list)
-        loc, port = inputs[Labels.VALUE]
-        tag = {"tag": tk_node.tag_name, "node_location": str(loc), "port": port}
-        storage.write_output(node_location, Labels.VALUE, json.dumps(tag).encode())
-        storage.mark_node_finished(node_location)
+    elif node.type == "eval":
+        pipe_inputs_to_output_location(storage, node_location.append_node(-1), inputs)
 
-    elif isinstance(tk_node, BoxNode):
-        raise NotImplementedError("box node not implemented")
+    elif node.type == "loop":
+        eval_inputs = {k: v for k, v in inputs.items()}
+        eval_inputs["thunk"] = inputs["body"]
+        start(
+            storage,
+            executor,
+            NodeRunData(
+                node_location.append_loop(0),
+                Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
+                eval_inputs,
+                output_list,
+            ),
+        )
 
-    elif isinstance(tk_node, MatchNode):
-        NotImplementedError("Controller does not support MatchNodes.")
+    elif node.type == "map":
+        raise NotImplementedError("MAP not implemented.")
 
     else:
-        raise TierkreisError(f"Unknown node type {tk_node}.")
+        assert_never(node)
 
 
 def start_function_node(
@@ -93,33 +94,7 @@ def start_function_node(
     name = name.split(".")[-1]
     def_path = storage.write_node_definition(node_location, name, inputs, output_list)
 
-    if name == "eval":
-        pipe_inputs_to_output_location(storage, node_location.append_node(0), inputs)
-
-    elif name == "loop":
-        eval_inputs = {k: v for k, v in inputs.items()}
-        eval_inputs["thunk"] = inputs["body"]
-        start(
-            storage,
-            executor,
-            NodeRunData(
-                node_location.append_loop(0),
-                FunctionNode(FunctionName("eval")),
-                eval_inputs,
-                output_list,
-            ),
-        )
-
-    elif name == "map":
-        raise NotImplementedError("MAP not implemented.")
-
-    elif name == "copy":
-        input_loc, input_port = list(inputs.values())[0]
-        for output in output_list:
-            storage.link_outputs(node_location, output, input_loc, input_port)
-        storage.mark_node_finished(node_location)
-
-    elif name == "switch":
+    if name == "switch":
         pred = json.loads(storage.read_output(*inputs["pred"]))
         if pred:
             storage.link_outputs(node_location, Labels.VALUE, *inputs["if_true"])
@@ -144,9 +119,8 @@ def pipe_inputs_to_output_location(
         storage.link_outputs(output_loc, new_port, old_loc, old_port)
 
 
-def bytes_from_value(proto: TierkreisValue) -> bytes:
-    if which_one_of(proto.to_proto(), "value")[0] == "graph":
-        return proto.to_proto().graph.SerializeToString()
+def bytes_from_value(value: Jsonable) -> bytes:
+    if isinstance(value, BaseModel):
+        return value.model_dump_json().encode()
 
-    py_value = proto.try_autopython()
-    return json.dumps(py_value).encode()
+    return json.dumps(value).encode()

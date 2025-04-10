@@ -2,12 +2,10 @@ import json
 from dataclasses import dataclass
 from logging import getLogger
 
-from tierkreis.controller.models import NodeLocation, NodeRunData
+from tierkreis.controller.data.graph import Eval, GraphData
+from tierkreis.controller.data.location import NodeLocation, NodeRunData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
-from tierkreis.core.function import FunctionName
-from tierkreis.core.protos.tierkreis.v1alpha1.graph import Graph
-from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 
 logger = getLogger(__name__)
 
@@ -43,13 +41,14 @@ def walk_node(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
 
 
 def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:
+    logger.debug("walk_eval")
     walk_result = WalkResult([], [])
 
-    message = storage.read_output(node_location.append_node(0), Labels.THUNK)
-    graph = TierkreisGraph.from_proto(Graph.FromString(message))
+    message = storage.read_output(node_location.append_node(-1), Labels.THUNK)
+    graph = GraphData(**json.loads(message))
 
-    logger.debug(graph.n_nodes)
-    for i in range(graph.n_nodes):
+    logger.debug(len(graph.nodes))
+    for i, node in enumerate(graph.nodes):
         new_location = node_location.append_node(i)
         logger.debug(f"new_location: {new_location}")
 
@@ -62,17 +61,17 @@ def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
             walk_result.extend(walk_node(storage, new_location))
             continue
 
-        inputs = {
-            x.target.port: (
-                node_location.append_node(x.source.node_ref.idx),
-                x.source.port,
-            )
-            for x in graph.in_edges(i)
-        }
-        if all(storage.is_node_finished(loc) for (loc, _) in inputs.values()):
+        if all(
+            storage.is_node_finished(node_location.append_node(i))
+            for (i, _) in node.inputs.values()
+        ):
             logger.debug(f"{new_location} is_ready_to_start")
-            output_list = [x.source.port for x in graph.out_edges(i)]
-            node_run_data = NodeRunData(new_location, graph[i], inputs, output_list)
+            outputs = graph.outputs[i]
+            input_paths = {
+                k: (node_location.append_node(i), p)
+                for k, (i, p) in node.inputs.items()
+            }
+            node_run_data = NodeRunData(new_location, node, input_paths, list(outputs))
             walk_result.inputs_ready.append(node_run_data)
             continue
 
@@ -92,25 +91,21 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
         return walk_node(storage, new_location)
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
-    pointer_struct = json.loads(storage.read_output(new_location, Labels.VALUE))
-    tag: str = pointer_struct["tag"]
-    old_loc = NodeLocation.from_str(pointer_struct["node_location"])
-    old_port: PortID = pointer_struct["port"]
-    logger.debug(f"tagged node location {tag}, {old_loc}, {old_port}")
-    if tag == Labels.BREAK:
-        storage.link_outputs(node_location, Labels.VALUE, old_loc, old_port)
+    should_continue = json.loads(storage.read_output(new_location, "should_continue"))
+    if should_continue is False:
+        storage.link_outputs(node_location, Labels.VALUE, new_location, Labels.VALUE)
         storage.mark_node_finished(node_location)
         return WalkResult([], [])
 
     # Include old inputs. The .value is the only one that can change.
     input_paths = storage.read_node_definition(node_location).inputs
-    inputs = {k: (new_location.append_node(0), v.name) for k, v in input_paths.items()}
-    inputs[Labels.VALUE] = (old_loc, old_port)
-    inputs[Labels.THUNK] = (new_location.append_node(0), Labels.THUNK)
+    inputs = {k: (new_location.append_node(-1), v.name) for k, v in input_paths.items()}
+    inputs[Labels.VALUE] = (new_location, Labels.VALUE)
+    inputs[Labels.THUNK] = (new_location.append_node(-1), Labels.THUNK)
 
     node_run_data = NodeRunData(
         node_location.append_loop(i + 1),
-        FunctionNode(FunctionName("eval")),
+        Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
         inputs,
         [Labels.VALUE],
     )

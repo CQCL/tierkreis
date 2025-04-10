@@ -1,6 +1,6 @@
 import pytest
 
-from tierkreis.controller.models import NodeLocation
+from tierkreis.controller.data.location import NodeLocation
 
 node_location_1 = NodeLocation(location=[])
 node_location_1 = node_location_1.append_node(0)

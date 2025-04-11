@@ -83,6 +83,15 @@ def run(node_definition: NodeDefinition):
         with open(node_definition.outputs["value"], "w+") as fh:
             fh.write(json.dumps(value))
 
+    elif node_definition.function_name == "fold_values":
+        values = []
+        for i, path in enumerate(node_definition.inputs.values()):
+            with open(path, "rb") as fh:
+                values.append(json.loads(fh.read()))
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(values))
+
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")
     node_definition.done_path.touch()

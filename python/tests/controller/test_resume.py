@@ -36,4 +36,4 @@ def test_resume_sample_map():
     run_graph(storage, executor, g, inputs)
 
     c = storage.read_output(NodeLocation(location=[]), Labels.VALUE)
-    assert c == b"18"
+    assert c == b"[0, 2, 4, 6, 8, 10, 12, 14, 16, 18]"

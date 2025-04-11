@@ -1,8 +1,8 @@
 import json
 from logging import getLogger
-from typing_extensions import assert_never
 
 from pydantic import BaseModel
+from typing_extensions import assert_never
 
 from tierkreis.controller.data.graph import Eval, Jsonable
 from tierkreis.controller.data.location import NodeLocation, NodeRunData, OutputLocation

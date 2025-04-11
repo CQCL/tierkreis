@@ -113,6 +113,7 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
 
 
 def walk_map(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:
+    walk_result = WalkResult([], [])
     N = 0
     all_finished = True
     while storage.is_node_started(node_location.append_map(N + 1)):
@@ -122,7 +123,7 @@ def walk_map(storage: ControllerStorage, node_location: NodeLocation) -> WalkRes
         loc = node_location.append_map(i)
         if not storage.is_node_finished(loc):
             all_finished = False
-            return walk_node(storage, loc)
+            walk_result.extend(walk_node(storage, loc))
 
     if all_finished is True:
         for j in range(N + 1):
@@ -130,4 +131,4 @@ def walk_map(storage: ControllerStorage, node_location: NodeLocation) -> WalkRes
             storage.link_outputs(node_location, str(j), loc, Labels.VALUE)
             storage.mark_node_finished(node_location)
 
-    return WalkResult([], [])
+    return walk_result

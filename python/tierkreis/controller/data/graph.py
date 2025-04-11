@@ -6,7 +6,6 @@ from pydantic import BaseModel
 Jsonable = Any
 PortID = str
 NodeIndex = int
-OutputLoc = tuple[NodeIndex, PortID]
 ValueRef = tuple[NodeIndex, PortID]
 
 
@@ -19,14 +18,14 @@ class Func:
 
 @dataclass
 class Eval:
-    graph: OutputLoc
+    graph: ValueRef
     inputs: dict[PortID, ValueRef]
     type: Literal["eval"] = field(default="eval")
 
 
 @dataclass
 class Loop:
-    body: OutputLoc
+    body: ValueRef
     inputs: dict[PortID, ValueRef]
     tag_port: PortID  # Used to check break or continue
     output_port: PortID  # Variable that is allowed to change
@@ -35,8 +34,8 @@ class Loop:
 
 @dataclass
 class Map:
-    value_locs: list[OutputLoc]
-    body_loc: OutputLoc
+    body: ValueRef
+    value_refs: list[ValueRef]
     inputs: dict[PortID, ValueRef]
     type: Literal["map"] = field(default="map")
 
@@ -77,3 +76,8 @@ class GraphData(BaseModel):
             self.outputs[i].add(port)
 
         return lambda k: (idx, k)
+
+    def map(self, map: Map) -> list[ValueRef]:
+        idx = len(self.nodes)
+        self.add(map)
+        return [(idx, str(i)) for i, _ in enumerate(map.value_refs)]

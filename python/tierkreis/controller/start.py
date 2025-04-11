@@ -76,7 +76,25 @@ def start(
         )
 
     elif node.type == "map":
-        raise NotImplementedError("MAP not implemented.")
+        pipe_inputs_to_output_location(storage, node_location.append_node(-1), inputs)
+        eval_inputs = {k: v for k, v in inputs.items()}
+        ref, port = node.body
+        parent = node_location.parent()
+        assert parent
+        eval_inputs["thunk"] = (parent.append_node(ref), port)
+        for i, value_ref in enumerate(node.value_refs):
+            ref, port = value_ref
+            eval_inputs[Labels.VALUE] = (parent.append_node(ref), port)
+            start(
+                storage,
+                executor,
+                NodeRunData(
+                    node_location.append_map(i),
+                    Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
+                    eval_inputs,
+                    output_list,
+                ),
+            )
 
     else:
         assert_never(node)

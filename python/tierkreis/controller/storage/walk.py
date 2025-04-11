@@ -33,7 +33,7 @@ def walk_node(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
         return walk_loop(storage, node_location)
 
     elif name == "map":
-        raise NotImplementedError("MAP not implemented.")
+        return walk_map(storage, node_location)
 
     else:
         logger.debug(f"{name} already started")
@@ -110,3 +110,24 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
         [Labels.VALUE],
     )
     return WalkResult([node_run_data], [])
+
+
+def walk_map(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:
+    N = 0
+    all_finished = True
+    while storage.is_node_started(node_location.append_map(N + 1)):
+        N += 1
+
+    for i in range(N + 1):
+        loc = node_location.append_map(i)
+        if not storage.is_node_finished(loc):
+            all_finished = False
+            return walk_node(storage, loc)
+
+    if all_finished is True:
+        for j in range(N + 1):
+            loc = node_location.append_map(j)
+            storage.link_outputs(node_location, str(j), loc, Labels.VALUE)
+            storage.mark_node_finished(node_location)
+
+    return WalkResult([], [])

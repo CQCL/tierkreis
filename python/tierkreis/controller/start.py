@@ -1,6 +1,6 @@
 import json
 from logging import getLogger
-from typing import assert_never
+from typing_extensions import assert_never
 
 from pydantic import BaseModel
 

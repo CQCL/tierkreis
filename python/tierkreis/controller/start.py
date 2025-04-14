@@ -10,6 +10,7 @@ from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.tierkreis_graph import PortID
+from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
 
@@ -76,15 +77,15 @@ def start(
         )
 
     elif node.type == "map":
-        pipe_inputs_to_output_location(storage, node_location.append_node(-1), inputs)
-        eval_inputs = {k: v for k, v in inputs.items()}
-        ref, port = node.body
         parent = node_location.parent()
-        assert parent
-        eval_inputs["thunk"] = (parent.append_node(ref), port)
-        for i, value_ref in enumerate(node.value_refs):
-            ref, port = value_ref
-            eval_inputs[Labels.VALUE] = (parent.append_node(ref), port)
+        if parent is None:
+            raise TierkreisError("MAP node must have parent.")
+
+        input_values = storage.read_output_ports(parent.append_node(node.input_idx))
+        ref, port = node.body
+        eval_inputs = {"thunk": (parent.append_node(ref), port)}
+        for i, p in enumerate(input_values):
+            eval_inputs[node.bound_port] = (parent.append_node(node.input_idx), p)
             start(
                 storage,
                 executor,

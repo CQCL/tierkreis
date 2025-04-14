@@ -35,7 +35,8 @@ class Loop:
 @dataclass
 class Map:
     body: ValueRef
-    value_refs: list[ValueRef]
+    input_idx: NodeIndex
+    bound_port: PortID
     inputs: dict[PortID, ValueRef]
     type: Literal["map"] = field(default="map")
 
@@ -76,8 +77,3 @@ class GraphData(BaseModel):
             self.outputs[i].add(port)
 
         return lambda k: (idx, k)
-
-    def map(self, map: Map) -> list[ValueRef]:
-        idx = len(self.nodes)
-        self.add(map)
-        return [(idx, str(i)) for i, _ in enumerate(map.value_refs)]

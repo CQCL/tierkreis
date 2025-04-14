@@ -1,3 +1,4 @@
+from glob import glob
 import json
 from logging import getLogger
 from pathlib import Path
@@ -85,12 +86,25 @@ def run(node_definition: NodeDefinition):
 
     elif node_definition.function_name == "fold_values":
         values = []
-        for i, path in enumerate(node_definition.inputs.values()):
+        inputs = glob(str(node_definition.inputs["values_glob"]))
+        inputs.sort()
+        for i, path in enumerate(inputs):
             with open(path, "rb") as fh:
                 values.append(json.loads(fh.read()))
 
         with open(node_definition.outputs["value"], "w+") as fh:
             fh.write(json.dumps(values))
+
+    elif node_definition.function_name == "unfold_values":
+        with open(node_definition.inputs["value"], "rb") as fh:
+            values_list = json.loads(fh.read())
+
+        if not isinstance(values_list, list):
+            raise ValueError("VALUE to unfold must be a list.")
+
+        for i, value in enumerate(values_list):
+            with open(node_definition.outputs["*"].parent / str(i), "w+") as fh:
+                fh.write(json.dumps(value))
 
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")

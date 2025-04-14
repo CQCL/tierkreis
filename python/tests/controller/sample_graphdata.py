@@ -42,13 +42,17 @@ def doubler() -> GraphData:
 
 def sample_map() -> GraphData:
     g = GraphData()
-    Ns = [g.add(Const(i))(Labels.VALUE) for i in range(10)]
-    const_doubler = g.add(Const(doubler()))(Labels.VALUE)
-    map_inputs = {str(i): v for i, v in enumerate(Ns)}
-    map_inputs["doubler"] = const_doubler
-    m = g.map(Map(const_doubler, Ns, map_inputs))
-    folded = g.add(
-        Func("numerical-worker.fold_values", {str(i): v for i, v in enumerate(m)})
+    Ns_const = g.add(Const(list(range(10))))(Labels.VALUE)
+    Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
+    doubler_const = g.add(Const(doubler()))(Labels.VALUE)
+
+    map_def = Map(
+        doubler_const,
+        Ns(Labels.VALUE)[0],
+        Labels.VALUE,
+        {"doubler": doubler_const, "Ns": Ns("*")},
     )
+    m = g.add(map_def)
+    folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m("*")}))
     g.add(Output({Labels.VALUE: folded(Labels.VALUE)}))
     return g

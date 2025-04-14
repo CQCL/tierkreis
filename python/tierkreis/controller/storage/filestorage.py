@@ -34,8 +34,13 @@ class ControllerFileStorage:
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
+    def _outputs_dir(self, node_location: NodeLocation) -> Path:
+        path = self.workflow_dir / str(node_location) / "outputs"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
     def _output_path(self, node_location: NodeLocation, port_name: PortID) -> Path:
-        path = self.workflow_dir / str(node_location) / "outputs" / port_name
+        path = self._outputs_dir(node_location) / port_name
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
@@ -114,6 +119,11 @@ class ControllerFileStorage:
     def read_output(self, node_location: NodeLocation, output_name: PortID) -> bytes:
         with open(self._output_path(node_location, output_name), "rb") as fh:
             return fh.read()
+
+    def read_output_ports(self, node_location: NodeLocation) -> list[PortID]:
+        dir_list = list(self._outputs_dir(node_location).iterdir())
+        dir_list.sort()
+        return [x.name for x in dir_list if x.is_file()]
 
     def is_node_started(self, node_location: NodeLocation) -> bool:
         return Path(self._definition_path(node_location)).exists()

@@ -38,6 +38,7 @@ class JSNode(BaseModel):
 
 
 class JSEdge(BaseModel):
+    id: str
     from_node: int = Field(..., serialization_alias="from")
     to: int
     title: str
@@ -48,6 +49,7 @@ class JSEdge(BaseModel):
     @staticmethod
     def from_py_edge(py_edge: PyEdge):
         return JSEdge(
+            id=f"{py_edge.from_port}->{py_edge.to_port}:{py_edge.from_node}->{py_edge.to_node}",
             from_node=py_edge.from_node,
             to=py_edge.to_node,
             title=f"{py_edge.from_port}->{py_edge.to_port}",

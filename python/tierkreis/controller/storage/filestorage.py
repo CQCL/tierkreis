@@ -123,3 +123,6 @@ class ControllerFileStorage:
 
     def mark_node_finished(self, node_location: NodeLocation) -> None:
         self._done_path(node_location).touch()
+
+        if (parent := node_location.parent()) is not None:
+            self._metadata_path(parent).touch()

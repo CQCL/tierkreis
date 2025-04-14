@@ -14,6 +14,7 @@ from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis_visualization.config import CONFIG, templates
 from tierkreis_visualization.data.eval import get_eval_node
 from tierkreis_visualization.data.loop import get_loop_node
+from tierkreis_visualization.data.map import get_map_node
 from tierkreis_visualization.data.workflows import get_workflows
 from tierkreis_visualization.routers.models import JSGraph
 from tierkreis_visualization.routers.navigation import breadcrumbs
@@ -56,15 +57,20 @@ def get_node_data(workflow_id: UUID, node_location: NodeLocation) -> dict[str, A
 
     if function_name == "eval":
         data = get_eval_node(storage, node_location)
-        name = "eval.html"
+        name = "eval.jinja"
         ctx: dict[str, Any] = JSGraph.from_python(data.nodes, data.edges).model_dump(
             by_alias=True
         )
 
     elif function_name == "loop":
         data = get_loop_node(storage, node_location)
-        name = "loop.html"
+        name = "loop.jinja"
         ctx = JSGraph.from_python(data.nodes, data.edges).model_dump(by_alias=True)
+
+    elif function_name == "map":
+        data = get_map_node(storage, node_location)
+        name = "map.jinja"
+        ctx = JSGraph.from_python(data.nodes, []).model_dump(by_alias=True)
 
     else:
         name = "fallback.html"

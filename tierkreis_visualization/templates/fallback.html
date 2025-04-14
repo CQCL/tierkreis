@@ -1,48 +1,56 @@
 {% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
 
 <html>
-<head>
+  <head>
     <title>Tierkreis visualization: node</title>
-</head>
-<body>
+  </head>
+  <body>
     {{ breadcrumbs_macro(breadcrumbs) }}
     <style>
-        .divLink:hover {
-            cursor: pointer;
-        }
-        .divLink {
-            text-decoration: underline;`
-        }
+      .divLink:hover {
+        cursor: pointer;
+      }
+      .divLink {
+        text-decoration: underline;
+      }
     </style>
     <script>
-        function openLink(path) {
-        console.log(`${window.location.href}/${path}`)
-            window.open(`${window.location.href}/${path}`, target="_blank");
-        }
+      function openLink(path) {
+        console.log(`${window.location.href}/${path}`);
+        window.open(`${window.location.href}/${path}`, (target = "_blank"));
+      }
     </script>
     <h1>{{ definition.function_name }}</h1>
 
     <ul>
-        <li>
-            <span>Inputs</span>
-            <ul>
-                {% for input,path in definition.inputs.items() %}
-                <li><span class="divLink" onclick="openLink('inputs/{{ input }}')">{{ input }}</span> ({{ path }})</li>
-                {% endfor %}
-            </ul>
-        </li>
+      <li>
+        <span>Inputs</span>
+        <ul>
+          {% for input,path in definition.inputs.items() %}
+          <li>
+            <span class="divLink" onclick="openLink('inputs/{{ input }}')"
+              >{{ input }}</span
+            >
+            ({{ path }})
+          </li>
+          {% endfor %}
+        </ul>
+      </li>
 
-        <li>
-            <span>Outputs</span>
-            <ul>
-                {% for output,path in definition.outputs.items() %}
-                    <li><span class="divLink" onclick="openLink('outputs/{{ output }}')">{{ output }}</span> ({{ path }})</li>
-                {% endfor %}
-            </ul>
-        </li>
-        <li><span class="divLink" onclick="openLink('logs')">logs</span></li>
+      <li>
+        <span>Outputs</span>
+        <ul>
+          {% for output,path in definition.outputs.items() %}
+          <li>
+            <span class="divLink" onclick="openLink('outputs/{{ output }}')"
+              >{{ output }}</span
+            >
+            ({{ path }})
+          </li>
+          {% endfor %}
+        </ul>
+      </li>
+      <li><span class="divLink" onclick="openLink('logs')">logs</span></li>
     </ul>
-
-
-</body>
+  </body>
 </html>

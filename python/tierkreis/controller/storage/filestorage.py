@@ -29,6 +29,11 @@ class ControllerFileStorage:
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
+    def _metadata_path(self, node_location: NodeLocation) -> Path:
+        path = self.workflow_dir / str(node_location) / "_metadata"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
     def _output_path(self, node_location: NodeLocation, port_name: PortID) -> Path:
         path = self.workflow_dir / str(node_location) / "outputs" / port_name
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -73,6 +78,9 @@ class ControllerFileStorage:
         )
         with open(node_definition_path, "w+") as fh:
             fh.write(node_definition.model_dump_json())
+
+        if (parent := node_location.parent()) is not None:
+            self._metadata_path(parent).touch()
 
         return node_definition_path
 

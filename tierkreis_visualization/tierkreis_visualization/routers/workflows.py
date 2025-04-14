@@ -1,8 +1,10 @@
+from asyncio import sleep
 import json
 from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
 from tierkreis.controller.data.location import NodeLocation, NodeDefinition
@@ -46,11 +48,9 @@ def get_storage(workflow_id: UUID) -> ControllerStorage:
     )
 
 
-@router.get("/{workflow_id}/nodes/{node_location_str}")
-def get_node(request: Request, workflow_id: UUID, node_location_str: str):
+def get_node_data(workflow_id: UUID, node_location: NodeLocation) -> dict[str, Any]:
     storage = get_storage(workflow_id)
 
-    node_location = parse_node_location(node_location_str)
     definition = storage.read_node_definition(node_location)
     function_name = definition.function_name
 
@@ -71,8 +71,40 @@ def get_node(request: Request, workflow_id: UUID, node_location_str: str):
         ctx = {"definition": definition.model_dump()}
 
     ctx["breadcrumbs"] = breadcrumbs(workflow_id, node_location)
+    ctx["url"] = f"/workflows/{workflow_id}/nodes/-{node_location}"
+    ctx["node_location"] = str(node_location)
+    ctx["name"] = name
 
-    return templates.TemplateResponse(request=request, name=name, context=ctx)
+    return ctx
+
+
+async def node_stream(workflow_id: UUID, node_location: NodeLocation):
+    metadata_path = (
+        CONFIG.tierkreis_path / str(workflow_id) / str(node_location) / "_metadata"
+    )
+    mtime = 0
+    for _ in range(100):
+        new_mtime = metadata_path.stat().st_mtime
+        if new_mtime > mtime:
+            mtime = new_mtime
+            ctx = get_node_data(workflow_id, node_location)
+            yield f"event: message\ndata: {json.dumps(ctx)}\n\n"
+        await sleep(0.5)
+
+
+@router.get("/{workflow_id}/nodes/{node_location_str}")
+def get_node(request: Request, workflow_id: UUID, node_location_str: str):
+    node_location = parse_node_location(node_location_str)
+    ctx = get_node_data(workflow_id, node_location)
+    if request.headers["Accept"] == "application/json":
+        return JSONResponse(ctx)
+
+    if request.headers["Accept"] == "text/event-stream":
+        return StreamingResponse(
+            node_stream(workflow_id, node_location), media_type="text/event-stream"
+        )
+
+    return templates.TemplateResponse(request=request, name=ctx["name"], context=ctx)
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/inputs/{port_name}")

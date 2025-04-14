@@ -44,7 +44,9 @@ def sample_map() -> GraphData:
     g = GraphData()
     Ns = [g.add(Const(i))(Labels.VALUE) for i in range(10)]
     const_doubler = g.add(Const(doubler()))(Labels.VALUE)
-    m = g.map(Map(const_doubler, Ns, {}))
+    map_inputs = {str(i): v for i, v in enumerate(Ns)}
+    map_inputs["doubler"] = const_doubler
+    m = g.map(Map(const_doubler, Ns, map_inputs))
     folded = g.add(
         Func("numerical-worker.fold_values", {str(i): v for i, v in enumerate(m)})
     )

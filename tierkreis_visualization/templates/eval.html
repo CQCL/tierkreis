@@ -1,7 +1,7 @@
 {% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
 
 <html>
-<head>
+  <head>
     <title>Tierkreis visualization: EVAL node</title>
     <script
       type="text/javascript"
@@ -12,17 +12,10 @@
         border: 1px solid lightgray;
       }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     {{ breadcrumbs_macro(breadcrumbs) }}
     <div id="mynetwork"></div>
-    <dialog>
-      <p>Greetings, one and all!</p>
-      <form method="dialog">
-        <button>OK</button>
-      </form>
-    </dialog>
-
 
     <script type="text/javascript">
       var nodes = new vis.DataSet({{ nodes|safe }});
@@ -32,7 +25,7 @@
       var data = { nodes: nodes, edges: edges };
       var options = {
         physics: {
-            enabled: true,
+            enabled: false,
             hierarchicalRepulsion: { springLength: 200, nodeDistance: 250 },
             solver: 'hierarchicalRepulsion',
         },
@@ -49,6 +42,17 @@
         let edges = params.edges;
       });
 
+      let eventSource = new EventSource("{{ url|safe }}");
+      eventSource.addEventListener("message", (ev) => {
+        data = JSON.parse(ev['data'])
+        var nodes = new vis.DataSet(data.nodes);
+        var edges = new vis.DataSet(data.edges);
+        network.setData({nodes, edges});
+        network.redraw();
+      });
+      window.onbeforeunload = function () {
+        eventSource.close();
+      };
     </script>
-</body>
+  </body>
 </html>

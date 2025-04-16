@@ -3,7 +3,7 @@
 <html>
 
 <head>
-  <title>Tierkreis visualization: EVAL node</title>
+  <title>Tierkreis visualization: MAP node</title>
   <script src="/static/vis-network.min.js"></script>
   <script src="/static/network.js"></script>
   <script src="/static/eventstream.js"></script>
@@ -20,7 +20,9 @@
 
   <script type="text/javascript">
     let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "M");
-    network.stabilize();
+    network.setOptions({
+      edges: {  hidden: false, physics: true, color: {opacity: 0}, font: {color: "white"} }
+    })
     connectToStream("{{ url|safe }}", nodes, edges);
   </script>
 </body>

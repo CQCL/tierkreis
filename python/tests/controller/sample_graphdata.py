@@ -42,7 +42,7 @@ def doubler() -> GraphData:
 
 def sample_map() -> GraphData:
     g = GraphData()
-    Ns_const = g.add(Const(list(range(10))))(Labels.VALUE)
+    Ns_const = g.add(Const(list(range(21))))(Labels.VALUE)
     Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
     doubler_const = g.add(Const(doubler()))(Labels.VALUE)
 

@@ -128,7 +128,9 @@ def walk_map(storage: ControllerStorage, node_location: NodeLocation) -> WalkRes
     if all_finished is True:
         for j in range(N + 1):
             loc = node_location.append_map(j)
-            storage.link_outputs(node_location, str(j), loc, Labels.VALUE)
+            storage.link_outputs(
+                node_location, str(j), loc, Labels.VALUE
+            )  # TODO: graphbuilder has to know we use VALUE
             storage.mark_node_finished(node_location)
 
     return walk_result

@@ -20,8 +20,32 @@
 
   <script type="text/javascript">
     let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
+    network.setOptions({
+      nodes: { font: { size: 20 } },
+      edges: { font: { size: 20 } },
+      layout:  {
+        hierarchical: {
+          direction: "LR",
+          sortMethod: "directed",
+          levelSeparation: 150, nodeSpacing: 500, shakeTowards: "leaves", edgeMinimization: false
+          }
+      },
+      physics: {
+        enabled: true,
+        solver: "hierarchicalRepulsion",
+        hierarchicalRepulsion: {
+          centralGravity: 0.0,
+          springLength: 100,
+          springConstant: 0.01,
+          nodeDistance: 350,
+          damping: 0.09,
+          avoidOverlap: 0
+        }
+      },
+    });
     connectToStream("{{ url|safe }}", nodes, edges);
   </script>
 </body>
 
 </html>
+

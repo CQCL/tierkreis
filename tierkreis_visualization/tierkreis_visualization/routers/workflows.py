@@ -70,7 +70,7 @@ def get_node_data(workflow_id: UUID, node_location: NodeLocation) -> dict[str, A
     elif function_name == "map":
         data = get_map_node(storage, node_location)
         name = "map.jinja"
-        ctx = JSGraph.from_python(data.nodes, []).model_dump(by_alias=True)
+        ctx = JSGraph.from_python(data.nodes, data.edges).model_dump(by_alias=True)
 
     else:
         name = "fallback.html"

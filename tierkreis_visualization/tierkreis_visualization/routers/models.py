@@ -43,7 +43,6 @@ class JSEdge(BaseModel):
     to: int
     title: str
     label: str
-    color: str
     arrows: str = "to"
 
     @staticmethod
@@ -53,7 +52,6 @@ class JSEdge(BaseModel):
             from_node=py_edge.from_node,
             to=py_edge.to_node,
             title=f"{py_edge.from_port}->{py_edge.to_port}",
-            color="black",
             label=py_edge.to_port,
         )
 

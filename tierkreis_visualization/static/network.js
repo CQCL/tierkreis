@@ -5,8 +5,6 @@ function createNetwork(nodes, edges, name) {
   var container = document.getElementById("mynetwork");
   var data = { nodes: visnodes, edges: visedges };
   var options = {
-    nodes: { font: { size: 20 } },
-    edges: { font: { size: 20 } },
     layout: { hierarchical: { direction: "LR", sortMethod: "directed" } },
   };
 

@@ -88,7 +88,7 @@ async def node_stream(workflow_id: UUID, node_location: NodeLocation):
     metadata_path = (
         CONFIG.tierkreis_path / str(workflow_id) / str(node_location) / "_metadata"
     )
-    mtime = 0
+    mtime = metadata_path.stat().st_mtime
     for _ in range(100):
         new_mtime = metadata_path.stat().st_mtime
         if new_mtime > mtime:

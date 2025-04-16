@@ -21,24 +21,32 @@
   <script type="text/javascript">
     let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
     network.setOptions({
-      nodes: { font: { size: 20 } },
-      edges: { font: { size: 20 } },
+      nodes: { font: { size: 24 } },
+      edges: { font: { size: 24 } },
       layout:  {
+        randomSeed: 0,
         hierarchical: {
-          direction: "LR",
+          direction: "UD",
           sortMethod: "directed",
-          levelSeparation: 150, nodeSpacing: 500, shakeTowards: "leaves", edgeMinimization: false
-          }
+          levelSeparation: 150,
+          nodeSpacing: 800,
+          shakeTowards: "leaves",
+          edgeMinimization: false
+        }
       },
       physics: {
-        enabled: true,
+        enabled: false,
+        stabilization: {
+          enabled: true,
+          iterations: 10000,
+        },
         solver: "hierarchicalRepulsion",
         hierarchicalRepulsion: {
           centralGravity: 0.0,
           springLength: 100,
           springConstant: 0.01,
           nodeDistance: 350,
-          damping: 0.09,
+          damping: 1,
           avoidOverlap: 0
         }
       },

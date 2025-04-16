@@ -16,6 +16,5 @@ function connectToStream(url, nodes, edges) {
       return;
 
     network.setData({ nodes: visnodes, edges: visedges });
-    network.redraw();
   });
 }

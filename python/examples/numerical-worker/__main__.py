@@ -87,7 +87,7 @@ def run(node_definition: NodeDefinition):
     elif node_definition.function_name == "fold_values":
         values = []
         inputs = glob(str(node_definition.inputs["values_glob"]))
-        inputs.sort()
+        inputs.sort(key=lambda p: int(Path(p).name))
         for i, path in enumerate(inputs):
             with open(path, "rb") as fh:
                 values.append(json.loads(fh.read()))

@@ -82,10 +82,12 @@ def start(
             raise TierkreisError("MAP node must have parent.")
 
         input_values = storage.read_output_ports(parent.append_node(node.input_idx))
+        input_indices = [int(s) for s in input_values]
+        input_indices.sort()
         ref, port = node.body
         eval_inputs = {"thunk": (parent.append_node(ref), port)}
-        for i, p in enumerate(input_values):
-            eval_inputs[node.bound_port] = (parent.append_node(node.input_idx), p)
+        for i in input_indices:
+            eval_inputs[node.bound_port] = (parent.append_node(node.input_idx), str(i))
             start(
                 storage,
                 executor,

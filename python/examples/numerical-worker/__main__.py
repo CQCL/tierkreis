@@ -9,7 +9,7 @@ from pydantic import BaseModel
 logger = getLogger(__name__)
 
 
-class NodeDefinition(BaseModel):
+class WorkerCallArgs(BaseModel):
     function_name: str
     inputs: dict[str, Path]
     outputs: dict[str, Path]
@@ -31,7 +31,7 @@ def igt(a: int, b: int) -> bool:
     return a > b
 
 
-def run(node_definition: NodeDefinition):
+def run(node_definition: WorkerCallArgs):
     logger.debug(node_definition)
     if node_definition.function_name == "iadd":
         with open(node_definition.inputs["a"], "rb") as fh:
@@ -114,6 +114,6 @@ def run(node_definition: NodeDefinition):
 if __name__ == "__main__":
     worker_definition_path = argv[1]
     with open(worker_definition_path, "r") as fh:
-        node_definition = NodeDefinition(**json.loads(fh.read()))
+        node_definition = WorkerCallArgs(**json.loads(fh.read()))
 
     run(node_definition)

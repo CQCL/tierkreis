@@ -18,7 +18,7 @@ def test_resume_sample_graph():
     inputs = {Labels.THUNK: g.model_dump_json().encode()}
 
     storage.clean_graph_files()
-    run_graph(storage, executor, g, inputs, polling_interval_seconds=1)
+    run_graph(storage, executor, g, inputs)
 
     c = storage.read_output(NodeLocation(location=[]), "a")
     assert c == b"10"

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
-from tierkreis.controller.data.location import NodeLocation, NodeDefinition
+from tierkreis.controller.data.location import NodeLocation, WorkerCallArgs
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.protocol import ControllerStorage
 
@@ -31,7 +31,7 @@ def list_workflows(request: Request):
 
 
 class NodeResponse(BaseModel):
-    definition: NodeDefinition
+    definition: WorkerCallArgs
 
 
 def parse_node_location(node_location_str: str) -> NodeLocation:
@@ -52,7 +52,7 @@ def get_storage(workflow_id: UUID) -> ControllerStorage:
 def get_node_data(workflow_id: UUID, node_location: NodeLocation) -> dict[str, Any]:
     storage = get_storage(workflow_id)
 
-    definition = storage.read_node_definition(node_location)
+    definition = storage.read_worker_call_args(node_location)
     function_name = definition.function_name
 
     if function_name == "eval":
@@ -117,7 +117,7 @@ def get_node(request: Request, workflow_id: UUID, node_location_str: str):
 def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
-    definition = storage.read_node_definition(node_location)
+    definition = storage.read_worker_call_args(node_location)
 
     with open(definition.inputs[port_name], "rb") as fh:
         return JSONResponse(json.loads(fh.read()))
@@ -127,7 +127,7 @@ def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
 def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
-    definition = storage.read_node_definition(node_location)
+    definition = storage.read_worker_call_args(node_location)
 
     with open(definition.outputs[port_name], "rb") as fh:
         return JSONResponse(json.loads(fh.read()))
@@ -137,7 +137,7 @@ def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
 def get_logs(workflow_id: UUID, node_location_str: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
-    definition = storage.read_node_definition(node_location)
+    definition = storage.read_worker_call_args(node_location)
 
     if definition.logs_path is None:
         return PlainTextResponse("Node definition not found.")

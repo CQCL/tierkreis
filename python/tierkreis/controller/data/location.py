@@ -14,7 +14,7 @@ from tierkreis.exceptions import TierkreisError
 logger = getLogger(__name__)
 
 
-class NodeDefinition(BaseModel):
+class WorkerCallArgs(BaseModel):
     function_name: str
     inputs: dict[str, Path]
     outputs: dict[str, Path]

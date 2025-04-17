@@ -24,7 +24,7 @@ def walk_node(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
     """Should only be called when a node has started and has not finished."""
 
     logger.debug(f"\n\nRESUME {node_location}")
-    name = storage.read_node_definition(node_location).function_name
+    name = storage.read_worker_call_args(node_location).function_name
 
     if name == "eval":
         return walk_eval(storage, node_location)
@@ -98,7 +98,7 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
         return WalkResult([], [])
 
     # Include old inputs. The .value is the only one that can change.
-    input_paths = storage.read_node_definition(node_location).inputs
+    input_paths = storage.read_worker_call_args(node_location).inputs
     inputs = {k: (new_location.append_node(-1), v.name) for k, v in input_paths.items()}
     inputs[Labels.VALUE] = (new_location, Labels.VALUE)
     inputs[Labels.THUNK] = (new_location.append_node(-1), Labels.THUNK)

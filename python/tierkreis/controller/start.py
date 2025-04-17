@@ -31,7 +31,7 @@ def start(
     node = node_run_data.node
     inputs = node_run_data.inputs
     output_list = node_run_data.output_list
-    storage.write_node_definition(node_location, node.type, inputs, output_list)
+    storage.write_worker_call_args(node_location, node.type, inputs, output_list)
 
     logger.debug(f"start {node_location} {node} {inputs} {output_list}")
     if node.type == "function":
@@ -113,7 +113,7 @@ def start_function_node(
 ):
     launcher_name = ".".join(name.split(".")[:-1])
     name = name.split(".")[-1]
-    def_path = storage.write_node_definition(node_location, name, inputs, output_list)
+    def_path = storage.write_worker_call_args(node_location, name, inputs, output_list)
 
     if name == "switch":
         pred = json.loads(storage.read_output(*inputs["pred"]))

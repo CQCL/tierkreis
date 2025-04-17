@@ -6,7 +6,7 @@ from time import time_ns
 from uuid import UUID
 
 from tierkreis.controller.data.location import (
-    NodeDefinition,
+    WorkerCallArgs,
     NodeLocation,
     OutputLocation,
 )
@@ -64,7 +64,7 @@ class ControllerFileStorage:
 
         return input_loc
 
-    def write_node_definition(
+    def write_worker_call_args(
         self,
         node_location: NodeLocation,
         function_name: str,
@@ -72,7 +72,7 @@ class ControllerFileStorage:
         output_list: list[PortID],
     ) -> Path:
         node_definition_path = self._definition_path(node_location)
-        node_definition = NodeDefinition(
+        node_definition = WorkerCallArgs(
             function_name=function_name,
             inputs={
                 k: self._output_path(loc, port) for k, (loc, port) in inputs.items()
@@ -89,10 +89,10 @@ class ControllerFileStorage:
 
         return node_definition_path
 
-    def read_node_definition(self, node_location: NodeLocation) -> NodeDefinition:
+    def read_worker_call_args(self, node_location: NodeLocation) -> WorkerCallArgs:
         node_definition_path = self._definition_path(node_location)
         with open(node_definition_path, "r") as fh:
-            return NodeDefinition(**json.loads(fh.read()))
+            return WorkerCallArgs(**json.loads(fh.read()))
 
     def link_outputs(
         self,

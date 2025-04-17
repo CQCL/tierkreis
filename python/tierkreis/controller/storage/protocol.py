@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Protocol
 
+from tierkreis.controller.data.graph import NodeDef
 from tierkreis.controller.data.location import (
     WorkerCallArgs,
     NodeLocation,
@@ -10,6 +11,9 @@ from tierkreis.core.tierkreis_graph import PortID
 
 
 class ControllerStorage(Protocol):
+    def write_node_def(self, node_location: NodeLocation, node: NodeDef) -> None: ...
+    def read_node_def(self, node_location: NodeLocation) -> NodeDef: ...
+
     def write_worker_call_args(
         self,
         node_location: NodeLocation,
@@ -17,11 +21,9 @@ class ControllerStorage(Protocol):
         inputs: dict[PortID, OutputLocation],
         output_list: list[PortID],
     ) -> Path: ...
-
     def read_worker_call_args(self, node_location: NodeLocation) -> WorkerCallArgs: ...
 
     def mark_node_finished(self, node_location: NodeLocation) -> None: ...
-
     def is_node_finished(self, node_location: NodeLocation) -> bool: ...
 
     def link_outputs(

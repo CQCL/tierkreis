@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 Jsonable = Any
 PortID = str
@@ -62,6 +62,7 @@ class Output:
 
 
 NodeDef = Func | Eval | Loop | Map | Const | Input | Output
+NodeDefModel = RootModel[NodeDef]
 
 
 class GraphData(BaseModel):

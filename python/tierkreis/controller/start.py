@@ -32,6 +32,7 @@ def start(
     inputs = node_run_data.inputs
     output_list = node_run_data.output_list
     storage.write_worker_call_args(node_location, node.type, inputs, output_list)
+    storage.write_node_def(node_location, node)
 
     logger.debug(f"start {node_location} {node} {inputs} {output_list}")
     if node.type == "function":

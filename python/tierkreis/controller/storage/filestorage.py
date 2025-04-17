@@ -5,6 +5,7 @@ from pathlib import Path
 from time import time_ns
 from uuid import UUID
 
+from tierkreis.controller.data.graph import NodeDef, NodeDefModel
 from tierkreis.controller.data.location import (
     WorkerCallArgs,
     NodeLocation,
@@ -24,7 +25,12 @@ class ControllerFileStorage:
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
         self.logs_path = self.workflow_dir / "logs"
 
-    def _definition_path(self, node_location: NodeLocation) -> Path:
+    def _nodedef_path(self, node_location: NodeLocation) -> Path:
+        path = self.workflow_dir / str(node_location) / "nodedef"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def _worker_call_args_path(self, node_location: NodeLocation) -> Path:
         path = self.workflow_dir / str(node_location) / "definition"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
@@ -64,6 +70,14 @@ class ControllerFileStorage:
 
         return input_loc
 
+    def write_node_def(self, node_location: NodeLocation, node: NodeDef):
+        with open(self._nodedef_path(node_location), "w+") as fh:
+            fh.write(NodeDefModel(root=node).model_dump_json())
+
+    def read_node_def(self, node_location: NodeLocation) -> NodeDef:
+        with open(self._nodedef_path(node_location)) as fh:
+            return NodeDefModel(**json.load(fh)).root
+
     def write_worker_call_args(
         self,
         node_location: NodeLocation,
@@ -71,7 +85,7 @@ class ControllerFileStorage:
         inputs: dict[PortID, OutputLocation],
         output_list: list[PortID],
     ) -> Path:
-        node_definition_path = self._definition_path(node_location)
+        node_definition_path = self._worker_call_args_path(node_location)
         node_definition = WorkerCallArgs(
             function_name=function_name,
             inputs={
@@ -90,9 +104,9 @@ class ControllerFileStorage:
         return node_definition_path
 
     def read_worker_call_args(self, node_location: NodeLocation) -> WorkerCallArgs:
-        node_definition_path = self._definition_path(node_location)
+        node_definition_path = self._worker_call_args_path(node_location)
         with open(node_definition_path, "r") as fh:
-            return WorkerCallArgs(**json.loads(fh.read()))
+            return WorkerCallArgs(**json.load(fh))
 
     def link_outputs(
         self,
@@ -126,7 +140,7 @@ class ControllerFileStorage:
         return [x.name for x in dir_list if x.is_file()]
 
     def is_node_started(self, node_location: NodeLocation) -> bool:
-        return Path(self._definition_path(node_location)).exists()
+        return Path(self._worker_call_args_path(node_location)).exists()
 
     def is_node_finished(self, node_location: NodeLocation) -> bool:
         return self._done_path(node_location).exists()

@@ -15,6 +15,19 @@ function connectToStream(url, nodes, edges) {
     )
       return;
 
+    position = network.getViewPosition();
+    scale = network.getScale();
+
     network.setData({ nodes: visnodes, edges: visedges });
+    args = {
+      position: position,
+      scale: scale,
+      animation: false,
+    };
+    let move = () => {
+      network.moveTo(args);
+      network.off("afterDrawing", move);
+    };
+    network.on("afterDrawing", move);
   });
 }

@@ -1,6 +1,7 @@
 import json
 from dataclasses import dataclass
 from logging import getLogger
+from typing import assert_never
 
 from tierkreis.controller.data.graph import Eval, GraphData
 from tierkreis.controller.data.location import NodeLocation, NodeRunData
@@ -24,20 +25,24 @@ def walk_node(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
     """Should only be called when a node has started and has not finished."""
 
     logger.debug(f"\n\nRESUME {node_location}")
-    name = storage.read_worker_call_args(node_location).function_name
+    node = storage.read_node_def(node_location)
 
-    if name == "eval":
-        return walk_eval(storage, node_location)
+    match node.type:
+        case "eval":
+            return walk_eval(storage, node_location)
 
-    elif name == "loop":
-        return walk_loop(storage, node_location)
+        case "loop":
+            return walk_loop(storage, node_location)
 
-    elif name == "map":
-        return walk_map(storage, node_location)
+        case "map":
+            return walk_map(storage, node_location)
 
-    else:
-        logger.debug(f"{name} already started")
-        return WalkResult([], [node_location])
+        case "const" | "function" | "input" | "output":
+            logger.debug(f"{node_location} ({node.type}) already started")
+            return WalkResult([], [node_location])
+
+        case _:
+            assert_never(node)
 
 
 def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:

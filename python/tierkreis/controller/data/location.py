@@ -68,7 +68,7 @@ class NodeStep(BaseModel):
 
 
 class NodeLocation(BaseModel):
-    location: list[NodeStep]
+    location: list[NodeStep] = []
 
     def append_node(self, idx: int) -> "NodeLocation":
         return NodeLocation(

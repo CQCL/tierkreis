@@ -10,7 +10,7 @@ from tierkreis.core import Labels
 from tierkreis.core.function import FunctionName
 from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
 
-root_loc = Loc(location=[])
+root_loc = Loc()
 
 
 def run_graph(

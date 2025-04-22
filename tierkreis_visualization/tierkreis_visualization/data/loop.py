@@ -15,7 +15,7 @@ def get_loop_node(storage: ControllerStorage, node_location: Loc) -> LoopNodeDat
     i = 0
     while storage.is_node_started(node_location.L(i + 1)):
         i += 1
-    new_location = node_location.N(i)
+    new_location = node_location.L(i)
 
     nodes = [
         PyNode(id=n, status=NodeStatus.FINISHED, function_name=f"L{n}")

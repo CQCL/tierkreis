@@ -62,7 +62,7 @@ class ControllerFileStorage:
             shutil.move(self.workflow_dir, tmp_dir)
 
     def add_input(self, port_name: PortID, value: bytes) -> Loc:
-        input_loc = Loc(location=[]).N(-1)
+        input_loc = Loc().N(-1)
         path = self._output_path(input_loc, port_name)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb+") as fh:

@@ -1,10 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+import json
 from logging import getLogger
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional, cast
 
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel, model_validator
 from typing_extensions import assert_never
 
 from tierkreis.controller.data.graph import NodeDef
@@ -67,42 +68,37 @@ class NodeStep(BaseModel):
             raise TierkreisError(f"Invalid NodeStep {frame}") from exc
 
 
-class Loc(BaseModel):
-    location: list[NodeStep] = []
+class Loc(str):
+    def __new__(cls, k: str = "-") -> "Loc":
+        return super(Loc, cls).__new__(cls, k)
 
     def N(self, idx: int) -> "Loc":
-        return Loc(
-            location=[x for x in self.location]
-            + [NodeStep(node_type=NodeType.NODE, idx=idx)]
-        )
+        return Loc(str(self) + f".N{idx}")
 
     def L(self, idx: int) -> "Loc":
-        return Loc(
-            location=[x for x in self.location]
-            + [NodeStep(node_type=NodeType.LOOP, idx=idx)]
-        )
+        return Loc(str(self) + f".L{idx}")
 
     def M(self, idx: int) -> "Loc":
-        return Loc(
-            location=[x for x in self.location]
-            + [NodeStep(node_type=NodeType.MAP, idx=idx)]
-        )
+        return Loc(str(self) + f".M{idx}")
 
     def parent(self) -> "Loc | None":
-        if not self.location:
+        if not self:
             return None
-        return Loc(location=self.location[:-1])
+        return Loc(".".join(self.split(".")[:-1]))
 
-    def __str__(self) -> str:
-        frame_strs = [str(x) for x in self.location]
-        return ".".join(frame_strs)
+    def __hash__(self) -> int:
+        return hash(self)
 
-    @staticmethod
-    def from_str(location: str) -> "Loc":
-        if not location:
-            return Loc(location=[])
-        frames = location.split(".")
-        return Loc(location=[NodeStep.from_str(x) for x in frames])
+    def __add__(self, other: str) -> "Loc":
+        return Loc(self + other)
+
+    @model_validator(mode="before")
+    @classmethod
+    def model_validator(cls, data: Any) -> Any:
+        print(data)
+        if not isinstance(data, str):
+            raise TierkreisError("We should be deserialising Loc directly from str.")
+        return Loc(data)
 
 
 OutputLoc = tuple[Loc, PortID]

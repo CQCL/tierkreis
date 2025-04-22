@@ -14,6 +14,6 @@ def breadcrumb_links(crumbs: list[str]) -> list[tuple[str, str]]:
 
 
 def breadcrumbs(workflow_id: UUID, node_location: Loc) -> list[tuple[str, str]]:
-    node_location_strs: list[str] = [f".{x}" for x in node_location.location]
+    node_location_strs: list[str] = [f".{x}" for x in node_location.split(".")]
     static_links = ["/workflows", f"/{workflow_id}/nodes/-"]
-    return breadcrumb_links(static_links + node_location_strs)
+    return breadcrumb_links(static_links + node_location_strs[1:])

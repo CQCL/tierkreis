@@ -51,7 +51,10 @@ def start(
     elif node.type == "output":
         storage.mark_node_finished(node_location)
 
-        parent_loc = Loc(location=node_location.location[:-1])
+        parent_loc = node_location.parent()
+        if parent_loc is None:
+            raise TierkreisError("Output node must have parent Loc.")
+
         pipe_inputs_to_output_location(storage, parent_loc, inputs)
         storage.mark_node_finished(parent_loc)
 

@@ -35,12 +35,12 @@ class NodeResponse(BaseModel):
 
 
 def parse_node_location(node_location_str: str) -> Loc:
-    if node_location_str.startswith("-"):
-        node_location_str = node_location_str[1:]
-    if node_location_str.startswith("."):
-        node_location_str = node_location_str[1:]
+    # if node_location_str.startswith("-"):
+    #     node_location_str = node_location_str[1:]
+    # if node_location_str.startswith("."):
+    #     node_location_str = node_location_str[1:]
 
-    return Loc.from_str(node_location_str)
+    return Loc(node_location_str)
 
 
 def get_storage(workflow_id: UUID) -> ControllerStorage:
@@ -77,7 +77,7 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
         ctx = {"definition": definition.model_dump()}
 
     ctx["breadcrumbs"] = breadcrumbs(workflow_id, node_location)
-    ctx["url"] = f"/workflows/{workflow_id}/nodes/-{node_location}"
+    ctx["url"] = f"/workflows/{workflow_id}/nodes/{node_location}"
     ctx["node_location"] = str(node_location)
     ctx["name"] = name
 

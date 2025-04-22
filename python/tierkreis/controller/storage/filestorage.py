@@ -7,9 +7,9 @@ from uuid import UUID
 
 from tierkreis.controller.data.graph import NodeDef, NodeDefModel
 from tierkreis.controller.data.location import (
-    WorkerCallArgs,
     Loc,
     OutputLoc,
+    WorkerCallArgs,
 )
 from tierkreis.core.tierkreis_graph import PortID
 

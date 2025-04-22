@@ -3,9 +3,9 @@ from typing import Protocol
 
 from tierkreis.controller.data.graph import NodeDef
 from tierkreis.controller.data.location import (
-    WorkerCallArgs,
     Loc,
     OutputLoc,
+    WorkerCallArgs,
 )
 from tierkreis.core.tierkreis_graph import PortID
 

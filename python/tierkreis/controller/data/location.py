@@ -67,50 +67,50 @@ class NodeStep(BaseModel):
             raise TierkreisError(f"Invalid NodeStep {frame}") from exc
 
 
-class NodeLocation(BaseModel):
+class Loc(BaseModel):
     location: list[NodeStep] = []
 
-    def append_node(self, idx: int) -> "NodeLocation":
-        return NodeLocation(
+    def N(self, idx: int) -> "Loc":
+        return Loc(
             location=[x for x in self.location]
             + [NodeStep(node_type=NodeType.NODE, idx=idx)]
         )
 
-    def append_loop(self, idx: int) -> "NodeLocation":
-        return NodeLocation(
+    def L(self, idx: int) -> "Loc":
+        return Loc(
             location=[x for x in self.location]
             + [NodeStep(node_type=NodeType.LOOP, idx=idx)]
         )
 
-    def append_map(self, idx: int) -> "NodeLocation":
-        return NodeLocation(
+    def M(self, idx: int) -> "Loc":
+        return Loc(
             location=[x for x in self.location]
             + [NodeStep(node_type=NodeType.MAP, idx=idx)]
         )
 
-    def parent(self) -> "NodeLocation | None":
+    def parent(self) -> "Loc | None":
         if not self.location:
             return None
-        return NodeLocation(location=self.location[:-1])
+        return Loc(location=self.location[:-1])
 
     def __str__(self) -> str:
         frame_strs = [str(x) for x in self.location]
         return ".".join(frame_strs)
 
     @staticmethod
-    def from_str(location: str) -> "NodeLocation":
+    def from_str(location: str) -> "Loc":
         if not location:
-            return NodeLocation(location=[])
+            return Loc(location=[])
         frames = location.split(".")
-        return NodeLocation(location=[NodeStep.from_str(x) for x in frames])
+        return Loc(location=[NodeStep.from_str(x) for x in frames])
 
 
-OutputLocation = tuple[NodeLocation, PortID]
+OutputLocation = tuple[Loc, PortID]
 
 
 @dataclass
 class NodeRunData:
-    node_location: NodeLocation
+    node_location: Loc
     node: NodeDef
     inputs: dict[PortID, OutputLocation]
     output_list: list[PortID]

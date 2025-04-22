@@ -1,6 +1,6 @@
 from math import ceil, sqrt
 from pydantic import BaseModel
-from tierkreis.controller.data.location import NodeLocation
+from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
 
 from tierkreis_visualization.data.models import PyEdge, PyNode, NodeStatus
@@ -11,13 +11,11 @@ class MapNodeData(BaseModel):
     edges: list[PyEdge]
 
 
-def get_map_node(
-    storage: ControllerStorage, node_location: NodeLocation
-) -> MapNodeData:
+def get_map_node(storage: ControllerStorage, node_location: Loc) -> MapNodeData:
     i = 0
     nodes: list[PyNode] = []
     while True:
-        loc = node_location.append_map(i)
+        loc = node_location.M(i)
         if not storage.is_node_started(loc):
             break
 

@@ -8,7 +8,7 @@ from uuid import UUID
 from tierkreis.controller.data.graph import NodeDef, NodeDefModel
 from tierkreis.controller.data.location import (
     WorkerCallArgs,
-    NodeLocation,
+    Loc,
     OutputLocation,
 )
 from tierkreis.core.tierkreis_graph import PortID
@@ -25,32 +25,32 @@ class ControllerFileStorage:
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
         self.logs_path = self.workflow_dir / "logs"
 
-    def _nodedef_path(self, node_location: NodeLocation) -> Path:
+    def _nodedef_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "nodedef"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
-    def _worker_call_args_path(self, node_location: NodeLocation) -> Path:
+    def _worker_call_args_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "definition"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
-    def _metadata_path(self, node_location: NodeLocation) -> Path:
+    def _metadata_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "_metadata"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
-    def _outputs_dir(self, node_location: NodeLocation) -> Path:
+    def _outputs_dir(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "outputs"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
-    def _output_path(self, node_location: NodeLocation, port_name: PortID) -> Path:
+    def _output_path(self, node_location: Loc, port_name: PortID) -> Path:
         path = self._outputs_dir(node_location) / port_name
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
-    def _done_path(self, node_location: NodeLocation) -> Path:
+    def _done_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "_done"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
@@ -61,8 +61,8 @@ class ControllerFileStorage:
         if self.workflow_dir.exists():
             shutil.move(self.workflow_dir, tmp_dir)
 
-    def add_input(self, port_name: PortID, value: bytes) -> NodeLocation:
-        input_loc = NodeLocation(location=[]).append_node(-1)
+    def add_input(self, port_name: PortID, value: bytes) -> Loc:
+        input_loc = Loc(location=[]).N(-1)
         path = self._output_path(input_loc, port_name)
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb+") as fh:
@@ -70,17 +70,17 @@ class ControllerFileStorage:
 
         return input_loc
 
-    def write_node_def(self, node_location: NodeLocation, node: NodeDef):
+    def write_node_def(self, node_location: Loc, node: NodeDef):
         with open(self._nodedef_path(node_location), "w+") as fh:
             fh.write(NodeDefModel(root=node).model_dump_json())
 
-    def read_node_def(self, node_location: NodeLocation) -> NodeDef:
+    def read_node_def(self, node_location: Loc) -> NodeDef:
         with open(self._nodedef_path(node_location)) as fh:
             return NodeDefModel(**json.load(fh)).root
 
     def write_worker_call_args(
         self,
-        node_location: NodeLocation,
+        node_location: Loc,
         function_name: str,
         inputs: dict[PortID, OutputLocation],
         output_list: list[PortID],
@@ -103,49 +103,49 @@ class ControllerFileStorage:
 
         return node_definition_path
 
-    def read_worker_call_args(self, node_location: NodeLocation) -> WorkerCallArgs:
+    def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         node_definition_path = self._worker_call_args_path(node_location)
         with open(node_definition_path, "r") as fh:
             return WorkerCallArgs(**json.load(fh))
 
     def link_outputs(
         self,
-        new_location: NodeLocation,
+        new_location: Loc,
         new_port: PortID,
-        old_location: NodeLocation,
+        old_location: Loc,
         old_port: PortID,
     ) -> None:
         new_dir = self._output_path(new_location, new_port)
         new_dir.parent.mkdir(parents=True, exist_ok=True)
         os.link(self._output_path(old_location, old_port), new_dir)
 
-    def is_output_ready(self, node_location: NodeLocation, output_name: PortID) -> bool:
+    def is_output_ready(self, node_location: Loc, output_name: PortID) -> bool:
         return self._output_path(node_location, output_name).exists()
 
     def write_output(
-        self, node_location: NodeLocation, output_name: PortID, value: bytes
+        self, node_location: Loc, output_name: PortID, value: bytes
     ) -> Path:
         output_path = self._output_path(node_location, output_name)
         with open(output_path, "wb+") as fh:
             fh.write(bytes(value))
         return output_path
 
-    def read_output(self, node_location: NodeLocation, output_name: PortID) -> bytes:
+    def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
         with open(self._output_path(node_location, output_name), "rb") as fh:
             return fh.read()
 
-    def read_output_ports(self, node_location: NodeLocation) -> list[PortID]:
+    def read_output_ports(self, node_location: Loc) -> list[PortID]:
         dir_list = list(self._outputs_dir(node_location).iterdir())
         dir_list.sort()
         return [x.name for x in dir_list if x.is_file()]
 
-    def is_node_started(self, node_location: NodeLocation) -> bool:
+    def is_node_started(self, node_location: Loc) -> bool:
         return Path(self._worker_call_args_path(node_location)).exists()
 
-    def is_node_finished(self, node_location: NodeLocation) -> bool:
+    def is_node_finished(self, node_location: Loc) -> bool:
         return self._done_path(node_location).exists()
 
-    def mark_node_finished(self, node_location: NodeLocation) -> None:
+    def mark_node_finished(self, node_location: Loc) -> None:
         self._done_path(node_location).touch()
 
         if (parent := node_location.parent()) is not None:

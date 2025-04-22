@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from tierkreis.controller.data.location import NodeLocation
+from tierkreis.controller.data.location import Loc
 
 
 def breadcrumb_links(crumbs: list[str]) -> list[tuple[str, str]]:
@@ -13,9 +13,7 @@ def breadcrumb_links(crumbs: list[str]) -> list[tuple[str, str]]:
     return links
 
 
-def breadcrumbs(
-    workflow_id: UUID, node_location: NodeLocation
-) -> list[tuple[str, str]]:
+def breadcrumbs(workflow_id: UUID, node_location: Loc) -> list[tuple[str, str]]:
     node_location_strs: list[str] = [f".{x}" for x in node_location.location]
     static_links = ["/workflows", f"/{workflow_id}/nodes/-"]
     return breadcrumb_links(static_links + node_location_strs)

@@ -4,7 +4,7 @@ from logging import getLogger
 from typing import assert_never
 
 from tierkreis.controller.data.graph import Eval, GraphData
-from tierkreis.controller.data.location import NodeLocation, NodeRunData
+from tierkreis.controller.data.location import Loc, NodeRunData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 
@@ -14,14 +14,14 @@ logger = getLogger(__name__)
 @dataclass
 class WalkResult:
     inputs_ready: list[NodeRunData]
-    started: list[NodeLocation]
+    started: list[Loc]
 
     def extend(self, walk_result: "WalkResult") -> None:
         self.inputs_ready.extend(walk_result.inputs_ready)
         self.started.extend(walk_result.started)
 
 
-def walk_node(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:
+def walk_node(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     """Should only be called when a node has started and has not finished."""
 
     logger.debug(f"\n\nRESUME {node_location}")
@@ -45,16 +45,16 @@ def walk_node(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
             assert_never(node)
 
 
-def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:
+def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     logger.debug("walk_eval")
     walk_result = WalkResult([], [])
 
-    message = storage.read_output(node_location.append_node(-1), Labels.THUNK)
+    message = storage.read_output(node_location.N(-1), Labels.THUNK)
     graph = GraphData(**json.loads(message))
 
     logger.debug(len(graph.nodes))
     for i, node in enumerate(graph.nodes):
-        new_location = node_location.append_node(i)
+        new_location = node_location.N(i)
         logger.debug(f"new_location: {new_location}")
 
         if storage.is_node_finished(new_location):
@@ -67,14 +67,13 @@ def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
             continue
 
         if all(
-            storage.is_node_finished(node_location.append_node(i))
+            storage.is_node_finished(node_location.N(i))
             for (i, _) in node.inputs.values()
         ):
             logger.debug(f"{new_location} is_ready_to_start")
             outputs = graph.outputs[i]
             input_paths = {
-                k: (node_location.append_node(i), p)
-                for k, (i, p) in node.inputs.items()
+                k: (node_location.N(i), p) for k, (i, p) in node.inputs.items()
             }
             node_run_data = NodeRunData(new_location, node, input_paths, list(outputs))
             walk_result.inputs_ready.append(node_run_data)
@@ -85,11 +84,11 @@ def walk_eval(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
     return walk_result
 
 
-def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:
+def walk_loop(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     i = 0
-    while storage.is_node_started(node_location.append_loop(i + 1)):
+    while storage.is_node_started(node_location.L(i + 1)):
         i += 1
-    new_location = node_location.append_loop(i)
+    new_location = node_location.L(i)
     logger.debug(f"found latest iteration of loop: {new_location}")
 
     if not storage.is_node_finished(new_location):
@@ -104,12 +103,12 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
 
     # Include old inputs. The .value is the only one that can change.
     input_paths = storage.read_worker_call_args(node_location).inputs
-    inputs = {k: (new_location.append_node(-1), v.name) for k, v in input_paths.items()}
+    inputs = {k: (new_location.N(-1), v.name) for k, v in input_paths.items()}
     inputs[Labels.VALUE] = (new_location, Labels.VALUE)
-    inputs[Labels.THUNK] = (new_location.append_node(-1), Labels.THUNK)
+    inputs[Labels.THUNK] = (new_location.N(-1), Labels.THUNK)
 
     node_run_data = NodeRunData(
-        node_location.append_loop(i + 1),
+        node_location.L(i + 1),
         Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
         inputs,
         [Labels.VALUE],
@@ -117,22 +116,22 @@ def walk_loop(storage: ControllerStorage, node_location: NodeLocation) -> WalkRe
     return WalkResult([node_run_data], [])
 
 
-def walk_map(storage: ControllerStorage, node_location: NodeLocation) -> WalkResult:
+def walk_map(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     walk_result = WalkResult([], [])
     N = 0
     all_finished = True
-    while storage.is_node_started(node_location.append_map(N + 1)):
+    while storage.is_node_started(node_location.M(N + 1)):
         N += 1
 
     for i in range(N + 1):
-        loc = node_location.append_map(i)
+        loc = node_location.M(i)
         if not storage.is_node_finished(loc):
             all_finished = False
             walk_result.extend(walk_node(storage, loc))
 
     if all_finished is True:
         for j in range(N + 1):
-            loc = node_location.append_map(j)
+            loc = node_location.M(j)
             storage.link_outputs(
                 node_location, str(j), loc, Labels.VALUE
             )  # TODO: graphbuilder has to know we use VALUE

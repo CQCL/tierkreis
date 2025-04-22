@@ -7,7 +7,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
-from tierkreis.controller.data.location import NodeLocation, WorkerCallArgs
+from tierkreis.controller.data.location import Loc, WorkerCallArgs
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.protocol import ControllerStorage
 
@@ -34,13 +34,13 @@ class NodeResponse(BaseModel):
     definition: WorkerCallArgs
 
 
-def parse_node_location(node_location_str: str) -> NodeLocation:
+def parse_node_location(node_location_str: str) -> Loc:
     if node_location_str.startswith("-"):
         node_location_str = node_location_str[1:]
     if node_location_str.startswith("."):
         node_location_str = node_location_str[1:]
 
-    return NodeLocation.from_str(node_location_str)
+    return Loc.from_str(node_location_str)
 
 
 def get_storage(workflow_id: UUID) -> ControllerStorage:
@@ -49,7 +49,7 @@ def get_storage(workflow_id: UUID) -> ControllerStorage:
     )
 
 
-def get_node_data(workflow_id: UUID, node_location: NodeLocation) -> dict[str, Any]:
+def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
     storage = get_storage(workflow_id)
 
     definition = storage.read_worker_call_args(node_location)
@@ -84,7 +84,7 @@ def get_node_data(workflow_id: UUID, node_location: NodeLocation) -> dict[str, A
     return ctx
 
 
-async def node_stream(workflow_id: UUID, node_location: NodeLocation):
+async def node_stream(workflow_id: UUID, node_location: Loc):
     metadata_path = (
         CONFIG.tierkreis_path / str(workflow_id) / str(node_location) / "_metadata"
     )

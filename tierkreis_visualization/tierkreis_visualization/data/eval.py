@@ -2,7 +2,7 @@ import json
 from typing import Optional, assert_never
 
 from pydantic import BaseModel
-from tierkreis.controller.data.location import WorkerCallArgs, NodeLocation
+from tierkreis.controller.data.location import WorkerCallArgs, Loc
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
@@ -25,15 +25,13 @@ def node_status(is_finished: bool, definition: Optional[WorkerCallArgs]) -> Node
     return NodeStatus.NOT_STARTED
 
 
-def get_eval_node(
-    storage: ControllerStorage, node_location: NodeLocation
-) -> EvalNodeData:
-    thunk = storage.read_output(node_location.append_node(-1), Labels.THUNK)
+def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeData:
+    thunk = storage.read_output(node_location.N(-1), Labels.THUNK)
     graph = GraphData(**json.loads(thunk))
 
     pynodes: list[PyNode] = []
     for i, node in enumerate(graph.nodes):
-        new_location = node_location.append_node(i)
+        new_location = node_location.N(i)
         is_finished = storage.is_node_finished(new_location)
         try:
             definition = storage.read_worker_call_args(new_location)

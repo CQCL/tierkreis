@@ -1,28 +1,28 @@
 import pytest
 
-from tierkreis.controller.data.location import NodeLocation
+from tierkreis.controller.data.location import Loc
 
-node_location_1 = NodeLocation(location=[])
-node_location_1 = node_location_1.append_node(0)
-node_location_1 = node_location_1.append_loop(0)
-node_location_1 = node_location_1.append_node(3)
-node_location_1 = node_location_1.append_loop(2)
-node_location_1 = node_location_1.append_node(0)
-node_location_1 = node_location_1.append_map(8)
-node_location_1 = node_location_1.append_node(0)
+node_location_1 = Loc(location=[])
+node_location_1 = node_location_1.N(0)
+node_location_1 = node_location_1.L(0)
+node_location_1 = node_location_1.N(3)
+node_location_1 = node_location_1.L(2)
+node_location_1 = node_location_1.N(0)
+node_location_1 = node_location_1.M(8)
+node_location_1 = node_location_1.N(0)
 
 
-node_location_2 = NodeLocation(location=[])
-node_location_2 = node_location_2.append_node(0)
-node_location_2 = node_location_2.append_loop(0)
-node_location_2 = node_location_2.append_node(3)
-node_location_2 = node_location_2.append_node(8)
-node_location_2 = node_location_2.append_node(0)
+node_location_2 = Loc(location=[])
+node_location_2 = node_location_2.N(0)
+node_location_2 = node_location_2.L(0)
+node_location_2 = node_location_2.N(3)
+node_location_2 = node_location_2.N(8)
+node_location_2 = node_location_2.N(0)
 
-node_location_3 = NodeLocation(location=[])
-node_location_3 = node_location_3.append_node(0)
+node_location_3 = Loc(location=[])
+node_location_3 = node_location_3.N(0)
 
-node_location_4 = NodeLocation(location=[])
+node_location_4 = Loc(location=[])
 
 
 @pytest.mark.parametrize(
@@ -34,9 +34,9 @@ node_location_4 = NodeLocation(location=[])
         (node_location_4, ""),
     ],
 )
-def test_to_from_str(node_location: NodeLocation, loc_str: str):
+def test_to_from_str(node_location: Loc, loc_str: str):
     node_location_str = str(node_location)
     assert node_location_str == loc_str
 
-    new_loc = NodeLocation.from_str(node_location_str)
+    new_loc = Loc.from_str(node_location_str)
     assert new_loc == node_location

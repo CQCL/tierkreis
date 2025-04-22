@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from tierkreis.controller.data.location import NodeLocation
+from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 
@@ -11,13 +11,11 @@ class LoopNodeData(BaseModel):
     edges: list[PyEdge]
 
 
-def get_loop_node(
-    storage: ControllerStorage, node_location: NodeLocation
-) -> LoopNodeData:
+def get_loop_node(storage: ControllerStorage, node_location: Loc) -> LoopNodeData:
     i = 0
-    while storage.is_node_started(node_location.append_loop(i + 1)):
+    while storage.is_node_started(node_location.L(i + 1)):
         i += 1
-    new_location = node_location.append_loop(i)
+    new_location = node_location.N(i)
 
     nodes = [
         PyNode(id=n, status=NodeStatus.FINISHED, function_name=f"L{n}")

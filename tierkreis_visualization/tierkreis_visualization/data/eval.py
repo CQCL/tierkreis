@@ -2,7 +2,7 @@ import json
 from typing import Optional, assert_never
 
 from pydantic import BaseModel
-from tierkreis.controller.data.location import NodeDefinition, NodeLocation
+from tierkreis.controller.data.location import WorkerCallArgs, NodeLocation
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
@@ -15,7 +15,7 @@ class EvalNodeData(BaseModel):
     edges: list[PyEdge]
 
 
-def node_status(is_finished: bool, definition: Optional[NodeDefinition]) -> NodeStatus:
+def node_status(is_finished: bool, definition: Optional[WorkerCallArgs]) -> NodeStatus:
     if is_finished:
         return NodeStatus.FINISHED
 
@@ -36,7 +36,7 @@ def get_eval_node(
         new_location = node_location.append_node(i)
         is_finished = storage.is_node_finished(new_location)
         try:
-            definition = storage.read_node_definition(new_location)
+            definition = storage.read_worker_call_args(new_location)
         except FileNotFoundError:
             definition = None
 

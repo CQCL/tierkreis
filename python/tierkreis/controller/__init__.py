@@ -1,7 +1,7 @@
 from time import sleep
 
 from tierkreis.controller.data.graph import Eval, GraphData
-from tierkreis.controller.data.location import Loc, OutputLocation
+from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -24,7 +24,7 @@ def run_graph(
     for name, value in graph_inputs.items():
         storage.write_output(root_loc.N(-2), name, value)
 
-    inputs: dict[PortID, OutputLocation] = {
+    inputs: dict[PortID, OutputLoc] = {
         k: (root_loc.N(-2), k) for k, v in graph_inputs.items()
     }
     # TODO: move inputs into Eval

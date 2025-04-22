@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from typing_extensions import assert_never
 
 from tierkreis.controller.data.graph import Eval, Jsonable
-from tierkreis.controller.data.location import Loc, NodeRunData, OutputLocation
+from tierkreis.controller.data.location import Loc, NodeRunData, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
@@ -109,7 +109,7 @@ def start_function_node(
     executor: ControllerExecutor,
     node_location: Loc,
     name: str,
-    inputs: dict[PortID, OutputLocation],
+    inputs: dict[PortID, OutputLoc],
     output_list: list[PortID],
 ):
     launcher_name = ".".join(name.split(".")[:-1])
@@ -135,7 +135,7 @@ def start_function_node(
 def pipe_inputs_to_output_location(
     storage: ControllerStorage,
     output_loc: Loc,
-    inputs: dict[PortID, OutputLocation],
+    inputs: dict[PortID, OutputLoc],
 ) -> None:
     for new_port, (old_loc, old_port) in inputs.items():
         storage.link_outputs(output_loc, new_port, old_loc, old_port)

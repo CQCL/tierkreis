@@ -9,7 +9,7 @@ from tierkreis.controller.data.graph import NodeDef, NodeDefModel
 from tierkreis.controller.data.location import (
     WorkerCallArgs,
     Loc,
-    OutputLocation,
+    OutputLoc,
 )
 from tierkreis.core.tierkreis_graph import PortID
 
@@ -82,7 +82,7 @@ class ControllerFileStorage:
         self,
         node_location: Loc,
         function_name: str,
-        inputs: dict[PortID, OutputLocation],
+        inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
     ) -> Path:
         node_definition_path = self._worker_call_args_path(node_location)

@@ -105,12 +105,12 @@ class Loc(BaseModel):
         return Loc(location=[NodeStep.from_str(x) for x in frames])
 
 
-OutputLocation = tuple[Loc, PortID]
+OutputLoc = tuple[Loc, PortID]
 
 
 @dataclass
 class NodeRunData:
     node_location: Loc
     node: NodeDef
-    inputs: dict[PortID, OutputLocation]
+    inputs: dict[PortID, OutputLoc]
     output_list: list[PortID]

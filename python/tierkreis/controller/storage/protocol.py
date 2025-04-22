@@ -5,7 +5,7 @@ from tierkreis.controller.data.graph import NodeDef
 from tierkreis.controller.data.location import (
     WorkerCallArgs,
     Loc,
-    OutputLocation,
+    OutputLoc,
 )
 from tierkreis.core.tierkreis_graph import PortID
 
@@ -18,7 +18,7 @@ class ControllerStorage(Protocol):
         self,
         node_location: Loc,
         function_name: str,
-        inputs: dict[PortID, OutputLocation],
+        inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
     ) -> Path: ...
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs: ...

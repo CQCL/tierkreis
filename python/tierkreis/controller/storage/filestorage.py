@@ -56,7 +56,8 @@ class ControllerFileStorage:
         return path
 
     def clean_graph_files(self) -> None:
-        tmp_dir = Path(f"/tmp/tierkreis/archive/{self.workflow_id}/{time_ns()}")
+        uid = os.getuid()
+        tmp_dir = Path(f"/tmp/{uid}/tierkreis/archive/{self.workflow_id}/{time_ns()}")
         tmp_dir.mkdir(parents=True)
         if self.workflow_dir.exists():
             shutil.move(self.workflow_dir, tmp_dir)

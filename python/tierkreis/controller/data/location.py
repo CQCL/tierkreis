@@ -91,14 +91,6 @@ class Loc(str):
     def __add__(self, other: str) -> "Loc":
         return Loc(str(self) + other[1:])
 
-    @model_validator(mode="before")
-    @classmethod
-    def model_validator(cls, data: Any) -> Any:
-        print(data)
-        if not isinstance(data, str):
-            raise TierkreisError("We should be deserialising Loc directly from str.")
-        return Loc(data)
-
     @classmethod
     def __get_pydantic_core_schema__(
         cls, source_type: Any, handler: GetCoreSchemaHandler

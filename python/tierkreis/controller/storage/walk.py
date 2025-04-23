@@ -3,8 +3,8 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import assert_never
 
-from tierkreis.controller.data.graph import Eval, GraphData
-from tierkreis.controller.data.location import Loc, NodeRunData
+from tierkreis.controller.data.graph import Eval, GraphData, NodeRunData
+from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 
@@ -53,8 +53,8 @@ def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     graph = GraphData(**json.loads(message))
 
     logger.debug(len(graph.nodes))
-    for i, node in enumerate(graph.nodes):
-        new_location = node_location.N(i)
+    for i, node in graph.nodes.items():
+        new_location = node_location + i
         logger.debug(f"new_location: {new_location}")
 
         if storage.is_node_finished(new_location):
@@ -67,15 +67,15 @@ def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
             continue
 
         if all(
-            storage.is_node_finished(node_location.N(i))
+            storage.is_node_finished(node_location + i)
             for (i, _) in node.inputs.values()
         ):
             logger.debug(f"{new_location} is_ready_to_start")
             outputs = graph.outputs[i]
-            input_paths = {
-                k: (node_location.N(i), p) for k, (i, p) in node.inputs.items()
+            node.inputs = {
+                k: (node_location + i, p) for k, (i, p) in node.inputs.items()
             }
-            node_run_data = NodeRunData(new_location, node, input_paths, list(outputs))
+            node_run_data = NodeRunData(new_location, node, list(outputs))
             walk_result.inputs_ready.append(node_run_data)
             continue
 
@@ -109,8 +109,7 @@ def walk_loop(storage: ControllerStorage, node_location: Loc) -> WalkResult:
 
     node_run_data = NodeRunData(
         node_location.L(i + 1),
-        Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
-        inputs,
+        Eval(inputs[Labels.THUNK], inputs),
         [Labels.VALUE],
     )
     return WalkResult([node_run_data], [])

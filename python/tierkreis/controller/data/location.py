@@ -4,10 +4,10 @@ from logging import getLogger
 from pathlib import Path
 from typing import Any, Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, GetCoreSchemaHandler, model_validator
+from pydantic_core import CoreSchema, core_schema
 from typing_extensions import assert_never
 
-from tierkreis.controller.data.graph import NodeDef
 from tierkreis.core.tierkreis_graph import PortID
 from tierkreis.exceptions import TierkreisError
 
@@ -86,10 +86,10 @@ class Loc(str):
         return Loc(".".join(self.split(".")[:-1]))
 
     def __hash__(self) -> int:
-        return hash(self)
+        return hash(str(self))
 
     def __add__(self, other: str) -> "Loc":
-        return Loc(self + other)
+        return Loc(str(self) + other[1:])
 
     @model_validator(mode="before")
     @classmethod
@@ -99,13 +99,11 @@ class Loc(str):
             raise TierkreisError("We should be deserialising Loc directly from str.")
         return Loc(data)
 
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(cls, handler(str))
+
 
 OutputLoc = tuple[Loc, PortID]
-
-
-@dataclass
-class NodeRunData:
-    node_location: Loc
-    node: NodeDef
-    inputs: dict[PortID, OutputLoc]
-    output_list: list[PortID]

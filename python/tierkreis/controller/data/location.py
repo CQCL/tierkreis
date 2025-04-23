@@ -40,6 +40,11 @@ class Loc(str):
             return None
         return Loc(".".join(self.split(".")[:-1]))
 
+    def stem(self) -> "int | None":
+        if self == "-":
+            return None
+        return int(self.split(".")[-1][1:])
+
     def __hash__(self) -> int:
         return hash(str(self))
 

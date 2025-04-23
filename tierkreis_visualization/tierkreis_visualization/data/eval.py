@@ -30,8 +30,8 @@ def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeDat
     graph = GraphData(**json.loads(thunk))
 
     pynodes: list[PyNode] = []
-    for i, node in enumerate(graph.nodes):
-        new_location = node_location.N(i)
+    for i, node in graph.nodes.items():
+        new_location = node_location + i
         is_finished = storage.is_node_finished(new_location)
         try:
             definition = storage.read_worker_call_args(new_location)
@@ -48,13 +48,18 @@ def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeDat
             case _:
                 assert_never(node)
 
-        pynode = PyNode(id=i, status=status, function_name=name)
+        pynode = PyNode(id=i.stem() or -1, status=status, function_name=name)
         pynodes.append(pynode)
 
     py_edges: list[PyEdge] = []
-    for idx, node in enumerate(graph.nodes):
+    for idx, node in graph.nodes.items():
         for p0, (i, p1) in node.inputs.items():
-            py_edge = PyEdge(from_node=i, from_port=p1, to_node=idx, to_port=p0)
+            py_edge = PyEdge(
+                from_node=i.stem() or -1,
+                from_port=p1,
+                to_node=idx.stem() or -1,
+                to_port=p0,
+            )
             py_edges.append(py_edge)
 
     return EvalNodeData(nodes=pynodes, edges=py_edges)

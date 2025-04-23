@@ -37,7 +37,14 @@ def start(
     logger.debug(f"start {node_location} {node} {inputs} {output_list}")
     if node.type == "function":
         name = node.function_name
-        start_function_node(storage, executor, node_location, name, inputs, output_list)
+        launcher_name = ".".join(name.split(".")[:-1])
+        name = name.split(".")[-1]
+        def_path = storage.write_worker_call_args(
+            node_location, name, inputs, output_list
+        )
+
+        logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
+        executor.run(launcher_name, def_path)
 
     elif node.type == "input":
         parent = node_location.parent()
@@ -100,34 +107,6 @@ def start(
 
     else:
         assert_never(node)
-
-
-def start_function_node(
-    storage: ControllerStorage,
-    executor: ControllerExecutor,
-    node_location: Loc,
-    name: str,
-    inputs: dict[PortID, OutputLoc],
-    output_list: list[PortID],
-):
-    launcher_name = ".".join(name.split(".")[:-1])
-    name = name.split(".")[-1]
-    def_path = storage.write_worker_call_args(node_location, name, inputs, output_list)
-
-    if name == "switch":
-        pred = json.loads(storage.read_output(*inputs["pred"]))
-        if pred:
-            storage.link_outputs(node_location, Labels.VALUE, *inputs["if_true"])
-        else:
-            storage.link_outputs(node_location, Labels.VALUE, *inputs["if_false"])
-        storage.mark_node_finished(node_location)
-
-    elif name == "discard":
-        storage.mark_node_finished(node_location)
-
-    else:
-        logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
-        executor.run(launcher_name, def_path)
 
 
 def pipe_inputs_to_output_location(

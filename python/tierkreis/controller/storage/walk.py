@@ -29,7 +29,7 @@ def walk_node(storage: ControllerStorage, node_location: Loc) -> WalkResult:
 
     match node.type:
         case "eval":
-            return walk_eval(storage, node_location, node)
+            return walk_eval(storage, node_location)
 
         case "loop":
             return walk_loop(storage, node_location)
@@ -45,10 +45,10 @@ def walk_node(storage: ControllerStorage, node_location: Loc) -> WalkResult:
             assert_never(node)
 
 
-def walk_eval(storage: ControllerStorage, node_location: Loc, eval: Eval) -> WalkResult:
+def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     logger.debug("walk_eval")
     walk_result = WalkResult([], [])
-    message = storage.read_output(eval.graph[0], eval.graph[1])
+    message = storage.read_output(node_location.N(-1), Labels.THUNK)
     graph = GraphData(**json.loads(message))
 
     logger.debug(len(graph.nodes))

@@ -126,15 +126,17 @@ def walk_loop(storage: ControllerStorage, node_location: Loc, loop: Loop) -> Wal
     # Latest iteration is finished. Do we BREAK or CONTINUE?
     should_continue = json.loads(storage.read_output(new_location, loop.tag_port))
     if should_continue is False:
-        storage.link_outputs(node_location, Labels.VALUE, new_location, Labels.VALUE)
+        storage.link_outputs(
+            node_location, loop.bound_port, new_location, loop.bound_port
+        )
         storage.mark_node_finished(node_location)
         return WalkResult([], [])
 
     # Include old inputs. The .value is the only one that can change.
     inputs = loop.inputs
-    inputs[Labels.VALUE] = (new_location, Labels.VALUE)
+    inputs[loop.bound_port] = (new_location, loop.bound_port)
     node_run_data = NodeRunData(
-        node_location.L(i + 1), Eval(loop.body, inputs), [Labels.VALUE]
+        node_location.L(i + 1), Eval(loop.body, inputs), [loop.bound_port]
     )
     return WalkResult([node_run_data], [])
 

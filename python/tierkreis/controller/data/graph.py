@@ -17,7 +17,7 @@ class Func:
 
 @dataclass
 class Eval:
-    graph: OutputLoc
+    body: OutputLoc
     inputs: dict[PortID, OutputLoc]
     type: Literal["eval"] = field(default="eval")
 
@@ -27,7 +27,7 @@ class Loop:
     body: OutputLoc
     inputs: dict[PortID, OutputLoc]
     tag_port: PortID  # Used to check break or continue
-    output_port: PortID  # Variable that is allowed to change
+    bound_port: PortID  # Variable that is allowed to change
     type: Literal["loop"] = field(default="loop")
 
 
@@ -35,7 +35,8 @@ class Loop:
 class Map:
     body: OutputLoc
     input_idx: Loc
-    bound_port: PortID
+    input_port: PortID
+    output_port: PortID
     inputs: dict[PortID, OutputLoc]
     type: Literal["map"] = field(default="map")
 
@@ -73,6 +74,12 @@ class GraphData(BaseModel):
         loc = Loc().N(idx)
         self.nodes[loc] = node
         self.outputs[loc] = set()
+
+        match node.type:
+            case "map":
+                self.outputs[node.input_idx].add("*")
+            case _:
+                pass
 
         for i, port in node.inputs.values():
             self.outputs[i].add(port)

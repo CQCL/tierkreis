@@ -52,7 +52,7 @@ def start(
             return
 
         input_loc = parent.N(-1)
-        storage.link_outputs(node_location, node.name, input_loc, node.name)
+        # storage.link_outputs(node_location, node.name, input_loc, node.name)
         storage.mark_node_finished(node_location)
 
     elif node.type == "output":
@@ -71,16 +71,14 @@ def start(
         storage.mark_node_finished(node_location)
 
     elif node.type == "eval":
-        pipe_inputs_to_output_location(storage, node_location.N(-1), inputs)
+        # pipe_inputs_to_output_location(storage, node_location.N(-1), inputs)
+        pass
 
     elif node.type == "loop":
-        inputs[Labels.THUNK] = inputs["body"]
         start(
             storage,
             executor,
-            NodeRunData(
-                node_location.L(0), Eval(inputs[Labels.THUNK], inputs), output_list
-            ),
+            NodeRunData(node_location.L(0), Eval(node.body, inputs), output_list),
         )
 
     elif node.type == "map":
@@ -91,18 +89,12 @@ def start(
         input_values = storage.read_output_ports(parent + node.input_idx)
         input_indices = [int(s) for s in input_values]
         input_indices.sort()
-        ref, port = node.body
-        eval_inputs = {"thunk": (parent + ref, port)}
         for i in input_indices:
-            eval_inputs[node.bound_port] = (parent + node.input_idx, str(i))
+            inputs[node.input_port] = (parent + node.input_idx, str(i))
             start(
                 storage,
                 executor,
-                NodeRunData(
-                    node_location.M(i),
-                    Eval(eval_inputs[Labels.THUNK], eval_inputs),
-                    output_list,
-                ),
+                NodeRunData(node_location.M(i), Eval(node.body, inputs), output_list),
             )
 
     else:

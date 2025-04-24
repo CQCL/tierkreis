@@ -124,7 +124,7 @@ def walk_loop(storage: ControllerStorage, node_location: Loc, loop: Loop) -> Wal
         return walk_node(storage, new_location)
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
-    should_continue = json.loads(storage.read_output(new_location, "should_continue"))
+    should_continue = json.loads(storage.read_output(new_location, loop.tag_port))
     if should_continue is False:
         storage.link_outputs(node_location, Labels.VALUE, new_location, Labels.VALUE)
         storage.mark_node_finished(node_location)

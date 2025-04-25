@@ -3,7 +3,7 @@ from typing import Optional, assert_never
 
 from pydantic import BaseModel
 from tierkreis.controller.data.location import WorkerCallArgs, Loc
-from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.data.graph import GraphData, Eval
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 
@@ -25,8 +25,10 @@ def node_status(is_finished: bool, definition: Optional[WorkerCallArgs]) -> Node
     return NodeStatus.NOT_STARTED
 
 
-def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeData:
-    thunk = storage.read_output(node_location.N(-1), Labels.THUNK)
+def get_eval_node(
+    storage: ControllerStorage, node_location: Loc, eval: Eval
+) -> EvalNodeData:
+    thunk = storage.read_output(eval.body[0], eval.body[1])
     graph = GraphData(**json.loads(thunk))
 
     pynodes: list[PyNode] = []

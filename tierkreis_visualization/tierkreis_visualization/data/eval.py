@@ -5,7 +5,6 @@ from pydantic import BaseModel
 from tierkreis.controller.data.location import WorkerCallArgs, Loc
 from tierkreis.controller.data.graph import GraphData, Eval
 from tierkreis.controller.storage.protocol import ControllerStorage
-from tierkreis.core import Labels
 
 from tierkreis_visualization.data.models import PyNode, NodeStatus, PyEdge
 

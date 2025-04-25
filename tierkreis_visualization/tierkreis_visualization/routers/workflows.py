@@ -1,13 +1,12 @@
 from asyncio import sleep
 import json
-from typing import Any, cast
+from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
-from tierkreis.controller.data.graph import Eval
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.protocol import ControllerStorage

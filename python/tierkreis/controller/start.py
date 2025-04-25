@@ -47,12 +47,6 @@ def start(
         executor.run(launcher_name, def_path)
 
     elif node.type == "input":
-        parent = node_location.parent()
-        if parent is None:
-            return
-
-        input_loc = parent.N(-1)
-        # storage.link_outputs(node_location, node.name, input_loc, node.name)
         storage.mark_node_finished(node_location)
 
     elif node.type == "output":
@@ -71,7 +65,6 @@ def start(
         storage.mark_node_finished(node_location)
 
     elif node.type == "eval":
-        # pipe_inputs_to_output_location(storage, node_location.N(-1), inputs)
         pass
 
     elif node.type == "loop":

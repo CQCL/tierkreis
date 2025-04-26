@@ -26,9 +26,7 @@ def sample_graphdata() -> GraphData:
     g = GraphData()
     six = g.add(Const(6))(Labels.VALUE)
     g_const = g.add(Const(loop_body()))(Labels.VALUE)
-    loop = g.add(
-        Loop(g_const, {"value": six, "body": g_const}, "should_continue", Labels.VALUE)
-    )
+    loop = g.add(Loop(g_const, {"value": six, "body": g_const}, "tag", Labels.VALUE))
     g.add(Output({"a": loop(Labels.VALUE)}))
     return g
 
@@ -52,8 +50,7 @@ def sample_map() -> GraphData:
         doubler_const,
         Ns(Labels.VALUE)[0],
         Labels.VALUE,
-        Labels.VALUE,
-        {"doubler": doubler_const},
+        {"doubler": doubler_const, "Ns": Ns("*")},
     )
     m = g.add(map_def)
     folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m("*")}))

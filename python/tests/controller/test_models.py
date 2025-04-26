@@ -35,17 +35,8 @@ node_location_4 = Loc()
     ],
 )
 def test_to_from_str(node_location: Loc, loc_str: str):
-    assert node_location == loc_str
+    node_location_str = str(node_location)
+    assert node_location_str == loc_str
 
-
-@pytest.mark.parametrize(
-    ["node_location1", "node_location2", "loc_str"],
-    [
-        (node_location_1, node_location_2, "-.N0.L0.N3.L2.N0.M8.N0.N0.L0.N3.N8.N0"),
-        (node_location_2, node_location_3, "-.N0.L0.N3.N8.N0.N0"),
-        (node_location_3, node_location_4, "-.N0"),
-        (node_location_4, node_location_1, "-.N0.L0.N3.L2.N0.M8.N0"),
-    ],
-)
-def test_add(node_location1: Loc, node_location2: Loc, loc_str: str):
-    assert node_location1 + node_location2 == loc_str
+    new_loc = Loc(node_location_str)
+    assert new_loc == node_location

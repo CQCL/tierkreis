@@ -2,93 +2,79 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Literal
 
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.location import Loc, OutputLoc
 
 Jsonable = Any
 PortID = str
+NodeIndex = int
+ValueRef = tuple[NodeIndex, PortID]
 
 
 @dataclass
 class Func:
     function_name: str
-    inputs: dict[PortID, OutputLoc]
+    inputs: dict[PortID, ValueRef]
     type: Literal["function"] = field(default="function")
 
 
 @dataclass
 class Eval:
-    body: OutputLoc
-    inputs: dict[PortID, OutputLoc]
+    graph: ValueRef
+    inputs: dict[PortID, ValueRef]
     type: Literal["eval"] = field(default="eval")
 
 
 @dataclass
 class Loop:
-    body: OutputLoc
-    inputs: dict[PortID, OutputLoc]
+    body: ValueRef
+    inputs: dict[PortID, ValueRef]
     tag_port: PortID  # Used to check break or continue
-    bound_port: PortID  # Variable that is allowed to change
+    output_port: PortID  # Variable that is allowed to change
     type: Literal["loop"] = field(default="loop")
 
 
 @dataclass
 class Map:
-    body: OutputLoc
-    input_idx: Loc
-    input_port: PortID
-    output_port: PortID
-    inputs: dict[PortID, OutputLoc]
+    body: ValueRef
+    input_idx: NodeIndex
+    bound_port: PortID
+    inputs: dict[PortID, ValueRef]
     type: Literal["map"] = field(default="map")
 
 
 @dataclass
 class Const:
     value: Jsonable
-    inputs: dict[PortID, OutputLoc] = field(default_factory=lambda: {})
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default="const")
 
 
 @dataclass
 class Input:
     name: str
-    inputs: dict[PortID, OutputLoc] = field(default_factory=lambda: {})
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["input"] = field(default="input")
 
 
 @dataclass
 class Output:
-    inputs: dict[PortID, OutputLoc]
+    inputs: dict[PortID, ValueRef]
     type: Literal["output"] = field(default="output")
 
 
-NodeDef = Map | Func | Eval | Loop | Const | Input | Output
+NodeDef = Func | Eval | Loop | Map | Const | Input | Output
 NodeDefModel = RootModel[NodeDef]
 
 
 class GraphData(BaseModel):
-    nodes: dict[Loc, NodeDef] = {}
-    outputs: dict[Loc, set[PortID]] = {}
+    nodes: list[NodeDef] = []
+    outputs: list[set[PortID]] = []
 
-    def add(self, node: NodeDef) -> Callable[[PortID], OutputLoc]:
+    def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
-        loc = Loc().N(idx)
-        self.nodes[loc] = node
-        self.outputs[loc] = set()
-
-        match node.type:
-            case "map":
-                self.outputs[node.input_idx].add("*")
-            case _:
-                pass
+        self.nodes.append(node)
+        self.outputs.append(set())
 
         for i, port in node.inputs.values():
             self.outputs[i].add(port)
 
-        return lambda k: (loc, k)
-
-
-@dataclass
-class NodeRunData:
-    node_location: Loc
-    node: NodeDef
-    output_list: list[PortID]
+        return lambda k: (idx, k)

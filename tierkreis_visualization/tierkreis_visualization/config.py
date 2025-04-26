@@ -10,6 +10,6 @@ class Settings(BaseSettings):
 
 CONFIG = Settings()
 
-assert CONFIG.tierkreis_path.exists()
+CONFIG.tierkreis_path.mkdir(parents=True, exist_ok=True)
 
 templates = Jinja2Templates(directory="templates")

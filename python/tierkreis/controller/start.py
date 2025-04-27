@@ -31,6 +31,7 @@ def start(
     node = node_run_data.node
     inputs = node_run_data.inputs
     output_list = node_run_data.output_list
+    output_list.append("__default__")
     storage.write_worker_call_args(node_location, node.type, inputs, output_list)
     storage.write_node_def(node_location, node)
 
@@ -67,8 +68,12 @@ def start(
         pipe_inputs_to_output_location(storage, node_location.N(-1), inputs)
 
     elif node.type == "loop":
+        parent = node_location.parent()
+        if parent is None:
+            raise TierkreisError("LOOP node must have parent.")
+
         eval_inputs = {k: v for k, v in inputs.items()}
-        eval_inputs["thunk"] = inputs["body"]
+        eval_inputs["thunk"] = (parent.N(node.body[0]), node.body[1])
         start(
             storage,
             executor,

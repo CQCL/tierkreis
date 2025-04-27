@@ -46,12 +46,7 @@ def sample_map() -> GraphData:
     Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
     doubler_const = g.add(Const(doubler()))(Labels.VALUE)
 
-    map_def = Map(
-        doubler_const,
-        Ns(Labels.VALUE)[0],
-        Labels.VALUE,
-        {"doubler": doubler_const, "Ns": Ns("*")},
-    )
+    map_def = Map(doubler_const, Ns(Labels.VALUE)[0], Labels.VALUE, {})
     m = g.add(map_def)
     folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m("*")}))
     g.add(Output({Labels.VALUE: folded(Labels.VALUE)}))

@@ -1,8 +1,10 @@
 {% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
+{% from "macros/head.html" import head_macro with context %}
+
 
 <html>
-
 <head>
+  {{ head_macro() }}
   <title>Tierkreis visualization: LOOP node</title>
   <script src="/static/vis-network.min.js"></script>
   <script src="/static/utils.js"></script>
@@ -13,7 +15,7 @@
       border: 1px solid lightgray;
     }
   </style>
-  <script> console.log('loop file loaded')</script>
+
 </head>
 
 <body>

@@ -1,8 +1,10 @@
+{% from "macros/head.html" import head_macro with context %}
 <html>
 <head>
     <title>Tierkreis visualization: workflows</title>
+     {{ head_macro() }}
 </head>
-<body class="p-8">
+<body class="p-8 bg-neutral-200">
     <h1 class="text-neutral-900 text-xl">Workflows</h1>
     <ul class="text-sm text-neutral-600">
         {% for workflow_id in workflows %}
@@ -10,5 +12,4 @@
         {% endfor %}
     </ul>
 </body>
-<script> console.log('workflow file loaded')</script>
 </html>

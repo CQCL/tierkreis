@@ -1,9 +1,11 @@
+{% from "macros/head.html" import head_macro with context %}
+
 <html>
 <head>
     <title>Tierkreis visualization</title>
+    {{ head_macro() }}
 </head>
-<body>
+<body class="bg-neutral-200">
     <a href="/workflows">All running workflows</a>
 </body>
-<script> console.log('index file loaded')</script>
 </html>

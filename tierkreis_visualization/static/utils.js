@@ -1,6 +1,7 @@
 
 
 const neutrals = {
+    0: "#ffffff",
     50 :"#fafafa",
     100 :"#f4f4f5",
     200 :"#e4e4e7",
@@ -55,7 +56,7 @@ function createJSNode(py_node) {
         label: py_node.function_name,
         status: py_node.status,
         color: {
-            "Not started": neutrals[200],
+            "Not started": neutrals[0],
             "Started": colors.amber.primary,
             "Finished": colors.green.primary,
         }[py_node.status],

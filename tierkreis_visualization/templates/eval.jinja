@@ -1,8 +1,9 @@
 {% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
-
+{% from "macros/head.html" import head_macro with context %}
 <html>
 
 <head>
+  {{ head_macro() }}
   <title>Tierkreis visualization: EVAL node</title>
   <script src="/static/vis-network.min.js"></script>
   <script src="/static/utils.js"></script>
@@ -13,19 +14,18 @@
       border: 1px solid lightgray;
     }
   </style>
-    <script> console.log('eval file loaded')</script>
 </head>
 
-<body>
+<body class="bg-neutral-100">
   {{ breadcrumbs_macro(breadcrumbs) }}
   <div id="mynetwork"></div>
 
   <script type="text/javascript">
     let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
-       console.log('successfully created eval node')
+
     network.setOptions({
-      nodes: { font: { size: 24 } },
-      edges: { font: { size: 24 } },
+      nodes: { font: { size: 16 } },
+      edges: { font: { size: 16 } },
       layout:  {
         randomSeed: 0,
         hierarchical: {

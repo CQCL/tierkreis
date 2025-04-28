@@ -30,15 +30,17 @@ function connectToStream(url, nodes, edges) {
     const scale = network.getScale();
 
     network.setData({ nodes: visnodes, edges: visedges });
-    args = {
-      position: position,
-      scale: scale,
-      animation: false,
-    };
-    let move = () => {
-      network.moveTo(args);
-      network.off("afterDrawing", move);
-    };
-    network.on("afterDrawing", move);
+
+    console.log('hello?', data.nodes)
+    // args = {
+    //   position: position,
+    //   scale: scale,
+    //   animation: false,
+    // };
+    // let move = () => {
+    //   network.moveTo(args);
+    //   network.off("afterDrawing", move);
+    // };
+    // network.on("after", move);
   });
 }

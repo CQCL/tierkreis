@@ -1,8 +1,9 @@
 {% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
-
+{% from "macros/head.html" import head_macro with context %}
 <html>
   <head>
     <title>Tierkreis visualization: node</title>
+      {{ head_macro() }}
   </head>
   <body>
     {{ breadcrumbs_macro(breadcrumbs) }}

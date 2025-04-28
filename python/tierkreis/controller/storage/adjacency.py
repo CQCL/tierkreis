@@ -1,19 +1,18 @@
 from typing import assert_never
-from tierkreis.controller.data.graph import NodeDef, ValueRef
-from tierkreis.controller.data.location import OutputLoc
+from tierkreis.controller.data.graph import NodeDef, PortID, ValueRef
 
 
-def parent_outputs(node: NodeDef) -> set[ValueRef]:
-    parents = set(node.inputs.values())
+def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
+    parents = node.inputs
 
     match node.type:
         case "eval":
-            parents.add(node.graph)
+            parents["graph"] = node.graph
         case "loop":
-            parents.add(node.body)
+            parents["body"] = node.body
         case "map":
-            parents.add(node.body)
-            parents.add((node.input_idx, "*"))
+            parents["body"] = node.body
+            parents["*"] = (node.input_idx, "*")
         case "const" | "function" | "input" | "output":
             pass
         case _:

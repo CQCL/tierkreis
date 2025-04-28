@@ -6,7 +6,7 @@ from typing import assert_never
 
 from tierkreis.controller.data.graph import Eval, GraphData
 from tierkreis.controller.data.location import Loc, NodeRunData
-from tierkreis.controller.storage.adjacency import parent_outputs
+from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 
@@ -68,8 +68,10 @@ def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
             walk_result.extend(walk_node(storage, new_location))
             continue
 
-        parents = parent_outputs(node)
-        if all(storage.is_node_finished(node_location.N(i)) for (i, _) in parents):
+        parents = in_edges(node)
+        if all(
+            storage.is_node_finished(node_location.N(i)) for (i, _) in parents.values()
+        ):
             logger.debug(f"{new_location} is_ready_to_start")
             outputs = graph.outputs[i]
             input_paths = {

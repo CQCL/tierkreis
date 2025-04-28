@@ -4,6 +4,7 @@ from typing import Optional, assert_never
 from pydantic import BaseModel
 from tierkreis.controller.data.location import WorkerCallArgs, Loc
 from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 
@@ -53,7 +54,7 @@ def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeDat
 
     py_edges: list[PyEdge] = []
     for idx, node in enumerate(graph.nodes):
-        for p0, (i, p1) in node.inputs.items():
+        for p0, (i, p1) in in_edges(node).items():
             py_edge = PyEdge(from_node=i, from_port=p1, to_node=idx, to_port=p0)
             py_edges.append(py_edge)
 

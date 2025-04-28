@@ -1,5 +1,6 @@
 from tierkreis.controller.data.graph import (
     Const,
+    Eval,
     Func,
     GraphData,
     Input,
@@ -8,6 +9,24 @@ from tierkreis.controller.data.graph import (
     Output,
 )
 from tierkreis.core import Labels
+
+
+def doubler() -> GraphData:
+    g = GraphData()
+    value = g.add(Input(Labels.VALUE))(Labels.VALUE)
+    two = g.add(Const(2))(Labels.VALUE)
+    out = g.add(Func("numerical-worker.itimes", {"a": value, "b": two}))(Labels.VALUE)
+    g.add(Output({Labels.VALUE: out}))
+    return g
+
+
+def sample_eval() -> GraphData:
+    g = GraphData()
+    six = g.add(Const(6))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler()))(Labels.VALUE)
+    e = g.add(Eval(doubler_const, {"value": six}))
+    g.add(Output({"value": e(Labels.VALUE)}))
+    return g
 
 
 def loop_body() -> GraphData:
@@ -28,15 +47,6 @@ def sample_graphdata() -> GraphData:
     g_const = g.add(Const(loop_body()))(Labels.VALUE)
     loop = g.add(Loop(g_const, {"value": six, "body": g_const}, "tag", Labels.VALUE))
     g.add(Output({"a": loop(Labels.VALUE)}))
-    return g
-
-
-def doubler() -> GraphData:
-    g = GraphData()
-    value = g.add(Input(Labels.VALUE))(Labels.VALUE)
-    two = g.add(Const(2))(Labels.VALUE)
-    out = g.add(Func("numerical-worker.itimes", {"a": value, "b": two}))(Labels.VALUE)
-    g.add(Output({Labels.VALUE: out}))
     return g
 
 

@@ -7,7 +7,7 @@ def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
 
     match node.type:
         case "eval":
-            parents["graph"] = node.graph
+            parents["thunk"] = node.graph
         case "loop":
             parents["body"] = node.body
         case "map":

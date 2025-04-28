@@ -1,12 +1,27 @@
 from pathlib import Path
 from uuid import UUID
 
-from tests.controller.sample_graphdata import sample_graphdata, sample_map
+from tests.controller.sample_graphdata import sample_eval, sample_graphdata, sample_map
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.core import Labels
+
+
+def test_resume_eval():
+    g = sample_eval()
+    storage = ControllerFileStorage(UUID(int=0))
+    executor = ShellExecutor(
+        Path("./python/examples/launchers"), logs_path=storage.logs_path
+    )
+    inputs = {Labels.THUNK: g.model_dump_json().encode()}
+
+    storage.clean_graph_files()
+    run_graph(storage, executor, g, inputs)
+
+    c = storage.read_output(Loc(), "value")
+    assert c == b"12"
 
 
 def test_resume_sample_graph():

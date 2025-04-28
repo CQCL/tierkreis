@@ -19,12 +19,12 @@ def get_map_node(storage: ControllerStorage, node_location: Loc) -> MapNodeData:
         if not storage.is_node_started(loc):
             break
 
-        node = PyNode(id=i, status=NodeStatus.STARTED, function_name=f"M{i}")
+        node = PyNode(id=i, status="Started", function_name=f"M{i}")
         nodes.append(node)
         i += 1
 
         if storage.is_node_finished(loc):
-            node.status = NodeStatus.FINISHED
+            node.status = "Finished"
             continue
 
     edges: list[PyEdge] = []

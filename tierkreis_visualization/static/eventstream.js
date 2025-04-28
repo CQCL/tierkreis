@@ -1,6 +1,5 @@
 // @ts-check
 
-
 /**
  * Connect to an event stream. Pass in a nodes and edges list to mutate.
  * @param {string} url - Event stream url to subscribe to.
@@ -8,14 +7,15 @@
  * @param {PyEdge[]} edges - List of graph edges.
  */
 
-function connectToStream(url,  nodes, edges) {
+function connectToStream(url, nodes, edges) {
   let eventSource = new EventSource(url);
   eventSource.onopen = (ev) => {
     console.log("opening event source");
     console.log(ev);
   };
   eventSource.addEventListener("message", (ev) => {
-    /** @type {PyGraph} */ const data = JSON.parse(ev["data"])
+    const data =  /** @type {PyGraph} */ JSON.parse(ev["data"]);
+
     if (
       JSON.stringify(nodes) === JSON.stringify(data.nodes) &&
       JSON.stringify(edges) === JSON.stringify(data.edges)
@@ -23,15 +23,14 @@ function connectToStream(url,  nodes, edges) {
       return;
 
 
-
-    const JSNodes = new vis.DataSet(data.nodes.map(createJSNode));
-    const JSEdges = new vis.DataSet(data.edges.map(createJSEdge));
+    var visnodes = new vis.DataSet(data.nodes.map(createJSNode));
+    var visedges = new vis.DataSet(data.edges.map(createJSEdge));
 
     const position = network.getViewPosition();
     const scale = network.getScale();
 
-    network.setData({ nodes: JSNodes, edges: JSEdges});
-    const args = {
+    network.setData({ nodes: visnodes, edges: visedges });
+    args = {
       position: position,
       scale: scale,
       animation: false,

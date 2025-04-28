@@ -2,9 +2,9 @@
 <head>
     <title>Tierkreis visualization: workflows</title>
 </head>
-<body>
-    <h1>Workflows</h1>
-    <ul>
+<body class="p-8">
+    <h1 class="text-neutral-900 text-xl">Workflows</h1>
+    <ul class="text-sm text-neutral-600">
         {% for workflow_id in workflows %}
             <li><a href="/workflows/{{ workflow_id }}/nodes/-">{{ workflow_id }}</a></li>
         {% endfor %}

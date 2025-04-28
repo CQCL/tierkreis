@@ -5,6 +5,7 @@
 <head>
   <title>Tierkreis visualization: EVAL node</title>
   <script src="/static/vis-network.min.js"></script>
+  <script src="/static/utils.js"></script>
   <script src="/static/network.js"></script>
   <script src="/static/eventstream.js"></script>
   <style type="text/css">
@@ -21,6 +22,7 @@
 
   <script type="text/javascript">
     let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
+       console.log('successfully created eval node')
     network.setOptions({
       nodes: { font: { size: 24 } },
       edges: { font: { size: 24 } },

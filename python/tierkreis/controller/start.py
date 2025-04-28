@@ -31,7 +31,7 @@ def start(
     node = node_run_data.node
     inputs = node_run_data.inputs
     output_list = node_run_data.output_list
-    output_list.append("__default__")
+    output_list.append("__star__")
     storage.write_worker_call_args(node_location, node.type, inputs, output_list)
     storage.write_node_def(node_location, node)
 

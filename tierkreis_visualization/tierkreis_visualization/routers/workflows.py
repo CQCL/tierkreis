@@ -58,19 +58,19 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
     if function_name == "eval":
         data = get_eval_node(storage, node_location)
         name = "eval.jinja"
-        ctx: dict[str, Any] = PyGraph(data.nodes, data.edges).model_dump(
+        ctx: dict[str, Any] = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
             by_alias=True
         )
 
     elif function_name == "loop":
         data = get_loop_node(storage, node_location)
         name = "loop.jinja"
-        ctx = PyGraph(data.nodes, data.edges).model_dump(by_alias=True)
+        ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
 
     elif function_name == "map":
         data = get_map_node(storage, node_location)
         name = "map.jinja"
-        ctx = PyGraph(data.nodes, data.edges).model_dump(by_alias=True)
+        ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
 
     else:
         name = "fallback.html"

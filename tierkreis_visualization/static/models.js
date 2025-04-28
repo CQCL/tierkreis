@@ -59,6 +59,21 @@ const NodeStatus = {
  */
 
 
+
+
+
+/**
+ * @typedef {any} vis
+ * @global
+ */
+
+/**
+ * @typedef {any} network
+ * @global
+ */
+
+
+
 /**
  * Creates a JSEdge from a PyEdge model.
  * @param {PyEdge} py_edge
@@ -77,15 +92,15 @@ function createJSEdge(py_edge) {
 
 /**
   * Creates a JSNode from a PyNode model.
- * @param {PyNode} pynode
+ * @param {PyNode} py_node
  * @returns {JSNode} A newly created user.
  */
-function createJSNode(pynode) {
+function createJSNode(py_node) {
     return {
-        id: pynode.id,
-        title: `Function name: ${pynode.function_name}\nStatus: ${pynode.status}`,
-        label:pynode.function_name,
-        status: pynode.status,
+        id: py_node.id,
+        title: `Function name: ${py_node.function_name}\nStatus: ${py_node.status}`,
+        label:py_node.function_name,
+        status: py_node.status,
         shape:"box",
     }
 }

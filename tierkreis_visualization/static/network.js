@@ -2,13 +2,12 @@
 
 /**
  * Connect to an event stream. Pass in a nodes and edges list to mutate.
- * @param {any} vis - Event stream url to subscribe to.
  * @param {JSNode[]} nodes - Event stream url to subscribe to.
  * @param {JSEdge[]} edges - Network vis library.
  * @param {string} name - List of graph edges.
  */
 
-function createNetwork(vis, nodes, edges, name) {
+function createNetwork(nodes, edges, name) {
   const visnodes = new vis.DataSet(nodes);
   const visedges = new vis.DataSet(edges);
 

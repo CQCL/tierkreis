@@ -1,15 +1,14 @@
 // @ts-check
 
+
 /**
  * Connect to an event stream. Pass in a nodes and edges list to mutate.
  * @param {string} url - Event stream url to subscribe to.
- * @param {any} vis - Network vis library.
- * @param {any} network - List of graph edges.
  * @param {PyNode[]} nodes - List of graph nodes.
  * @param {PyEdge[]} edges - List of graph edges.
  */
 
-function connectToStream(url, vis, network, nodes, edges) {
+function connectToStream(url,  nodes, edges) {
   let eventSource = new EventSource(url);
   eventSource.onopen = (ev) => {
     console.log("opening event source");
@@ -22,6 +21,8 @@ function connectToStream(url, vis, network, nodes, edges) {
       JSON.stringify(edges) === JSON.stringify(data.edges)
     )
       return;
+
+
 
     const JSNodes = new vis.DataSet(data.nodes.map(createJSNode));
     const JSEdges = new vis.DataSet(data.edges.map(createJSEdge));

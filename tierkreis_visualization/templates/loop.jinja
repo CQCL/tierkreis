@@ -19,8 +19,8 @@
   <div id="mynetwork"></div>
 
   <script type="text/javascript">
-    let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "L");
-    connectToStream("{{ url|safe }}", nodes, edges);
+    let [network, nodes, edges] = createNetwork(vis, {{ nodes|safe }}, {{ edges|safe }}, "L");
+    connectToStream("{{ url|safe }}", vis, network, nodes, edges);
   </script>
 </body>
 

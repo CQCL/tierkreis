@@ -1,25 +1,36 @@
-function connectToStream(url, nodes, edges) {
+// @ts-check
+
+/**
+ * Connect to an event stream. Pass in a nodes and edges list to mutate.
+ * @param {string} url - Event stream url to subscribe to.
+ * @param {any} vis - Network vis library.
+ * @param {any} network - List of graph edges.
+ * @param {PyNode[]} nodes - List of graph nodes.
+ * @param {PyEdge[]} edges - List of graph edges.
+ */
+
+function connectToStream(url, vis, network, nodes, edges) {
   let eventSource = new EventSource(url);
   eventSource.onopen = (ev) => {
     console.log("opening event source");
     console.log(ev);
   };
   eventSource.addEventListener("message", (ev) => {
-    data = JSON.parse(ev["data"]);
-    var visnodes = new vis.DataSet(data.nodes);
-    var visedges = new vis.DataSet(data.edges);
-
+    /** @type {PyGraph} */ const data = JSON.parse(ev["data"])
     if (
       JSON.stringify(nodes) === JSON.stringify(data.nodes) &&
       JSON.stringify(edges) === JSON.stringify(data.edges)
     )
       return;
 
-    position = network.getViewPosition();
-    scale = network.getScale();
+    const JSNodes = new vis.DataSet(data.nodes.map(createJSNode));
+    const JSEdges = new vis.DataSet(data.edges.map(createJSEdge));
 
-    network.setData({ nodes: visnodes, edges: visedges });
-    args = {
+    const position = network.getViewPosition();
+    const scale = network.getScale();
+
+    network.setData({ nodes: JSNodes, edges: JSEdges});
+    const args = {
       position: position,
       scale: scale,
       animation: false,

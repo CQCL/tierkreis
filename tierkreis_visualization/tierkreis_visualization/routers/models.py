@@ -26,11 +26,10 @@ from tierkreis_visualization.data.models import PyNode, NodeStatus, PyEdge
 
 #     @staticmethod
 #     def from_pynode(pynode: PyNode):
-#         title = f"Function name: {pynode.function_name}\nStatus: {pynode.status}"
 
 #         return JSNode(
 #             id=pynode.id,
-#             title=title,
+#             title= f"Function name: {pynode.function_name}\nStatus: {pynode.status}",
 #             label=pynode.function_name,
 #             color=color_from_status(pynode.status),
 #             shape="box",

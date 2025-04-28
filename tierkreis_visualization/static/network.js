@@ -1,14 +1,24 @@
-function createNetwork(nodes, edges, name) {
-  var visnodes = new vis.DataSet(nodes);
-  var visedges = new vis.DataSet(edges);
+// @ts-check
 
-  var container = document.getElementById("mynetwork");
-  var data = { nodes: visnodes, edges: visedges };
-  var options = {
+/**
+ * Connect to an event stream. Pass in a nodes and edges list to mutate.
+ * @param {any} vis - Event stream url to subscribe to.
+ * @param {JSNode[]} nodes - Event stream url to subscribe to.
+ * @param {JSEdge[]} edges - Network vis library.
+ * @param {string} name - List of graph edges.
+ */
+
+function createNetwork(vis, nodes, edges, name) {
+  const visnodes = new vis.DataSet(nodes);
+  const visedges = new vis.DataSet(edges);
+
+  const container = document.getElementById("mynetwork");
+  const data = { nodes: visnodes, edges: visedges };
+  const options = {
     layout: { hierarchical: { direction: "LR", sortMethod: "directed" } },
   };
 
-  var network = new vis.Network(container, data, options);
+  const network = new vis.Network(container, data, options);
   network.on("doubleClick", function (params) {
     let nodes = params.nodes;
     if (nodes.length === 1) {

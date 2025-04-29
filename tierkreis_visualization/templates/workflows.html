@@ -10,9 +10,7 @@
     <div class="p-6">
       <ul class="text-sm">
         {% for workflow_id in workflows %}
-        <li
-          class="hover:bg-blue-50 bg-white rounded p-3 border-neutral-200 shadow"
-        >
+        <li class="hover:bg-blue-50 bg-white rounded p-3 shadow-sm">
           <a
             class="text-neutral-900 flex gap-3 items-center"
             href="/workflows/{{ workflow_id }}/nodes/-"

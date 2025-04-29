@@ -1,28 +1,57 @@
 {% macro nav_macro(links) -%}
-<div class="bg-white p-6">
-  <a href="/workflows">
-    <div class="mb-2 tracking-tight text-lg">Tierkreis Graph Visualizer</div>
-  </a>
-  <div class="flex gap-2 items-center">
+<div
+  class="bg-white p-6 border-t-4 border-blue-700 flex gap-5 items-center shadow-sm"
+>
+  <div class="bg-neutral-200 rounded p-3 text-neutral-600">
     <svg
       xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
+      width="32"
+      height="32"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      stroke-width="2"
+      stroke-width="1.5"
       stroke-linecap="round"
       stroke-linejoin="round"
-      class="lucide lucide-folder-icon lucide-folder"
+      class="lucide lucide-workflow-icon lucide-workflow"
     >
-      <path
-        d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-      />
+      <rect width="8" height="8" x="3" y="3" rx="2" />
+      <path d="M7 11v4a2 2 0 0 0 2 2h4" />
+      <rect width="8" height="8" x="13" y="13" rx="2" />
     </svg>
-    {% for link in links %}
-    <a class="text-neutral-600 text-sm" href="{{ link[1] }}">{{ link[0] }}</a>
-    {% endfor %}
+  </div>
+  <div>
+    <a href="/workflows">
+      <div class="mb-0.5 tracking-tight text-lg font-medium">
+        Tierkreis Graph Visualizer
+      </div>
+    </a>
+
+    <div class="flex gap-2 items-center">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        class="lucide lucide-folder-icon lucide-folder"
+      >
+        <path
+          d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+        />
+      </svg>
+      <div>
+        {% for link in links %}
+        <a class="text-neutral-600 text-sm" href="{{ link[1] }}"
+          >{{ link[0] }}</a
+        >
+        {% endfor %}
+      </div>
+    </div>
   </div>
 </div>
 {%- endmacro %}

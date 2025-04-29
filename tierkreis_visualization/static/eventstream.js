@@ -16,13 +16,6 @@ function connectToStream(url, nodes, edges) {
   eventSource.addEventListener("message", (ev) => {
     const data =  /** @type {PyGraph} */ JSON.parse(ev["data"]);
 
-    if (
-      JSON.stringify(nodes) === JSON.stringify(data.nodes) &&
-      JSON.stringify(edges) === JSON.stringify(data.edges)
-    )
-      return;
-
-
     var visnodes = new vis.DataSet(data.nodes.map(createJSNode));
     var visedges = new vis.DataSet(data.edges.map(createJSEdge));
 

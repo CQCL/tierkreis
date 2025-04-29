@@ -3,16 +3,16 @@ from tierkreis.controller.data.graph import NodeDef, PortID, ValueRef
 
 
 def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
-    parents = node.inputs
+    parents = {k: v for k, v in node.inputs.items()}
 
     match node.type:
         case "eval":
-            parents["thunk"] = node.graph
+            parents["body"] = node.graph
         case "loop":
             parents["body"] = node.body
         case "map":
             parents["body"] = node.body
-            parents["*"] = (node.input_idx, "*")
+            parents["__star__"] = (node.input_idx, "__star__")
         case "const" | "function" | "input" | "output":
             pass
         case _:

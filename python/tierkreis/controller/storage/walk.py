@@ -4,7 +4,7 @@ from logging import getLogger
 from typing import assert_never
 
 
-from tierkreis.controller.data.graph import Eval, GraphData
+from tierkreis.controller.data.graph import Eval, GraphData, Loop
 from tierkreis.controller.data.location import Loc, NodeRunData
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -34,7 +34,7 @@ def walk_node(storage: ControllerStorage, node_location: Loc) -> WalkResult:
             return walk_eval(storage, node_location)
 
         case "loop":
-            return walk_loop(storage, node_location)
+            return walk_loop(storage, node_location, node)
 
         case "map":
             return walk_map(storage, node_location)
@@ -51,7 +51,7 @@ def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     logger.debug("walk_eval")
     walk_result = WalkResult([], [])
 
-    message = storage.read_output(node_location.N(-1), Labels.THUNK)
+    message = storage.read_output(node_location.N(-1), "body")
     graph = GraphData(**json.loads(message))
 
     logger.debug(len(graph.nodes))
@@ -77,7 +77,7 @@ def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
             input_paths = {
                 k: (node_location.N(i), p) for k, (i, p) in node.inputs.items()
             }
-            node_run_data = NodeRunData(new_location, node, input_paths, list(outputs))
+            node_run_data = NodeRunData(new_location, node, list(outputs))
             walk_result.inputs_ready.append(node_run_data)
             continue
 
@@ -86,7 +86,7 @@ def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
     return walk_result
 
 
-def walk_loop(storage: ControllerStorage, node_location: Loc) -> WalkResult:
+def walk_loop(storage: ControllerStorage, node_location: Loc, loop: Loop) -> WalkResult:
     i = 0
     while storage.is_node_started(node_location.L(i + 1)):
         i += 1
@@ -104,16 +104,14 @@ def walk_loop(storage: ControllerStorage, node_location: Loc) -> WalkResult:
         return WalkResult([], [])
 
     # Include old inputs. The .value is the only one that can change.
-    input_paths = storage.read_worker_call_args(node_location).inputs
-    inputs = {k: (new_location.N(-1), v.name) for k, v in input_paths.items()}
-    inputs[Labels.VALUE] = (new_location, Labels.VALUE)
-    inputs[Labels.THUNK] = (new_location.N(-1), Labels.THUNK)
-
+    ins = {k: (-1, k) for (_, k) in loop.inputs.values()}
+    if Labels.VALUE in ins:
+        del ins[Labels.VALUE]
+    storage.link_outputs(
+        node_location.L(i + 1).N(-1), Labels.VALUE, new_location, Labels.VALUE
+    )
     node_run_data = NodeRunData(
-        node_location.L(i + 1),
-        Eval((0, Labels.THUNK), {}),  # TODO: put inputs in Eval
-        inputs,
-        [Labels.VALUE],
+        node_location.L(i + 1), Eval((-1, "body"), ins), [Labels.VALUE]
     )
     return WalkResult([node_run_data], [])
 

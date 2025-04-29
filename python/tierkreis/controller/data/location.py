@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from enum import Enum
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Optional
+from typing import Optional
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel
 from typing_extensions import assert_never
 
 from tierkreis.controller.data.graph import NodeDef
@@ -83,21 +83,24 @@ class Loc(str):
     def parent(self) -> "Loc | None":
         if not self:
             return None
-        return Loc(".".join(self.split(".")[:-1]))
+
+        step_strs = self.split(".")
+        last_step_str = step_strs.pop()
+        loc = Loc(".".join(step_strs))
+        if not last_step_str.startswith("L"):
+            return loc
+
+        idx = int(last_step_str[1:])
+        if idx == 0:
+            return loc
+
+        return loc.L(idx - 1)
 
     def __hash__(self) -> int:
         return hash(self)
 
     def __add__(self, other: str) -> "Loc":
         return Loc(self + other)
-
-    @model_validator(mode="before")
-    @classmethod
-    def model_validator(cls, data: Any) -> Any:
-        print(data)
-        if not isinstance(data, str):
-            raise TierkreisError("We should be deserialising Loc directly from str.")
-        return Loc(data)
 
 
 OutputLoc = tuple[Loc, PortID]
@@ -107,5 +110,4 @@ OutputLoc = tuple[Loc, PortID]
 class NodeRunData:
     node_location: Loc
     node: NodeDef
-    inputs: dict[PortID, OutputLoc]
     output_list: list[PortID]

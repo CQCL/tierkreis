@@ -11,20 +11,23 @@ from tierkreis.controller.data.graph import (
 from tierkreis.core import Labels
 
 
-def doubler() -> GraphData:
+def doubler_plus() -> GraphData:
     g = GraphData()
     value = g.add(Input(Labels.VALUE))(Labels.VALUE)
+    intercept = g.add(Input("intercept"))("intercept")
     two = g.add(Const(2))(Labels.VALUE)
-    out = g.add(Func("numerical-worker.itimes", {"a": value, "b": two}))(Labels.VALUE)
+    mul = g.add(Func("numerical-worker.itimes", {"a": value, "b": two}))(Labels.VALUE)
+    out = g.add(Func("numerical-worker.iadd", {"a": mul, "b": intercept}))(Labels.VALUE)
     g.add(Output({Labels.VALUE: out}))
     return g
 
 
 def sample_eval() -> GraphData:
     g = GraphData()
+    zero = g.add(Const(0))(Labels.VALUE)
     six = g.add(Const(6))(Labels.VALUE)
-    doubler_const = g.add(Const(doubler()))(Labels.VALUE)
-    e = g.add(Eval(doubler_const, {"value": six}))
+    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    e = g.add(Eval(doubler_const, {"value": six, "intercept": zero}))
     g.add(Output({"value": e(Labels.VALUE)}))
     return g
 
@@ -45,18 +48,19 @@ def sample_graphdata() -> GraphData:
     g = GraphData()
     six = g.add(Const(6))(Labels.VALUE)
     g_const = g.add(Const(loop_body()))(Labels.VALUE)
-    loop = g.add(Loop(g_const, {"value": six, "body": g_const}, "tag", Labels.VALUE))
+    loop = g.add(Loop(g_const, {"value": six}, "tag", Labels.VALUE))
     g.add(Output({"a": loop(Labels.VALUE)}))
     return g
 
 
 def sample_map() -> GraphData:
     g = GraphData()
+    six = g.add(Const(6))(Labels.VALUE)
     Ns_const = g.add(Const(list(range(21))))(Labels.VALUE)
     Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
-    doubler_const = g.add(Const(doubler()))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
-    map_def = Map(doubler_const, Ns(Labels.VALUE)[0], Labels.VALUE, {})
+    map_def = Map(doubler_const, Ns(Labels.VALUE)[0], Labels.VALUE, {"intercept": six})
     m = g.add(map_def)
     folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m("*")}))
     g.add(Output({Labels.VALUE: folded(Labels.VALUE)}))

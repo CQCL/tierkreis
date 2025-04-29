@@ -1,16 +1,14 @@
 from time import sleep
 
-from tierkreis.controller.data.graph import Eval, GraphData
-from tierkreis.controller.data.location import Loc, OutputLoc
+from tierkreis.controller.data.graph import Eval, GraphData, ValueRef
+from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node
-from tierkreis.core import Labels
-from tierkreis.core.function import FunctionName
-from tierkreis.core.tierkreis_graph import FunctionNode, PortID, TierkreisGraph
+from tierkreis.core.tierkreis_graph import PortID
 
-root_loc = Loc()
+root_loc = Loc("")
 
 
 def run_graph(
@@ -22,13 +20,14 @@ def run_graph(
     polling_interval_seconds: float = 0.01,
 ) -> None:
     for name, value in graph_inputs.items():
-        storage.write_output(root_loc.N(-2), name, value)
+        storage.write_output(root_loc.N(-1), name, value)
 
-    inputs: dict[PortID, OutputLoc] = {
-        k: (root_loc.N(-2), k) for k, v in graph_inputs.items()
+    storage.write_output(root_loc.N(-1), "body", g.model_dump_json().encode())
+
+    inputs: dict[PortID, ValueRef] = {
+        k: (-1, k) for k, v in graph_inputs.items() if k != "body"
     }
-    # TODO: move inputs into Eval
-    node_run_data = NodeRunData(root_loc, Eval((0, Labels.THUNK), {}), inputs, [])
+    node_run_data = NodeRunData(Loc(), Eval((-1, "body"), inputs), [])
     start(storage, executor, node_run_data)
     resume_graph(storage, executor, n_iterations, polling_interval_seconds)
 
@@ -40,8 +39,8 @@ def resume_graph(
     polling_interval_seconds: float = 0.01,
 ) -> None:
     for i in range(n_iterations):
-        walk_results = walk_node(storage, root_loc)
+        walk_results = walk_node(storage, Loc())
         start_nodes(storage, executor, walk_results.inputs_ready)
-        if storage.is_node_finished(root_loc):
+        if storage.is_node_finished(Loc()):
             break
         sleep(polling_interval_seconds)

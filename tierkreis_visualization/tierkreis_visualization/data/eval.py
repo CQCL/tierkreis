@@ -6,7 +6,6 @@ from tierkreis.controller.data.location import WorkerCallArgs, Loc
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
-from tierkreis.core import Labels
 
 from tierkreis_visualization.data.models import PyNode, NodeStatus, PyEdge
 
@@ -27,7 +26,7 @@ def node_status(is_finished: bool, definition: Optional[WorkerCallArgs]) -> Node
 
 
 def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeData:
-    thunk = storage.read_output(node_location.N(-1), Labels.THUNK)
+    thunk = storage.read_output(node_location.N(-1), "body")
     graph = GraphData(**json.loads(thunk))
 
     pynodes: list[PyNode] = []

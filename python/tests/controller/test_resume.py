@@ -15,7 +15,7 @@ def test_resume_eval():
     executor = ShellExecutor(
         Path("./python/examples/launchers"), logs_path=storage.logs_path
     )
-    inputs = {Labels.THUNK: g.model_dump_json().encode()}
+    inputs = {}
 
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
@@ -30,7 +30,7 @@ def test_resume_sample_graph():
     executor = ShellExecutor(
         Path("./python/examples/launchers"), logs_path=storage.logs_path
     )
-    inputs = {Labels.THUNK: g.model_dump_json().encode()}
+    inputs = {}
 
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
@@ -45,7 +45,7 @@ def test_resume_sample_map():
     executor = ShellExecutor(
         Path("./python/examples/launchers"), logs_path=storage.logs_path
     )
-    inputs = {Labels.THUNK: g.model_dump_json().encode()}
+    inputs = {}
 
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
@@ -53,5 +53,5 @@ def test_resume_sample_map():
     c = storage.read_output(Loc(), Labels.VALUE)
     assert (
         c
-        == b"[0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40]"
+        == b"[6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46]"
     )

@@ -19,21 +19,6 @@ function connectToStream(url, nodes, edges) {
     var visnodes = new vis.DataSet(data.nodes.map(createJSNode));
     var visedges = new vis.DataSet(data.edges.map(createJSEdge));
 
-    const position = network.getViewPosition();
-    const scale = network.getScale();
-
     network.setData({ nodes: visnodes, edges: visedges });
-
-    console.log('hello?', data.nodes)
-    // args = {
-    //   position: position,
-    //   scale: scale,
-    //   animation: false,
-    // };
-    // let move = () => {
-    //   network.moveTo(args);
-    //   network.off("afterDrawing", move);
-    // };
-    // network.on("after", move);
   });
 }

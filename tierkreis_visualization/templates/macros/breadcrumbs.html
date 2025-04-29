@@ -1,7 +1,0 @@
-{% macro breadcrumbs_macro(links) -%}
-    <div class="flex items-center p-3 bg-white shadow">
-    {% for link in links %}
-        <a class="text-neutral-600 text-sm" href="{{ link[1] }}">{{ link[0] }}</a>
-    {% endfor %}
-    </div>
-{%- endmacro %}

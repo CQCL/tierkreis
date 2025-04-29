@@ -1,15 +1,45 @@
-{% from "macros/head.html" import head_macro with context %}
+{% from "macros/head.html" import head_macro with context %} {% from
+"macros/nav.html" import nav_macro with context %}
 <html>
-<head>
+  <head>
     <title>Tierkreis visualization: workflows</title>
-     {{ head_macro() }}
-</head>
-<body class="p-8 bg-neutral-200">
-    <h1 class="text-neutral-900 text-xl">Workflows</h1>
-    <ul class="text-sm text-neutral-600">
+    {{ head_macro() }}
+  </head>
+  <body class="bg-neutral-100">
+    {{ nav_macro([["/workflows"]]) }}
+    <div class="p-6">
+      <ul class="text-sm">
         {% for workflow_id in workflows %}
-            <li><a href="/workflows/{{ workflow_id }}/nodes/-">{{ workflow_id }}</a></li>
+        <li
+          class="hover:bg-blue-50 bg-white rounded p-3 border-neutral-200 shadow"
+        >
+          <a
+            class="text-neutral-900 flex gap-3 items-center"
+            href="/workflows/{{ workflow_id }}/nodes/-"
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              class="lucide lucide-network-icon lucide-network"
+            >
+              <rect x="16" y="16" width="6" height="6" rx="1" />
+              <rect x="2" y="16" width="6" height="6" rx="1" />
+              <rect x="9" y="2" width="6" height="6" rx="1" />
+              <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
+              <path d="M12 12V8" />
+            </svg>
+            <span class="text-blue-600">{{ workflow_id }}</span>
+          </a>
+        </li>
         {% endfor %}
-    </ul>
-</body>
+      </ul>
+    </div>
+  </body>
 </html>

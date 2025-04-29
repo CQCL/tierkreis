@@ -31,7 +31,7 @@ def walk_node(storage: ControllerStorage, node_location: Loc) -> WalkResult:
 
     match node.type:
         case "eval":
-            return walk_eval(storage, node_location)
+            return walk_eval(storage, node_location, node)
 
         case "loop":
             return walk_loop(storage, node_location, node)
@@ -47,7 +47,7 @@ def walk_node(storage: ControllerStorage, node_location: Loc) -> WalkResult:
             assert_never(node)
 
 
-def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
+def walk_eval(storage: ControllerStorage, node_location: Loc, eval: Eval) -> WalkResult:
     logger.debug("walk_eval")
     walk_result = WalkResult([], [])
 
@@ -74,9 +74,6 @@ def walk_eval(storage: ControllerStorage, node_location: Loc) -> WalkResult:
         ):
             logger.debug(f"{new_location} is_ready_to_start")
             outputs = graph.outputs[i]
-            input_paths = {
-                k: (node_location.N(i), p) for k, (i, p) in node.inputs.items()
-            }
             node_run_data = NodeRunData(new_location, node, list(outputs))
             walk_result.inputs_ready.append(node_run_data)
             continue

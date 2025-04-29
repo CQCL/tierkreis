@@ -48,7 +48,7 @@ def sample_loop() -> GraphData:
     g = GraphData()
     six = g.add(Const(6))(Labels.VALUE)
     g_const = g.add(Const(loop_body()))(Labels.VALUE)
-    loop = g.add(Loop(g_const, {"value": six}, "tag", Labels.VALUE))
+    loop = g.add(Loop(g_const, {"value": six}, "should_continue", Labels.VALUE))
     g.add(Output({"a": loop(Labels.VALUE)}))
     return g
 
@@ -60,7 +60,13 @@ def sample_map() -> GraphData:
     Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
     doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
-    map_def = Map(doubler_const, Ns(Labels.VALUE)[0], Labels.VALUE, {"intercept": six})
+    map_def = Map(
+        doubler_const,
+        Ns(Labels.VALUE)[0],
+        Labels.VALUE,
+        Labels.VALUE,
+        {"intercept": six},
+    )
     m = g.add(map_def)
     folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m("*")}))
     g.add(Output({Labels.VALUE: folded(Labels.VALUE)}))
@@ -74,10 +80,22 @@ def maps_in_series() -> GraphData:
     Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
     doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
-    map_def = Map(doubler_const, Ns(Labels.VALUE)[0], Labels.VALUE, {"intercept": zero})
+    map_def = Map(
+        doubler_const,
+        Ns(Labels.VALUE)[0],
+        Labels.VALUE,
+        Labels.VALUE,
+        {"intercept": zero},
+    )
     m = g.add(map_def)
 
-    map_def2 = Map(doubler_const, m(Labels.VALUE)[0], Labels.VALUE, {"intercept": zero})
+    map_def2 = Map(
+        doubler_const,
+        m(Labels.VALUE)[0],
+        Labels.VALUE,
+        Labels.VALUE,
+        {"intercept": zero},
+    )
     m2 = g.add(map_def2)
     folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m2("*")}))
     g.add(Output({Labels.VALUE: folded(Labels.VALUE)}))

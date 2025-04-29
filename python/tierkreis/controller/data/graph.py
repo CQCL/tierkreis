@@ -27,8 +27,8 @@ class Eval:
 class Loop:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
-    tag_port: PortID  # Used to check break or continue
-    output_port: PortID  # Variable that is allowed to change
+    continue_port: PortID  # The port that specified if the loop should continue.
+    acc_port: PortID  # The input and output that is modified by the loop.
     type: Literal["loop"] = field(default="loop")
 
 
@@ -36,7 +36,8 @@ class Loop:
 class Map:
     body: ValueRef
     input_idx: NodeIndex
-    bound_port: PortID
+    in_port: PortID  # Input port for the Map.body
+    out_port: PortID  # Output port for the Map.body
     inputs: dict[PortID, ValueRef]
     type: Literal["map"] = field(default="map")
 

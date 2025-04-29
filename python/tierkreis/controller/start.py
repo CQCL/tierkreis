@@ -4,7 +4,7 @@ from logging import getLogger
 from pydantic import BaseModel
 from typing_extensions import assert_never
 
-from tierkreis.controller.data.graph import Eval, Jsonable
+from tierkreis.controller.data.graph import Eval
 from tierkreis.controller.data.location import Loc, NodeRunData, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -44,7 +44,11 @@ def start(
     logger.debug(f"start {node_location} {node} {ins} {output_list}")
     if node.type == "function":
         name = node.function_name
-        start_function_node(storage, executor, node_location, name, ins, output_list)
+        launcher_name = ".".join(name.split(".")[:-1])
+        name = name.split(".")[-1]
+        def_path = storage.write_worker_call_args(node_location, name, ins, output_list)
+        logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
+        executor.run(launcher_name, def_path)
 
     elif node.type == "input":
         input_loc = parent.N(-1)
@@ -58,7 +62,11 @@ def start(
         storage.mark_node_finished(parent)
 
     elif node.type == "const":
-        bs = bytes_from_value(node.value)
+        bs = (
+            node.value.model_dump_json().encode()
+            if isinstance(node.value, BaseModel)
+            else json.dumps(node.value).encode()
+        )
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)
 
@@ -91,7 +99,7 @@ def start(
                 node_location.N(-1), str(i), parent.N(node.input_idx), str(i)
             )
             eval_inputs = {k: (-1, k) for k, (i, p) in ins.items()}
-            eval_inputs[node.bound_port] = (-1, str(i))
+            eval_inputs[node.in_port] = (-1, str(i))
             start(
                 storage,
                 executor,
@@ -104,31 +112,6 @@ def start(
         assert_never(node)
 
 
-def start_function_node(
-    storage: ControllerStorage,
-    executor: ControllerExecutor,
-    node_location: Loc,
-    name: str,
-    inputs: dict[PortID, OutputLoc],
-    output_list: list[PortID],
-):
-    launcher_name = ".".join(name.split(".")[:-1])
-    name = name.split(".")[-1]
-    def_path = storage.write_worker_call_args(node_location, name, inputs, output_list)
-
-    if name == "switch":
-        pred = json.loads(storage.read_output(*inputs["pred"]))
-        if pred:
-            storage.link_outputs(node_location, Labels.VALUE, *inputs["if_true"])
-        else:
-            storage.link_outputs(node_location, Labels.VALUE, *inputs["if_false"])
-        storage.mark_node_finished(node_location)
-
-    else:
-        logger.debug(f"Executing {(str(node_location), name, inputs, output_list)}")
-        executor.run(launcher_name, def_path)
-
-
 def pipe_inputs_to_output_location(
     storage: ControllerStorage,
     output_loc: Loc,
@@ -136,10 +119,3 @@ def pipe_inputs_to_output_location(
 ) -> None:
     for new_port, (old_loc, old_port) in inputs.items():
         storage.link_outputs(output_loc, new_port, old_loc, old_port)
-
-
-def bytes_from_value(value: Jsonable) -> bytes:
-    if isinstance(value, BaseModel):
-        return value.model_dump_json().encode()
-
-    return json.dumps(value).encode()

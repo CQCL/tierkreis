@@ -3,6 +3,7 @@ import os
 import shutil
 from pathlib import Path
 from time import time_ns
+from typing import Any
 from uuid import UUID
 
 from tierkreis.controller.data.graph import NodeDef, NodeDefModel
@@ -18,12 +19,14 @@ class ControllerFileStorage:
     def __init__(
         self,
         workflow_id: UUID,
+        name: str | None = None,
         tierkreis_directory: Path = Path.home() / ".tierkreis" / "checkpoints",
     ) -> None:
         self.workflow_id = workflow_id
         self.workflow_dir: Path = tierkreis_directory / str(workflow_id)
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
         self.logs_path = self.workflow_dir / "logs"
+        self.name = name
 
     def _nodedef_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "nodedef"
@@ -151,3 +154,11 @@ class ControllerFileStorage:
 
         if (parent := node_location.parent()) is not None:
             self._metadata_path(parent).touch()
+
+    def write_metadata(self, node_location: Loc) -> None:
+        with open(self._metadata_path(node_location), "w+") as fh:
+            fh.write(json.dumps({"name": self.name}))
+
+    def read_metadata(self, node_location: Loc) -> dict[str, Any]:
+        with open(self._metadata_path(node_location)) as fh:
+            return json.load(fh)

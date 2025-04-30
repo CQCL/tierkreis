@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
 from tierkreis.controller.data.graph import NodeDef
 from tierkreis.controller.data.location import (
@@ -43,3 +43,7 @@ class ControllerStorage(Protocol):
     def read_output_ports(self, node_location: Loc) -> list[PortID]: ...
 
     def is_node_started(self, node_location: Loc) -> bool: ...
+
+    def read_metadata(self, node_location: Loc) -> dict[str, Any]: ...
+
+    def write_metadata(self, node_location: Loc) -> None: ...

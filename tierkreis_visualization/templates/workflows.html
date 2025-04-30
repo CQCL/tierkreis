@@ -1,13 +1,17 @@
 <html>
-<head>
+  <head>
     <title>Tierkreis visualization: workflows</title>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Workflows</h1>
     <ul>
-        {% for workflow_id in workflows %}
-            <li><a href="/workflows/{{ workflow_id }}/nodes/-">{{ workflow_id }}</a></li>
-        {% endfor %}
+      {% for workflow in workflows %}
+      <li>
+        <a href="/workflows/{{ workflow.id }}/nodes/-"
+          >{{ workflow.name }}-{{ workflow.id_int }}</a
+        >
+      </li>
+      {% endfor %}
     </ul>
-</body>
+  </body>
 </html>

@@ -8,10 +8,8 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
-from tierkreis.controller.storage.filestorage import ControllerFileStorage
-from tierkreis.controller.storage.protocol import ControllerStorage
 
-from tierkreis_visualization.config import CONFIG, templates
+from tierkreis_visualization.config import CONFIG, get_storage, templates
 from tierkreis_visualization.data.eval import get_eval_node
 from tierkreis_visualization.data.loop import get_loop_node
 from tierkreis_visualization.data.map import get_map_node
@@ -35,18 +33,7 @@ class NodeResponse(BaseModel):
 
 
 def parse_node_location(node_location_str: str) -> Loc:
-    # if node_location_str.startswith("-"):
-    #     node_location_str = node_location_str[1:]
-    # if node_location_str.startswith("."):
-    #     node_location_str = node_location_str[1:]
-
     return Loc(node_location_str)
-
-
-def get_storage(workflow_id: UUID) -> ControllerStorage:
-    return ControllerFileStorage(
-        workflow_id=workflow_id, tierkreis_directory=CONFIG.tierkreis_path
-    )
 
 
 def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:

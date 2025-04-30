@@ -19,6 +19,7 @@ def run_graph(
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
 ) -> None:
+    storage.write_metadata(Loc(""))
     for name, value in graph_inputs.items():
         storage.write_output(root_loc.N(-1), name, value)
 

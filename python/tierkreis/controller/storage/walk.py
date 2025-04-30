@@ -100,7 +100,7 @@ def walk_loop(storage: ControllerStorage, loc: Loc, loop: Loop) -> WalkResult:
         return WalkResult([], [])
 
     # Include old inputs. The .acc_port is the only one that can change.
-    ins = {k: (-1, k) for (_, k) in loop.inputs.values() if k != acc_port}
+    ins = {k: (-1, k) for k, _ in loop.inputs.items() if k != acc_port}
     storage.link_outputs(loc.L(i + 1).N(-1), acc_port, new_location, acc_port)
     node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, "body"), ins), [acc_port])
     return WalkResult([node_run_data], [])

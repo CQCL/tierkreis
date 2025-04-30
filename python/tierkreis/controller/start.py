@@ -82,7 +82,7 @@ def start(
             executor,
             NodeRunData(
                 node_location.L(0),
-                Eval((-1, "body"), {k: (-1, k) for k, (i, p) in ins.items()}),
+                Eval((-1, "body"), {k: (-1, k) for k, _ in ins.items()}),
                 output_list,
             ),
         )

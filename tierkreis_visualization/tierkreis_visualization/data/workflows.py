@@ -1,17 +1,27 @@
 import os
 from uuid import UUID
 
-from tierkreis_visualization.config import CONFIG
+from pydantic import BaseModel
+from tierkreis.controller.data.location import Loc
+from tierkreis_visualization.config import CONFIG, get_storage
 
 
-def get_workflows():
+class WorkflowDisplay(BaseModel):
+    id: UUID
+    id_int: int
+    name: str | None
+
+
+def get_workflows() -> list[WorkflowDisplay]:
     folders = os.listdir(CONFIG.tierkreis_path)
-    workflow_ids: list[UUID] = []
+    workflows: list[WorkflowDisplay] = []
     for folder in folders:
         try:
-            workflow_id = UUID(folder)
-            workflow_ids.append(workflow_id)
+            id = UUID(folder)
+            metadata = get_storage(id).read_metadata(Loc(""))
+            name = metadata["name"] or "workflow"
+            workflows.append(WorkflowDisplay(id=id, id_int=int(id), name=name))
         except (TypeError, ValueError):
             continue
 
-    return workflow_ids
+    return workflows

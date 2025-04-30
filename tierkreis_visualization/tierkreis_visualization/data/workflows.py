@@ -14,6 +14,7 @@ class WorkflowDisplay(BaseModel):
 
 def get_workflows() -> list[WorkflowDisplay]:
     folders = os.listdir(CONFIG.tierkreis_path)
+    folders.sort()
     workflows: list[WorkflowDisplay] = []
     for folder in folders:
         try:

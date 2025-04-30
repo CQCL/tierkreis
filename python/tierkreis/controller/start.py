@@ -30,7 +30,6 @@ def start(
     node_location = node_run_data.node_location
     node = node_run_data.node
     output_list = node_run_data.output_list
-    output_list.append("__star__")
 
     storage.write_node_def(node_location, node)
 
@@ -98,7 +97,7 @@ def start(
             storage.link_outputs(
                 node_location.N(-1), str(i), parent.N(node.input_idx), str(i)
             )
-            eval_inputs = {k: (-1, k) for k, (i, p) in ins.items()}
+            eval_inputs = {k: (-1, k) for k in ins.keys()}
             eval_inputs[node.in_port] = (-1, str(i))
             start(
                 storage,

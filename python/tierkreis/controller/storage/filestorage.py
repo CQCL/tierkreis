@@ -45,7 +45,7 @@ class ControllerFileStorage:
 
     def _outputs_dir(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "outputs"
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.mkdir(parents=True, exist_ok=True)
         return path
 
     def _output_path(self, node_location: Loc, port_name: PortID) -> Path:
@@ -96,6 +96,7 @@ class ControllerFileStorage:
                 k: self._output_path(loc, port) for k, (loc, port) in inputs.items()
             },
             outputs={k: self._output_path(node_location, k) for k in output_list},
+            output_dir=self._outputs_dir(node_location),
             done_path=self._done_path(node_location),
             logs_path=self.logs_path,
         )

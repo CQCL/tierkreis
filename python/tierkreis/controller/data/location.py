@@ -9,7 +9,6 @@ from typing_extensions import assert_never
 
 from tierkreis.controller.data.graph import NodeDef, NodeIndex
 from tierkreis.core.tierkreis_graph import PortID
-from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
 
@@ -18,6 +17,7 @@ class WorkerCallArgs(BaseModel):
     function_name: str
     inputs: dict[str, Path]
     outputs: dict[str, Path]
+    output_dir: Path
     done_path: Path
     logs_path: Optional[Path]
 

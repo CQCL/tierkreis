@@ -13,6 +13,7 @@ class WorkerCallArgs(BaseModel):
     function_name: str
     inputs: dict[str, Path]
     outputs: dict[str, Path]
+    output_dir: Path
     done_path: Path
 
 
@@ -103,7 +104,7 @@ def run(node_definition: WorkerCallArgs):
             raise ValueError("VALUE to unfold must be a list.")
 
         for i, value in enumerate(values_list):
-            with open(node_definition.outputs["__star__"].parent / str(i), "w+") as fh:
+            with open(node_definition.output_dir / str(i), "w+") as fh:
                 fh.write(json.dumps(value))
 
     else:

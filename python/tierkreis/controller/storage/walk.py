@@ -10,6 +10,7 @@ from tierkreis.controller.data.location import Loc, NodeRunData
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
+from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
 
@@ -100,7 +101,7 @@ def walk_loop(storage: ControllerStorage, loc: Loc, loop: Loop) -> WalkResult:
         return WalkResult([], [])
 
     # Include old inputs. The .acc_port is the only one that can change.
-    ins = {k: (-1, k) for k, _ in loop.inputs.items() if k != acc_port}
+    ins = {k: (-1, k) for k in loop.inputs.keys() if k != acc_port}
     storage.link_outputs(loc.L(i + 1).N(-1), acc_port, new_location, acc_port)
     node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, "body"), ins), [acc_port])
     return WalkResult([node_run_data], [])
@@ -108,21 +109,19 @@ def walk_loop(storage: ControllerStorage, loc: Loc, loop: Loop) -> WalkResult:
 
 def walk_map(storage: ControllerStorage, loc: Loc, map: Map) -> WalkResult:
     walk_result = WalkResult([], [])
-    N = 0
-    all_finished = True
-    while storage.is_node_started(loc.M(N + 1)):
-        N += 1
+    parent = loc.parent()
+    if parent is None:
+        raise TierkreisError("MAP node must have parent.")
 
-    for i in range(N + 1):
-        map_loc = loc.M(i)
-        if not storage.is_node_finished(map_loc):
-            all_finished = False
-            walk_result.extend(walk_node(storage, map_loc))
+    map_eles = [int(x) for x in storage.read_output_ports(parent.N(map.input_idx))]
+    unfinished = [i for i in map_eles if not storage.is_node_finished(loc.M(i))]
+    [walk_result.extend(walk_node(storage, loc.M(i))) for i in unfinished]
 
-    if all_finished is True:
-        for j in range(N + 1):
-            map_loc = loc.M(j)
-            storage.link_outputs(loc, str(j), map_loc, map.out_port)
-            storage.mark_node_finished(loc)
+    if len(unfinished) > 0:
+        return walk_result
+
+    for j in map_eles:
+        storage.link_outputs(loc, str(j), loc.M(j), map.out_port)
+        storage.mark_node_finished(loc)
 
     return walk_result

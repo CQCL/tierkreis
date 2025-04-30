@@ -87,13 +87,11 @@ def start(
         )
 
     elif node.type == "map":
-        input_values = storage.read_output_ports(parent.N(node.input_idx))
-        input_indices = [int(s) for s in input_values]
-
         ins["body"] = (parent.N(node.body[0]), node.body[1])
         pipe_inputs_to_output_location(storage, node_location.N(-1), ins)
 
-        for i in input_indices:
+        map_eles = [int(s) for s in storage.read_output_ports(parent.N(node.input_idx))]
+        for i in map_eles:
             storage.link_outputs(
                 node_location.N(-1), str(i), parent.N(node.input_idx), str(i)
             )

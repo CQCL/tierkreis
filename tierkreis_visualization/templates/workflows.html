@@ -7,12 +7,14 @@
   </head>
   <body class="bg-neutral-100">
     {{ nav_macro([["/workflows"]]) }}
-    <div class="p-6">
+
+    <div class="p-3">
+      <h2 class="text-lg mb-7">All Workflows</h2>
       <ul class="text-sm">
         {% for workflow_id in workflows %}
-        <li class="hover:bg-blue-50 bg-white rounded p-3 shadow-sm">
+        <li class="bg-white rounded p-3 shadow-sm">
           <a
-            class="text-neutral-900 flex gap-3 items-center"
+            class="flex gap-3 items-center"
             href="/workflows/{{ workflow_id }}/nodes/-"
           >
             <svg
@@ -33,7 +35,9 @@
               <path d="M5 16v-3a1 1 0 0 1 1-1h12a1 1 0 0 1 1 1v3" />
               <path d="M12 12V8" />
             </svg>
-            <span class="text-blue-600">{{ workflow_id }}</span>
+            <span class="underline underline-offset-2 hover:text-blue-600"
+              >{{ workflow_id }}</span
+            >
           </a>
         </li>
         {% endfor %}

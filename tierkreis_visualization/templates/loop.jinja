@@ -1,6 +1,6 @@
-{% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
 {% from "macros/head.html" import head_macro with context %}
-
+{% from
+"macros/nav.html" import nav_macro with context %}
 
 <html>
 <head>
@@ -14,6 +14,7 @@
 </head>
 
 <body>
+  {{ nav_macro(breadcrumbs) }}
   <div id="mynetwork"></div>
 
   <script type="text/javascript">

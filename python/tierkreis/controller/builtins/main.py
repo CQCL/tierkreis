@@ -1,8 +1,10 @@
 from glob import glob
 import json
 from logging import getLogger
+import logging
 from pathlib import Path
 from sys import argv
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -15,6 +17,7 @@ class WorkerCallArgs(BaseModel):
     outputs: dict[str, Path]
     output_dir: Path
     done_path: Path
+    logs_path: Path | None
 
 
 def iadd(a: int, b: int) -> int:
@@ -33,7 +36,14 @@ def igt(a: int, b: int) -> bool:
 
 
 def run(node_definition: WorkerCallArgs):
-    logger.debug(node_definition)
+    logging.basicConfig(
+        format="%(asctime)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S%z",
+        filename=node_definition.logs_path,
+        filemode="a",
+        level=logging.INFO,
+    )
+    logger.info(node_definition.model_dump())
     if node_definition.function_name == "iadd":
         with open(node_definition.inputs["a"], "rb") as fh:
             a: int = json.loads(fh.read())
@@ -106,6 +116,53 @@ def run(node_definition: WorkerCallArgs):
         for i, value in enumerate(values_list):
             with open(node_definition.output_dir / str(i), "w+") as fh:
                 fh.write(json.dumps(value))
+
+    elif node_definition.function_name == "append":
+        with open(node_definition.inputs["l"], "rb") as fh:
+            l = json.loads(fh.read())
+
+        with open(node_definition.inputs["a"], "rb") as fh:
+            a = json.loads(fh.read())
+
+        assert isinstance(l, list)
+        new_l: list[Any] = l + [a]
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(new_l))
+
+    elif node_definition.function_name == "len":
+        with open(node_definition.inputs["l"], "rb") as fh:
+            l = json.loads(fh.read())
+
+        length = len(l)
+        logger.info(f"LEN {length}")
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(length))
+
+    elif node_definition.function_name == "str_eq":
+        with open(node_definition.inputs["a"], "rb") as fh:
+            str_a = json.loads(fh.read())
+
+        with open(node_definition.inputs["b"], "rb") as fh:
+            str_b = json.loads(fh.read())
+
+        ans = str_a == str_b
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(ans))
+
+    elif node_definition.function_name == "str_neq":
+        with open(node_definition.inputs["a"], "rb") as fh:
+            str_a = json.loads(fh.read())
+
+        with open(node_definition.inputs["b"], "rb") as fh:
+            str_b = json.loads(fh.read())
+
+        ans = str_a != str_b
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(ans))
 
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")

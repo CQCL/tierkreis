@@ -16,8 +16,8 @@ def doubler_plus() -> GraphData:
     inp = g.add(Input("doubler_input"))("doubler_input")
     intercept = g.add(Input("intercept"))("intercept")
     two = g.add(Const(2))(Labels.VALUE)
-    mul = g.add(Func("numerical-worker.itimes", {"a": inp, "b": two}))(Labels.VALUE)
-    out = g.add(Func("numerical-worker.iadd", {"a": mul, "b": intercept}))(Labels.VALUE)
+    mul = g.add(Func("builtins.itimes", {"a": inp, "b": two}))(Labels.VALUE)
+    out = g.add(Func("builtins.iadd", {"a": mul, "b": intercept}))(Labels.VALUE)
     g.add(Output({"doubler_output": out}))
     return g
 
@@ -38,8 +38,8 @@ def loop_body() -> GraphData:
     one = g.add(Const(1))(Labels.VALUE)
     N = g.add(Const(10))(Labels.VALUE)
 
-    a_plus = g.add(Func("numerical-worker.iadd", {"a": a, "b": one}))(Labels.VALUE)
-    pred = g.add(Func("numerical-worker.igt", {"a": N, "b": a_plus}))(Labels.VALUE)
+    a_plus = g.add(Func("builtins.iadd", {"a": a, "b": one}))(Labels.VALUE)
+    pred = g.add(Func("builtins.igt", {"a": N, "b": a_plus}))(Labels.VALUE)
     g.add(Output({"loop_acc": a_plus, "should_continue": pred}))
     return g
 
@@ -57,14 +57,14 @@ def simple_map() -> GraphData:
     g = GraphData()
     six = g.add(Const(6))(Labels.VALUE)
     Ns_const = g.add(Const(list(range(21))))(Labels.VALUE)
-    Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
+    Ns = g.add(Func("builtins.unfold_values", {Labels.VALUE: Ns_const}))
     doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
     map_def = Map(
         doubler_const, Ns("")[0], "doubler_input", "doubler_output", {"intercept": six}
     )
     m = g.add(map_def)
-    folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m("*")}))
+    folded = g.add(Func("builtins.fold_values", {"values_glob": m("*")}))
     g.add(Output({"simple_map_output": folded(Labels.VALUE)}))
     return g
 
@@ -73,7 +73,7 @@ def maps_in_series() -> GraphData:
     g = GraphData()
     zero = g.add(Const(0))(Labels.VALUE)
     Ns_const = g.add(Const(list(range(21))))(Labels.VALUE)
-    Ns = g.add(Func("numerical-worker.unfold_values", {Labels.VALUE: Ns_const}))
+    Ns = g.add(Func("builtins.unfold_values", {Labels.VALUE: Ns_const}))
     doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
     map_def = Map(
@@ -85,6 +85,6 @@ def maps_in_series() -> GraphData:
         doubler_const, m("")[0], "doubler_input", "doubler_output", {"intercept": zero}
     )
     m2 = g.add(map_def2)
-    folded = g.add(Func("numerical-worker.fold_values", {"values_glob": m2("*")}))
+    folded = g.add(Func("builtins.fold_values", {"values_glob": m2("*")}))
     g.add(Output({"maps_in_series_output": folded(Labels.VALUE)}))
     return g

@@ -1,12 +1,16 @@
 import json
 from logging import getLogger
+from pathlib import Path
 
 from pydantic import BaseModel
 from typing_extensions import assert_never
 
+from tierkreis.controller.consts import PACKAGE_PATH
 from tierkreis.controller.data.graph import Eval
 from tierkreis.controller.data.location import Loc, NodeRunData, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
+from tierkreis.controller.executor.shell_executor import ShellExecutor
+from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.core import Labels
 from tierkreis.core.tierkreis_graph import PortID
@@ -47,7 +51,13 @@ def start(
         name = name.split(".")[-1]
         def_path = storage.write_worker_call_args(node_location, name, ins, output_list)
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
-        executor.run(launcher_name, def_path)
+
+        if launcher_name == "builtins":
+            UvExecutor(PACKAGE_PATH, logs_path=storage.logs_path).run(
+                launcher_name, def_path
+            )
+        else:
+            executor.run(launcher_name, def_path)
 
     elif node.type == "input":
         input_loc = parent.N(-1)

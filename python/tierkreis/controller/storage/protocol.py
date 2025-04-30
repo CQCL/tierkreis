@@ -11,6 +11,8 @@ from tierkreis.core.tierkreis_graph import PortID
 
 
 class ControllerStorage(Protocol):
+    logs_path: Path
+
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None: ...
     def read_node_def(self, node_location: Loc) -> NodeDef: ...
 

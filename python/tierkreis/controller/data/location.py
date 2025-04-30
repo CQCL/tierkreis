@@ -39,21 +39,44 @@ class Loc(str):
     def M(self, idx: int) -> "Loc":
         return Loc(str(self) + f".M{idx}")
 
+    @staticmethod
+    def from_steps(steps: list[NodeStep]) -> "Loc":
+        loc = ""
+        for step in steps.copy():
+            match step:
+                case "-":
+                    loc += "-"
+                case (node_type, idx):
+                    loc += f".{node_type}{idx}"
+        return Loc(loc)
+
     def parent(self) -> "Loc | None":
-        if not self:
+        if not self.steps:
             return None
 
-        step_strs = self.split(".")
-        last_step_str = step_strs.pop()
-        loc = Loc(".".join(step_strs))
-        if not last_step_str.startswith("L"):
-            return loc
+        steps = self.steps()
+        last_step = steps.pop()
+        match last_step:
+            case "-":
+                return Loc.from_steps([])
+            case ("L", 0):
+                return Loc.from_steps(steps)
+            case ("L", idx):
+                return Loc.from_steps(steps).L(idx - 1)
+            case ("N", idx) | ("M", idx):
+                return Loc.from_steps(steps)
+            case _:
+                assert_never(last_step)
 
-        idx = int(last_step_str[1:])
-        if idx == 0:
-            return loc
+    def steps(self) -> list[NodeStep]:
+        steps = []
+        for step_str in self.split("."):
+            if step_str == "-":
+                steps.append("-")
+            else:
+                steps.append((step_str[0], int(step_str[1:])))
 
-        return loc.L(idx - 1)
+        return steps
 
 
 OutputLoc = tuple[Loc, PortID]

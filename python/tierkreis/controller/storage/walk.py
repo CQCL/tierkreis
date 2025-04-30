@@ -113,15 +113,15 @@ def walk_map(storage: ControllerStorage, loc: Loc, map: Map) -> WalkResult:
     if parent is None:
         raise TierkreisError("MAP node must have parent.")
 
-    map_eles = [int(x) for x in storage.read_output_ports(parent.N(map.input_idx))]
-    unfinished = [i for i in map_eles if not storage.is_node_finished(loc.M(i))]
-    [walk_result.extend(walk_node(storage, loc.M(i))) for i in unfinished]
+    map_eles = storage.read_output_ports(parent.N(map.input_idx))
+    unfinished = [p for p in map_eles if not storage.is_node_finished(loc.M(p))]
+    [walk_result.extend(walk_node(storage, loc.M(p))) for p in unfinished]
 
     if len(unfinished) > 0:
         return walk_result
 
     for j in map_eles:
-        storage.link_outputs(loc, str(j), loc.M(j), map.out_port)
+        storage.link_outputs(loc, j, loc.M(j), map.out_port)
         storage.mark_node_finished(loc)
 
     return walk_result

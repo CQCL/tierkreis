@@ -90,18 +90,16 @@ def start(
         ins["body"] = (parent.N(node.body[0]), node.body[1])
         pipe_inputs_to_output_location(storage, node_location.N(-1), ins)
 
-        map_eles = [int(s) for s in storage.read_output_ports(parent.N(node.input_idx))]
-        for i in map_eles:
-            storage.link_outputs(
-                node_location.N(-1), str(i), parent.N(node.input_idx), str(i)
-            )
+        map_eles = storage.read_output_ports(parent.N(node.input_idx))
+        for p in map_eles:
+            storage.link_outputs(node_location.N(-1), p, parent.N(node.input_idx), p)
             eval_inputs = {k: (-1, k) for k in ins.keys()}
-            eval_inputs[node.in_port] = (-1, str(i))
+            eval_inputs[node.in_port] = (-1, str(p))
             start(
                 storage,
                 executor,
                 NodeRunData(
-                    node_location.M(i), Eval((-1, "body"), eval_inputs), output_list
+                    node_location.M(p), Eval((-1, "body"), eval_inputs), output_list
                 ),
             )
 

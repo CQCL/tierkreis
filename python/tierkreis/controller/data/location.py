@@ -7,8 +7,8 @@ from typing import Literal, Optional
 from pydantic import BaseModel
 from typing_extensions import assert_never
 
-from tierkreis.controller.data.graph import NodeDef, NodeIndex
-from tierkreis.core.tierkreis_graph import PortID
+from tierkreis.controller.data.graph import NodeDef, NodeIndex, PortID
+from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
 
@@ -22,8 +22,9 @@ class WorkerCallArgs(BaseModel):
     logs_path: Optional[Path]
 
 
-NodeType = Literal["N", "L", "M"]
-NodeStep = Literal["-"] | tuple[NodeType, NodeIndex]
+NodeStep = (
+    Literal["-"] | tuple[Literal["N", "L"], NodeIndex] | tuple[Literal["M"], PortID]
+)
 
 
 class Loc(str):
@@ -36,7 +37,7 @@ class Loc(str):
     def L(self, idx: int) -> "Loc":
         return Loc(str(self) + f".L{idx}")
 
-    def M(self, idx: int) -> "Loc":
+    def M(self, idx: PortID) -> "Loc":
         return Loc(str(self) + f".M{idx}")
 
     @staticmethod
@@ -69,12 +70,17 @@ class Loc(str):
                 assert_never(last_step)
 
     def steps(self) -> list[NodeStep]:
-        steps = []
+        steps: list[NodeStep] = []
         for step_str in self.split("."):
-            if step_str == "-":
-                steps.append("-")
-            else:
-                steps.append((step_str[0], int(step_str[1:])))
+            match step_str[0], step_str[1:]:
+                case ("-", _):
+                    steps.append("-")
+                case ("N", idx_str) | ("L", idx_str):
+                    steps.append((step_str[0], int(idx_str)))
+                case ("M", port):
+                    steps.append((step_str[0], step_str[1:]))
+                case _:
+                    raise TierkreisError(f"Invalid Loc: {self}")
 
         return steps
 

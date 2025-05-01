@@ -104,7 +104,7 @@ def start(
         for p in map_eles:
             storage.link_outputs(node_location.N(-1), p, parent.N(node.input_idx), p)
             eval_inputs = {k: (-1, k) for k in ins.keys()}
-            eval_inputs[node.in_port] = (-1, str(p))
+            eval_inputs[node.in_port] = (-1, p)
             start(
                 storage,
                 executor,

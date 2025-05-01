@@ -1,7 +1,7 @@
-from glob import glob
 import json
-from logging import getLogger
 import logging
+from glob import glob
+from logging import getLogger
 from pathlib import Path
 from sys import argv
 from typing import Any

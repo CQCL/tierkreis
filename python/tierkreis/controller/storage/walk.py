@@ -3,13 +3,11 @@ from dataclasses import dataclass
 from logging import getLogger
 from typing import assert_never
 
-
 from tierkreis.controller.consts import BODY_PORT
 from tierkreis.controller.data.graph import Eval, GraphData, Loop, Map
 from tierkreis.controller.data.location import Loc, NodeRunData
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
-from tierkreis.core import Labels
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)

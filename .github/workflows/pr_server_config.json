@@ -1,9 +1,0 @@
-{
-    "port": 8090,
-    "worker_path": [
-        {
-            "location": "python_nodes",
-            "path": "python/tests/test_worker"
-        }
-    ]
-}

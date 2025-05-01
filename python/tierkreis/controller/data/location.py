@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum
 from logging import getLogger
 from pathlib import Path
 from typing import Literal, Optional

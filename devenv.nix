@@ -17,15 +17,10 @@
   # https://devenv.sh/languages/
   languages.python = {
     enable = true;
-    version = "3.10";
     uv.enable = true;
   };
 
-  languages.rust = {
-    channel = "stable";
-    enable = true;
-    components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" ];
-  };
+  languages.rust.enable = true;
 
   # This allows building the type-check (pyo3) module on MacOSX "Apple Silicon"
   enterShell =

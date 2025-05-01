@@ -1,5 +1,4 @@
 version = 1
-revision = 1
 requires-python = ">=3.12"
 
 [[package]]
@@ -118,7 +117,7 @@ name = "click"
 version = "8.1.8"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "colorama", marker = "sys_platform == 'win32'" },
+    { name = "colorama", marker = "platform_system == 'Windows'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/b9/2e/0090cbf739cee7d23781ad4b89a9894a41538e4fcf4c31dcdd705b78eb8b/click-8.1.8.tar.gz", hash = "sha256:ed53c9d8990d83c2a27deae68e4ee337473f6330c040a31d4225c9574d16096a", size = 226593 }
 wheels = [
@@ -738,6 +737,7 @@ dependencies = [
     { name = "jinja2" },
     { name = "pydantic-settings" },
     { name = "tierkreis" },
+    { name = "watchfiles" },
 ]
 
 [package.metadata]
@@ -746,6 +746,7 @@ requires-dist = [
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "tierkreis", editable = "../python" },
+    { name = "watchfiles", specifier = ">=1.0.4" },
 ]
 
 [[package]]
@@ -781,7 +782,6 @@ requires-dist = [
     { name = "tierkreis-typecheck", marker = "extra == 'typecheck'", editable = "../type_check" },
     { name = "yachalk", specifier = ">=0.1.4,<0.2" },
 ]
-provides-extras = ["docker", "telemetry", "commontypes", "sc22-example", "typecheck"]
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]

@@ -9,6 +9,7 @@ dependencies = [
     "jinja2>=3.1.6",
     "pydantic-settings>=2.8.1",
     "tierkreis",
+    "watchfiles>=1.0.4",
 ]
 
 [tool.uv.sources]

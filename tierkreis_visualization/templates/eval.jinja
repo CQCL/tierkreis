@@ -1,0 +1,59 @@
+{% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
+
+<html>
+
+<head>
+  <title>Tierkreis visualization: EVAL node</title>
+  <script src="/static/vis-network.min.js"></script>
+  <script src="/static/network.js"></script>
+  <script src="/static/eventstream.js"></script>
+  <style type="text/css">
+    #mynetwork {
+      border: 1px solid lightgray;
+    }
+  </style>
+</head>
+
+<body>
+  {{ breadcrumbs_macro(breadcrumbs) }}
+  <div id="mynetwork"></div>
+
+  <script type="text/javascript">
+    let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
+    network.setOptions({
+      nodes: { font: { size: 24 } },
+      edges: { font: { size: 24 } },
+      layout:  {
+        randomSeed: 0,
+        hierarchical: {
+          direction: "UD",
+          sortMethod: "directed",
+          levelSeparation: 150,
+          nodeSpacing: 800,
+          shakeTowards: "leaves",
+          edgeMinimization: false
+        }
+      },
+      physics: {
+        enabled: false,
+        stabilization: {
+          enabled: true,
+          iterations: 10000,
+        },
+        solver: "hierarchicalRepulsion",
+        hierarchicalRepulsion: {
+          centralGravity: 0.0,
+          springLength: 100,
+          springConstant: 0.01,
+          nodeDistance: 350,
+          damping: 1,
+          avoidOverlap: 0
+        }
+      },
+    });
+    connectToStream("{{ url|safe }}", nodes, edges);
+  </script>
+</body>
+
+</html>
+

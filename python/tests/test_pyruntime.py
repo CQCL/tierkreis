@@ -1,6 +1,6 @@
 import pytest
-from sample_graph import sample_graph as sample_g
 
+from tests.sample_graph import sample_graph as sample_g
 from tierkreis.core.tierkreis_graph import TierkreisEdge, TierkreisGraph
 from tierkreis.core.values import TierkreisValue, VariantValue
 from tierkreis.pyruntime import PyRuntime

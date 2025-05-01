@@ -1,0 +1,47 @@
+from time import sleep
+
+from tierkreis.controller.data.graph import Eval, GraphData, ValueRef
+from tierkreis.controller.data.location import Loc
+from tierkreis.controller.executor.protocol import ControllerExecutor
+from tierkreis.controller.start import NodeRunData, start, start_nodes
+from tierkreis.controller.storage.protocol import ControllerStorage
+from tierkreis.controller.storage.walk import walk_node
+from tierkreis.core.tierkreis_graph import PortID
+
+root_loc = Loc("")
+
+
+def run_graph(
+    storage: ControllerStorage,
+    executor: ControllerExecutor,
+    g: GraphData,
+    graph_inputs: dict[str, bytes],
+    n_iterations: int = 10000,
+    polling_interval_seconds: float = 0.01,
+) -> None:
+    storage.write_metadata(Loc(""))
+    for name, value in graph_inputs.items():
+        storage.write_output(root_loc.N(-1), name, value)
+
+    storage.write_output(root_loc.N(-1), "body", g.model_dump_json().encode())
+
+    inputs: dict[PortID, ValueRef] = {
+        k: (-1, k) for k, v in graph_inputs.items() if k != "body"
+    }
+    node_run_data = NodeRunData(Loc(), Eval((-1, "body"), inputs), [])
+    start(storage, executor, node_run_data)
+    resume_graph(storage, executor, n_iterations, polling_interval_seconds)
+
+
+def resume_graph(
+    storage: ControllerStorage,
+    executor: ControllerExecutor,
+    n_iterations: int = 10000,
+    polling_interval_seconds: float = 0.01,
+) -> None:
+    for i in range(n_iterations):
+        walk_results = walk_node(storage, Loc())
+        start_nodes(storage, executor, walk_results.inputs_ready)
+        if storage.is_node_finished(Loc()):
+            break
+        sleep(polling_interval_seconds)

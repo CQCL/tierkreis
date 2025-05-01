@@ -3,8 +3,8 @@ from time import time
 from typing import Any, Dict, List, Optional, Tuple, Type
 
 import pytest
-from utils import nint_adder
 
+from tests.utils import nint_adder
 from tierkreis import TierkreisGraph
 from tierkreis.client import RuntimeClient
 from tierkreis.core.graphviz import _merge_copies

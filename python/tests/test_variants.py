@@ -7,8 +7,8 @@ from typing import Any, Literal, Type, Union
 
 import pydantic as pyd
 import pytest
-from test_worker.main import EmptyStruct, IntStruct, MyGeneric
 
+from tests.test_worker.main import EmptyStruct, IntStruct, MyGeneric
 from tierkreis.builder import Const, Output, UnionConst, graph
 from tierkreis.client.runtime_client import RuntimeClient
 from tierkreis.core.opaque_model import OpaqueModel

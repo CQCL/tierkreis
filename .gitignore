@@ -1,4 +1,5 @@
 /target
+.idea
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -163,3 +164,4 @@ cqcpython-secret.txt
 
 
 *.DS_Store
+*.code-workspace

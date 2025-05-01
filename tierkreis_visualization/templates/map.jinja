@@ -1,0 +1,30 @@
+{% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
+
+<html>
+
+<head>
+  <title>Tierkreis visualization: MAP node</title>
+  <script src="/static/vis-network.min.js"></script>
+  <script src="/static/network.js"></script>
+  <script src="/static/eventstream.js"></script>
+  <style type="text/css">
+    #mynetwork {
+      border: 1px solid lightgray;
+    }
+  </style>
+</head>
+
+<body>
+  {{ breadcrumbs_macro(breadcrumbs) }}
+  <div id="mynetwork"></div>
+
+  <script type="text/javascript">
+    let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "M");
+    network.setOptions({
+      edges: {  hidden: false, physics: true, color: {opacity: 0}, font: {color: "white"} }
+    })
+    connectToStream("{{ url|safe }}", nodes, edges);
+  </script>
+</body>
+
+</html>

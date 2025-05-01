@@ -117,6 +117,28 @@ def run(node_definition: WorkerCallArgs):
             with open(node_definition.output_dir / str(i), "w+") as fh:
                 fh.write(json.dumps(value))
 
+    elif node_definition.function_name == "fold_dict":
+        values = {}
+        inputs = glob(str(node_definition.inputs["values_glob"]))
+        for path in inputs:
+            with open(path, "rb") as fh:
+                k = Path(path).name
+                values[k] = json.loads(fh.read())
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(values))
+
+    elif node_definition.function_name == "unfold_dict":
+        with open(node_definition.inputs["value"], "rb") as fh:
+            values_dict = json.loads(fh.read())
+
+        if not isinstance(values_dict, dict):
+            raise ValueError("VALUE to unfold must be a dict.")
+
+        for k, value in values_dict.items():
+            with open(node_definition.output_dir / k, "w+") as fh:
+                fh.write(json.dumps(value))
+
     elif node_definition.function_name == "append":
         with open(node_definition.inputs["l"], "rb") as fh:
             l = json.loads(fh.read())

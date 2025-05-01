@@ -88,3 +88,19 @@ def maps_in_series() -> GraphData:
     folded = g.add(Func("builtins.fold_values", {"values_glob": m2("*")}))
     g.add(Output({"maps_in_series_output": folded(Labels.VALUE)}))
     return g
+
+
+def map_with_str_keys() -> GraphData:
+    g = GraphData()
+    zero = g.add(Const(0))(Labels.VALUE)
+    Ns_const = g.add(Const({"one": 1, "two": 2, "three": 3}))(Labels.VALUE)
+    Ns = g.add(Func("builtins.unfold_dict", {Labels.VALUE: Ns_const}))
+    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+
+    map_def = Map(
+        doubler_const, Ns("")[0], "doubler_input", "doubler_output", {"intercept": zero}
+    )
+    m = g.add(map_def)
+    folded = g.add(Func("builtins.fold_dict", {"values_glob": m("*")}))
+    g.add(Output({"map_with_str_keys_output": folded(Labels.VALUE)}))
+    return g

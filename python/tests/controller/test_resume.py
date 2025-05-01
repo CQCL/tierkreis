@@ -5,6 +5,7 @@ from uuid import UUID
 import pytest
 
 from tests.controller.sample_graphdata import (
+    map_with_str_keys,
     maps_in_series,
     simple_eval,
     simple_loop,
@@ -15,7 +16,6 @@ from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
-from tierkreis.core import Labels
 
 params = [
     (simple_eval(), b"12", "simple_eval", 1),
@@ -32,14 +32,18 @@ params = [
         "maps_in_series",
         4,
     ),
+    (map_with_str_keys(), b'{"three": 6, "one": 2, "two": 4}', "map_with_str_keys", 5),
+]
+ids = [
+    "simple_eval",
+    "simple_loop",
+    "simple_map",
+    "maps_in_series",
+    "map_with_str_keys",
 ]
 
 
-@pytest.mark.parametrize(
-    "graph,output,name,id",
-    params,
-    ids=["simple_eval", "simple_loop", "simple_map", "maps_in_series"],
-)
+@pytest.mark.parametrize("graph,output,name,id", params, ids=ids)
 def test_resume_eval(graph: GraphData, output: Any, name: str, id: int):
     g = graph
     storage = ControllerFileStorage(UUID(int=id), name=name)

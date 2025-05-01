@@ -38,5 +38,5 @@ class NamespaceClash(Exception):
     functions: set[str]
 
     def __str__(self) -> str:
-        return f"""Clash in namespace {'::'.join(self.namespace)} of functions\n
+        return f"""Clash in namespace {"::".join(self.namespace)} of functions\n
         {self.functions}"""

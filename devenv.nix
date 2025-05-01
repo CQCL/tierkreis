@@ -3,7 +3,6 @@
 {
 
   packages = [
-    pkgs.protobuf3_21
     pkgs.just
     pkgs.graphviz
   ] ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs.darwin.apple_sdk; [
@@ -13,6 +12,11 @@
     frameworks.SystemConfiguration
   ]);
 
+  git-hooks.hooks = {
+    pyright.enable = true;
+    ruff.enable = true;
+    ruff-format.enable = true;
+  };
 
   # https://devenv.sh/languages/
   languages.python = {

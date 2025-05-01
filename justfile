@@ -12,7 +12,8 @@ test:
 lint:
 	{{uvrun}} ruff format --check
 	{{uvrun}} ruff check
-	cd python && {{uvrun}} pyright
+	cd python && {{uvrun}} pyright .
 
 fix:
+	{{uvrun}} ruff format
 	{{uvrun}} ruff check --fix

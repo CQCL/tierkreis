@@ -76,7 +76,7 @@ class Loc(str):
                     steps.append("-")
                 case ("N", idx_str) | ("L", idx_str):
                     steps.append((step_str[0], int(idx_str)))
-                case ("M", port):
+                case ("M", _port):
                     steps.append((step_str[0], step_str[1:]))
                 case _:
                     raise TierkreisError(f"Invalid Loc: {self}")

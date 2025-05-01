@@ -141,22 +141,22 @@ def run(node_definition: WorkerCallArgs):
 
     elif node_definition.function_name == "append":
         with open(node_definition.inputs["l"], "rb") as fh:
-            l = json.loads(fh.read())
+            list_l = json.loads(fh.read())
 
         with open(node_definition.inputs["a"], "rb") as fh:
             a = json.loads(fh.read())
 
-        assert isinstance(l, list)
-        new_l: list[Any] = l + [a]
+        assert isinstance(list_l, list)
+        new_l: list[Any] = list_l + [a]
 
         with open(node_definition.outputs["value"], "w+") as fh:
             fh.write(json.dumps(new_l))
 
     elif node_definition.function_name == "len":
         with open(node_definition.inputs["l"], "rb") as fh:
-            l = json.loads(fh.read())
+            list_l = json.loads(fh.read())
 
-        length = len(l)
+        length = len(list_l)
         logger.info(f"LEN {length}")
 
         with open(node_definition.outputs["value"], "w+") as fh:

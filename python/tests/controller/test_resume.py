@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -18,21 +19,65 @@ from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
 params = [
-    (simple_eval(), b"12", "simple_eval", 1),
-    (simple_loop(), b"10", "simple_loop", 2),
+    (simple_eval(), 12, "simple_eval", 1),
+    (simple_loop(), 10, "simple_loop", 2),
     (
         simple_map(),
-        b"[6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46]",
+        [
+            6,
+            8,
+            10,
+            12,
+            14,
+            16,
+            18,
+            20,
+            22,
+            24,
+            26,
+            28,
+            30,
+            32,
+            34,
+            36,
+            38,
+            40,
+            42,
+            44,
+            46,
+        ],
         "simple_map",
         3,
     ),
     (
         maps_in_series(),
-        b"[0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80]",
+        [
+            0,
+            4,
+            8,
+            12,
+            16,
+            20,
+            24,
+            28,
+            32,
+            36,
+            40,
+            44,
+            48,
+            52,
+            56,
+            60,
+            64,
+            68,
+            72,
+            76,
+            80,
+        ],
         "maps_in_series",
         4,
     ),
-    (map_with_str_keys(), b'{"three": 6, "one": 2, "two": 4}', "map_with_str_keys", 5),
+    (map_with_str_keys(), {"one": 2, "two": 4, "three": 6}, "map_with_str_keys", 5),
 ]
 ids = [
     "simple_eval",
@@ -55,5 +100,5 @@ def test_resume_eval(graph: GraphData, output: Any, name: str, id: int):
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
 
-    c = storage.read_output(Loc(), f"{name}_output")
+    c = json.loads(storage.read_output(Loc(), f"{name}_output"))
     assert c == output

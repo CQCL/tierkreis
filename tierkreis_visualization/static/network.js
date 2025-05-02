@@ -8,8 +8,8 @@
  */
 
 function createNetwork(nodes, edges, name) {
-  var visnodes = new vis.DataSet(nodes);
-  var visedges = new vis.DataSet(edges);
+  var visnodes = new vis.DataSet(data.nodes.map(createJSNode));
+  var visedges = new vis.DataSet(data.nodes.map(createJSNode));
 
   var container = document.getElementById("mynetwork");
   var data = { nodes: visnodes, edges: visedges };

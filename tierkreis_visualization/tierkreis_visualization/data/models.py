@@ -1,12 +1,8 @@
-from enum import StrEnum
-
+from typing import Literal
 from pydantic import BaseModel
 
 
-class NodeStatus(StrEnum):
-    NOT_STARTED = "Not started"
-    STARTED = "Started"
-    FINISHED = "Finished"
+NodeStatus = Literal["Not started", "Started", "Finished"]
 
 
 class PyNode(BaseModel):

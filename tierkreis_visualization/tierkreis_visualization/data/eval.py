@@ -17,12 +17,12 @@ class EvalNodeData(BaseModel):
 
 def node_status(is_finished: bool, definition: Optional[WorkerCallArgs]) -> NodeStatus:
     if is_finished:
-        return NodeStatus.FINISHED
+         return "Finished"
 
     if definition is not None:
-        return NodeStatus.STARTED
+        return "Started"
 
-    return NodeStatus.NOT_STARTED
+    return "Not started"
 
 
 def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeData:

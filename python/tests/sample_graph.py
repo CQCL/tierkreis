@@ -1,4 +1,4 @@
-from tierkreis.core import Labels, TierkreisGraph
+from tierkreis import Labels, TierkreisGraph
 
 
 def _loop_graph() -> TierkreisGraph:

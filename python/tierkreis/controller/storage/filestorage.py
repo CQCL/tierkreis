@@ -6,13 +6,12 @@ from time import time_ns
 from typing import Any
 from uuid import UUID
 
-from tierkreis.controller.data.graph import NodeDef, NodeDefModel
+from tierkreis.controller.data.graph import NodeDef, NodeDefModel, PortID
 from tierkreis.controller.data.location import (
     Loc,
     OutputLoc,
     WorkerCallArgs,
 )
-from tierkreis.core.tierkreis_graph import PortID
 
 
 class ControllerFileStorage:

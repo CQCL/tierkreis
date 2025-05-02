@@ -1,0 +1,9 @@
+[project]
+name = "coint_toss"
+version = "0.1.0"
+description = "Does a biased toin coss. Used for error testing."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.10.6",
+]

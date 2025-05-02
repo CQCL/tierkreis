@@ -1,8 +1,8 @@
-from math import ceil, sqrt
 from pydantic import BaseModel
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
-
+from tierkreis.controller.data.graph import Map
+from tierkreis.exceptions import TierkreisError
 from tierkreis_visualization.data.models import PyEdge, PyNode
 
 
@@ -11,33 +11,17 @@ class MapNodeData(BaseModel):
     edges: list[PyEdge]
 
 
-def get_map_node(storage: ControllerStorage, node_location: Loc) -> MapNodeData:
-    i = 0
+def get_map_node(storage: ControllerStorage, loc: Loc, map: Map) -> MapNodeData:
+    parent = loc.parent()
+    if parent is None:
+        raise TierkreisError("MAP node must have parent.")
+
+    map_eles = storage.read_output_ports(parent.N(map.input_idx))
     nodes: list[PyNode] = []
-    while True:
-        loc = node_location.M(i)
-        if not storage.is_node_started(loc):
-            break
-
-        node = PyNode(id=i, status="Started", function_name=f"M{i}")
-        nodes.append(node)
-        i += 1
-
-        if storage.is_node_finished(loc):
+    for ele in map_eles:
+        node = PyNode(id=ele, status="Started", function_name=ele)
+        if storage.is_node_finished(loc.M(ele)):
             node.status = "Finished"
-            continue
+        nodes.append(node)
 
-    edges: list[PyEdge] = []
-    N = ceil(sqrt(i))
-    for col in range(N):
-        for row in range(N - 1):
-            edges.append(
-                PyEdge(
-                    from_node=row + N * col,
-                    to_node=row + N * col + 1,
-                    from_port=str(row),
-                    to_port=str(col),
-                )
-            )
-
-    return MapNodeData(nodes=nodes, edges=edges)
+    return MapNodeData(nodes=nodes, edges=[])

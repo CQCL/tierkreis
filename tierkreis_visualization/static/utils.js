@@ -1,3 +1,5 @@
+// @ts-check
+
 /**
  * Creates a JSEdge from a PyEdge model.
  * @param {PyEdge} py_edge

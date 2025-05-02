@@ -53,12 +53,13 @@ html {
     font-weight: 500;
 }
 
+
 .header__subtitle {
     font-size: 0.6rem;
     letter-spacing: -0.02em;
     font-weight: 600;
     color: var(--neutral-400);
-    margin-left: 0.125rem;
+    margin-left: 1.75rem;
     margin-top: 0.125rem;
     display: block;
 }

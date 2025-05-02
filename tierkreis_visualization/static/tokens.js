@@ -1,4 +1,4 @@
-export const colors = {
+const colors = {
     neutral :{
         0: "#ffffff",
         50 :"#fafafa",

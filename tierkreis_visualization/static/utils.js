@@ -26,7 +26,7 @@ function createJSNode(py_node) {
         label: py_node.function_name,
         status: py_node.status,
         color: {
-            "Not started": neutrals[0],
+            "Not started": colors.neutral[0],
             "Started": colors.amber.primary,
             "Finished": colors.green.primary,
         }[py_node.status],

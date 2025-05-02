@@ -9,12 +9,6 @@ function connectToStream(url, nodes, edges) {
     const visnodes = new vis.DataSet(data.nodes.map(createJSNode));
     const visedges = new vis.DataSet(data.edges.map(createJSEdge));
 
-    if (
-      JSON.stringify(nodes) === JSON.stringify(data.nodes) &&
-      JSON.stringify(edges) === JSON.stringify(data.edges)
-    )
-      return;
-
     position = network.getViewPosition();
     scale = network.getScale();
 

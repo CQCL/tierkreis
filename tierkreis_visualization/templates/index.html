@@ -1,7 +1,9 @@
+{% from "macros/common_head.html" import common_head_macro with context %}
+
 <html>
 <head>
     <title>Tierkreis visualization</title>
-    <link rel="stylesheet" type="text/css" src="/static/tokens.css" />
+     {{ common_head_macro() }}
 </head>
 <body>
     <a href="/workflows">All running workflows</a>

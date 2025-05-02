@@ -3,7 +3,6 @@
 {
 
   packages = [
-    pkgs.protobuf3_21
     pkgs.just
     pkgs.graphviz
   ] ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs.darwin.apple_sdk; [
@@ -13,19 +12,19 @@
     frameworks.SystemConfiguration
   ]);
 
+  git-hooks.hooks = {
+    pyright.enable = true;
+    ruff.enable = true;
+    ruff-format.enable = true;
+  };
 
   # https://devenv.sh/languages/
   languages.python = {
     enable = true;
-    version = "3.10";
     uv.enable = true;
   };
 
-  languages.rust = {
-    channel = "stable";
-    enable = true;
-    components = [ "rustc" "cargo" "clippy" "rustfmt" "rust-analyzer" ];
-  };
+  languages.rust.enable = true;
 
   # This allows building the type-check (pyo3) module on MacOSX "Apple Silicon"
   enterShell =

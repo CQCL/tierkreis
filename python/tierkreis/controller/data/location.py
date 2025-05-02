@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from enum import Enum
 from logging import getLogger
 from pathlib import Path
 from typing import Literal, Optional
@@ -75,10 +74,12 @@ class Loc(str):
             match step_str[0], step_str[1:]:
                 case ("-", _):
                     steps.append("-")
-                case ("N", idx_str) | ("L", idx_str):
-                    steps.append((step_str[0], int(idx_str)))
-                case ("M", port):
-                    steps.append((step_str[0], step_str[1:]))
+                case ("N", idx_str):
+                    steps.append(("N", int(idx_str)))
+                case ("L", idx_str):
+                    steps.append(("L", int(idx_str)))
+                case ("M", _port):
+                    steps.append(("M", step_str[1:]))
                 case _:
                     raise TierkreisError(f"Invalid Loc: {self}")
 

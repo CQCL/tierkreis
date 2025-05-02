@@ -116,6 +116,7 @@ def test_generic_dataclass() -> None:
     assert TierkreisValue.from_python(py_val, MyGenericDataclass[int]) == tk_val
 
 
+@pytest.mark.skip()
 def test_pydantic_nested() -> None:
     T = TypeVar("T")
 

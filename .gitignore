@@ -159,8 +159,7 @@ _server_output.txt
 # Devenv (Nix)
 .devenv*
 devenv.local.nix
-
-cqcpython-secret.txt
+.pre-commit-config.yaml
 
 
 *.DS_Store

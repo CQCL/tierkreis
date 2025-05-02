@@ -1,0 +1,10 @@
+version: 2
+updates:
+  - package-ecosystem: "uv"
+    directory: "/"
+    insecure-external-code-execution: allow
+    schedule:
+      interval: "weekly"
+    labels:
+      - "python"
+      - "dependencies"

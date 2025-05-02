@@ -31,6 +31,9 @@ html {
     font-weight: 500;
     letter-spacing: -0.02em;
     text-decoration: none;
+    display: block;
+    width: min-content;
+    text-wrap: nowrap;
     border: 1px solid var(--neutral-300);
 
 }

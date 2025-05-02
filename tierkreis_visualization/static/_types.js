@@ -19,6 +19,7 @@
  * @property {string} title - The node name.
  * @property {string} label - The node label..
  * @property {string} shape - Node shape.
+ * @property {string} color - Node colour.
  * @property {"Not started" | "Started" | "Finished"} status - Node status
  */
 

@@ -5,13 +5,12 @@ from pydantic import BaseModel
 from typing_extensions import assert_never
 
 from tierkreis.controller.consts import PACKAGE_PATH
-from tierkreis.controller.data.graph import Eval
+from tierkreis.controller.data.graph import Eval, PortID
 from tierkreis.controller.data.location import Loc, NodeRunData, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
-from tierkreis.core import Labels
-from tierkreis.core.tierkreis_graph import PortID
+from tierkreis.labels import Labels
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)

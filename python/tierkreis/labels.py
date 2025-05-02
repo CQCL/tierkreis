@@ -1,4 +1,4 @@
-"""Core definitions, including the TierkreisGraph, Types and Values."""
+"""Core Tierkreis Label type."""
 
 
 class Labels:
@@ -12,7 +12,3 @@ class Labels:
     VARIANT_VALUE = "variant_value"
     CONTINUE = "continue"
     BREAK = "break"
-
-
-# This needs to be here to fix some cycles in the imports
-from .tierkreis_graph import TierkreisGraph  # noqa: E402, F401

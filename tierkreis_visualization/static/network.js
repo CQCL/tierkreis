@@ -1,3 +1,12 @@
+// @ts-check
+
+/**
+ * Connect to an event stream. Pass in a nodes and edges list to mutate.
+ * @param {PyNode[]} nodes - Event stream url to subscribe to.
+ * @param {PyEdge[]} edges - Network vis library.
+ * @param {string} name - List of graph edges.
+ */
+
 function createNetwork(nodes, edges, name) {
   var visnodes = new vis.DataSet(nodes);
   var visedges = new vis.DataSet(edges);

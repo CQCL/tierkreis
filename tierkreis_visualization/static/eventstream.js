@@ -6,8 +6,8 @@ function connectToStream(url, nodes, edges) {
   };
   eventSource.addEventListener("message", (ev) => {
     data = JSON.parse(ev["data"]);
-    var visnodes = new vis.DataSet(data.nodes);
-    var visedges = new vis.DataSet(data.edges);
+    const visnodes = new vis.DataSet(data.nodes.map(createJSNode));
+    const visedges = new vis.DataSet(data.edges.map(createJSEdge));
 
     if (
       JSON.stringify(nodes) === JSON.stringify(data.nodes) &&

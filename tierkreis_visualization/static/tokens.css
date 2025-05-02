@@ -1,0 +1,17 @@
+::root {
+    --neutral-0: #ffffff;
+    --neutral-50 :  #fafafa;
+    --neutral-100 :  #f4f4f5;
+    --neutral-200 :  #e4e4e7;
+    --neutral-300 :  #d4d4d8;
+    --neutral-400 :  #a1a1aa;
+    --neutral-500 :  #71717a;
+    --neutral-600 :  #52525b;
+    --neutral-700 :  #3f3f46;
+    --neutral-800 : #27272a;
+    --neutral-900 :  #18181b;
+    --neutral-950 :  #09090b;
+    --green-primary: #bbf7d0;
+    --red-primary: #fca5a5;
+    --amber-primary: #fde68a;
+}

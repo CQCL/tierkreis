@@ -18,14 +18,14 @@ def get_loop_node(storage: ControllerStorage, node_location: Loc) -> LoopNodeDat
     new_location = node_location.L(i)
 
     nodes = [
-        PyNode(id=n, status=NodeStatus.FINISHED, function_name=f"L{n}")
+        PyNode(id=n, status="Finished", function_name=f"L{n}")
         for n in range(i)
     ]
 
     last_status = (
-        NodeStatus.FINISHED
+        "Finished"
         if storage.is_node_finished(new_location)
-        else NodeStatus.STARTED
+        else "Started"
     )
     nodes.append(PyNode(id=i, status=last_status, function_name=f"L{i}"))
 

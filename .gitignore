@@ -146,7 +146,6 @@ cython_debug/
 
 .python-version
 
-.envrc
 .direnv
 
 .antlr/

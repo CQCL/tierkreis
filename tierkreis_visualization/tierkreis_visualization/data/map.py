@@ -1,4 +1,3 @@
-from math import ceil, sqrt
 from pydantic import BaseModel
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage

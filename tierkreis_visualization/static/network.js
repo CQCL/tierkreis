@@ -8,16 +8,16 @@
  */
 
 function createNetwork(nodes, edges, name) {
-  var visnodes = new vis.DataSet(data.nodes.map(createJSNode));
-  var visedges = new vis.DataSet(data.nodes.map(createJSNode));
+  const visnodes = new vis.DataSet(data.nodes.map(createJSNode));
+  const visedges = new vis.DataSet(data.nodes.map(createJSNode));
 
-  var container = document.getElementById("mynetwork");
-  var data = { nodes: visnodes, edges: visedges };
-  var options = {
+  const container = document.getElementById("mynetwork");
+  const data = { nodes: visnodes, edges: visedges };
+  const options = {
     layout: { hierarchical: { direction: "LR", sortMethod: "directed" } },
   };
 
-  var network = new vis.Network(container, data, options);
+  const network = new vis.Network(container, data, options);
   network.on("doubleClick", function (params) {
     let nodes = params.nodes;
     if (nodes.length === 1) {

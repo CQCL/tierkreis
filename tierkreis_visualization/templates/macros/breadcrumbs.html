@@ -1,5 +1,7 @@
 {% macro breadcrumbs_macro(links) -%}
+    <div style="margin-bottom:1.5rem">
     {% for link in links %}
         <a class="badge" href="{{ link[1] }}">{{ link[0] }}</a>
     {% endfor %}
+    </div>
 {%- endmacro %}

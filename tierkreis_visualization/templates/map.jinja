@@ -1,18 +1,17 @@
 {% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
 {% from "macros/common_head.html" import common_head_macro with context %}
+{% from "macros/header.html" import header_macro with context %}
 <html>
 
 <head>
   <title>Tierkreis visualization: MAP node</title>
   {{ common_head_macro() }}
-  <style type="text/css">
-    #mynetwork {
-      border: 1px solid lightgray;
-    }
-  </style>
+
 </head>
 
 <body>
+  {{ header_macro() }}
+  <main>
   {{ breadcrumbs_macro(breadcrumbs) }}
   <div id="mynetwork"></div>
 
@@ -23,6 +22,7 @@
     })
     connectToStream("{{ url|safe }}", nodes, edges);
   </script>
+  </main>
 </body>
 
 </html>

@@ -1,25 +1,25 @@
 {% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
 {% from "macros/common_head.html" import common_head_macro with context %}
+{% from "macros/header.html" import header_macro with context %}
 <html>
 
 <head>
   <title>Tierkreis visualization: LOOP node</title>
   {{ common_head_macro() }}
-  <style type="text/css">
-    #mynetwork {
-      border: 1px solid lightgray;
-    }
-  </style>
+
 </head>
 
 <body>
-  {{ breadcrumbs_macro(breadcrumbs) }}
-  <div id="mynetwork"></div>
+  {{ header_macro() }}
+  <main>
+    {{ breadcrumbs_macro(breadcrumbs) }}
+    <div id="mynetwork"></div>
 
-  <script type="text/javascript">
-    let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "L");
-    connectToStream("{{ url|safe }}", nodes, edges);
-  </script>
+    <script type="text/javascript">
+      let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "L");
+      connectToStream("{{ url|safe }}", nodes, edges);
+    </script>
+  </main>
 </body>
 
 </html>

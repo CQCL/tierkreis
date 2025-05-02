@@ -12,4 +12,4 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 @app.get("/")
 def read_root(request: Request):
-    return RedirectResponse(url='/workflows')
+    return RedirectResponse(url="/workflows")

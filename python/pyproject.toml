@@ -17,18 +17,9 @@ dependencies = [
     "pydantic~=2.5",
 ]
 
-[project.scripts]
-tkrs = 'tierkreis.cli:cli'
-
-[project.optional-dependencies]
-typecheck = ["tierkreis-typecheck"]
-
 [dependency-groups]
 dev = ["pytest"]
 build = ["build[uv]"]
-
-[tool.pytest.ini_options]
-markers = ["pytket"]
 
 [build-system]
 requires = ["hatchling"]

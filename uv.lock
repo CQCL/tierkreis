@@ -738,11 +738,6 @@ dependencies = [
     { name = "pydantic" },
 ]
 
-[package.optional-dependencies]
-typecheck = [
-    { name = "tierkreis-typecheck" },
-]
-
 [package.dev-dependencies]
 build = [
     { name = "build", extra = ["uv"] },
@@ -752,37 +747,11 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "pydantic", specifier = "~=2.5" },
-    { name = "tierkreis-typecheck", marker = "extra == 'typecheck'" },
-]
-provides-extras = ["typecheck"]
+requires-dist = [{ name = "pydantic", specifier = "~=2.5" }]
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]
 dev = [{ name = "pytest" }]
-
-[[package]]
-name = "tierkreis-typecheck"
-version = "0.2.0"
-source = { registry = "https://pypi.org/simple" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/81/d76a9ea5d226cbb54631a683032452e28d65cf92a06ee6f08b1df17ba828/tierkreis_typecheck-0.2.0-cp310-cp310-macosx_10_12_x86_64.whl", hash = "sha256:72d03781b94c6c0e1011f4962e43218e9088b1f20ec398833f0ae242e862f8f7", size = 1227759, upload-time = "2024-02-15T23:37:45.234Z" },
-    { url = "https://files.pythonhosted.org/packages/13/da/1f51d91e69d0b2c8081834458cce65ff1809e8d8868c85dd77f562a7f8b9/tierkreis_typecheck-0.2.0-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:cce597fadd70607612c9c69e84b147bcfcc4ac7f598b0b9e38cd995e0c369730", size = 1183502, upload-time = "2024-02-15T23:37:47.458Z" },
-    { url = "https://files.pythonhosted.org/packages/f2/96/ed3154a287e05404c86f34fb56ca4ef0f7919045c34f41ef8f2d963004bc/tierkreis_typecheck-0.2.0-cp310-cp310-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:017e2b16557445c8b5eae00c05a04d6cffea33dd342074d22e2bb62a21531a3f", size = 2111643, upload-time = "2024-02-15T23:37:49.564Z" },
-    { url = "https://files.pythonhosted.org/packages/29/66/569820a102a3be03da66dfe53164cfcb47d85ff551f71581ba66a5275252/tierkreis_typecheck-0.2.0-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:4ec1861f984ae1b9e2008a04dac339cfdeb001be155f1e375aaab81261c53e85", size = 2150144, upload-time = "2024-02-15T23:37:51.675Z" },
-    { url = "https://files.pythonhosted.org/packages/fe/8c/c3cc8981c16388779a8b6dfd7199f2d01cf43e1e85f19eb6553e9f15ca65/tierkreis_typecheck-0.2.0-cp310-none-win_amd64.whl", hash = "sha256:63b083da56ac8768dd044dfe0cfab0bdd92591aee614361434f960309e514d61", size = 1059423, upload-time = "2024-02-15T23:37:53.694Z" },
-    { url = "https://files.pythonhosted.org/packages/9f/9d/ef921b9554ecf4ef6c40b9de24656c15ba7e8e31a59f2be922e3722f1f03/tierkreis_typecheck-0.2.0-cp311-cp311-macosx_10_12_x86_64.whl", hash = "sha256:4592aa4e69ffac3787c736a860e2f73920f0fbbc120e302dad73e9f40263f678", size = 1227756, upload-time = "2024-02-15T23:37:55.826Z" },
-    { url = "https://files.pythonhosted.org/packages/fa/98/d1fcd4fc79ab12a1a67ef2cebdd0d2d7a80a4e8e73d88064e0ad947b39ec/tierkreis_typecheck-0.2.0-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:3235732ac0810c6f692f556d2f2d2d8becf6dd0e5556b174376a9f8321298f5f", size = 1183504, upload-time = "2024-02-15T23:37:58.018Z" },
-    { url = "https://files.pythonhosted.org/packages/96/6a/3cce788119641969f5f0e8c705fa9d12a72eaaf121b84fd4361799904580/tierkreis_typecheck-0.2.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:902256e8f0d2e0c29ca267ca57c5f204f79cb087ef68184cb5339e5aced92ccf", size = 2111642, upload-time = "2024-02-15T23:38:00.284Z" },
-    { url = "https://files.pythonhosted.org/packages/cc/22/4e7a8dad76e806327bec3cd0c5066dacfad7235cc19d2fe7afc5b90ee275/tierkreis_typecheck-0.2.0-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:43473b4a40f219eae620db635350180918282834e60dd7729546afe6dde8db87", size = 2150142, upload-time = "2024-02-15T23:38:01.922Z" },
-    { url = "https://files.pythonhosted.org/packages/f7/a0/044be996c63c9f00c903765726ffd2021fe35d9467bb2a2fa6c4d8621fce/tierkreis_typecheck-0.2.0-cp311-none-win_amd64.whl", hash = "sha256:3ff7f498f24bfe9f3e6a483b0946864c53f3271a2530f4754e8ba860a6c398d6", size = 1059420, upload-time = "2024-02-15T23:38:04.001Z" },
-    { url = "https://files.pythonhosted.org/packages/6f/77/ba1241b9d3b88dc50049644f8dd91548b472b32e8dd8c2b34c659e43f582/tierkreis_typecheck-0.2.0-cp312-cp312-macosx_10_12_x86_64.whl", hash = "sha256:736cb37df7df30eee22aac390f88125a85832dcd87daaacb3183eea328903693", size = 1227973, upload-time = "2024-02-15T23:38:05.647Z" },
-    { url = "https://files.pythonhosted.org/packages/68/fd/9eb7179399e7025868461641f50283a188573941cc1ca356dc3e49de2834/tierkreis_typecheck-0.2.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:d39cb9da0632437060ebb426d153f42dc8e1b5ee055f4d53f63097b89f7871e4", size = 1183520, upload-time = "2024-02-15T23:38:07.597Z" },
-    { url = "https://files.pythonhosted.org/packages/1f/1d/1c07e895330536c0196a75e49cb91ee8b36743b6e9fbca1cde8eaa8cdad2/tierkreis_typecheck-0.2.0-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:bceae852966ec6d660f4a43ad4d3efe299d4796b5c1621e7bc79b53745e00758", size = 2111599, upload-time = "2024-02-15T23:38:09.38Z" },
-    { url = "https://files.pythonhosted.org/packages/a6/13/6dae2081ff14ad5412fce4f3ad4b4a36f2913317b60c2f1749872beb93a6/tierkreis_typecheck-0.2.0-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e38723af00a06cbe9bcddc92c5ea7e9811c410313788641c94a762424d9faf8a", size = 2150237, upload-time = "2024-02-15T23:38:11.448Z" },
-    { url = "https://files.pythonhosted.org/packages/56/42/d029d07c9ea1ad72ddbffe0e33fe77fcb2263591b58b7e681ae447eca7eb/tierkreis_typecheck-0.2.0-cp312-none-win_amd64.whl", hash = "sha256:d4c6996ed24a6b41abbf7f96aa675345ddc6b118a23d6a931344807601b7ab7b", size = 1059407, upload-time = "2024-02-15T23:38:12.912Z" },
-]
 
 [[package]]
 name = "tomli"

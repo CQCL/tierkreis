@@ -13,4 +13,4 @@ dependencies = [
 ]
 
 [tool.uv.sources]
-tierkreis = { path = "../python", editable = true }
+tierkreis = { workspace = true }

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
+from tierkreis.controller.data.graph import Map
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
 from watchfiles import awatch
 
@@ -56,6 +57,7 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
 
     elif function_name == "map":
+        assert isinstance(node, Map)
         data = get_map_node(storage, node_location, node)
         name = "map.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)

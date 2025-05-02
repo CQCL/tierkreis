@@ -1,12 +1,12 @@
 from typing import Literal
 from pydantic import BaseModel
-
+from tierkreis.controller.data.graph import PortID
 
 NodeStatus = Literal["Not started", "Started", "Finished"]
 
 
 class PyNode(BaseModel):
-    id: int
+    id: int | PortID
     status: NodeStatus
     function_name: str
 

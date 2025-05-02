@@ -1,21 +1,21 @@
 /**
  * @typedef {Object} PyNode
- * @property {number} id - The node ID.
+ * @property {number | string} id - The node ID.
  * @property {"Not started" | "Started" | "Finished"} status  - The node name.
  * @property {string} function_name - The node label..
  */
 
 /**
  * @typedef {Object} PyEdge
- * @property {number} from_node - The edge name.
+ * @property {number | string} from_node - The edge name.
  * @property {string} from_port - The edge arrow
- * @property {number} to_node - The edge name.
+ * @property {number | string} to_node - The edge name.
  * @property {string} to_port - The edge label.
  */
 
 /**
  * @typedef {Object} JSNode
- * @property {number} id - The node ID.
+ * @property {number | string} id - The node ID.
  * @property {string} title - The node name.
  * @property {string} label - The node label..
  * @property {string} shape - Node shape.
@@ -26,8 +26,8 @@
 /**
  * @typedef {Object} JSEdge
  * @property {string} id - The edge ID.
- * @property {number} from - The edge name.
- * @property {number} to - The edge label..
+ * @property {number | string} from - The edge name.
+ * @property {number | string} to - The edge label..
  * @property {string} title - The edge name.
  * @property {string} label - Node shape.
  * @property {string} arrows - The edge arrow
@@ -44,5 +44,3 @@
  * @property {PyNode[]} nodes - The edge ID.
  * @property {PyEdge[]} edges - The edge name.
  */
-
-

@@ -6,7 +6,6 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
-from tierkreis.controller.data.graph import Map
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
 from watchfiles import awatch
 
@@ -42,22 +41,20 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
 
     definition = storage.read_worker_call_args(node_location)
     node = storage.read_node_def(node_location)
-    function_name = definition.function_name
 
-    if function_name == "eval":
+    if node.type == "eval":
         data = get_eval_node(storage, node_location)
         name = "eval.jinja"
         ctx: dict[str, Any] = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
             by_alias=True
         )
 
-    elif function_name == "loop":
+    elif node.type == "loop":
         data = get_loop_node(storage, node_location)
         name = "loop.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
 
-    elif function_name == "map":
-        assert isinstance(node, Map)
+    elif node.type == "map":
         data = get_map_node(storage, node_location, node)
         name = "map.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)

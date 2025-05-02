@@ -6,22 +6,14 @@ function connectToStream(url, nodes, edges) {
   };
   eventSource.addEventListener("message", (ev) => {
     data = JSON.parse(ev["data"]);
-    const visnodes = new vis.DataSet(data.nodes.map(createJSNode));
-    const visedges = new vis.DataSet(data.edges.map(createJSEdge));
+    for (let node in data.nodes) {
+      console.log(node);
+      jsNode = createJSNode(data.nodes[node]);
+      console.log(jsNode);
+      console.log(nodes.update);
 
-    position = network.getViewPosition();
-    scale = network.getScale();
-
-    network.setData({ nodes: visnodes, edges: visedges });
-    args = {
-      position: position,
-      scale: scale,
-      animation: false,
-    };
-    let move = () => {
-      network.moveTo(args);
-      network.off("afterDrawing", move);
-    };
-    network.on("afterDrawing", move);
+      nodes.update(jsNode);
+      network.redraw();
+    }
   });
 }

@@ -24,5 +24,5 @@ function createNetwork(nodes, edges, name) {
       window.location.href = `${window.location.href}.${name}${nodes[0]}`;
     }
   });
-  return [network, nodes, edges];
+  return [network, visnodes, visedges];
 }

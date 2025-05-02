@@ -17,7 +17,7 @@ class EvalNodeData(BaseModel):
 
 def node_status(is_finished: bool, definition: Optional[WorkerCallArgs]) -> NodeStatus:
     if is_finished:
-         return "Finished"
+        return "Finished"
 
     if definition is not None:
         return "Started"

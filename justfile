@@ -20,3 +20,6 @@ fix:
 
 serve:
 	cd tierkreis_visualization && {{uvrun}} fastapi dev tierkreis_visualization/main.py
+
+examples:
+	{{uvrun}} examples/*/*.py

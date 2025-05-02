@@ -43,7 +43,7 @@ def hello_graph() -> GraphData:
 def main() -> None:
     """Configure our workflow execution and run it to completion."""
     # Assign a fixed uuid for our workflow.
-    workflow_id = UUID(int=0)
+    workflow_id = UUID(int=100)
     storage = ControllerFileStorage(workflow_id, name="symbolic_circuits")
     # Clean the working directory if a prior workflow of that ID already exists
     storage.clean_graph_files()

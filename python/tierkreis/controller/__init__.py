@@ -6,7 +6,7 @@ from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node
-from tierkreis.core.tierkreis_graph import PortID
+from tierkreis.controller.data.graph import PortID
 
 root_loc = Loc("")
 

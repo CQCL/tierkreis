@@ -8,7 +8,7 @@ from tierkreis.controller.data.graph import (
     Map,
     Output,
 )
-from tierkreis.core import Labels
+from tierkreis import Labels
 
 
 def doubler_plus() -> GraphData:

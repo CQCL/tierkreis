@@ -9,8 +9,8 @@ dev = [
     { include-group = "docs" },
 ]
 lint = [
-    "ruff~=0.5",
-    "pyright==1.1.373",
+    "ruff>=0.11.8",
+    "pyright>=1.1.400",
 ]
 test = [
     "pytest>=6.2,<9",

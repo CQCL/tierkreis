@@ -61,11 +61,6 @@ class ControllerFileStorage:
         path = self.workflow_dir / str(node_location) / "errors"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
-    
-    def _error_history_path(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "error_history"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
 
     def clean_graph_files(self) -> None:
         uid = os.getuid()
@@ -99,9 +94,6 @@ class ControllerFileStorage:
         output_list: list[PortID],
     ) -> Path:
         node_definition_path = self._worker_call_args_path(node_location)
-        if node_definition_path.exists():
-            # means we are restarting a worker from an error
-            return node_definition_path
         node_definition = WorkerCallArgs(
             function_name=function_name,
             inputs={
@@ -120,14 +112,6 @@ class ControllerFileStorage:
 
         return node_definition_path
 
-    def delete_errors(self, node_location: Loc) -> None:
-        error_path = self._error_path(node_location)
-        if error_path.exists():
-            with open(self._error_history_path(node_location) , "a+") as fh:
-                with open(error_path, "r") as err_fh:
-                    fh.write(err_fh.read())
-                    fh.write("\n")
-            os.remove(error_path)
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         node_definition_path = self._worker_call_args_path(node_location)
@@ -172,8 +156,7 @@ class ControllerFileStorage:
         return self._done_path(node_location).exists()
 
     def node_has_error(self, node_location: Loc) -> bool:
-        path = Path(self._error_path(node_location))
-        return path.exists() and path.is_file() and path.read_bytes()
+        return self._error_path(node_location).exists()
 
     def mark_node_finished(self, node_location: Loc) -> None:
         self._done_path(node_location).touch()

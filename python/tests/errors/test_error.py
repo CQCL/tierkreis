@@ -11,7 +11,7 @@ from tierkreis.controller.data.graph import (
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
-from tierkreis.core import Labels
+from tierkreis.labels import Labels
 
 
 def coin_toss(const_input: float = 1.0) -> GraphData:
@@ -23,7 +23,7 @@ def coin_toss(const_input: float = 1.0) -> GraphData:
 
 
 def test_raise_error():
-    g = coin_toss()
+    g = coin_toss(0.)
     storage = ControllerFileStorage(UUID(int=42), name="coint_toss")
     executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
     inputs = {}

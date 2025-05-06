@@ -5,19 +5,21 @@ from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import (
     Func,
     GraphData,
+    Output,
 )
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
-
 def will_fail() -> GraphData:
     graph = GraphData()
-    graph.add(Func("failing_worker.fail", {}))("fail")
+    out = graph.add(Func("failing_worker.fail", {}))("fail")
+    graph.add(Output({"fail": out}))
     return graph
 
 def wont_fail() -> GraphData:
     graph = GraphData()
-    graph.add(Func("failing_worker.wont_fail", {}))("wont_fail")
+    out = graph.add(Func("failing_worker.wont_fail", {}))("wont_fail")
+    graph.add(Output({"wont_fail": out}))
     return graph
 
 def test_raise_error() -> None:

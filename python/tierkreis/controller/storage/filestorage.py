@@ -58,6 +58,11 @@ class ControllerFileStorage:
         return path
 
     def _error_path(self, node_location: Loc) -> Path:
+        path = self.workflow_dir / str(node_location) / "_error"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        return path
+
+    def _error_logs_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "errors"
         path.parent.mkdir(parents=True, exist_ok=True)
         return path
@@ -102,6 +107,7 @@ class ControllerFileStorage:
             outputs={k: self._output_path(node_location, k) for k in output_list},
             output_dir=self._outputs_dir(node_location),
             done_path=self._done_path(node_location),
+            error_path=self._error_path(node_location),
             logs_path=self.logs_path,
         )
         with open(node_definition_path, "w+") as fh:
@@ -145,9 +151,9 @@ class ControllerFileStorage:
             return fh.read()
 
     def read_errors(self, node_location: Loc) -> str:
-        if not self._error_path(node_location).exists():
+        if not self._error_logs_path(node_location).exists():
             return ""
-        with open(self._error_path(node_location), "r") as fh:
+        with open(self._error_logs_path(node_location), "r") as fh:
             return fh.read()
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
@@ -162,7 +168,7 @@ class ControllerFileStorage:
         return self._done_path(node_location).exists()
 
     def node_has_error(self, node_location: Loc) -> bool:
-        return self._error_path(node_location).exists() and self._error_path(node_location).read_bytes()
+        return self._error_path(node_location).exists()
 
     def mark_node_finished(self, node_location: Loc) -> None:
         self._done_path(node_location).touch()

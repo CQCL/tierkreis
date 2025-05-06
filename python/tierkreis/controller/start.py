@@ -47,7 +47,7 @@ def start(
         launcher_name = ".".join(name.split(".")[:-1])
         name = name.split(".")[-1]
         if storage.node_has_error(node_location):
-            storage.delete_errors(node_location)
+            return
         def_path = storage.write_worker_call_args(node_location, name, ins, output_list)
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
 

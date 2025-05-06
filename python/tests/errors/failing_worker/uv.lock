@@ -12,7 +12,7 @@ wheels = [
 ]
 
 [[package]]
-name = "coint-toss"
+name = "failing-worker"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -1,8 +1,6 @@
 import json
 import logging
-import time
 from pathlib import Path
-from random import random
 from sys import argv
 
 from pydantic import BaseModel
@@ -27,21 +25,12 @@ def run(node_definition: NodeDefinition) -> None:
         level=logging.INFO,
     )
     logger.info(node_definition.model_dump())
-
-    logger.info("Starting work by sleeping...")
-    time.sleep(5)
-    logger.info("See if we succeed")
-    with open(node_definition.inputs["threshold"], "rb") as fh:
-        threshold = json.load(fh)
-        assert isinstance(threshold, float or int)
-
-    if random() > threshold:
-        logger.error("Bad luck, raising an error now...")
-        raise ValueError("No bad luck allowed here!")
-    logger.info("Seems like nothing bad happened.")
-    with open(node_definition.outputs["coin_toss"], "w+") as fh:
-        json.dump({"coin_tossed": True}, fh)
-    node_definition.done_path.touch()
+    logger.info("Doing some work...")
+    # with open(node_definition.inputs["threshold"], "rb") as fh:
+    #     threshold = json.load(fh)
+    #     assert isinstance(threshold, float or int)
+    logger.error("Raising an error now...")
+    raise ValueError("Worker failed!")
 
 
 def main() -> None:

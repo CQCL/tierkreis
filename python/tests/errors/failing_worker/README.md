@@ -1,0 +1,1 @@
+A simple worker that just fails.

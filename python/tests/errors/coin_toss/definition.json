@@ -1,8 +1,0 @@
-{
-    "function_name": "compile_circuits",
-    "inputs": {},
-    "outputs": {
-        "coin_toss": "./coin_toss"
-    },
-    "done_path": "./_done"
-}

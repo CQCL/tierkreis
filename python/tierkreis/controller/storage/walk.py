@@ -4,7 +4,7 @@ from logging import getLogger
 from typing import assert_never
 
 from tierkreis.controller.consts import BODY_PORT
-from tierkreis.controller.data.graph import Eval, GraphData, Loop, Map
+from tierkreis.controller.data.graph import Eval, Func, GraphData, Loop, Map
 from tierkreis.controller.data.location import Loc, NodeRunData
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -39,7 +39,10 @@ def walk_node(storage: ControllerStorage, loc: Loc) -> WalkResult:
         case "map":
             return walk_map(storage, loc, node)
 
-        case "const" | "function" | "input" | "output":
+        case "function":
+            return walk_function(storage, loc)
+
+        case "const"  | "input" | "output":
             logger.debug(f"{loc} ({node.type}) already started")
             return WalkResult([], [loc])
 
@@ -123,3 +126,19 @@ def walk_map(storage: ControllerStorage, loc: Loc, map: Map) -> WalkResult:
         storage.mark_node_finished(loc)
 
     return walk_result
+
+
+def walk_function(storage: ControllerStorage, loc: Loc) -> WalkResult:
+    result = WalkResult([], [loc])
+    if not storage.node_has_error(loc):
+        logger.debug(f"{loc} (func) already started")
+        logger.debug(f"{loc} (func) has no errors")
+        return result
+    # Put node into process again -> we have already set the CallArgs
+    #  -> only type and loc are important
+    worker_call_args = storage.read_worker_call_args(loc)
+    node_run_data = NodeRunData(loc, Func(worker_call_args.function_name, {} ), [])
+
+    
+    return WalkResult([node_run_data], [])
+

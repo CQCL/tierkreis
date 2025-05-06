@@ -92,9 +92,7 @@ ids = [
 def test_resume_eval(graph: GraphData, output: Any, name: str, id: int):
     g = graph
     storage = ControllerFileStorage(UUID(int=id), name=name)
-    executor = ShellExecutor(
-        Path("./python/examples/launchers"), logs_path=storage.logs_path
-    )
+    executor = None
     inputs = {}
 
     storage.clean_graph_files()

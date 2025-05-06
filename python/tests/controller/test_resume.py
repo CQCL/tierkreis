@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import Any
 from uuid import UUID
 
@@ -14,6 +15,7 @@ from tests.controller.sample_graphdata import (
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
 params = [
@@ -90,9 +92,10 @@ ids = [
 def test_resume_eval(graph: GraphData, output: Any, name: str, id: int):
     g = graph
     storage = ControllerFileStorage(UUID(int=id), name=name)
-    executor = None
+    executor = ShellExecutor(
+        Path("./python/examples/launchers"), logs_path=storage.logs_path
+    )
     inputs = {}
-
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
 

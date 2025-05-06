@@ -118,7 +118,6 @@ class ControllerFileStorage:
 
         return node_definition_path
 
-
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         node_definition_path = self._worker_call_args_path(node_location)
         with open(node_definition_path, "r") as fh:

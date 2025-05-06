@@ -162,7 +162,7 @@ class ControllerFileStorage:
         return self._done_path(node_location).exists()
 
     def node_has_error(self, node_location: Loc) -> bool:
-        return self._error_path(node_location).exists()
+        return self._error_path(node_location).exists() and self._error_path(node_location).read_bytes()
 
     def mark_node_finished(self, node_location: Loc) -> None:
         self._done_path(node_location).touch()

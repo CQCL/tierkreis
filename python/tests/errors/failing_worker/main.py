@@ -26,8 +26,12 @@ def run(node_definition: NodeDefinition) -> None:
     )
     logger.info(node_definition.model_dump())
     logger.info("Doing some work...")
-    logger.error("Raising an error now...")
-    raise ValueError("Worker failed!")
+    logger.info(f"function name: {node_definition.function_name}")
+    name = node_definition.function_name
+
+    if name == "fail":
+        logger.error("Raising an error now...")
+        raise ValueError("Worker failed!")
 
 
 def main() -> None:

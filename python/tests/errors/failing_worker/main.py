@@ -26,9 +26,6 @@ def run(node_definition: NodeDefinition) -> None:
     )
     logger.info(node_definition.model_dump())
     logger.info("Doing some work...")
-    # with open(node_definition.inputs["threshold"], "rb") as fh:
-    #     threshold = json.load(fh)
-    #     assert isinstance(threshold, float or int)
     logger.error("Raising an error now...")
     raise ValueError("Worker failed!")
 

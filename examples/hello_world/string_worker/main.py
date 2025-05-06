@@ -19,6 +19,7 @@ class NodeDefinition(BaseModel):
     inputs: dict[str, Path]
     outputs: dict[str, Path]
     done_path: Path
+    error_path: Path
     logs_path: Optional[Path] = None
 
 
@@ -47,6 +48,7 @@ def run(node_definition: NodeDefinition) -> None:
 
     # Also important
     else:
+        node_definition.error_path.touch()
         raise ValueError(f"string_worker: unknown function: {name}")
 
     # Very important!

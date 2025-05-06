@@ -15,11 +15,15 @@ class EvalNodeData(BaseModel):
     edges: list[PyEdge]
 
 
-def node_status(is_finished: bool, definition: Optional[WorkerCallArgs]) -> NodeStatus:
+def node_status(
+    is_finished: bool, definition: Optional[WorkerCallArgs], has_error: bool = False
+) -> NodeStatus:
     if is_finished:
         return "Finished"
 
     if definition is not None:
+        if has_error:
+            return "Error"
         return "Started"
 
     return "Not started"
@@ -33,12 +37,13 @@ def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeDat
     for i, node in enumerate(graph.nodes):
         new_location = node_location.N(i)
         is_finished = storage.is_node_finished(new_location)
+        has_error = storage.node_has_error(new_location)
         try:
             definition = storage.read_worker_call_args(new_location)
         except FileNotFoundError:
             definition = None
 
-        status = node_status(is_finished, definition)
+        status = node_status(is_finished, definition, has_error)
 
         match node.type:
             case "function":

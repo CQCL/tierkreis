@@ -1,7 +1,7 @@
 /**
  * @typedef {Object} PyNode
  * @property {number | string} id - The node ID.
- * @property {"Not started" | "Started" | "Finished"} status  - The node name.
+ * @property {"Not started" | "Started" | "Error" | "Finished"} status  - The node name.
  * @property {string} function_name - The node label..
  */
 
@@ -20,7 +20,7 @@
  * @property {string} label - The node label..
  * @property {string} shape - Node shape.
  * @property {string} color - Node colour.
- * @property {"Not started" | "Started" | "Finished"} status - Node status
+ * @property {"Not started" | "Started" | "Error" | "Finished"} status - Node status
  */
 
 /**

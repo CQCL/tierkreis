@@ -13,7 +13,12 @@ class UvExecutor:
         self.launchers_path = registry_path
         self.logs_path = logs_path
 
-    def run(self, launcher_name: str, node_definition_path: Path) -> None:
+    def run(
+        self,
+        launcher_name: str,
+        node_definition_path: Path,
+        uv_path: str | None = None,
+    ) -> None:
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
@@ -23,9 +28,11 @@ class UvExecutor:
         )
         logger.info("START %s %s", launcher_name, node_definition_path)
 
-        uv_path = shutil.which("uv")
+        if uv_path is None:
+            uv_path = shutil.which("uv")
         if uv_path is None:
             raise TierkreisError("uv is required to use the uv_executor")
+
         worker_path = self.launchers_path / launcher_name
         env = {"VIRTUAL_ENVIRONMENT": ""}
 

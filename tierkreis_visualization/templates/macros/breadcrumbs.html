@@ -1,11 +1,22 @@
 {% macro breadcrumbs_macro(links, show_reset) -%}
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;min-height:2.5rem;">
     <div style="display:flex;align-items:center;gap:0.5rem;">
     <a href="/">
     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#999" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-folder-icon lucide-folder"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></svg>
     </a>
     {% for link in links %}
-       <a class="badge" href="{{ link[1] }}">{{ link[0] }}</a>
+       <a style="padding: 0.25rem 0.5rem;
+    background-color: var(--neutral-0);
+    border-radius: 0.5rem;
+    color: var(--neutral-700);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    display: block;
+    width: min-content;
+    text-wrap: nowrap;
+    border: 1px solid var(--neutral-300);" href="{{ link[1] }}">{{ link[0] }}</a>
     {% endfor %}
     </div>
     <div style="display:flex; align-items:start;justify-content:space-between;">

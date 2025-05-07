@@ -1,4 +1,32 @@
+* {
+    margin: 0;
+    padding: 0;
+}
 
+ul {
+    list-style: none;
+}
+
+li {
+    margin: 0.25rem 0rem;
+    list-style: none;
+}
+
+a {
+    all: unset;
+}
+a:hover {
+    cursor: pointer;
+}
+
+body {
+    font-size: 0.875rem;
+    background-color: var(--neutral-50);
+}
+
+main {
+    padding: 1rem 1.5rem;
+}
 
 
 html {
@@ -22,145 +50,8 @@ html {
     font-family: Inter;
 }
 
-.badge {
-    padding: 0.25rem 0.5rem;
-    background-color: var(--neutral-0);
-    border-radius: 0.5rem;
-    color: var(--neutral-700);
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: -0.02em;
-    text-decoration: none;
-    display: block;
-    width: min-content;
-    text-wrap: nowrap;
-    border: 1px solid var(--neutral-300);
-
-}
-.badge:hover {
-    background-color: var(--neutral-100);
-    transition-property: background-color;
-    transition-duration: 150ms;
-}
-
-.header {
-    background: var(--neutral-0);
-    padding: 1rem;
-    border-bottom: 1px solid var(--neutral-200);
-}
-
-.header__title {
-
-    font-size: 1.25rem;
-    letter-spacing: -0.02em;
-    font-weight: 500;
-}
 
 
-.header__subtitle {
-    font-size: 0.6rem;
-    letter-spacing: -0.02em;
-    font-weight: 600;
-    color: var(--neutral-400);
-    margin-left: 1.75rem;
-    margin-top: 0.125rem;
-    display: block;
-}
-
-
-body {
-
-    font-size: 0.875rem;
-    background-color: var(--neutral-50);
-
-}
-
-
-
-* {
-    margin: 0;
-    padding: 0;
-}
-
-ul {
-    list-style: none;
-}
-
-li {
-    margin: 0.25rem 0rem;
-    list-style: none;
-}
-
-a {
-    all: unset;
-}
-a:hover {
-    cursor: pointer;
-}
-.workflowlist__item {
-    padding: 0.75rem;
-    border-radius: 0.25rem;
-    background: var(--neutral-0);
-    border: 1px solid var(--neutral-200);
-    text-decoration: none;
-}
-
-
-.workflowlist__item:hover {
-    background: var(--neutral-100);
-    transition-property: background;
-    transition-duration: 150ms;
-    cursor: pointer;
-}
-.workflowlist__item__title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    text-decoration: none;
-    margin-bottom: 0.25rem;
-
-}
-.workflowlist__item__title::before {
-    content: url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2218%22%20height%3D%2218%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%23737373%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20class%3D%22lucide%20lucide-workflow-icon%20lucide-workflow%22%3E%3Crect%20width%3D%228%22%20height%3D%228%22%20x%3D%223%22%20y%3D%223%22%20rx%3D%222%22%2F%3E%3Cpath%20d%3D%22M7%2011v4a2%202%200%200%200%202%202h4%22%2F%3E%3Crect%20width%3D%228%22%20height%3D%228%22%20x%3D%2213%22%20y%3D%2213%22%20rx%3D%222%22%2F%3E%3C%2Fsvg%3E");
-
-  }
-
-  .workflowlist__item__id {
-    color: var(--neutral-400);
-    font-size: 0.675rem;
-    margin-left: 1.5rem;
-    text-decoration: none;
-  }
-
-
-main {
-    padding: 1rem 1.5rem;
-}
-
-.page__title {
-    font-size: 1.25rem;
-    font-weight: 500;
-    letter-spacing: -0.03em;
-    margin-bottom: 1rem;
-}
-
-
-
-/** Fallback page **/
-.fallback__title {
-    font-size: 1.75rem;
-    font-weight: 500;
-
-
-}
-
-.fallback__subtitle {
-    color: var(--neutral-600);
-    margin: 0.5rem 0;
-    margin-top: 1.25rem;
-    display: block;
-    font-size: 1.125rem;
-}
 
 .button {
     padding: 0.5rem 0.75rem;
@@ -186,15 +77,15 @@ main {
     cursor: pointer;
 }
 
-
 #mynetwork {
     width: 100%;
-    height:calc(100vh - 10rem);
+    height:calc(100vh - 10.25rem);
     border: 1px solid lightgray;
     border-radius: 0.5rem;
     background-color: var(--neutral-100);
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23d4d4d8' fill-opacity='0.4'%3E%3Cpath opacity='.5' d='M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9z'/%3E%3Cpath d='M6 5V0H5v5H0v1h5v94h1V6h94V5H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
+
 
 
 

@@ -75,8 +75,6 @@ class Loc(str):
 
         steps: list[NodeStep] = []
         for step_str in self.split("."):
-            if step_str == "":
-                continue
             match step_str[0], step_str[1:]:
                 case ("-", _):
                     steps.append("-")

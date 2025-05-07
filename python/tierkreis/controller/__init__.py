@@ -31,7 +31,6 @@ def run_graph(
     inputs: dict[PortID, ValueRef] = {
         k: (-1, k) for k, _ in graph_inputs.items() if k != "body"
     }
-    storage.mark_node_finished(root_loc.N(-1))
     node_run_data = NodeRunData(Loc(), Eval((-1, "body"), inputs), [])
     start(storage, executor, node_run_data)
     resume_graph(storage, executor, n_iterations, polling_interval_seconds)

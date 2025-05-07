@@ -1,0 +1,9 @@
+[project]
+name = "failing_worker"
+version = "0.1.0"
+description = "Worker that will always fail. Used for error testing."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2.10.6",
+]

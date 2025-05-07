@@ -96,7 +96,6 @@ def test_resume_eval(graph: GraphData, output: Any, name: str, id: int):
         Path("./python/examples/launchers"), logs_path=storage.logs_path
     )
     inputs = {}
-
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
 

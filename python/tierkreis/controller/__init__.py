@@ -41,6 +41,9 @@ def resume_graph(
 ) -> None:
     for i in range(n_iterations):
         walk_results = walk_node(storage, Loc())
+        if walk_results.errored != []:
+            print("Graph finished with errors.")
+            break
         start_nodes(storage, executor, walk_results.inputs_ready)
         if storage.is_node_finished(Loc()):
             break

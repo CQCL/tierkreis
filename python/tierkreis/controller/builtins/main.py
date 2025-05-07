@@ -17,6 +17,7 @@ class WorkerCallArgs(BaseModel):
     outputs: dict[str, Path]
     output_dir: Path
     done_path: Path
+    error_path: Path
     logs_path: Path | None
 
 

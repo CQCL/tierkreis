@@ -11,6 +11,7 @@ from watchfiles import awatch
 
 from tierkreis_visualization.config import CONFIG, get_storage, templates
 from tierkreis_visualization.data.eval import get_eval_node
+from tierkreis_visualization.data.function import get_function_node
 from tierkreis_visualization.data.loop import get_loop_node
 from tierkreis_visualization.data.map import get_map_node
 from tierkreis_visualization.data.workflows import get_workflows
@@ -58,6 +59,11 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
         data = get_map_node(storage, node_location, node)
         name = "map.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
+
+    elif node.type == "function":
+        data = get_function_node(storage, node_location)
+        name = "function.jinja"
+        ctx = {"definition": definition.model_dump(), "data": data}
 
     else:
         name = "fallback.html"

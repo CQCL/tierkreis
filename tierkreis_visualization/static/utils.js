@@ -30,6 +30,7 @@ function createJSNode(py_node) {
         color: {
             "Not started": colors.neutral[0],
             "Started": colors.amber.primary,
+            "Error": colors.red.primary,
             "Finished": colors.green.primary,
         }[py_node.status],
         shape: "box",

@@ -81,7 +81,7 @@ class GraphData(BaseModel):
             case "output":
                 if self.graph_output_idx is not None:
                     raise TierkreisError(
-                        f"Graph already has output at {self.graph_output_idx}"
+                        f"Graph already has output at index {self.graph_output_idx}"
                     )
 
                 self.graph_output_idx = idx

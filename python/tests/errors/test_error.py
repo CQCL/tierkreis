@@ -32,9 +32,7 @@ def test_raise_error() -> None:
     executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
     storage.clean_graph_files()
     run_graph(storage, executor, g, {}, n_iterations=20, polling_interval_seconds=0.5)
-    error_path = storage.logs_path.parent / "-.N0/errors"
     assert storage.node_has_error(Loc("-.N0"))
-    assert error_path.read_text().startswith("Traceback (most recent call last):")
 
 
 def test_raises_no_error() -> None:

@@ -69,10 +69,13 @@ html {
 
 
 body {
-    background: var(--neutral-50);
+
     font-size: 0.875rem;
+    background-color: var(--neutral-50);
 
 }
+
+
 
 * {
     margin: 0;
@@ -131,7 +134,7 @@ a:hover {
 
 
 main {
-    padding: 1.5rem;
+    padding: 1rem 1.5rem;
 }
 
 .page__title {
@@ -140,5 +143,59 @@ main {
     letter-spacing: -0.03em;
     margin-bottom: 1rem;
 }
+
+
+
+/** Fallback page **/
+.fallback__title {
+    font-size: 1.75rem;
+    font-weight: 500;
+
+
+}
+
+.fallback__subtitle {
+    color: var(--neutral-600);
+    margin: 0.5rem 0;
+    margin-top: 1.25rem;
+    display: block;
+    font-size: 1.125rem;
+}
+
+.button {
+    padding: 0.5rem 0.75rem;
+    background-color: var(--neutral-0);
+    border-radius: 0.5rem;
+    color: var(--neutral-700);
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    text-decoration: none;
+    display: block;
+    width: min-content;
+    text-wrap: nowrap;
+    border: 1px solid var(--neutral-300);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap:0.25rem;
+}
+
+.button:hover {
+    background-color: var(--neutral-100);
+    cursor: pointer;
+}
+
+
+#mynetwork {
+    width: 100%;
+    height: 87svh;
+    border: 1px solid lightgray;
+    border-radius: 0.5rem;
+    background-color: var(--neutral-100);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'%3E%3Cg fill-rule='evenodd'%3E%3Cg fill='%23d4d4d8' fill-opacity='0.4'%3E%3Cpath opacity='.5' d='M96 95h4v1h-4v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4h-9v4h-1v-4H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15v-9H0v-1h15V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h9V0h1v15h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9h4v1h-4v9zm-1 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm9-10v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-10 0v-9h-9v9h9zm-9-10h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9zm10 0h9v-9h-9v9z'/%3E%3Cpath d='M6 5V0H5v5H0v1h5v94h1V6h94V5H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+
+
 
 

@@ -21,21 +21,27 @@
 
       <ul>
         <li>
-          <span>Inputs</span>
-          <ul>
-            {% for input,path in definition.inputs.items() %}
-            <li>
-              <span class="divLink" onclick="openLink('inputs/{{ input }}')"
-                >{{ input }}</span
-              >
-              ({{ path }})
-            </li>
-            {% endfor %}
+          <span class="fallback__subtitle">Inputs</span>
+            {% if definition.inputs.items() %}
+              <ul>
+              {% for input,path in definition.inputs.items() %}
+              <li>
+                <span class="divLink" onclick="openLink('inputs/{{ input }}')"
+                  >{{ input }}</span
+                >
+                ({{ path }})
+              </li>
+              {% endfor %}
           </ul>
+            {% else %}
+            <p> No Inputs </p>
+          {% endif %}
+
+
         </li>
 
         <li>
-          <span>Outputs</span>
+          <span class="fallback__subtitle">Outputs</span>
           <ul>
             {% for output,path in definition.outputs.items() %}
             <li>

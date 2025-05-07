@@ -10,7 +10,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from pytket.circuit import Circuit
+from pytket._tket.circuit import Circuit
 from pytket.extensions.qiskit.backends.aer import AerBackend
 
 logger = logging.getLogger(__name__)

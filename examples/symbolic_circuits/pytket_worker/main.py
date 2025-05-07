@@ -11,9 +11,9 @@ from typing import Optional
 
 from pydantic import BaseModel
 from pytket.backends.backendresult import BackendResult
-from pytket.circuit import Circuit
+from pytket._tket.circuit import Circuit
 from pytket.transform import Transform
-from pytket.utils import expectation_from_counts
+from pytket.utils.expectations import expectation_from_counts
 from sympy import Symbol
 
 logger = logging.getLogger(__name__)

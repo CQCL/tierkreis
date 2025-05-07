@@ -9,7 +9,7 @@ import json
 from pathlib import Path
 from uuid import UUID
 
-from pytket.circuit import Circuit, fresh_symbol
+from pytket._tket.circuit import Circuit, fresh_symbol
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData, Const, Func, Output, Input
 from tierkreis.controller.data.location import Loc

@@ -7,7 +7,7 @@
 # ///
 import json
 from pathlib import Path
-from uuid import uuid4
+from uuid import UUID
 
 from tierkreis import Labels
 from tierkreis.controller import run_graph
@@ -42,10 +42,13 @@ def hello_graph() -> GraphData:
 
 def main() -> None:
     """Configure our workflow execution and run it to completion."""
-    storage = ControllerFileStorage(uuid4())
-    executor = UvExecutor(
-        registry_path=Path(__file__).parent, logs_path=storage.logs_path
-    )
+    # Assign a fixed uuid for our workflow.
+    workflow_id = UUID(int=0)
+    storage = ControllerFileStorage(workflow_id, name="symbolic_circuits")
+
+    # Look for workers in the same directory as this file.
+    registry_path = Path(__file__).parent
+    executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
     print("Starting workflow at location:", storage.logs_path)
     run_graph(
         storage,

@@ -52,7 +52,7 @@ class Loc(str):
         return Loc(loc)
 
     def parent(self) -> "Loc | None":
-        if not self.steps:
+        if not self.steps():
             return None
 
         steps = self.steps()
@@ -70,8 +70,13 @@ class Loc(str):
                 assert_never(last_step)
 
     def steps(self) -> list[NodeStep]:
+        if self == "":
+            return []
+
         steps: list[NodeStep] = []
         for step_str in self.split("."):
+            if step_str == "":
+                continue
             match step_str[0], step_str[1:]:
                 case ("-", _):
                     steps.append("-")
@@ -85,6 +90,12 @@ class Loc(str):
                     raise TierkreisError(f"Invalid Loc: {self}")
 
         return steps
+
+    def peek(self) -> NodeStep | None:
+        steps = self.steps()
+        if not steps:
+            return None
+        return steps[-1]
 
 
 OutputLoc = tuple[Loc, PortID]

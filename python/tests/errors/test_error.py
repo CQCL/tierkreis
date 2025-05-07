@@ -31,7 +31,7 @@ def test_raise_error() -> None:
     storage = ControllerFileStorage(UUID(int=42), name="will_fail")
     executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
     storage.clean_graph_files()
-    run_graph(storage, executor, g, {}, n_iterations=10)
+    run_graph(storage, executor, g, {}, n_iterations=100)
     error_path = storage.logs_path.parent / "-.N0/errors"
     assert storage.node_has_error(Loc("-.N0"))
     assert error_path.read_text().startswith("Traceback (most recent call last):")
@@ -42,5 +42,5 @@ def test_raises_no_error() -> None:
     storage = ControllerFileStorage(UUID(int=43), name="wont_fail")
     executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
     storage.clean_graph_files()
-    run_graph(storage, executor, g, {}, n_iterations=10)
+    run_graph(storage, executor, g, {}, n_iterations=100)
     assert not storage.node_has_error(Loc("-.N0"))

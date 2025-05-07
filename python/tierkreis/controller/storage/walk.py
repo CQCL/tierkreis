@@ -30,6 +30,8 @@ def walk_node(storage: ControllerStorage, loc: Loc) -> WalkResult:
 
     logger.debug(f"\n\nRESUME {loc}")
     if storage.node_has_error(loc):
+        logger.error(f"Node {loc} has encountered an error:")
+        logger.error(f"\n\n{storage.read_errors(loc)}\n\n")
         return WalkResult([], [], [loc])
     node = storage.read_node_def(loc)
 

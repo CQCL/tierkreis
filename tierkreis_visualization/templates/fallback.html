@@ -27,7 +27,7 @@
     margin-top: 1.25rem;
     display: block;
     font-size: 1.125rem;">Inputs</span>
-            {% if definition.inputs.items() %}
+
               <ul>
               {% for input,path in definition.inputs.items() %}
               <li>
@@ -38,11 +38,6 @@
               </li>
               {% endfor %}
           </ul>
-            {% else %}
-            <p> No Inputs </p>
-          {% endif %}
-
-
         </li>
 
         <li>

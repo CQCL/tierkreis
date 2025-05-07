@@ -91,12 +91,6 @@ class Loc(str):
 
         return steps
 
-    def peek(self) -> NodeStep | None:
-        steps = self.steps()
-        if not steps:
-            return None
-        return steps[-1]
-
 
 OutputLoc = tuple[Loc, PortID]
 

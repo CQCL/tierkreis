@@ -69,7 +69,7 @@ def walk_node(
         case "eval":
             message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
             g = GraphData(**json.loads(message))
-            result.extend(walk_node(storage, loc, g.output_idx(), g))
+            return walk_node(storage, loc, g.output_idx(), g)
 
         case "output":
             node_run_data = NodeRunData(loc, node, [])
@@ -107,9 +107,10 @@ def walk_loop(
         i += 1
     new_location = loc.L(i)
 
+    message = storage.read_output(loc.N(-1), BODY_PORT)
+    g = GraphData(**json.loads(message))
+
     if not storage.is_node_finished(new_location):
-        message = storage.read_output(loc.N(-1), BODY_PORT)
-        g = GraphData(**json.loads(message))
         return walk_node(storage, new_location, g.output_idx(), g)
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
@@ -121,7 +122,7 @@ def walk_loop(
 
     # Include old inputs. The acc_port is the only one that can change.
     ins = {k: (-1, k) for k in loop.inputs.keys() if k != acc_port}
-    storage.link_outputs(loc.L(i + 1).N(-1), acc_port, new_location, acc_port)
+    ins[acc_port] = g.nodes[g.output_idx()].inputs[acc_port]
     node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, BODY_PORT), ins), [acc_port])
     return WalkResult([node_run_data], [])
 
@@ -143,6 +144,6 @@ def walk_map(
 
     for j in map_eles:
         storage.link_outputs(loc, j, loc.M(j), map.out_port)
-        storage.mark_node_finished(loc)
 
+    storage.mark_node_finished(loc)
     return result

@@ -79,6 +79,11 @@ class GraphData(BaseModel):
 
         match node.type:
             case "output":
+                if self.graph_output_idx is not None:
+                    raise TierkreisError(
+                        f"Graph already has output at {self.graph_output_idx}"
+                    )
+
                 self.graph_output_idx = idx
             case "const" | "eval" | "function" | "input" | "loop" | "map":
                 pass

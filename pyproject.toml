@@ -1,5 +1,5 @@
 [tool.uv.workspace]
-members = ["python", "tierkreis_visualizer"]
+members = ["python", "tierkreis_visualization"]
 
 [dependency-groups]
 # Default dev dependency group

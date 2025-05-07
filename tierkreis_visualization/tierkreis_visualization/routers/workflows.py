@@ -41,21 +41,20 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
 
     definition = storage.read_worker_call_args(node_location)
     node = storage.read_node_def(node_location)
-    function_name = definition.function_name
 
-    if function_name == "eval":
+    if node.type == "eval":
         data = get_eval_node(storage, node_location)
         name = "eval.jinja"
         ctx: dict[str, Any] = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
             by_alias=True
         )
 
-    elif function_name == "loop":
+    elif node.type == "loop":
         data = get_loop_node(storage, node_location)
         name = "loop.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
 
-    elif function_name == "map":
+    elif node.type == "map":
         data = get_map_node(storage, node_location, node)
         name = "map.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)

@@ -1,5 +1,9 @@
 import json
 from logging import getLogger
+import logging
+from pathlib import Path
+import subprocess
+import sys
 
 from pydantic import BaseModel
 from typing_extensions import assert_never
@@ -8,12 +12,11 @@ from tierkreis.controller.consts import PACKAGE_PATH
 from tierkreis.controller.data.graph import Eval, PortID
 from tierkreis.controller.data.location import Loc, NodeRunData, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
-from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.labels import Labels
 from tierkreis.exceptions import TierkreisError
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def start_nodes(
@@ -23,6 +26,28 @@ def start_nodes(
 ) -> None:
     for node_run_datum in node_run_data:
         start(storage, executor, node_run_datum)
+
+
+def run_builtin(def_path: Path, logs_path: Path) -> None:
+    formatter = logging.Formatter(
+        fmt="%(asctime)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S%z",
+    )
+    handler = logging.FileHandler(logs_path, mode="a")
+    handler.setFormatter(formatter)
+    logger = getLogger("builtins")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+
+    logger.info("START builtin %s", def_path)
+    with open(logs_path, "a") as fh:
+        subprocess.Popen(
+            [sys.executable, "main.py", def_path],
+            start_new_session=True,
+            cwd=PACKAGE_PATH / "builtins",
+            stderr=fh,
+            stdout=fh,
+        )
 
 
 def start(
@@ -50,9 +75,7 @@ def start(
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
 
         if launcher_name == "builtins":
-            UvExecutor(PACKAGE_PATH, logs_path=storage.logs_path).run(
-                launcher_name, def_path
-            )
+            run_builtin(def_path, storage.logs_path)
         else:
             executor.run(launcher_name, def_path)
 

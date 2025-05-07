@@ -53,7 +53,7 @@ class Loc(str):
 
     def parent(self) -> "Loc | None":
         steps = self.steps()
-        if not self.steps():
+        if not steps:
             return None
 
         last_step = steps.pop()

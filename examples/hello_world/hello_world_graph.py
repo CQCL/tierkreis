@@ -22,12 +22,21 @@ root_loc = Loc()
 def hello_graph() -> GraphData:
     """A graph that greets the subject."""
     g = GraphData()
-    hello = g.add(Const("hello "))(Labels.VALUE)
-    subject = g.add(Input(Labels.VALUE))(Labels.VALUE)
-    output = g.add(Func("string_worker.concat", {"lhs": hello, "rhs": subject}))(
-        Labels.VALUE
-    )
-    g.add(Output({Labels.VALUE: output}))
+
+    # We add a contant that yields the string "hello ".
+    hello = g.add(Const("hello "))("value")
+
+    # We add an input to the graph called "value".
+    subject = g.add(Input("value"))("value")
+
+    # We call the "greet" function from our worker.
+    output = g.add(
+        Func("hello_world_worker.greet", {"greeting": hello, "subject": subject})
+    )("value")
+
+    # We assign the output to the "value" label.
+    g.add(Output({"value": output}))
+
     return g
 
 

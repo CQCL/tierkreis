@@ -1,0 +1,10 @@
+default:
+  @just --list
+
+run-vis-server:
+    uv run fastapi dev tierkreis_visualization/main.py
+
+run-test-graph:
+    uv run fastapi dev tierkreis_visualization/main.py
+
+

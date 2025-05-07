@@ -1,5 +1,6 @@
 import json
 from logging import getLogger
+import logging
 from pathlib import Path
 import subprocess
 import sys
@@ -15,7 +16,7 @@ from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.labels import Labels
 from tierkreis.exceptions import TierkreisError
 
-logger = getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def start_nodes(
@@ -28,7 +29,17 @@ def start_nodes(
 
 
 def run_builtin(def_path: Path, logs_path: Path) -> None:
-    logger.debug(sys.executable)
+    formatter = logging.Formatter(
+        fmt="%(asctime)s: %(message)s",
+        datefmt="%Y-%m-%dT%H:%M:%S%z",
+    )
+    handler = logging.FileHandler(logs_path, mode="a")
+    handler.setFormatter(formatter)
+    logger = getLogger("builtins")
+    logger.setLevel(logging.INFO)
+    logger.addHandler(handler)
+
+    logger.info("START builtin %s", def_path)
     with open(logs_path, "a") as fh:
         subprocess.Popen(
             [sys.executable, "main.py", def_path],

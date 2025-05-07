@@ -17,25 +17,35 @@
           window.open(`${window.location.href}/${path}`, (target = "_blank"));
         }
       </script>
-      <h1 class="fallback__title">{{ definition.function_name }}</h1>
+      <h1 style="font-size: 1.75rem;
+    font-weight: 500;">{{ definition.function_name }}</h1>
 
       <ul>
         <li>
-          <span>Inputs</span>
-          <ul>
-            {% for input,path in definition.inputs.items() %}
-            <li>
-              <span class="divLink" onclick="openLink('inputs/{{ input }}')"
-                >{{ input }}</span
-              >
-              ({{ path }})
-            </li>
-            {% endfor %}
+          <span  style="color: var(--neutral-600);
+    margin: 0.5rem 0;
+    margin-top: 1.25rem;
+    display: block;
+    font-size: 1.125rem;">Inputs</span>
+
+              <ul>
+              {% for input,path in definition.inputs.items() %}
+              <li>
+                <span class="divLink" onclick="openLink('inputs/{{ input }}')"
+                  >{{ input }}</span
+                >
+                ({{ path }})
+              </li>
+              {% endfor %}
           </ul>
         </li>
 
         <li>
-          <span>Outputs</span>
+          <span style="color: var(--neutral-600);
+    margin: 0.5rem 0;
+    margin-top: 1.25rem;
+    display: block;
+    font-size: 1.125rem;">Outputs</span>
           <ul>
             {% for output,path in definition.outputs.items() %}
             <li>

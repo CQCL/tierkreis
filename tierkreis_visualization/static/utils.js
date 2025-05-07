@@ -11,7 +11,7 @@ function createJSEdge(py_edge) {
        from: py_edge.from_node,
        to: py_edge.to_node,
        title: `${py_edge.from_port}->${py_edge.to_port}`,
-       label: py_edge.to_port,
+       label: `${py_edge.from_port}->${py_edge.to_port}`,
         arrows: "to"
     }
 }

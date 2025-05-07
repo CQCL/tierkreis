@@ -13,24 +13,25 @@
 
 </head>
 
-<body>
+<body class="graph-bg">
   {{ header_macro() }}
   <main>
-    {{ breadcrumbs_macro(breadcrumbs) }}
+    {{ breadcrumbs_macro(breadcrumbs, true) }}
     <div id="mynetwork"></div>
 
     <script type="text/javascript">
       let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
+
       network.setOptions({
-        nodes: { font: { size: 24 } },
-        edges: { font: { size: 24 } },
+        nodes: { font: { size: 16 } },
+        edges: { font: { size: 16 } },
         layout:  {
           randomSeed: 0,
           hierarchical: {
             direction: "UD",
             sortMethod: "directed",
-            levelSeparation: 150,
-            nodeSpacing: 800,
+            levelSeparation: 125,
+            nodeSpacing: 400,
             shakeTowards: "leaves",
             edgeMinimization: false
           }
@@ -52,6 +53,8 @@
           }
         },
       });
+
+
       connectToStream("{{ url|safe }}", nodes, edges);
     </script>
   </main>

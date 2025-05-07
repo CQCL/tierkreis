@@ -31,7 +31,7 @@ def test_raise_error() -> None:
     storage = ControllerFileStorage(UUID(int=42), name="will_fail")
     executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
     storage.clean_graph_files()
-    run_graph(storage, executor, g, {}, n_iterations=20, polling_interval_seconds=0.5)
+    run_graph(storage, executor, g, {}, n_iterations=1000)
     assert storage.node_has_error(Loc("-.N0"))
 
 

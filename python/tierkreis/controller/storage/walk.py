@@ -1,5 +1,5 @@
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from logging import getLogger
 from typing import assert_never
 
@@ -17,16 +17,20 @@ logger = getLogger(__name__)
 class WalkResult:
     inputs_ready: list[NodeRunData]
     started: list[Loc]
+    errored: list[Loc] = field(default_factory=list)
 
     def extend(self, walk_result: "WalkResult") -> None:
         self.inputs_ready.extend(walk_result.inputs_ready)
         self.started.extend(walk_result.started)
+        self.errored.extend(walk_result.errored)
 
 
 def walk_node(storage: ControllerStorage, loc: Loc) -> WalkResult:
     """Should only be called when a node has started and has not finished."""
 
     logger.debug(f"\n\nRESUME {loc}")
+    if storage.node_has_error(loc):
+        return WalkResult([], [], [loc])
     node = storage.read_node_def(loc)
 
     match node.type:

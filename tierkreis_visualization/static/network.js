@@ -7,6 +7,8 @@
  * @param {string} name - List of graph edges.
  */
 
+
+
 function createNetwork(nodes, edges, name) {
   const visnodes = new vis.DataSet(nodes.map(createJSNode));
   const visedges = new vis.DataSet(edges.map(createJSEdge));
@@ -15,6 +17,9 @@ function createNetwork(nodes, edges, name) {
   const data = { nodes: visnodes, edges: visedges };
   const options = {
     layout: { hierarchical: { direction: "LR", sortMethod: "directed" } },
+    nodes: {
+      margin: 12,
+    }
   };
 
   const network = new vis.Network(container, data, options);

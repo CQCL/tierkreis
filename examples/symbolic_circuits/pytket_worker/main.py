@@ -51,8 +51,6 @@ def run(node_definition: NodeDefinition) -> None:
         with open(node_definition.inputs["c"], "rb") as fh:
             c = json.loads(fh.read())
 
-        print(circuit.free_symbols())
-
         circuit.symbol_substitution({Symbol("a"): a, Symbol("b"): b, Symbol("c"): c})
 
         with open(node_definition.outputs["circuit"], "w+") as fh:

@@ -52,10 +52,10 @@ class Loc(str):
         return Loc(loc)
 
     def parent(self) -> "Loc | None":
+        steps = self.steps()
         if not self.steps():
             return None
 
-        steps = self.steps()
         last_step = steps.pop()
         match last_step:
             case "-":

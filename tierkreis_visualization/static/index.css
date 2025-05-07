@@ -189,7 +189,7 @@ main {
 
 #mynetwork {
     width: 100%;
-    height: 87svh;
+    height:calc(100vh - 10rem);
     border: 1px solid lightgray;
     border-radius: 0.5rem;
     background-color: var(--neutral-100);

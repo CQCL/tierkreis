@@ -7,7 +7,7 @@ setup:
     uv sync --all-extras
 
 test:
-    {{uvrun}} pytest python --doctest-modules --cov=. --cov-report=html --cov-report=term
+    {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term
 
 lint:
 	{{uvrun}} ruff format --check

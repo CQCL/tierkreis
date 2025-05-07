@@ -29,7 +29,7 @@ def wont_fail() -> GraphData:
 def test_raise_error() -> None:
     g = will_fail()
     storage = ControllerFileStorage(UUID(int=42), name="will_fail")
-    executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
+    executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
     storage.clean_graph_files()
     run_graph(storage, executor, g, {}, n_iterations=1000)
     assert storage.node_has_error(Loc("-.N0"))
@@ -38,7 +38,7 @@ def test_raise_error() -> None:
 def test_raises_no_error() -> None:
     g = wont_fail()
     storage = ControllerFileStorage(UUID(int=43), name="wont_fail")
-    executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
+    executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
     storage.clean_graph_files()
     run_graph(storage, executor, g, {}, n_iterations=100)
     assert not storage.node_has_error(Loc("-.N0"))

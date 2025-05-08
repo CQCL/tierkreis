@@ -16,19 +16,5 @@
         margin-top: 0.125rem;
         display: block;">VERSION 1</span>
     </div>
-    <label>
-         Enable Experimental Edit Mode
-        <input type="checkbox" onchange="toggleSidebarVisibility(event)"/>
-    </label>
-    <script>
-        document.querySelector('#sidebar').display = 'none'
-        function toggleSidebarVisibility(event) {
-            console.log(event.target.checked)
-            document.querySelector('#sidebar').display = event.target.checked ? 'block' : 'none'
-
-        }
-    </script>
-
-
     </header>
 {%- endmacro %}

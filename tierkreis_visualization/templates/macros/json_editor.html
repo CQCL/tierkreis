@@ -1,12 +1,13 @@
 {% macro json_editor_macro(nodes, edges) -%}
-    <form method="POST" action="/custom" onsubmit="updateGraph(event)" id="sidebar" >
+    <form method="POST" action="/custom" onsubmit="updateGraph(event)" id="sidebar" style="display:none;" >
 
         <textarea id="textarea-jsgraph" name="jsgraph_string" defaultvalue="{{ jsgraph_string }}" placeholder="No graph loaded."  style="height:calc(100% - 5rem);min-width:25rem;border:none;border:1px solid var(--neutral-200);border-radius:0.5rem;padding:0.5rem;">
         </textarea>
         <button type="submit" class="button" style="width:100%;margin-top:0.5rem;">Update Graph</button>
          <button type="button" onclick="resetGraph()" class="button" style="width:100%;margin-top:0.5rem;color:#cc0000">Discard Changes</button>
         <script>
-            const saved_graph = localStorage.getItem('jsgraph')
+            let storage_key = window.location.pathname + 'jsgraph';
+            const saved_graph = localStorage.getItem(storage_key)
             const el =  document.querySelector('#textarea-jsgraph')
             const resolved_graph = saved_graph || JSON.stringify({nodes: {{ nodes }}.map(createJSNode), edges : {{ edges }}.map(createJSEdge)}, null, 2);
             try {
@@ -32,14 +33,14 @@
                     nodes.update(jsgraph_dict.nodes);
                     edges.update(jsgraph_dict.edges)
                     network.redraw();
-                    localStorage.setItem('jsgraph', jsgraph_string)
+                    localStorage.setItem(storage_key, jsgraph_string)
                 } catch (err) {
                     alert('graph is invalid')
                 }
 
             }
             function resetGraph() {
-                    localStorage.removeItem('jsgraph')
+                    localStorage.removeItem(storage_key)
                     window.location.reload();
             }
         </script>

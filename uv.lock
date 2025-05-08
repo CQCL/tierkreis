@@ -1301,14 +1301,14 @@ requires-dist = [
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.11" },
     { name = "jinja2", specifier = ">=3.1.6" },
     { name = "pydantic-settings", specifier = ">=2.8.1" },
-    { name = "tierkreis", editable = "python" },
+    { name = "tierkreis", editable = "tierkreis" },
     { name = "watchfiles", specifier = ">=1.0.4" },
 ]
 
 [[package]]
 name = "tierkreis"
 version = "0.7.8"
-source = { editable = "python" }
+source = { editable = "tierkreis" }
 dependencies = [
     { name = "pydantic" },
 ]

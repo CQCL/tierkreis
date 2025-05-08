@@ -39,7 +39,7 @@ def parse_node_location(node_location_str: str) -> Loc:
 
 def get_errored_nodes(workflow_id: UUID) -> list[Loc]:
     storage = get_storage(workflow_id)
-    errored_nodes = storage.read_errors("-")
+    errored_nodes = storage.read_errors(Loc("-"))
     return [parse_node_location(node) for node in errored_nodes.split("\n")]
 
 

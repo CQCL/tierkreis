@@ -3,6 +3,7 @@ from tierkreis.controller.data.graph import (
     Eval,
     Func,
     GraphData,
+    IfElse,
     Input,
     Loop,
     Map,
@@ -69,6 +70,16 @@ def simple_map() -> GraphData:
     return g
 
 
+def simple_ifelse() -> GraphData:
+    g = GraphData()
+    pred = g.add(Input("pred"))("pred")
+    one = g.add(Const(1))(Labels.VALUE)
+    two = g.add(Const(2))(Labels.VALUE)
+    out = g.add(IfElse(pred, one, two))(Labels.VALUE)
+    g.add(Output({"simple_ifelse_output": out}))
+    return g
+
+
 def maps_in_series() -> GraphData:
     g = GraphData()
     zero = g.add(Const(0))(Labels.VALUE)
@@ -103,4 +114,24 @@ def map_with_str_keys() -> GraphData:
     m = g.add(map_def)
     folded = g.add(Func("builtins.fold_dict", {"values_glob": m("*")}))
     g.add(Output({"map_with_str_keys_output": folded(Labels.VALUE)}))
+    return g
+
+
+def factorial() -> GraphData:
+    g = GraphData()
+    minus_one = g.add(Const(-1))(Labels.VALUE)
+    one = g.add(Const(1))(Labels.VALUE)
+    n = g.add(Input("n"))("n")
+    fac = g.add(Input("factorial"))("factorial")
+
+    pred = g.add(Func("builtins.igt", {"a": n, "b": one}))(Labels.VALUE)
+
+    n_minus_one = g.add(Func("builtins.iadd", {"a": minus_one, "b": n}))(Labels.VALUE)
+    rec = g.add(Eval(fac, {"n": n_minus_one, "factorial": fac}))("factorial")
+    if_true = g.add(Func("builtins.itimes", {"a": n_minus_one, "b": rec}))(Labels.VALUE)
+
+    if_false = g.add(Const(1))(Labels.VALUE)
+
+    out = g.add(IfElse(pred, if_true, if_false))(Labels.VALUE)
+    g.add(Output({"factorial": out}))
     return g

@@ -3,6 +3,7 @@ from typing import Any, Callable, Literal, assert_never
 
 from pydantic import BaseModel, RootModel
 from tierkreis.exceptions import TierkreisError
+from tierkreis.labels import Labels
 
 Jsonable = Any
 PortID = str
@@ -51,6 +52,15 @@ class Const:
 
 
 @dataclass
+class IfElse:
+    pred: ValueRef
+    if_true: ValueRef
+    if_false: ValueRef
+    type: Literal["ifelse"] = field(default="ifelse")
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+
+
+@dataclass
 class Input:
     name: str
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
@@ -63,7 +73,7 @@ class Output:
     type: Literal["output"] = field(default="output")
 
 
-NodeDef = Func | Eval | Loop | Map | Const | Input | Output
+NodeDef = Func | Eval | Loop | Map | Const | IfElse | Input | Output
 NodeDefModel = RootModel[NodeDef]
 
 
@@ -85,6 +95,10 @@ class GraphData(BaseModel):
                     )
 
                 self.graph_output_idx = idx
+            case "ifelse":
+                self.outputs[node.pred[0]].add(Labels.VALUE)
+                self.outputs[node.if_true[0]].add(Labels.VALUE)
+                self.outputs[node.if_false[0]].add(Labels.VALUE)
             case "const" | "eval" | "function" | "input" | "loop" | "map":
                 pass
             case _:

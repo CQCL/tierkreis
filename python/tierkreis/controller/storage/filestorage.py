@@ -156,7 +156,7 @@ class ControllerFileStorage:
             return fh.read()
 
     def write_node_errors(self, node_location: Loc, error_logs: str) -> Path:
-        with open(self._error_logs_path(node_location), "a+") as fh:
+        with open(self._error_logs_path(node_location), "w+") as fh:
             fh.write(error_logs)
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:

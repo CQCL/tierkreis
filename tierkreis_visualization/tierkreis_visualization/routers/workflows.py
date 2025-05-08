@@ -37,26 +37,33 @@ def parse_node_location(node_location_str: str) -> Loc:
     return Loc(node_location_str)
 
 
+def get_errored_nodes(workflow_id: UUID) -> list[Loc]:
+    storage = get_storage(workflow_id)
+    errored_nodes = storage.read_errors(Loc("-"))
+    return [parse_node_location(node) for node in errored_nodes.split("\n")]
+
+
 def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
     storage = get_storage(workflow_id)
+    errored_nodes = get_errored_nodes(workflow_id)
 
     definition = storage.read_worker_call_args(node_location)
     node = storage.read_node_def(node_location)
 
     if node.type == "eval":
-        data = get_eval_node(storage, node_location)
+        data = get_eval_node(storage, node_location, errored_nodes)
         name = "eval.jinja"
         ctx: dict[str, Any] = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
             by_alias=True
         )
 
     elif node.type == "loop":
-        data = get_loop_node(storage, node_location)
+        data = get_loop_node(storage, node_location, errored_nodes)
         name = "loop.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
 
     elif node.type == "map":
-        data = get_map_node(storage, node_location, node)
+        data = get_map_node(storage, node_location, node, errored_nodes)
         name = "map.jinja"
         ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
 

@@ -48,6 +48,8 @@ def resume_graph(
     for _ in range(n_iterations):
         walk_results = walk_node(storage, Loc(), graph.output_idx(), graph)
         if walk_results.errored != []:
+            node_errors = "\n".join(x for x in walk_results.errored)
+            storage.write_node_errors(Loc(), node_errors)
             print("Graph finished with errors.")
             break
         start_nodes(storage, executor, walk_results.inputs_ready)

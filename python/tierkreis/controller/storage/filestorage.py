@@ -155,6 +155,10 @@ class ControllerFileStorage:
         with open(self._error_logs_path(node_location), "r") as fh:
             return fh.read()
 
+    def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
+        with open(self._error_logs_path(node_location), "w+") as fh:
+            fh.write(error_logs)
+
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
         dir_list = list(self._outputs_dir(node_location).iterdir())
         dir_list.sort()

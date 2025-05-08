@@ -24,8 +24,12 @@ def start_nodes(
     executor: ControllerExecutor,
     node_run_data: list[NodeRunData],
 ) -> None:
+    started_locs: set[Loc] = set()
     for node_run_datum in node_run_data:
+        if node_run_datum.node_location in started_locs:
+            continue
         start(storage, executor, node_run_datum)
+        started_locs.add(node_run_datum.node_location)
 
 
 def run_builtin(def_path: Path, logs_path: Path) -> None:

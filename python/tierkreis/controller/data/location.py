@@ -52,10 +52,10 @@ class Loc(str):
         return Loc(loc)
 
     def parent(self) -> "Loc | None":
-        if not self.steps:
+        steps = self.steps()
+        if not steps:
             return None
 
-        steps = self.steps()
         last_step = steps.pop()
         match last_step:
             case "-":
@@ -70,6 +70,9 @@ class Loc(str):
                 assert_never(last_step)
 
     def steps(self) -> list[NodeStep]:
+        if self == "":
+            return []
+
         steps: list[NodeStep] = []
         for step_str in self.split("."):
             match step_str[0], step_str[1:]:

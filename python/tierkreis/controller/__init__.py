@@ -1,3 +1,5 @@
+import json
+import logging
 from time import sleep
 
 from tierkreis.controller.data.graph import Eval, GraphData, ValueRef
@@ -9,6 +11,7 @@ from tierkreis.controller.storage.walk import walk_node
 from tierkreis.controller.data.graph import PortID
 
 root_loc = Loc("")
+logger = logging.getLogger(__name__)
 
 
 def run_graph(
@@ -26,7 +29,7 @@ def run_graph(
     storage.write_output(root_loc.N(-1), "body", g.model_dump_json().encode())
 
     inputs: dict[PortID, ValueRef] = {
-        k: (-1, k) for k, v in graph_inputs.items() if k != "body"
+        k: (-1, k) for k, _ in graph_inputs.items() if k != "body"
     }
     node_run_data = NodeRunData(Loc(), Eval((-1, "body"), inputs), [])
     start(storage, executor, node_run_data)
@@ -39,8 +42,11 @@ def resume_graph(
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
 ) -> None:
-    for i in range(n_iterations):
-        walk_results = walk_node(storage, Loc())
+    message = storage.read_output(Loc().N(-1), "body")
+    graph = GraphData(**json.loads(message))
+
+    for _ in range(n_iterations):
+        walk_results = walk_node(storage, Loc(), graph.output_idx(), graph)
         if walk_results.errored != []:
             print("Graph finished with errors.")
             break

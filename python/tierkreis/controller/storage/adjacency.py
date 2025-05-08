@@ -1,6 +1,8 @@
 from typing import assert_never
 
 from tierkreis.controller.data.graph import NodeDef, PortID, ValueRef
+from tierkreis.controller.data.location import Loc
+from tierkreis.controller.storage.protocol import ControllerStorage
 
 
 def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
@@ -20,3 +22,11 @@ def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
             assert_never(node)
 
     return parents
+
+
+def unfinished_inputs(
+    storage: ControllerStorage, loc: Loc, node: NodeDef
+) -> list[ValueRef]:
+    return [
+        x for x in in_edges(node).values() if not storage.is_node_finished(loc.N(x[0]))
+    ]

@@ -4,11 +4,18 @@ from logging import getLogger
 from typing import assert_never
 
 from tierkreis.controller.consts import BODY_PORT
-from tierkreis.controller.data.graph import Eval, GraphData, Loop, Map
+from tierkreis.controller.data.graph import (
+    Eval,
+    GraphData,
+    Loop,
+    Map,
+    NodeDef,
+    NodeIndex,
+)
 from tierkreis.controller.data.location import Loc, NodeRunData
-from tierkreis.controller.storage.adjacency import in_edges
+from tierkreis.controller.storage.adjacency import unfinished_inputs
 from tierkreis.controller.storage.protocol import ControllerStorage
-from tierkreis.exceptions import TierkreisError
+from tierkreis.labels import Labels
 
 logger = getLogger(__name__)
 
@@ -25,77 +32,86 @@ class WalkResult:
         self.errored.extend(walk_result.errored)
 
 
-def walk_node(storage: ControllerStorage, loc: Loc) -> WalkResult:
-    """Should only be called when a node has started and has not finished."""
+def add_unfinished_inputs(
+    result: WalkResult,
+    storage: ControllerStorage,
+    parent: Loc,
+    node: NodeDef,
+    graph: GraphData,
+) -> int:
+    unfinished = unfinished_inputs(storage, parent, node)
+    [result.extend(walk_node(storage, parent, x[0], graph)) for x in unfinished]
+    return len(unfinished)
 
-    logger.debug(f"\n\nRESUME {loc}")
+
+def walk_node(
+    storage: ControllerStorage, parent: Loc, idx: NodeIndex, graph: GraphData
+) -> WalkResult:
+    """Should only be called when a node has not finished."""
+    loc = parent.N(idx)
     if storage.node_has_error(loc):
         logger.error(f"Node {loc} has encountered an error:")
         logger.error(f"\n\n{storage.read_errors(loc)}\n\n")
         return WalkResult([], [], [loc])
-    node = storage.read_node_def(loc)
+
+    node = graph.nodes[idx]
+    storage.write_node_def(loc, node)
+
+    result = WalkResult([], [])
+    if add_unfinished_inputs(result, storage, parent, node, graph):
+        return result
+
+    if not storage.is_node_started(loc):
+        node_run_data = NodeRunData(loc, node, list(graph.outputs[idx]))
+        return WalkResult([node_run_data], [])
 
     match node.type:
         case "eval":
-            return walk_eval(storage, loc)
+            message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
+            g = GraphData(**json.loads(message))
+            return walk_node(storage, loc, g.output_idx(), g)
+
+        case "output":
+            node_run_data = NodeRunData(loc, node, [])
+            return WalkResult([node_run_data], [])
+
+        case "const":
+            node_run_data = NodeRunData(loc, node, [Labels.VALUE])
+            return WalkResult([node_run_data], [])
 
         case "loop":
-            return walk_loop(storage, loc, node)
+            return walk_loop(storage, parent, idx, node)
 
         case "map":
-            return walk_map(storage, loc, node)
+            return walk_map(storage, parent, idx, node)
 
-        case "const" | "function" | "input" | "output":
-            logger.debug(f"{loc} ({node.type}) already started")
-            return WalkResult([], [loc])
+        case "function":
+            pass
 
+        case "input":
+            pass
         case _:
             assert_never(node)
 
-
-def walk_eval(storage: ControllerStorage, loc: Loc) -> WalkResult:
-    logger.debug("walk_eval")
-    walk_result = WalkResult([], [])
-    message = storage.read_output(loc.N(-1), BODY_PORT)
-    graph = GraphData(**json.loads(message))
-
-    logger.debug(len(graph.nodes))
-    for i, node in enumerate(graph.nodes):
-        new_location = loc.N(i)
-        logger.debug(f"new_location: {new_location}")
-
-        if storage.is_node_finished(new_location):
-            logger.debug(f"{new_location} is finished")
-            continue
-
-        if storage.is_node_started(new_location):
-            logger.debug(f"{new_location} is started")
-            walk_result.extend(walk_node(storage, new_location))
-            continue
-
-        parents = in_edges(node)
-        if all(storage.is_node_finished(loc.N(i)) for (i, _) in parents.values()):
-            logger.debug(f"{new_location} is_ready_to_start")
-            outputs = graph.outputs[i]
-            node_run_data = NodeRunData(new_location, node, list(outputs))
-            walk_result.inputs_ready.append(node_run_data)
-            continue
-
-        logger.debug(f"node not ready to start {new_location}")
-
-    return walk_result
+    return result
 
 
-def walk_loop(storage: ControllerStorage, loc: Loc, loop: Loop) -> WalkResult:
+def walk_loop(
+    storage: ControllerStorage, parent: Loc, idx: NodeIndex, loop: Loop
+) -> WalkResult:
+    loc = parent.N(idx)
+
     acc_port = loop.acc_port
     i = 0
     while storage.is_node_started(loc.L(i + 1)):
         i += 1
     new_location = loc.L(i)
-    logger.debug(f"found latest iteration of loop: {new_location}")
+
+    message = storage.read_output(loc.N(-1), BODY_PORT)
+    g = GraphData(**json.loads(message))
 
     if not storage.is_node_finished(new_location):
-        return walk_node(storage, new_location)
+        return walk_node(storage, new_location, g.output_idx(), g)
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
     should_continue = json.loads(storage.read_output(new_location, loop.continue_port))
@@ -104,28 +120,30 @@ def walk_loop(storage: ControllerStorage, loc: Loc, loop: Loop) -> WalkResult:
         storage.mark_node_finished(loc)
         return WalkResult([], [])
 
-    # Include old inputs. The .acc_port is the only one that can change.
+    # Include old inputs. The acc_port is the only one that can change.
     ins = {k: (-1, k) for k in loop.inputs.keys() if k != acc_port}
-    storage.link_outputs(loc.L(i + 1).N(-1), acc_port, new_location, acc_port)
-    node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, "body"), ins), [acc_port])
+    ins[acc_port] = g.nodes[g.output_idx()].inputs[acc_port]
+    node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, BODY_PORT), ins), [acc_port])
     return WalkResult([node_run_data], [])
 
 
-def walk_map(storage: ControllerStorage, loc: Loc, map: Map) -> WalkResult:
-    walk_result = WalkResult([], [])
-    parent = loc.parent()
-    if parent is None:
-        raise TierkreisError("MAP node must have parent.")
+def walk_map(
+    storage: ControllerStorage, parent: Loc, idx: NodeIndex, map: Map
+) -> WalkResult:
+    loc = parent.N(idx)
+    result = WalkResult([], [])
 
     map_eles = storage.read_output_ports(parent.N(map.input_idx))
     unfinished = [p for p in map_eles if not storage.is_node_finished(loc.M(p))]
-    [walk_result.extend(walk_node(storage, loc.M(p))) for p in unfinished]
+    message = storage.read_output(loc.N(-1), BODY_PORT)
+    g = GraphData(**json.loads(message))
+    [result.extend(walk_node(storage, loc.M(p), g.output_idx(), g)) for p in unfinished]
 
     if len(unfinished) > 0:
-        return walk_result
+        return result
 
     for j in map_eles:
         storage.link_outputs(loc, j, loc.M(j), map.out_port)
-        storage.mark_node_finished(loc)
 
-    return walk_result
+    storage.mark_node_finished(loc)
+    return result

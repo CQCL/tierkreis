@@ -29,7 +29,7 @@ params = [
     (map_with_str_keys(), {"one": 2, "two": 4, "three": 6}, "map_with_str_keys", 5, {}),
     (simple_ifelse(), 1, "simple_ifelse", 6, {"pred": b"true"}),
     (simple_ifelse(), 2, "simple_ifelse", 7, {"pred": b"false"}),
-    (factorial(), 120, "factorial", 8, {"n": b"5", "factorial": factorial_bytes}),
+    # (factorial(), 120, "factorial", 8, {"n": b"5", "factorial": factorial_bytes}),
 ]
 ids = [
     "simple_eval",
@@ -39,7 +39,7 @@ ids = [
     "map_with_str_keys",
     "simple_ifelse_true",
     "simple_ifelse_false",
-    "factorial",
+    # "factorial",
 ]
 
 

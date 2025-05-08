@@ -29,7 +29,13 @@ def node_status(
     return "Not started"
 
 
-def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeData:
+def check_error(node_location: Loc, errored_nodes: list[Loc]) -> bool:
+    return any(node.startswith(node_location) for node in errored_nodes)
+
+
+def get_eval_node(
+    storage: ControllerStorage, node_location: Loc, errored_nodes: list[Loc]
+) -> EvalNodeData:
     thunk = storage.read_output(node_location.N(-1), "body")
     graph = GraphData(**json.loads(thunk))
 
@@ -37,7 +43,7 @@ def get_eval_node(storage: ControllerStorage, node_location: Loc) -> EvalNodeDat
     for i, node in enumerate(graph.nodes):
         new_location = node_location.N(i)
         is_finished = storage.is_node_finished(new_location)
-        has_error = storage.node_has_error(new_location)
+        has_error = check_error(new_location, errored_nodes)
         try:
             definition = storage.read_worker_call_args(new_location)
         except FileNotFoundError:

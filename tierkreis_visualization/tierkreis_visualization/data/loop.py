@@ -3,6 +3,7 @@ from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis import Labels
 
+from tierkreis_visualization.data.eval import check_error
 from tierkreis_visualization.data.models import PyNode, PyEdge
 
 
@@ -11,7 +12,9 @@ class LoopNodeData(BaseModel):
     edges: list[PyEdge]
 
 
-def get_loop_node(storage: ControllerStorage, node_location: Loc) -> LoopNodeData:
+def get_loop_node(
+    storage: ControllerStorage, node_location: Loc, errored_nodes: list[Loc]
+) -> LoopNodeData:
     i = 0
     while storage.is_node_started(node_location.L(i + 1)):
         i += 1
@@ -19,7 +22,12 @@ def get_loop_node(storage: ControllerStorage, node_location: Loc) -> LoopNodeDat
 
     nodes = [PyNode(id=n, status="Finished", function_name=f"L{n}") for n in range(i)]
 
-    last_status = "Finished" if storage.is_node_finished(new_location) else "Started"
+    if check_error(node_location, errored_nodes):
+        last_status = "Error"
+    elif storage.is_node_finished(new_location):
+        last_status = "Finished"
+    else:
+        last_status = "Started"
     nodes.append(PyNode(id=i, status=last_status, function_name=f"L{i}"))
 
     edges = [

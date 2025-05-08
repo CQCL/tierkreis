@@ -29,7 +29,7 @@ def wont_fail() -> GraphData:
     return graph
 
 
-def fail_in_evla() -> GraphData:
+def fail_in_eval() -> GraphData:
     graph = GraphData()
     subgraph_const = graph.add(Const(will_fail()))(Labels.VALUE)
     eval = graph.add(Eval(subgraph_const, {}))
@@ -56,7 +56,7 @@ def test_raises_no_error() -> None:
 
 
 def test_nested_error() -> None:
-    g = fail_in_evla()
+    g = fail_in_eval()
     storage = ControllerFileStorage(UUID(int=44), name="eval_will_fail")
     executor = UvExecutor(Path("./python/tests/errors"), logs_path=storage.logs_path)
     storage.clean_graph_files()

@@ -33,6 +33,6 @@ function createJSNode(py_node) {
             "Error": colors.red.primary,
             "Finished": colors.green.primary,
         }[py_node.status],
-        shape: "box",
+        shape: ["input", "output"].includes(py_node.function_name) ? "ellipse" : "box",
     }
 }

@@ -25,7 +25,7 @@ def get_map_node(
     for ele in map_eles:
         node = PyNode(id=ele, status="Started", function_name=ele)
         if check_error(loc.M(ele), errored_nodes):
-            node.status = "Errored"
+            node.status = "Error"
         elif storage.is_node_finished(loc.M(ele)):
             node.status = "Finished"
         nodes.append(node)

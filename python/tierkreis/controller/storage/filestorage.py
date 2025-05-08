@@ -155,7 +155,7 @@ class ControllerFileStorage:
         with open(self._error_logs_path(node_location), "r") as fh:
             return fh.read()
 
-    def write_node_errors(self, node_location: Loc, error_logs: str) -> Path:
+    def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
         with open(self._error_logs_path(node_location), "w+") as fh:
             fh.write(error_logs)
 

@@ -32,7 +32,7 @@ class WalkResult:
         self.errored.extend(walk_result.errored)
 
 
-def add_unfinished_inputs(
+def unfinished_results(
     result: WalkResult,
     storage: ControllerStorage,
     parent: Loc,
@@ -55,14 +55,14 @@ def walk_node(
         return WalkResult([], [], [loc])
 
     node = graph.nodes[idx]
+    node_run_data = NodeRunData(loc, node, list(graph.outputs[idx]))
     storage.write_node_def(loc, node)
 
     result = WalkResult([], [])
-    if add_unfinished_inputs(result, storage, parent, node, graph):
+    if unfinished_results(result, storage, parent, node, graph):
         return result
 
     if not storage.is_node_started(loc):
-        node_run_data = NodeRunData(loc, node, list(graph.outputs[idx]))
         return WalkResult([node_run_data], [])
 
     match node.type:
@@ -72,11 +72,9 @@ def walk_node(
             return walk_node(storage, loc, g.output_idx(), g)
 
         case "output":
-            node_run_data = NodeRunData(loc, node, [])
             return WalkResult([node_run_data], [])
 
         case "const":
-            node_run_data = NodeRunData(loc, node, [Labels.VALUE])
             return WalkResult([node_run_data], [])
 
         case "loop":
@@ -85,15 +83,24 @@ def walk_node(
         case "map":
             return walk_map(storage, parent, idx, node)
 
+        case "ifelse":
+            pred = storage.read_output(parent.N(node.pred[0]), node.pred[1])
+            next_node = node.if_true if pred == b"true" else node.if_false
+            next_loc = parent.N(next_node[0])
+            if storage.is_node_finished(next_loc):
+                storage.link_outputs(loc, Labels.VALUE, next_loc, next_node[1])
+                storage.mark_node_finished(loc)
+                return WalkResult([], [])
+            else:
+                return walk_node(storage, parent, next_node[0], graph)
+
         case "function":
-            pass
+            return WalkResult([], [loc])
 
         case "input":
-            pass
+            return WalkResult([], [])
         case _:
             assert_never(node)
-
-    return result
 
 
 def walk_loop(

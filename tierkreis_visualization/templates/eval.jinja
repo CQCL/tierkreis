@@ -20,47 +20,49 @@
     {{ breadcrumbs_macro(breadcrumbs, true) }}
     <div style="display:flex;gap:2rem">
       <div id="mynetwork"></div>
-     {{json_editor_macro()}}
+       <script type="text/javascript">
+        let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
+        </script>
+
+      {{ json_editor_macro(nodes|safe, edges|safe) }}
     </div>
-    <script type="text/javascript">
-      let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
-
-      network.setOptions({
-        nodes: { font: { size: 16 } },
-        edges: { font: { size: 16 } },
-        layout:  {
-          randomSeed: 0,
-          hierarchical: {
-            direction: "UD",
-            sortMethod: "directed",
-            levelSeparation: 125,
-            nodeSpacing: 400,
-            shakeTowards: "leaves",
-            edgeMinimization: false
-          }
-        },
-        physics: {
-          enabled: false,
-          stabilization: {
-            enabled: true,
-            iterations: 10000,
-          },
-          solver: "hierarchicalRepulsion",
-          hierarchicalRepulsion: {
-            centralGravity: 0.0,
-            springLength: 100,
-            springConstant: 0.01,
-            nodeDistance: 350,
-            damping: 1,
-            avoidOverlap: 0
-          }
-        },
-      });
-
-
-      connectToStream("{{ url|safe }}", nodes, edges);
-    </script>
   </main>
+   <script type="text/javascript">
+        network.setOptions({
+          nodes: { font: { size: 16 } },
+          edges: { font: { size: 16 } },
+          layout:  {
+            randomSeed: 0,
+            hierarchical: {
+              direction: "UD",
+              sortMethod: "directed",
+              levelSeparation: 125,
+              nodeSpacing: 400,
+              shakeTowards: "leaves",
+              edgeMinimization: false
+            }
+          },
+          physics: {
+            enabled: false,
+            stabilization: {
+              enabled: true,
+              iterations: 10000,
+            },
+            solver: "hierarchicalRepulsion",
+            hierarchicalRepulsion: {
+              centralGravity: 0.0,
+              springLength: 100,
+              springConstant: 0.01,
+              nodeDistance: 350,
+              damping: 1,
+              avoidOverlap: 0
+            }
+          },
+        });
+
+
+        connectToStream("{{ url|safe }}", nodes, edges);
+      </script>
 </body>
 
 </html>

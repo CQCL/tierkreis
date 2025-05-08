@@ -1,15 +1,25 @@
-{% macro json_editor_macro(jsgraph_string) -%}
+{% macro json_editor_macro(nodes, edges) -%}
     <form method="POST" action="/custom" onsubmit="updateGraph(event)">
-        <textarea name="jsgraph_string" placeholder="No graph loaded."  style="height:calc(100% - 2.5rem);min-width:25rem;border:none;border:1px solid var(--neutral-200);border-radius:0.5rem;padding:0.5rem;">
+
+        <textarea id="textarea-jsgraph" name="jsgraph_string" defaultvalue="{{ jsgraph_string }}" placeholder="No graph loaded."  style="height:calc(100% - 2.5rem);min-width:25rem;border:none;border:1px solid var(--neutral-200);border-radius:0.5rem;padding:0.5rem;">
         </textarea>
         <button type="submit" class="button" style="width:100%;margin-top:0.5rem;">Update Graph</button>
         <script>
+
+           const el =  document.querySelector('#textarea-jsgraph')
+           el.value = JSON.stringify({nodes: {{ nodes }}.map(createJSNode), edges : {{ edges }}.map(createJSEdge)}, null, 2)
+        </script>
+          <script>
             function updateGraph(event) {
-                event.preventDefault();
+                event.preventDefault()
                 const formData = new FormData(event.target);
                 const jsgraph_string = formData.get('jsgraph_string');
-                console.log(jsgraph_string)
-                fetch('/custom', {method: 'POST', body: JSON.stringify({jsgraph_string})})
+
+                const jsgraph_dict = JSON.parse(jsgraph_string)
+
+                nodes.update(jsgraph_dict.nodes);
+                edges.update(jsgraph_dict.edges)
+                network.redraw();
             }
         </script>
     </form>

@@ -23,16 +23,16 @@ def hello_graph() -> GraphData:
     """A graph that greets the subject."""
     g = GraphData()
 
-    # We add a contant that yields the string "hello ".
+    # We add a constant that yields the string "hello ".
     hello = g.add(Const("hello "))("value")
 
     # We add an input to the graph called "value".
     subject = g.add(Input("value"))("value")
 
-    # We call the "greet" function from our worker.
-    output = g.add(
-        Func("hello_world_worker.greet", {"greeting": hello, "subject": subject})
-    )("value")
+    # We call the "concat" function from our worker.
+    output = g.add(Func("string_worker.concat", {"lhs": hello, "rhs": subject}))(
+        "value"
+    )
 
     # We assign the output to the "value" label.
     g.add(Output({"value": output}))
@@ -45,6 +45,8 @@ def main() -> None:
     # Assign a fixed uuid for our workflow.
     workflow_id = UUID(int=0)
     storage = ControllerFileStorage(workflow_id, name="symbolic_circuits")
+    # Clean the working directory if a prior workflow of that ID already exists
+    storage.clean_graph_files()
 
     # Look for workers in the same directory as this file.
     registry_path = Path(__file__).parent

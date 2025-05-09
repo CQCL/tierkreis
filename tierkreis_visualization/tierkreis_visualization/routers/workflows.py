@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
-from watchfiles import awatch
+from watchfiles import awatch, Change
 
 from tierkreis_visualization.config import CONFIG, get_storage, templates
 from tierkreis_visualization.data.eval import get_eval_node
@@ -47,7 +47,16 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
     storage = get_storage(workflow_id)
     errored_nodes = get_errored_nodes(workflow_id)
 
-    definition = storage.read_worker_call_args(node_location)
+    try:
+        definition = storage.read_worker_call_args(node_location)
+    except FileNotFoundError:
+        return {
+            "breadcrumbs": breadcrumbs(workflow_id, node_location),
+            "url": f"/workflows/{workflow_id}/nodes/{node_location}",
+            "node_location": str(node_location),
+            "name": "unavailable.jinja",
+        }
+
     node = storage.read_node_def(node_location)
 
     if node.type == "eval":
@@ -88,6 +97,11 @@ async def node_stream(workflow_id: UUID, node_location: Loc):
     metadata_path = (
         CONFIG.tierkreis_path / str(workflow_id) / str(node_location) / "_metadata"
     )
+    if not metadata_path.exists():
+        async for _changes in awatch(metadata_path.parent):
+            if _changes[0] == Change.added:
+                break
+
     async for _changes in awatch(metadata_path):
         ctx = get_node_data(workflow_id, node_location)
         yield f"event: message\ndata: {json.dumps(ctx)}\n\n"

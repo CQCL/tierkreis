@@ -3,7 +3,6 @@ from typing import Any, Callable, Literal, assert_never
 
 from pydantic import BaseModel, RootModel
 from tierkreis.exceptions import TierkreisError
-from tierkreis.labels import Labels
 
 Jsonable = Any
 PortID = str

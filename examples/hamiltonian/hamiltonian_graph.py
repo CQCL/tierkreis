@@ -68,7 +68,7 @@ def _compute_terms() -> GraphData:
     # because these methods are untyped
     prod = g.add(
         Func(
-            "builtins.imul",
+            "builtins.itimes",
             {"a": res_0, "b": res_1},
         )
     )("value")
@@ -89,8 +89,11 @@ def _fold_graph_outer() -> GraphData:
     g = GraphData()
 
     func = g.add(Input("func"))("func")
+    # tuple of the list and value
     accum = g.add(Input("accum"))("accum")
-    values = g.add(Input("values"))("values")
+    untupled = g.add(Func("builtins.untuple", {"value": accum}))
+    folded = untupled("a")
+    values = untupled("b")
 
     zero = g.add(Const(0))("value")
     values_len = g.add(Func("builtins.len", {"l": values}))("value")
@@ -104,18 +107,20 @@ def _fold_graph_outer() -> GraphData:
     apply_next = g.add(
         Eval(
             func,
-            {"accum": accum, "value": headed("head")},
+            {"accum": folded, "value": headed("head")},
         )
     )("value")
 
-    next_accum = g.add(IfElse(non_empty, apply_next, accum))("value")
-    next_values = g.add(IfElse(non_empty, headed("rest"), values))("value")
+    if_true = g.add(Func("builtins.tuple", {"a": apply_next, "b": headed("rest")}))(
+        "value"
+    )
+
+    next_accum = g.add(IfElse(non_empty, if_true, accum))("value")
     g.add(
         Output(
             {
                 "func": func,
                 "accum": next_accum,
-                "values": next_values,
                 "should_continue": non_empty,
             },
         )
@@ -131,17 +136,23 @@ def _fold_graph() -> GraphData:
     initial = g.add(Input("initial"))("initial")
     values = g.add(Input("values"))("values")
 
+    accum = g.add(Func("builtins.tuple", {"a": initial, "b": values}))("value")
+
     helper = g.add(Const(_fold_graph_outer()))("value")
     # TODO: include the computation inside the fold
     loop = g.add(
         Loop(
             helper,
-            {"func": func, "accum": initial, "values": values},
+            {"func": func, "accum": accum},
             "should_continue",
             "accum",
         )
     )
-    g.add(Output({"value": loop("accum")}))
+
+    final_accum = g.add(Func("builtins.untuple", {"value": loop("accum")}))
+
+    # We need to return the values in order for evaluation to succeed.
+    g.add(Output({"value": final_accum("a"), "values": final_accum("b")}))
 
     return g
 

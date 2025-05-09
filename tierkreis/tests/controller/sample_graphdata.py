@@ -118,6 +118,9 @@ def map_with_str_keys() -> GraphData:
 
 
 def factorial() -> GraphData:
+    """Experimental factorial function.
+
+    Don't pass it invalid input!"""
     g = GraphData()
     minus_one = g.add(Const(-1))(Labels.VALUE)
     one = g.add(Const(1))(Labels.VALUE)

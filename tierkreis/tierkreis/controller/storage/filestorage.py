@@ -12,6 +12,7 @@ from tierkreis.controller.data.location import (
     OutputLoc,
     WorkerCallArgs,
 )
+from tierkreis.exceptions import TierkreisError
 
 
 class ControllerFileStorage:
@@ -20,12 +21,17 @@ class ControllerFileStorage:
         workflow_id: UUID,
         name: str | None = None,
         tierkreis_directory: Path = Path.home() / ".tierkreis" / "checkpoints",
+        force_relink: bool = False,
+        do_cleanup: bool = False,
     ) -> None:
         self.workflow_id = workflow_id
         self.workflow_dir: Path = tierkreis_directory / str(workflow_id)
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
         self.logs_path = self.workflow_dir / "logs"
         self.name = name
+        self.force_relink = force_relink
+        if do_cleanup:
+            self.clean_graph_files()
 
     def _nodedef_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "nodedef"
@@ -131,8 +137,15 @@ class ControllerFileStorage:
         old_port: PortID,
     ) -> None:
         new_dir = self._output_path(new_location, new_port)
+        if new_dir.exists() and not self.force_relink:
+            return
         new_dir.parent.mkdir(parents=True, exist_ok=True)
-        os.link(self._output_path(old_location, old_port), new_dir)
+        try:
+            os.link(self._output_path(old_location, old_port), new_dir)
+        except OSError as e:
+            raise TierkreisError(
+                "Could not link outputs. Try running with resume or do_cleanup."
+            ) from e
 
     def is_output_ready(self, node_location: Loc, output_name: PortID) -> bool:
         return self._output_path(node_location, output_name).exists()

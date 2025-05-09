@@ -202,12 +202,12 @@ def run(node_definition: WorkerCallArgs):
 
     elif node_definition.function_name == "zip":
         with open(node_definition.inputs["a"], "rb") as fh:
-            list_a = json.loads(fh.read())
+            value_a = json.loads(fh.read())
 
         with open(node_definition.inputs["b"], "rb") as fh:
-            list_b = json.loads(fh.read())
+            value_b = json.loads(fh.read())
 
-        ans = list(zip(list_a, list_b))
+        ans = list(zip(value_a, value_b))
 
         with open(node_definition.outputs["value"], "w+") as fh:
             fh.write(json.dumps(ans))
@@ -216,13 +216,37 @@ def run(node_definition: WorkerCallArgs):
         with open(node_definition.inputs["value"], "rb") as fh:
             value: list[tuple[object, object]] = json.loads(fh.read())
 
-        list_a, list_b = map(list, zip(*value))
+        value_a, value_b = map(list, zip(*value))
 
         with open(node_definition.outputs["a"], "w+") as fh:
-            fh.write(json.dumps(list_a))
+            fh.write(json.dumps(value_a))
 
         with open(node_definition.outputs["b"], "w+") as fh:
-            fh.write(json.dumps(list_b))
+            fh.write(json.dumps(value_b))
+
+    elif node_definition.function_name == "tuple":
+        with open(node_definition.inputs["a"], "rb") as fh:
+            value_a = json.loads(fh.read())
+
+        with open(node_definition.inputs["b"], "rb") as fh:
+            value_b = json.loads(fh.read())
+
+        ans = (value_a, value_b)
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(ans))
+
+    elif node_definition.function_name == "untuple":
+        with open(node_definition.inputs["value"], "rb") as fh:
+            value: tuple[object, object] = json.loads(fh.read())
+
+        value_a, value_b = value
+
+        with open(node_definition.outputs["a"], "w+") as fh:
+            fh.write(json.dumps(value_a))
+
+        with open(node_definition.outputs["b"], "w+") as fh:
+            fh.write(json.dumps(value_b))
 
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")

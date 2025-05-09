@@ -214,9 +214,9 @@ def run(node_definition: WorkerCallArgs):
 
     elif node_definition.function_name == "unzip":
         with open(node_definition.inputs["value"], "rb") as fh:
-            value: list[tuple[object, object]] = json.loads(fh.read())
+            zipped: list[tuple[object, object]] = json.loads(fh.read())
 
-        value_a, value_b = map(list, zip(*value))
+        value_a, value_b = map(list, zip(*zipped))
 
         with open(node_definition.outputs["a"], "w+") as fh:
             fh.write(json.dumps(value_a))

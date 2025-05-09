@@ -97,7 +97,7 @@ class GraphData(BaseModel):
             case "ifelse":
                 self.outputs[node.pred[0]].add(node.pred[1])
                 self.outputs[node.if_true[0]].add(node.if_true[1])
-                self.outputs[node.if_false[0]].add(node.if_true[1])
+                self.outputs[node.if_false[0]].add(node.if_false[1])
             case "const" | "eval" | "function" | "input" | "loop" | "map":
                 pass
             case _:

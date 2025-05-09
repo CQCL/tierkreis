@@ -153,6 +153,19 @@ def run(node_definition: WorkerCallArgs):
         with open(node_definition.outputs["value"], "w+") as fh:
             fh.write(json.dumps(new_l))
 
+    elif node_definition.function_name == "head":
+        with open(node_definition.inputs["l"], "rb") as fh:
+            list_l = json.loads(fh.read())
+
+        assert isinstance(list_l, list)
+        head, rest = list_l[0], list_l[1:]
+
+        with open(node_definition.outputs["head"], "w+") as fh:
+            fh.write(json.dumps(head))
+
+        with open(node_definition.outputs["rest"], "w+") as fh:
+            fh.write(json.dumps(rest))
+
     elif node_definition.function_name == "len":
         with open(node_definition.inputs["l"], "rb") as fh:
             list_l = json.loads(fh.read())
@@ -186,6 +199,30 @@ def run(node_definition: WorkerCallArgs):
 
         with open(node_definition.outputs["value"], "w+") as fh:
             fh.write(json.dumps(ans))
+
+    elif node_definition.function_name == "zip":
+        with open(node_definition.inputs["a"], "rb") as fh:
+            list_a = json.loads(fh.read())
+
+        with open(node_definition.inputs["b"], "rb") as fh:
+            list_b = json.loads(fh.read())
+
+        ans = list(zip(list_a, list_b))
+
+        with open(node_definition.outputs["value"], "w+") as fh:
+            fh.write(json.dumps(ans))
+
+    elif node_definition.function_name == "unzip":
+        with open(node_definition.inputs["value"], "rb") as fh:
+            value: list[tuple[object, object]] = json.loads(fh.read())
+
+        list_a, list_b = map(list, zip(*value))
+
+        with open(node_definition.outputs["a"], "w+") as fh:
+            fh.write(json.dumps(list_a))
+
+        with open(node_definition.outputs["b"], "w+") as fh:
+            fh.write(json.dumps(list_b))
 
     else:
         raise ValueError(f"function name {node_definition.function_name} not found")

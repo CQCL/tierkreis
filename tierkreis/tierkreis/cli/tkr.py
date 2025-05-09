@@ -86,7 +86,10 @@ def main() -> None:
         help="Set the controller tickrate.",
     )
     parser.add_argument(
-        "-r", "--do-clean-restart", action="store_true", help="Set a workflow run id"
+        "-r",
+        "--do-clean-restart",
+        action="store_true",
+        help="Clear graph files before running",
     )
 
     args = parser.parse_args()

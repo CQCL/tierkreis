@@ -7,7 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
-from watchfiles import awatch, Change
+from watchfiles import awatch
 
 from tierkreis_visualization.config import CONFIG, get_storage, templates
 from tierkreis_visualization.data.eval import get_eval_node
@@ -94,17 +94,11 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
 
 
 async def node_stream(workflow_id: UUID, node_location: Loc):
-    metadata_path = (
-        CONFIG.tierkreis_path / str(workflow_id) / str(node_location) / "_metadata"
-    )
-    if not metadata_path.exists():
-        async for _changes in awatch(metadata_path.parent):
-            if Change.added in _changes:
-                break
-
-    async for _changes in awatch(metadata_path):
-        ctx = get_node_data(workflow_id, node_location)
-        yield f"event: message\ndata: {json.dumps(ctx)}\n\n"
+    node_path = CONFIG.tierkreis_path / str(workflow_id) / str(node_location)
+    async for _changes in awatch(node_path, recursive=False):
+        if (node_path / "definition").exists():
+            ctx = get_node_data(workflow_id, node_location)
+            yield f"event: message\ndata: {json.dumps(ctx)}\n\n"
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}")

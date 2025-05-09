@@ -16,6 +16,7 @@ class WorkerCallArgs(BaseModel):
     outputs: dict[str, Path]
     output_dir: Path
     done_path: Path
+    error_path: Path
     logs_path: Path | None
 
 
@@ -69,7 +70,8 @@ def _save_args_glob(output_dir: Path, results: Iterable[tuple[str, object]]) -> 
 class Worker:
     functions: dict[str, Callable[[WorkerCallArgs], None]]
 
-    def __init__(self) -> None:
+    def __init__(self, name: str) -> None:
+        self.name = name
         self.functions = {}
 
     def function(
@@ -116,7 +118,14 @@ class Worker:
 
         function = self.functions.get(node_definition.function_name, None)
         if function is None:
-            raise ValueError(f"function name {node_definition.function_name} not found")
-        function(node_definition)
+            raise ValueError(
+                f"{self.name}: function name {node_definition.function_name} not found"
+            )
+        try:
+            function(node_definition)
+        except Exception as err:
+            logger.error("encountered error: %s", err)
+            with open(node_definition.error_path, "w+") as f:
+                f.write(str(err))
 
         node_definition.done_path.touch()

@@ -9,7 +9,7 @@ from tierkreis.worker import Worker
 
 logger = getLogger(__name__)
 
-worker = Worker()
+worker = Worker("builtins")
 
 
 @worker.function()

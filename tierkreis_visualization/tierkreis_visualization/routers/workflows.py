@@ -99,7 +99,7 @@ async def node_stream(workflow_id: UUID, node_location: Loc):
     )
     if not metadata_path.exists():
         async for _changes in awatch(metadata_path.parent):
-            if _changes[0] == Change.added:
+            if Change.added in _changes:
                 break
 
     async for _changes in awatch(metadata_path):

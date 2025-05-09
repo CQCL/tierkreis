@@ -118,6 +118,9 @@ def map_with_str_keys() -> GraphData:
 
 
 def factorial() -> GraphData:
+    """Experimental factorial function.
+
+    Don't pass it invalid input!"""
     g = GraphData()
     minus_one = g.add(Const(-1))(Labels.VALUE)
     one = g.add(Const(1))(Labels.VALUE)
@@ -127,11 +130,11 @@ def factorial() -> GraphData:
     pred = g.add(Func("builtins.igt", {"a": n, "b": one}))(Labels.VALUE)
 
     n_minus_one = g.add(Func("builtins.iadd", {"a": minus_one, "b": n}))(Labels.VALUE)
-    rec = g.add(Eval(fac, {"n": n_minus_one, "factorial": fac}))("factorial")
-    if_true = g.add(Func("builtins.itimes", {"a": n_minus_one, "b": rec}))(Labels.VALUE)
+    rec = g.add(Eval(fac, {"n": n_minus_one, "factorial": fac}))("factorial_output")
+    if_true = g.add(Func("builtins.itimes", {"a": n, "b": rec}))(Labels.VALUE)
 
     if_false = g.add(Const(1))(Labels.VALUE)
 
     out = g.add(IfElse(pred, if_true, if_false))(Labels.VALUE)
-    g.add(Output({"factorial": out}))
+    g.add(Output({"factorial_output": out}))
     return g

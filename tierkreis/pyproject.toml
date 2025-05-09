@@ -33,3 +33,6 @@ extend-exclude = []
 include = ["."]
 exclude = []
 ignore = []
+
+[project.scripts]
+tkr = "tierkreis.cli.tkr:main"

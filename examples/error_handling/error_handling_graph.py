@@ -11,7 +11,7 @@ from uuid import UUID
 
 from tierkreis import Labels
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData, Const, Func, Output, Input
+from tierkreis.controller.data.graph import GraphData, Func, Output
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
@@ -19,22 +19,12 @@ from tierkreis.controller.executor.uv_executor import UvExecutor
 root_loc = Loc()
 
 
-def hello_graph() -> GraphData:
-    """A graph that greets the subject."""
+def error_graph() -> GraphData:
+    """A graph that errors."""
     g = GraphData()
 
-    # We add a constant that yields the string "hello ".
-    hello = g.add(Const("hello "))("value")
+    output = g.add(Func("error_worker.fail", {}))("value")
 
-    # We add an input to the graph called "value".
-    subject = g.add(Input("value"))("value")
-
-    # We call the "concat" function from our worker.
-    output = g.add(Func("string_worker.concat", {"lhs": hello, "rhs": subject}))(
-        "value"
-    )
-
-    # We assign the output to the "value" label.
     g.add(Output({"value": output}))
 
     return g
@@ -43,10 +33,8 @@ def hello_graph() -> GraphData:
 def main() -> None:
     """Configure our workflow execution and run it to completion."""
     # Assign a fixed uuid for our workflow.
-    workflow_id = UUID(int=100)
-    storage = ControllerFileStorage(workflow_id, name="hello_world")
-    # Clean the working directory if a prior workflow of that ID already exists
-    storage.clean_graph_files()
+    workflow_id = UUID(int=0)
+    storage = ControllerFileStorage(workflow_id, name="error_handling")
 
     # Look for workers in the same directory as this file.
     registry_path = Path(__file__).parent
@@ -55,7 +43,7 @@ def main() -> None:
     run_graph(
         storage,
         executor,
-        hello_graph(),
+        error_graph(),
         {Labels.VALUE: json.dumps("world!").encode()},
         polling_interval_seconds=0.1,
     )

@@ -7,14 +7,11 @@
 # ///
 import json
 from pathlib import Path
-from uuid import UUID
 
 from tierkreis import Labels
-from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData, Const, Func, Output, Input
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.storage.filestorage import ControllerFileStorage
-from tierkreis.controller.executor.uv_executor import UvExecutor
+from tierkreis.cli.run_workflow import run_workflow
 
 root_loc = Loc()
 
@@ -42,25 +39,17 @@ def hello_graph() -> GraphData:
 
 def main() -> None:
     """Configure our workflow execution and run it to completion."""
-    # Assign a fixed uuid for our workflow.
-    workflow_id = UUID(int=100)
-    storage = ControllerFileStorage(workflow_id, name="hello_world")
-    # Clean the working directory if a prior workflow of that ID already exists
-    storage.clean_graph_files()
-
-    # Look for workers in the same directory as this file.
-    registry_path = Path(__file__).parent
-    executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
-    print("Starting workflow at location:", storage.logs_path)
-    run_graph(
-        storage,
-        executor,
+    run_workflow(
         hello_graph(),
         {Labels.VALUE: json.dumps("world!").encode()},
+        name="hello_world",
+        run_id=100,  # Assign a fixed uuid for our workflow.
+        registry_path=Path(
+            __file__
+        ).parent,  # Look for workers in the same directory as this file.
         polling_interval_seconds=0.1,
+        print_output=True,
     )
-    output = json.loads(storage.read_output(root_loc, Labels.VALUE))
-    print(output)
 
 
 if __name__ == "__main__":

@@ -3,12 +3,12 @@ from uuid import UUID
 import json
 import logging
 
+from tierkreis import Labels
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
-from tierkreis.labels import Labels
 
 logger = logging.getLogger(__name__)
 

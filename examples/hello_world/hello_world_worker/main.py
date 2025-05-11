@@ -3,7 +3,7 @@
 # dependencies = ["pydantic", "tierkreis"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../../tierkreis" }
+# tierkreis = { path = "../../../tierkreis", editable = true }
 # ///
 import logging
 from sys import argv

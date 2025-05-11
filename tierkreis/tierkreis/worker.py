@@ -3,7 +3,10 @@ import logging
 from glob import glob
 from logging import getLogger
 from pathlib import Path
-from typing import Callable, Iterable, Iterator, ParamSpec, TypeVar
+from collections.abc import (
+    Iterator,
+)  # Needs to be imported from here not typing to satisfy get_origin
+from typing import Callable, Iterable, ParamSpec, TypeVar, get_origin
 
 from pydantic import BaseModel
 
@@ -44,7 +47,7 @@ def _save_results(outputs: dict[str, Path], results: BaseModel) -> None:
             fh.write(json.dumps(getattr(results, result_name)))
 
 
-def _globbed_sort_key(path_str: str) -> str | int:
+def _iterable_sort_key(path_str: str) -> str | int:
     v = Path(path_str).name
     try:
         return int(v)
@@ -52,16 +55,20 @@ def _globbed_sort_key(path_str: str) -> str | int:
         return v
 
 
-def _load_args_glob(inputs: dict[str, Path]) -> Iterator[tuple[str, object]]:
-    globbed_inputs = glob(str(inputs["values_glob"]))
-    globbed_inputs.sort(key=_globbed_sort_key)
+def _load_args_iterable(
+    iterable_name: str, inputs: dict[str, Path]
+) -> Iterator[tuple[str, object]]:
+    globbed_inputs = glob(str(inputs[iterable_name]))
+    globbed_inputs.sort(key=_iterable_sort_key)
     for path in globbed_inputs:
         name = Path(path).name
         with open(path, "rb") as fh:
             yield name, json.loads(fh.read())
 
 
-def _save_args_glob(output_dir: Path, results: Iterable[tuple[str, object]]) -> None:
+def _save_results_iterator(
+    output_dir: Path, results: Iterable[tuple[str, object]]
+) -> None:
     for k, value in results:
         with open(output_dir / k, "w+") as fh:
             fh.write(json.dumps(value))
@@ -77,24 +84,45 @@ class Worker:
     def function(
         self,
         name: str | None = None,
-        input_glob: bool = False,
-        output_glob: bool = False,
-    ) -> Callable[[Callable[Params, ReturnType]], None]:
+    ) -> Callable[
+        [
+            Callable[
+                ...,
+                BaseModel | Iterator[tuple[str, object]],
+            ]
+        ],
+        None,
+    ]:
         """Register a function with the worker."""
 
-        def function_decorator(func: Callable[Params, ReturnType]) -> None:
+        def function_decorator(
+            func: Callable[
+                ...,
+                BaseModel | Iterator[tuple[str, object]],
+            ],
+        ) -> None:
             func_name = name if name is not None else func.__name__
 
             def wrapper(node_definition: WorkerCallArgs):
-                if input_glob:
-                    iterator = _load_args_glob(node_definition.inputs)
+                annotations = func.__annotations__
+                annotations.pop("return")
+                # If there is only one argument and its value is iterator,
+                # we need to load multiple files to the iterator.
+                if (
+                    len(annotations) == 1
+                    and get_origin(next(iter(annotations.values()))) is Iterator
+                ):
+                    input_iterator_name, _ = annotations.popitem()
+                    iterator = _load_args_iterable(
+                        input_iterator_name, node_definition.inputs
+                    )
                     results = func(iterator)
                 else:
                     kwargs = _load_args(node_definition.inputs)
                     results = func(**kwargs)
 
-                if output_glob:
-                    _save_args_glob(node_definition.output_dir, results)
+                if isinstance(results, Iterator):
+                    _save_results_iterator(node_definition.output_dir, results)
                 else:
                     _save_results(node_definition.outputs, results)
 

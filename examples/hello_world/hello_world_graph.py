@@ -3,7 +3,7 @@
 # dependencies = ["tierkreis"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../tierkreis" }
+# tierkreis = { path = "../../tierkreis", editable = true }
 # ///
 import json
 from pathlib import Path

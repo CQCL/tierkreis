@@ -1,7 +1,7 @@
 from logging import getLogger
 from pathlib import Path
 from sys import argv
-from typing import Iterable, Iterator
+from typing import Iterator
 
 from pydantic import BaseModel
 
@@ -45,7 +45,7 @@ def impl_id[T](*, value: T) -> Value[T]:
 
 
 @worker.function()
-def append[T](*, l: list[T], a: T) -> Value[list[T]]:
+def append[T](*, l: list[T], a: T) -> Value[list[T]]:  # noqa: E741
     l.append(a)
     return Value(value=l)
 
@@ -56,13 +56,13 @@ class Headed[T](BaseModel):
 
 
 @worker.function()
-def head[T](*, l: list[T]) -> Headed[T]:
+def head[T](*, l: list[T]) -> Headed[T]:  # noqa: E741
     head, rest = l[0], l[1:]
     return Headed(head=head, rest=rest)
 
 
 @worker.function(name="len")
-def impl_len(*, l: list) -> Value[int]:
+def impl_len(*, l: list) -> Value[int]:  # noqa: E741
     logger.info("len: %s", l)
     return Value(value=len(l))
 
@@ -77,25 +77,25 @@ def str_neq(*, a: str, b: str) -> Value[bool]:
     return Value(value=a != b)
 
 
-@worker.function(input_glob=True)
-def fold_values[T](values_glob: Iterable[tuple[str, T]]) -> Value[list[T]]:
+@worker.function()
+def fold_values[T](values_glob: Iterator[tuple[str, T]]) -> Value[list[T]]:
     values = [value[1] for value in values_glob]
     return Value(value=values)
 
 
-@worker.function(output_glob=True)
+@worker.function()
 def unfold_values[T](*, value: list[T]) -> Iterator[tuple[str, T]]:
     for i, v in enumerate(value):
         yield str(i), v
 
 
-@worker.function(input_glob=True)
-def fold_dict[T](values_glob: Iterable[tuple[str, T]]) -> Value[dict[str, T]]:
+@worker.function()
+def fold_dict[T](values_glob: Iterator[tuple[str, T]]) -> Value[dict[str, T]]:
     values = {k: v for k, v in values_glob}
     return Value(value=values)
 
 
-@worker.function(output_glob=True)
+@worker.function()
 def unfold_dict[T](*, value: dict[str, T]) -> Iterator[tuple[str, T]]:
     for k, v in value.items():
         yield k, v
@@ -133,7 +133,7 @@ class Untupled[U, V](BaseModel):
 
 
 @worker.function()
-def untuple[U, V](*, value: list[tuple[U, V]]) -> Unzipped[U, V]:
+def untuple[U, V](*, value: tuple[U, V]) -> Untupled[U, V]:
     logger.info("untuple: %s", value)
     value_a, value_b = value
     return Untupled(a=value_a, b=value_b)

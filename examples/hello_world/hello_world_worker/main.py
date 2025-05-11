@@ -18,9 +18,9 @@ worker = Worker("hello_world_worker")
 
 
 @worker.function()
-def greet(greet: str, subject: str) -> Value[str]:
-    logger.info("%s %s", greet, subject)
-    return Value(value=greet + subject)
+def greet(greeting: str, subject: str) -> Value[str]:
+    logger.info("%s %s", greeting, subject)
+    return Value(value=greeting + subject)
 
 
 def main() -> None:

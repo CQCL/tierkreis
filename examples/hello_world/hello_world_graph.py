@@ -30,9 +30,9 @@ def hello_graph() -> GraphData:
     subject = g.add(Input("value"))("value")
 
     # We call the "concat" function from our worker.
-    output = g.add(Func("string_worker.concat", {"lhs": hello, "rhs": subject}))(
-        "value"
-    )
+    output = g.add(
+        Func("hello_world_worker.greet", {"greeting": hello, "subject": subject})
+    )("value")
 
     # We assign the output to the "value" label.
     g.add(Output({"value": output}))

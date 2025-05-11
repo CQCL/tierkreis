@@ -116,16 +116,18 @@ class Worker:
         )
         logger.info(node_definition.model_dump())
 
-        function = self.functions.get(node_definition.function_name, None)
-        if function is None:
-            raise ValueError(
-                f"{self.name}: function name {node_definition.function_name} not found"
-            )
         try:
+            function = self.functions.get(node_definition.function_name, None)
+            if function is None:
+                raise ValueError(
+                    f"{self.name}: function name {node_definition.function_name} not found"
+                )
+            logger.info(f"running: {node_definition.function_name}")
+
             function(node_definition)
+
+            node_definition.done_path.touch()
         except Exception as err:
             logger.error("encountered error: %s", err)
             with open(node_definition.error_path, "w+") as f:
                 f.write(str(err))
-
-        node_definition.done_path.touch()

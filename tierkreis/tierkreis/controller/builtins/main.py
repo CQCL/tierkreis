@@ -63,6 +63,7 @@ def head[T](*, l: list[T]) -> Headed[T]:
 
 @worker.function(name="len")
 def impl_len(*, l: list) -> Value[int]:
+    logger.info("len: %s", l)
     return Value(value=len(l))
 
 
@@ -106,8 +107,8 @@ def concat(*, lhs: str, rhs: str) -> Value[str]:
 
 
 @worker.function(name="zip")
-def zip_impl[U, V](*, a: list[U], b: list[V]) -> list[tuple[U, V]]:
-    return list(zip(a, b))
+def zip_impl[U, V](*, a: list[U], b: list[V]) -> Value[list[tuple[U, V]]]:
+    return Value(value=list(zip(a, b)))
 
 
 class Unzipped[U, V](BaseModel):
@@ -122,14 +123,20 @@ def unzip[U, V](*, value: list[tuple[U, V]]) -> Unzipped[U, V]:
 
 
 @worker.function(name="tuple")
-def tuple_impl[U, V](*, a: U, b: V) -> tuple[U, V]:
-    return (a, b)
+def tuple_impl[U, V](*, a: U, b: V) -> Value[tuple[U, V]]:
+    return Value(value=(a, b))
+
+
+class Untupled[U, V](BaseModel):
+    a: U
+    b: V
 
 
 @worker.function()
 def untuple[U, V](*, value: list[tuple[U, V]]) -> Unzipped[U, V]:
-    value_a, value_b = map(list, zip(*value))
-    return Unzipped(a=value_a, b=value_b)
+    logger.info("untuple: %s", value)
+    value_a, value_b = value
+    return Untupled(a=value_a, b=value_b)
 
 
 if __name__ == "__main__":

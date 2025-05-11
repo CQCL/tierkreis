@@ -33,7 +33,7 @@ def error_graph() -> GraphData:
 def main() -> None:
     """Configure our workflow execution and run it to completion."""
     # Assign a fixed uuid for our workflow.
-    workflow_id = UUID(int=0)
+    workflow_id = UUID(int=103)
     storage = ControllerFileStorage(workflow_id, name="error_handling")
 
     # Look for workers in the same directory as this file.
@@ -47,7 +47,7 @@ def main() -> None:
         {Labels.VALUE: json.dumps("world!").encode()},
         polling_interval_seconds=0.1,
     )
-    output = json.loads(storage.read_output(root_loc, Labels.VALUE))
+    output = storage.read_errors(root_loc)
     print(output)
 
 

@@ -44,7 +44,7 @@ def parse_inputs(inputs: list[str]) -> dict[str, bytes]:
 def load_inputs(input_files: list[str]) -> dict[str, bytes]:
     if len(input_files) == 1 and input_files[0].endswith(".json"):
         with open(input_files[0], "r") as fh:
-            return {k: v.encode() for k, v in json.load(fh).items()}
+            return {k: json.dumps(v).encode() for k, v in json.load(fh).items()}
     inputs = {}
     for input_file in input_files:
         if ":" not in input_file:
@@ -148,6 +148,7 @@ def main() -> None:
         inputs = load_inputs(args.input_files)
     else:
         inputs = {}
+    print(inputs)
     run_workflow(
         graph,
         inputs,

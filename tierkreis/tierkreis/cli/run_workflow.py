@@ -1,5 +1,5 @@
 from pathlib import Path
-from uuid import UUID
+from uuid import UUID, uuid4
 import json
 import logging
 
@@ -31,7 +31,7 @@ def run_workflow(
     )
 
     if run_id is None:
-        workflow_id = UUID()
+        workflow_id = uuid4()
     else:
         workflow_id = UUID(int=run_id)
     storage = ControllerFileStorage(workflow_id, name=name)

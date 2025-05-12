@@ -144,7 +144,7 @@ class ControllerFileStorage:
             os.link(self._output_path(old_location, old_port), new_dir)
         except OSError as e:
             raise TierkreisError(
-                "Could not link outputs. Try running with resume or do_cleanup."
+                "Workflow already exists. Try running with resume or do_cleanup."
             ) from e
 
     def is_output_ready(self, node_location: Loc, output_name: PortID) -> bool:

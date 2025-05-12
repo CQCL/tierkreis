@@ -42,10 +42,13 @@ def main() -> None:
         prog="tkr",
         description="Tierkreis: a workflow engine for quantum HPC.",
     )
-    parser.add_argument(
+    graph = parser.add_mutually_exclusive_group(required=True)
+    graph.add_argument(
+        "-f", "--from-file", type=Path, help="Load a graph from a .json file"
+    )
+    graph.add_argument(
         "-g",
         "--graph-location",
-        required=True,
         help="Fully qualifying name of a Callable () -> GraphData. "
         + "Example: tierkreis.cli.sample_graph:simple_eval",
         type=str,
@@ -109,7 +112,11 @@ def main() -> None:
     if args.verbose:
         args.log_level = logging.DEBUG
 
-    graph = load_graph(args.graph_location)
+    if args.graph_location is not None:
+        graph = load_graph(args.graph_location)
+    else:
+        with open(args.from_file, "r") as fh:
+            graph = GraphData(**json.loads(fh.read()))
     if args.input is not None:
         inputs = parse_inputs(args.inputs)
     elif args.input_file is not None:

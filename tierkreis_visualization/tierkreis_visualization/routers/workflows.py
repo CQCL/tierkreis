@@ -47,7 +47,16 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
     storage = get_storage(workflow_id)
     errored_nodes = get_errored_nodes(workflow_id)
 
-    definition = storage.read_worker_call_args(node_location)
+    try:
+        definition = storage.read_worker_call_args(node_location)
+    except FileNotFoundError:
+        return {
+            "breadcrumbs": breadcrumbs(workflow_id, node_location),
+            "url": f"/workflows/{workflow_id}/nodes/{node_location}",
+            "node_location": str(node_location),
+            "name": "unavailable.jinja",
+        }
+
     node = storage.read_node_def(node_location)
 
     if node.type == "eval":
@@ -85,12 +94,11 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
 
 
 async def node_stream(workflow_id: UUID, node_location: Loc):
-    metadata_path = (
-        CONFIG.tierkreis_path / str(workflow_id) / str(node_location) / "_metadata"
-    )
-    async for _changes in awatch(metadata_path):
-        ctx = get_node_data(workflow_id, node_location)
-        yield f"event: message\ndata: {json.dumps(ctx)}\n\n"
+    node_path = CONFIG.tierkreis_path / str(workflow_id) / str(node_location)
+    async for _changes in awatch(node_path, recursive=False):
+        if (node_path / "definition").exists():
+            ctx = get_node_data(workflow_id, node_location)
+            yield f"event: message\ndata: {json.dumps(ctx)}\n\n"
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}")

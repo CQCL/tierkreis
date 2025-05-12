@@ -107,8 +107,13 @@ def walk_loop(
     storage: ControllerStorage, parent: Loc, idx: NodeIndex, loop: Loop
 ) -> WalkResult:
     loc = parent.N(idx)
+    if storage.is_node_finished(loc):
+        return WalkResult([], [], [])
 
-    acc_port = loop.acc_port
+    acc_ports = loop.acc_port
+    if not isinstance(acc_ports, list):
+        acc_ports = [acc_ports]
+
     i = 0
     while storage.is_node_started(loc.L(i + 1)):
         i += 1
@@ -123,14 +128,16 @@ def walk_loop(
     # Latest iteration is finished. Do we BREAK or CONTINUE?
     should_continue = json.loads(storage.read_output(new_location, loop.continue_port))
     if should_continue is False:
-        storage.link_outputs(loc, acc_port, new_location, acc_port)
+        for k in acc_ports:
+            storage.link_outputs(loc, k, new_location, k)
         storage.mark_node_finished(loc)
         return WalkResult([], [])
 
     # Include old inputs. The acc_port is the only one that can change.
-    ins = {k: (-1, k) for k in loop.inputs.keys() if k != acc_port}
-    ins[acc_port] = g.nodes[g.output_idx()].inputs[acc_port]
-    node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, BODY_PORT), ins), [acc_port])
+    ins = {k: (-1, k) for k in loop.inputs.keys() if k not in acc_ports}
+    for k in acc_ports:
+        ins[k] = g.nodes[g.output_idx()].inputs[k]
+    node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, BODY_PORT), ins), acc_ports)
     return WalkResult([node_run_data], [])
 
 
@@ -139,6 +146,8 @@ def walk_map(
 ) -> WalkResult:
     loc = parent.N(idx)
     result = WalkResult([], [])
+    if storage.is_node_finished(loc):
+        return result
 
     map_eles = storage.read_output_ports(parent.N(map.input_idx))
     unfinished = [p for p in map_eles if not storage.is_node_finished(loc.M(p))]

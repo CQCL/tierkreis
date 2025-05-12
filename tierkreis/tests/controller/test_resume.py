@@ -14,6 +14,7 @@ from tests.controller.sample_graphdata import (
     simple_loop,
     simple_map,
 )
+from tests.controller.loop_graphdata import loop_multiple_acc
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
@@ -31,6 +32,7 @@ params = [
     (simple_ifelse(), 2, "simple_ifelse", 7, {"pred": b"false"}),
     (factorial(), 24, "factorial", 8, {"n": b"4", "factorial": factorial_bytes}),
     (factorial(), 120, "factorial", 8, {"n": b"5", "factorial": factorial_bytes}),
+    (loop_multiple_acc(), {"acc": 6, "acc2": 12, "acc3": 18}, "multi_acc", 9, {}),
 ]
 ids = [
     "simple_eval",
@@ -42,6 +44,7 @@ ids = [
     "simple_ifelse_false",
     "factorial_4",
     "factorial_5",
+    "loop_multiple_acc",
 ]
 
 
@@ -57,5 +60,12 @@ def test_resume_eval(
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
 
-    c = json.loads(storage.read_output(Loc(), f"{name}_output"))
-    assert c == output
+    output_ports = g.nodes[g.output_idx()].inputs.keys()
+    actual_output = {}
+    for port in output_ports:
+        actual_output[port] = json.loads(storage.read_output(Loc(), port))
+
+    if f"{name}_output" in actual_output:
+        assert actual_output[f"{name}_output"] == output
+    else:
+        assert actual_output == output

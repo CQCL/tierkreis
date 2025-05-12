@@ -2,6 +2,7 @@ import argparse
 import importlib
 import json
 import logging
+import sys
 from pathlib import Path
 from typing import Callable
 
@@ -10,10 +11,21 @@ from tierkreis.controller.data.graph import GraphData
 from tierkreis.exceptions import TierkreisError
 
 
+def import_from_path(module_name, file_path):
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
 def load_graph(graph_input: str) -> GraphData:
     module_name, function_name = graph_input.split(":")
     print(f"Loading graph from module '{module_name}' and function '{function_name}'")
-    module = importlib.import_module(module_name, __package__)
+    if ".py" in module_name:
+        module = import_from_path("graph_module", module_name)
+    else:
+        module = importlib.import_module(module_name, __package__)
     build_submission_graph: Callable[[], GraphData] = getattr(module, function_name)
 
     return build_submission_graph()
@@ -107,6 +119,7 @@ def main() -> None:
         action="store_true",
         help="Clear graph files before running",
     )
+    parser.add_argument("--uv", action="store_true", help="Use uv worker")
 
     args = parser.parse_args()
     if args.verbose:
@@ -118,9 +131,19 @@ def main() -> None:
         with open(args.from_file, "r") as fh:
             graph = GraphData(**json.loads(fh.read()))
     if args.input is not None:
-        inputs = parse_inputs(args.inputs)
+        inputs = parse_inputs(args.input)
     elif args.input_file is not None:
         inputs = load_inputs(args.input_file)
     else:
         inputs = {}
-    run_workflow(graph, inputs, **vars(args))
+    run_workflow(
+        graph,
+        inputs,
+        name=args.name,
+        run_id=args.run_id,
+        registry_path=args.registry_path,
+        use_uv_worker=args.uv,
+        n_iterations=args.n_iterations,
+        polling_interval_seconds=args.polling_interval_seconds,
+        print_output=args.print_output,
+    )

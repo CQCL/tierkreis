@@ -1,15 +1,22 @@
 import argparse
+import importlib
 import json
 import logging
 from pathlib import Path
+from typing import Callable
 
 from tierkreis.cli.run_workflow import run_workflow
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.exceptions import TierkreisError
 
 
-def load_graph(input_file: Path) -> GraphData:
-    return GraphData()
+def load_graph(graph_input: str) -> GraphData:
+    module_name, function_name = graph_input.split(":")
+    print(f"Loading graph from module '{module_name}' and function '{function_name}'")
+    module = importlib.import_module(module_name, __package__)
+    build_submission_graph: Callable[[], GraphData] = getattr(module, function_name)
+
+    return build_submission_graph()
 
 
 def parse_inputs(inputs: list[str]) -> dict[str, bytes]:
@@ -36,10 +43,11 @@ def main() -> None:
         "-g",
         "--graph-location",
         required=True,
-        help="Path to the graph data",
-        type=Path,
+        help="Fully qualifying name of a Callable () -> GraphData. "
+        + "Example: tierkreis.cli.sample_graph:simple_eval",
+        type=str,
     )
-    input_flags = parser.add_mutually_exclusive_group(required=True)
+    input_flags = parser.add_mutually_exclusive_group()
     input_flags.add_argument("--input-file", type=Path, help="Input as a json file.")
     input_flags.add_argument(
         "-i",
@@ -96,10 +104,11 @@ def main() -> None:
     if args.verbose:
         args.log_level = logging.DEBUG
 
-    graph = load_graph(args.graph_path)
+    graph = load_graph(args.graph_location)
     if args.input is not None:
         inputs = parse_inputs(args.inputs)
-    else:
+    elif args.input_file is not None:
         inputs = load_inputs(args.input_file)
-    # inputs = parse_inputs()
+    else:
+        inputs = {}
     run_workflow(graph, inputs, **vars(args))

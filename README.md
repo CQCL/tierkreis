@@ -9,7 +9,7 @@ Tierkreis comes with a command line interface for running workflows.
 To see all available options use `tkr --help`.
 To run the hello world example from the cli
 ```
-uv run tkr -g examples/hello_world/hello_world_graph.py:hello_graph --i data.json --uv --registry-path examples/hello_world/ -o.
+uv run tkr -g examples/hello_world/hello_world_graph.py:hello_graph -i data.json --uv --registry-path examples/hello_world/ -o
 ```
 Explanation:
 * `-g` specifies the graph to run by specifying the location and function to run.

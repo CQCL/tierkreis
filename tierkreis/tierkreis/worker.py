@@ -30,9 +30,6 @@ ReturnType = TypeVar("ReturnType", bound=BaseModel)
 def _load_args(inputs: dict[str, Path]) -> dict:
     kwargs = {}
     for arg_name, path in inputs.items():
-        if arg_name not in inputs:
-            raise ValueError(f"Required argument {arg_name} not found.")
-
         with open(path, "rb") as fh:
             value = json.loads(fh.read())
 

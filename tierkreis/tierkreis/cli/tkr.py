@@ -31,16 +31,6 @@ def load_graph(graph_input: str) -> GraphData:
     return build_submission_graph()
 
 
-def parse_inputs(inputs: list[str]) -> dict[str, bytes]:
-    parsed_inputs = {}
-    for arg in inputs:
-        if ":" not in arg:
-            raise TierkreisError(f"Invalid argument: {arg}")
-        key, value = arg.split(":")
-        parsed_inputs[key] = value.encode()
-    return parsed_inputs
-
-
 def load_inputs(input_files: list[str]) -> dict[str, bytes]:
     if len(input_files) == 1 and input_files[0].endswith(".json"):
         with open(input_files[0], "r") as fh:
@@ -73,21 +63,14 @@ def main() -> None:
         + "Example: examples/hello_world/hello_world_graph.py:hello_graph",
         type=str,
     )
-    input_flags = parser.add_mutually_exclusive_group()
-    input_flags.add_argument(
+    parser.add_argument(
+        "-i",
         "--input-files",
-        nargs="+",
+        nargs="*",
         help="Graph inputs:"
         "Either a single .json file or a key value list  port1:path1 port2:path2"
         + "where path is a binary file.",
     )
-    input_flags.add_argument(
-        "-i",
-        "--input",
-        nargs="+",
-        help="Input as a key value list of the form -i k1:v1 k2:v2 ...",
-    )
-
     parser.add_argument(
         "--run-id", default=None, type=int, help="Set a workflow run id"
     )
@@ -142,9 +125,7 @@ def main() -> None:
     else:
         with open(args.from_file, "r") as fh:
             graph = GraphData(**json.loads(fh.read()))
-    if args.input is not None:
-        inputs = parse_inputs(args.input)
-    elif args.input_files is not None:
+    if args.input_files is not None:
         inputs = load_inputs(args.input_files)
     else:
         inputs = {}

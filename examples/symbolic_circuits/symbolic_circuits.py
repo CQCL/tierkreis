@@ -90,7 +90,9 @@ def main() -> None:
 
     # Assign a fixed uuid for our workflow.
     workflow_id = UUID(int=101)
-    storage = ControllerFileStorage(workflow_id, name="symbolic_circuits")
+    storage = ControllerFileStorage(
+        workflow_id, name="symbolic_circuits", do_cleanup=True
+    )
 
     # Look for workers in the same directory as this file.
     registry_path = Path(__file__).parent

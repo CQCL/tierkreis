@@ -34,7 +34,7 @@ def main() -> None:
     """Configure our workflow execution and run it to completion."""
     # Assign a fixed uuid for our workflow.
     workflow_id = UUID(int=103)
-    storage = ControllerFileStorage(workflow_id, name="error_handling")
+    storage = ControllerFileStorage(workflow_id, name="error_handling", do_cleanup=True)
 
     # Look for workers in the same directory as this file.
     registry_path = Path(__file__).parent

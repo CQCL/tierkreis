@@ -21,7 +21,6 @@ def run_workflow(
     registry_path: Path | None = None,
     print_output: bool = False,
     use_uv_worker: bool = False,
-    worker_args: dict[str, bytes] | None = None,
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.1,
 ) -> None:
@@ -36,6 +35,7 @@ def run_workflow(
         workflow_id = uuid4()
     else:
         workflow_id = UUID(int=run_id)
+    logging.info("Workflow ID is %s", workflow_id)
     storage = ControllerFileStorage(workflow_id, name=name, do_cleanup=True)
     if registry_path is None:
         registry_path = Path(__file__).parent

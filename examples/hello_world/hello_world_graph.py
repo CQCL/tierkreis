@@ -47,6 +47,7 @@ def main() -> None:
         registry_path=Path(
             __file__
         ).parent,  # Look for workers in the same directory as this file.
+        use_uv_worker=True,
         polling_interval_seconds=0.1,
         print_output=True,
     )

@@ -7,6 +7,7 @@ from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.shell_executor import ShellExecutor
+from tierkreis.controller.executor.uv_executor import UvExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +20,8 @@ def run_workflow(
     log_level: int | str = logging.INFO,
     registry_path: Path | None = None,
     print_output: bool = False,
+    use_uv_worker: bool = False,
+    worker_args: dict[str, bytes] | None = None,
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.1,
 ) -> None:
@@ -36,7 +39,13 @@ def run_workflow(
     storage = ControllerFileStorage(workflow_id, name=name, do_cleanup=True)
     if registry_path is None:
         registry_path = Path(__file__).parent
-    executor = ShellExecutor(registry_path=registry_path, logs_path=storage.logs_path)
+    if use_uv_worker:
+        executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
+    else:
+        executor = ShellExecutor(
+            registry_path=registry_path, logs_path=storage.logs_path
+        )
+
     logging.info("Starting workflow at location: %s", storage.logs_path)
 
     run_graph(

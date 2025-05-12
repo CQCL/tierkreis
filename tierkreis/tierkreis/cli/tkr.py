@@ -4,14 +4,14 @@ import json
 import logging
 import sys
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 from tierkreis.cli.run_workflow import run_workflow
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.exceptions import TierkreisError
 
 
-def import_from_path(module_name, file_path):
+def import_from_path(module_name, file_path) -> Any:
     spec = importlib.util.spec_from_file_location(module_name, file_path)
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module

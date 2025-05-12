@@ -62,7 +62,9 @@ def main() -> None:
         "-g",
         "--graph-location",
         help="Fully qualifying name of a Callable () -> GraphData. "
-        + "Example: tierkreis.cli.sample_graph:simple_eval",
+        + "Example: tierkreis.cli.sample_graph:simple_eval"
+        + "Or a path to a python file and function."
+        + "Example: examples/hello_world/hello_world_graph.py:hello_graph",
         type=str,
     )
     input_flags = parser.add_mutually_exclusive_group()

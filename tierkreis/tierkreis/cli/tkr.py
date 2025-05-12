@@ -12,8 +12,8 @@ from tierkreis.exceptions import TierkreisError
 
 
 def import_from_path(module_name, file_path) -> Any:
-    spec = importlib.util.spec_from_file_location(module_name, file_path)
-    module = importlib.util.module_from_spec(spec)
+    spec = importlib.util.spec_from_file_location(module_name, file_path)  # type: ignore
+    module = importlib.util.module_from_spec(spec)  # type: ignore
     sys.modules[module_name] = module
     spec.loader.exec_module(module)
     return module
@@ -41,12 +41,18 @@ def parse_inputs(inputs: list[str]) -> dict[str, bytes]:
     return parsed_inputs
 
 
-def load_inputs(input_file: Path) -> dict[str, bytes]:
-    if input_file.suffix == ".json":
-        with open(input_file, "r") as fh:
-            return json.load(fh)
-    with open(input_file, "rb") as fh:
-        return fh.read()
+def load_inputs(input_files: list[str]) -> dict[str, bytes]:
+    if len(input_files) == 1 and input_files[0].endswith(".json"):
+        with open(input_files[0], "r") as fh:
+            return {k: v.encode() for k, v in json.load(fh).items()}
+    inputs = {}
+    for input_file in input_files:
+        if ":" not in input_file:
+            raise TierkreisError(f"Invalid argument: {input_file}")
+        key, value = input_file.split(":")
+        with open(value, "rb") as fh:
+            inputs[key] = fh.read()
+    return inputs
 
 
 def main() -> None:
@@ -69,7 +75,11 @@ def main() -> None:
     )
     input_flags = parser.add_mutually_exclusive_group()
     input_flags.add_argument(
-        "--input-file", type=Path, help="Input graph file. Accepts .json or binary data"
+        "--input-files",
+        nargs="+",
+        help="Graph inputs:"
+        "Either a single .json file or a key value list  port1:path1 port2:path2"
+        + "where path is a binary file.",
     )
     input_flags.add_argument(
         "-i",
@@ -134,8 +144,8 @@ def main() -> None:
             graph = GraphData(**json.loads(fh.read()))
     if args.input is not None:
         inputs = parse_inputs(args.input)
-    elif args.input_file is not None:
-        inputs = load_inputs(args.input_file)
+    elif args.input_files is not None:
+        inputs = load_inputs(args.input_files)
     else:
         inputs = {}
     run_workflow(

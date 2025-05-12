@@ -251,7 +251,7 @@ def main() -> None:
 
     # Assign a fixed uuid for our workflow.
     workflow_id = UUID(int=102)
-    storage = ControllerFileStorage(workflow_id, name="hamiltonian")
+    storage = ControllerFileStorage(workflow_id, name="hamiltonian", do_cleanup=True)
 
     # Look for workers in the same directory as this file.
     registry_path = Path(__file__).parent

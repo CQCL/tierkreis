@@ -1,9 +1,7 @@
 from pathlib import Path
 from uuid import UUID, uuid4
-import json
 import logging
 
-from tierkreis import Labels
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
@@ -34,7 +32,7 @@ def run_workflow(
         workflow_id = uuid4()
     else:
         workflow_id = UUID(int=run_id)
-    storage = ControllerFileStorage(workflow_id, name=name)
+    storage = ControllerFileStorage(workflow_id, name=name, do_cleanup=True)
     if registry_path is None:
         registry_path = Path(__file__).parent
     executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
@@ -52,5 +50,6 @@ def run_workflow(
         },
     )
     if print_output:
-        output = json.loads(storage.read_output(Loc(), Labels.VALUE))
-        print(output)
+        all_outputs = graph.nodes[graph.output_idx()].inputs
+        for output in all_outputs:
+            print(f"{output}: {storage.read_output(Loc(), output)}")

@@ -19,7 +19,8 @@ def run_workflow(
     log_level: int | str = logging.INFO,
     registry_path: Path | None = None,
     print_output: bool = False,
-    **kwargs,
+    n_iterations: int = 10000,
+    polling_interval_seconds: float = 0.1,
 ) -> None:
     """Run a workflow."""
     logging.basicConfig(
@@ -43,11 +44,8 @@ def run_workflow(
         executor,
         graph,
         inputs,
-        **{
-            k: v
-            for k, v in kwargs.items()
-            if k in ["n_iterations", "polling_interval_seconds"]
-        },
+        n_iterations,
+        polling_interval_seconds,
     )
     if print_output:
         all_outputs = graph.nodes[graph.output_idx()].inputs

@@ -250,7 +250,7 @@ def main() -> None:
     ansatz = build_ansatz()
 
     # Assign a fixed uuid for our workflow.
-    workflow_id = UUID(int=0)
+    workflow_id = UUID(int=102)
     storage = ControllerFileStorage(workflow_id, name="hamiltonian")
 
     # Look for workers in the same directory as this file.

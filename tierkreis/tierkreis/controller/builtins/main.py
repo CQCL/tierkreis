@@ -1,261 +1,144 @@
-import json
-import logging
-from glob import glob
 from logging import getLogger
 from pathlib import Path
 from sys import argv
-from typing import Any
+from typing import Iterator
 
 from pydantic import BaseModel
 
+from tierkreis.value import Value
+from tierkreis.worker import Worker
+
+
 logger = getLogger(__name__)
 
-
-class WorkerCallArgs(BaseModel):
-    function_name: str
-    inputs: dict[str, Path]
-    outputs: dict[str, Path]
-    output_dir: Path
-    done_path: Path
-    error_path: Path
-    logs_path: Path | None
+worker = Worker("builtins")
 
 
-def iadd(a: int, b: int) -> int:
+@worker.function()
+def iadd(*, a: int, b: int) -> Value[int]:
     logger.debug(f"iadd {a} {b}")
-    return a + b
+    return Value(value=a + b)
 
 
-def itimes(a: int, b: int) -> int:
+@worker.function()
+def itimes(*, a: int, b: int) -> Value[int]:
     logger.debug(f"itimes {a} {b}")
-    return a * b
+    return Value(value=a * b)
 
 
-def igt(a: int, b: int) -> bool:
+@worker.function()
+def igt(*, a: int, b: int) -> Value[bool]:
     logger.debug(f"igt {a} {b}")
-    return a > b
+    return Value(value=a > b)
 
 
-def run(node_definition: WorkerCallArgs):
-    logging.basicConfig(
-        format="%(asctime)s: %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-        filename=node_definition.logs_path,
-        filemode="a",
-        level=logging.INFO,
-    )
-    logger.info(node_definition.model_dump())
-    if node_definition.function_name == "iadd":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            a: int = json.loads(fh.read())
-        with open(node_definition.inputs["b"], "rb") as fh:
-            b: int = json.loads(fh.read())
+@worker.function(name="and")
+def impl_and(*, a: bool, b: bool) -> Value[bool]:
+    logger.debug(f"igt {a} {b}")
+    return Value(value=a and b)
 
-        c = iadd(a, b)
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(c))
+@worker.function(name="id")
+def impl_id[T](*, value: T) -> Value[T]:
+    logger.debug(f"id {value}")
+    return Value(value=value)
 
-    elif node_definition.function_name == "itimes":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            a: int = json.loads(fh.read())
-        with open(node_definition.inputs["b"], "rb") as fh:
-            b: int = json.loads(fh.read())
 
-        c = itimes(a, b)
+@worker.function()
+def append[T](*, l: list[T], a: T) -> Value[list[T]]:  # noqa: E741
+    l.append(a)
+    return Value(value=l)
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(c))
 
-    elif node_definition.function_name == "igt":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            a: int = json.loads(fh.read())
-        with open(node_definition.inputs["b"], "rb") as fh:
-            b: int = json.loads(fh.read())
+class Headed[T](BaseModel):
+    head: T
+    rest: list[T]
 
-        c = igt(a, b)
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(c))
+@worker.function()
+def head[T](*, l: list[T]) -> Headed[T]:  # noqa: E741
+    head, rest = l[0], l[1:]
+    return Headed(head=head, rest=rest)
 
-    elif node_definition.function_name == "and":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            a = json.loads(fh.read())
-        with open(node_definition.inputs["b"], "rb") as fh:
-            b = json.loads(fh.read())
 
-        c = a and b
+@worker.function(name="len")
+def impl_len(*, l: list) -> Value[int]:  # noqa: E741
+    logger.info("len: %s", l)
+    return Value(value=len(l))
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(c))
 
-    elif node_definition.function_name == "id":
-        with open(node_definition.inputs["value"], "rb") as fh:
-            value = json.loads(fh.read())
+@worker.function()
+def str_eq(*, a: str, b: str) -> Value[bool]:
+    return Value(value=a == b)
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(value))
 
-    elif node_definition.function_name == "fold_values":
-        values = []
-        inputs = glob(str(node_definition.inputs["values_glob"]))
-        inputs.sort(key=lambda p: int(Path(p).name))
-        for i, path in enumerate(inputs):
-            with open(path, "rb") as fh:
-                values.append(json.loads(fh.read()))
+@worker.function()
+def str_neq(*, a: str, b: str) -> Value[bool]:
+    return Value(value=a != b)
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(values))
 
-    elif node_definition.function_name == "unfold_values":
-        with open(node_definition.inputs["value"], "rb") as fh:
-            values_list = json.loads(fh.read())
+@worker.function()
+def fold_values[T](values_glob: Iterator[tuple[str, T]]) -> Value[list[T]]:
+    values = [value[1] for value in values_glob]
+    return Value(value=values)
 
-        if not isinstance(values_list, list):
-            raise ValueError("VALUE to unfold must be a list.")
 
-        for i, value in enumerate(values_list):
-            with open(node_definition.output_dir / str(i), "w+") as fh:
-                fh.write(json.dumps(value))
+@worker.function()
+def unfold_values[T](*, value: list[T]) -> Iterator[tuple[str, T]]:
+    for i, v in enumerate(value):
+        yield str(i), v
 
-    elif node_definition.function_name == "fold_dict":
-        values = {}
-        inputs = glob(str(node_definition.inputs["values_glob"]))
-        for path in inputs:
-            with open(path, "rb") as fh:
-                k = Path(path).name
-                values[k] = json.loads(fh.read())
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(values))
+@worker.function()
+def fold_dict[T](values_glob: Iterator[tuple[str, T]]) -> Value[dict[str, T]]:
+    values = {k: v for k, v in values_glob}
+    return Value(value=values)
 
-    elif node_definition.function_name == "unfold_dict":
-        with open(node_definition.inputs["value"], "rb") as fh:
-            values_dict = json.loads(fh.read())
 
-        if not isinstance(values_dict, dict):
-            raise ValueError("VALUE to unfold must be a dict.")
+@worker.function()
+def unfold_dict[T](*, value: dict[str, T]) -> Iterator[tuple[str, T]]:
+    for k, v in value.items():
+        yield k, v
 
-        for k, value in values_dict.items():
-            with open(node_definition.output_dir / k, "w+") as fh:
-                fh.write(json.dumps(value))
 
-    elif node_definition.function_name == "append":
-        with open(node_definition.inputs["l"], "rb") as fh:
-            list_l = json.loads(fh.read())
+@worker.function()
+def concat(*, lhs: str, rhs: str) -> Value[str]:
+    return Value(value=lhs + rhs)
 
-        with open(node_definition.inputs["a"], "rb") as fh:
-            a = json.loads(fh.read())
 
-        assert isinstance(list_l, list)
-        new_l: list[Any] = list_l + [a]
+@worker.function(name="zip")
+def zip_impl[U, V](*, a: list[U], b: list[V]) -> Value[list[tuple[U, V]]]:
+    return Value(value=list(zip(a, b)))
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(new_l))
 
-    elif node_definition.function_name == "head":
-        with open(node_definition.inputs["l"], "rb") as fh:
-            list_l = json.loads(fh.read())
+class Unzipped[U, V](BaseModel):
+    a: list[U]
+    b: list[V]
 
-        assert isinstance(list_l, list)
-        head, rest = list_l[0], list_l[1:]
 
-        with open(node_definition.outputs["head"], "w+") as fh:
-            fh.write(json.dumps(head))
+@worker.function()
+def unzip[U, V](*, value: list[tuple[U, V]]) -> Unzipped[U, V]:
+    value_a, value_b = map(list, zip(*value))
+    return Unzipped(a=value_a, b=value_b)
 
-        with open(node_definition.outputs["rest"], "w+") as fh:
-            fh.write(json.dumps(rest))
 
-    elif node_definition.function_name == "len":
-        with open(node_definition.inputs["l"], "rb") as fh:
-            list_l = json.loads(fh.read())
+@worker.function(name="tuple")
+def tuple_impl[U, V](*, a: U, b: V) -> Value[tuple[U, V]]:
+    return Value(value=(a, b))
 
-        length = len(list_l)
-        logger.info(f"LEN {length}")
 
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(length))
+class Untupled[U, V](BaseModel):
+    a: U
+    b: V
 
-    elif node_definition.function_name == "str_eq":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            str_a = json.loads(fh.read())
 
-        with open(node_definition.inputs["b"], "rb") as fh:
-            str_b = json.loads(fh.read())
-
-        ans = str_a == str_b
-
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(ans))
-
-    elif node_definition.function_name == "str_neq":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            str_a = json.loads(fh.read())
-
-        with open(node_definition.inputs["b"], "rb") as fh:
-            str_b = json.loads(fh.read())
-
-        ans = str_a != str_b
-
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(ans))
-
-    elif node_definition.function_name == "zip":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            value_a = json.loads(fh.read())
-
-        with open(node_definition.inputs["b"], "rb") as fh:
-            value_b = json.loads(fh.read())
-
-        ans = list(zip(value_a, value_b))
-
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(ans))
-
-    elif node_definition.function_name == "unzip":
-        with open(node_definition.inputs["value"], "rb") as fh:
-            zipped: list[tuple[object, object]] = json.loads(fh.read())
-
-        value_a, value_b = map(list, zip(*zipped))
-
-        with open(node_definition.outputs["a"], "w+") as fh:
-            fh.write(json.dumps(value_a))
-
-        with open(node_definition.outputs["b"], "w+") as fh:
-            fh.write(json.dumps(value_b))
-
-    elif node_definition.function_name == "tuple":
-        with open(node_definition.inputs["a"], "rb") as fh:
-            value_a = json.loads(fh.read())
-
-        with open(node_definition.inputs["b"], "rb") as fh:
-            value_b = json.loads(fh.read())
-
-        ans = (value_a, value_b)
-
-        with open(node_definition.outputs["value"], "w+") as fh:
-            fh.write(json.dumps(ans))
-
-    elif node_definition.function_name == "untuple":
-        with open(node_definition.inputs["value"], "rb") as fh:
-            value: tuple[object, object] = json.loads(fh.read())
-
-        value_a, value_b = value
-
-        with open(node_definition.outputs["a"], "w+") as fh:
-            fh.write(json.dumps(value_a))
-
-        with open(node_definition.outputs["b"], "w+") as fh:
-            fh.write(json.dumps(value_b))
-
-    else:
-        raise ValueError(f"function name {node_definition.function_name} not found")
-    node_definition.done_path.touch()
+@worker.function()
+def untuple[U, V](*, value: tuple[U, V]) -> Untupled[U, V]:
+    logger.info("untuple: %s", value)
+    value_a, value_b = value
+    return Untupled(a=value_a, b=value_b)
 
 
 if __name__ == "__main__":
     worker_definition_path = argv[1]
-    with open(worker_definition_path, "r") as fh:
-        node_definition = WorkerCallArgs(**json.loads(fh.read()))
-
-    run(node_definition)
+    worker.run(Path(worker_definition_path))

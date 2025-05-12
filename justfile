@@ -20,3 +20,9 @@ fix:
 
 serve:
 	cd tierkreis_visualization && {{uvrun}} fastapi dev tierkreis_visualization/main.py
+
+examples:
+	{{uvrun}} examples/hello_world/hello_world_graph.py
+	{{uvrun}} examples/error_handling/error_handling_graph.py
+	{{uvrun}} examples/symbolic_circuits/symbolic_circuits.py
+	{{uvrun}} examples/hamiltonian/hamiltonian_graph.py

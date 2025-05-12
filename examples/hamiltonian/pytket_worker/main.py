@@ -1,15 +1,17 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["pydantic", "pytket"]
+# dependencies = ["pydantic", "pytket", "tierkreis"]
+#
+# [tool.uv.sources]
+# tierkreis = { path = "../../../tierkreis" }
 # ///
-import json
 import logging
 from sys import argv
 from pathlib import Path
-from typing import Optional
 
 
 from pydantic import BaseModel
+from tierkreis import Worker
 from pytket.backends.backendresult import BackendResult
 from pytket._tket.circuit import Circuit
 from pytket.transform import Transform
@@ -20,96 +22,56 @@ from sympy import Symbol
 
 logger = logging.getLogger(__name__)
 
-
-class NodeDefinition(BaseModel):
-    function_name: str
-    inputs: dict[str, Path]
-    outputs: dict[str, Path]
-    done_path: Path
-    logs_path: Optional[Path] = None
+worker = Worker("pytket-worker")
 
 
-def run(node_definition: NodeDefinition) -> None:
-    logging.basicConfig(
-        format="%(asctime)s: %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-        filename=node_definition.logs_path,
-        filemode="a",
-        level=logging.INFO,
-    )
-    logger.info(node_definition.model_dump())
+class CircuitResult(BaseModel):
+    circuit: dict
 
-    name = node_definition.function_name
-    if name == "substitute":
-        with open(node_definition.inputs["circuit"], "rb") as fh:
-            circuit = Circuit.from_dict(json.loads(fh.read()))
 
-        with open(node_definition.inputs["a"], "rb") as fh:
-            a = json.loads(fh.read())
+@worker.function()
+def substitute(circuit: dict, a: float, b: float, c: float) -> CircuitResult:
+    pytket_circuit = Circuit.from_dict(circuit)
+    pytket_circuit.symbol_substitution({Symbol("a"): a, Symbol("b"): b, Symbol("c"): c})
+    return CircuitResult(circuit=pytket_circuit.to_dict())
 
-        with open(node_definition.inputs["b"], "rb") as fh:
-            b = json.loads(fh.read())
 
-        with open(node_definition.inputs["c"], "rb") as fh:
-            c = json.loads(fh.read())
+@worker.function()
+def add_measure_all(circuit: dict) -> CircuitResult:
+    pytket_circuit = Circuit.from_dict(circuit)
+    pytket_circuit.measure_all()
+    return CircuitResult(circuit=pytket_circuit.to_dict())
 
-        circuit.symbol_substitution({Symbol("a"): a, Symbol("b"): b, Symbol("c"): c})
 
-        with open(node_definition.outputs["circuit"], "w+") as fh:
-            fh.write(json.dumps(circuit.to_dict()))
+@worker.function(name="append_pauli_measurement")
+def append_pauli_measurement_impl(circuit: dict, pauli_string: list) -> CircuitResult:
+    pytket_circuit = Circuit.from_dict(circuit)
+    pytket_qubit_pauli_string = QubitPauliString.from_list(pauli_string)
+    append_pauli_measurement(pytket_qubit_pauli_string, pytket_circuit)
+    return CircuitResult(circuit=pytket_circuit.to_dict())
 
-    elif name == "add_measure_all":
-        with open(node_definition.inputs["circuit"], "rb") as fh:
-            circuit = Circuit.from_dict(json.loads(fh.read()))
 
-        circuit.measure_all()
+@worker.function()
+def optimise_phase_gadgets(circuit: dict) -> CircuitResult:
+    pytket_circuit = Circuit.from_dict(circuit)
+    Transform.OptimisePhaseGadgets().apply(pytket_circuit)
+    return CircuitResult(circuit=pytket_circuit.to_dict())
 
-        with open(node_definition.outputs["circuit"], "w+") as fh:
-            fh.write(json.dumps(circuit.to_dict()))
 
-    elif name == "append_pauli_measurement":
-        with open(node_definition.inputs["circuit"], "rb") as fh:
-            circuit = Circuit.from_dict(json.loads(fh.read()))
+class ExpectationResult(BaseModel):
+    expectation: float
 
-        with open(node_definition.inputs["pauli_string"], "rb") as fh:
-            qubit_pauli_string = QubitPauliString.from_list(json.loads(fh.read()))
 
-        append_pauli_measurement(qubit_pauli_string, circuit)
-
-        with open(node_definition.outputs["circuit"], "w+") as fh:
-            fh.write(json.dumps(circuit.to_dict()))
-
-    elif name == "optimise_phase_gadgets":
-        with open(node_definition.inputs["circuit"], "rb") as fh:
-            circuit = Circuit.from_dict(json.loads(fh.read()))
-
-        Transform.OptimisePhaseGadgets().apply(circuit)
-
-        with open(node_definition.outputs["circuit"], "w+") as fh:
-            fh.write(json.dumps(circuit.to_dict()))
-
-    elif name == "expectation":
-        with open(node_definition.inputs["backend_result"], "rb") as fh:
-            backendresult = BackendResult.from_dict(json.loads(fh.read()))
-
-        expectation = expectation_from_counts(backendresult.get_counts())
-
-        with open(node_definition.outputs["expectation"], "w+") as fh:
-            fh.write(json.dumps(expectation))
-
-    # Also important
-    else:
-        raise ValueError(f"pytket_worker: unknown function: {name}")
-
-    # Very important!
-    node_definition.done_path.touch()
+@worker.function()
+def expectation(backend_result: dict) -> ExpectationResult:
+    result = BackendResult.from_dict(backend_result)
+    expectation = expectation_from_counts(result.get_counts())
+    return ExpectationResult(expectation=expectation)
 
 
 def main() -> None:
     node_definition_path = argv[1]
-    with open(node_definition_path, "r") as fh:
-        node_definition = NodeDefinition(**json.loads(fh.read()))
-    run(node_definition)
+    worker.run(Path(node_definition_path))
 
 
 if __name__ == "__main__":

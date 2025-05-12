@@ -39,7 +39,18 @@ def run_workflow(
         registry_path = Path(__file__).parent
     executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
     logging.info("Starting workflow at location: %s", storage.logs_path)
-    run_graph(storage, executor, graph, inputs, **kwargs)
+
+    run_graph(
+        storage,
+        executor,
+        graph,
+        inputs,
+        **{
+            k: v
+            for k, v in kwargs.items()
+            if k in ["n_iterations", "polling_interval_seconds"]
+        },
+    )
     if print_output:
         output = json.loads(storage.read_output(Loc(), Labels.VALUE))
         print(output)

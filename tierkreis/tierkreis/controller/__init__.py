@@ -21,7 +21,6 @@ def run_graph(
     graph_inputs: dict[str, bytes],
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
-    **_kwargs,
 ) -> None:
     storage.write_metadata(Loc(""))
     for name, value in graph_inputs.items():

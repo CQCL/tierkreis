@@ -30,8 +30,11 @@ def parse_inputs(inputs: list[str]) -> dict[str, bytes]:
 
 
 def load_inputs(input_file: Path) -> dict[str, bytes]:
-    with open(input_file, "r") as fh:
-        return json.load(fh)
+    if input_file.suffix == ".json":
+        with open(input_file, "r") as fh:
+            return json.load(fh)
+    with open(input_file, "rb") as fh:
+        return fh.read()
 
 
 def main() -> None:
@@ -48,7 +51,9 @@ def main() -> None:
         type=str,
     )
     input_flags = parser.add_mutually_exclusive_group()
-    input_flags.add_argument("--input-file", type=Path, help="Input as a json file.")
+    input_flags.add_argument(
+        "--input-file", type=Path, help="Input graph file. Accepts .json or binary data"
+    )
     input_flags.add_argument(
         "-i",
         "--input",

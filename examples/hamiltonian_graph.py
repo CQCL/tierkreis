@@ -3,7 +3,7 @@
 # dependencies = ["tierkreis", "pytket"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../tierkreis", editable = true }
+# tierkreis = { path = "../tierkreis", editable = true }
 # ///
 import json
 from pathlib import Path
@@ -25,6 +25,7 @@ from tierkreis.controller.data.graph import (
     Loop,
 )
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
 
@@ -190,7 +191,10 @@ def symbolic_execution() -> GraphData:
     n_shots = g.add(Const(100))("value")
 
     substituted_circuit = g.add(
-        Func("pytket_worker.substitute", {"a": a, "b": b, "c": c, "circuit": ansatz})
+        Func(
+            "substitution_worker.substitute",
+            {"a": a, "b": b, "c": c, "circuit": ansatz},
+        )
     )("circuit")
 
     unzipped = g.add(Func("builtins.unzip", {"value": hamiltonian}))
@@ -240,7 +244,22 @@ def main() -> None:
 
     # Look for workers in the same directory as this file.
     registry_path = Path(__file__).parent
-    executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
+    # Look for workers in the `example_workers` directory.
+    registry_path = Path(__file__).parent / "example_workers"
+    custom_executor = UvExecutor(
+        registry_path=registry_path, logs_path=storage.logs_path
+    )
+    common_registry_path = (
+        Path(__file__).parent.parent / "tierkreis_workers" / "tierkreis_workers"
+    )
+    common_executor = UvExecutor(
+        registry_path=common_registry_path, logs_path=storage.logs_path
+    )
+    multi_executor = MultipleExecutor(
+        common_executor,
+        executors={"custom": custom_executor},
+        assignments={"substitution_worker": "custom"},
+    )
     print("Starting workflow at location:", storage.logs_path)
 
     qubits = [Qubit(0), Qubit(1), Qubit(2), Qubit(3)]
@@ -252,7 +271,7 @@ def main() -> None:
     ]
     run_graph(
         storage,
-        executor,
+        multi_executor,
         symbolic_execution(),
         {
             "ansatz": json.dumps(ansatz.to_dict()).encode(),

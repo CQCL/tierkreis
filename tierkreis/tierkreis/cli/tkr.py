@@ -11,7 +11,7 @@ from tierkreis.controller.data.graph import GraphData
 from tierkreis.exceptions import TierkreisError
 
 
-def _import_from_path(module_name, file_path) -> Any:
+def _import_from_path(module_name: str, file_path: str) -> Any:
     spec = importlib.util.spec_from_file_location(module_name, file_path)  # type: ignore
     module = importlib.util.module_from_spec(spec)  # type: ignore
     sys.modules[module_name] = module
@@ -20,6 +20,8 @@ def _import_from_path(module_name, file_path) -> Any:
 
 
 def load_graph(graph_input: str) -> GraphData:
+    if ":" not in graph_input:
+        raise TierkreisError(f"Invalid argument: {graph_input}")
     module_name, function_name = graph_input.split(":")
     print(f"Loading graph from module '{module_name}' and function '{function_name}'")
     if ".py" in module_name:

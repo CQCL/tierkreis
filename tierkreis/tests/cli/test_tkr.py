@@ -1,6 +1,11 @@
+import json
 import pytest
+import sys
+from pathlib import Path
+from unittest import mock
+from uuid import UUID
 
-from tierkreis.cli.tkr import load_graph, _load_inputs
+from tierkreis.cli.tkr import load_graph, _load_inputs, main
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.exceptions import TierkreisError
 
@@ -14,7 +19,7 @@ graph_params = [
 ]
 
 
-@pytest.mark.parametrize("input,graph", graph_params)
+@pytest.mark.parametrize("input,graph", graph_params, ids=["load_module", "load_file"])
 def test_load_graph(input: str, graph: GraphData) -> None:
     assert load_graph(input) == graph
 
@@ -48,7 +53,9 @@ input_params = [
 ]
 
 
-@pytest.mark.parametrize("input,result", input_params)
+@pytest.mark.parametrize(
+    "input,result", input_params, ids=["json_input", "binary_input"]
+)
 def test_load_inputs(input: list[str], result: dict[str, bytes]) -> None:
     assert _load_inputs(input) == result
 
@@ -62,5 +69,57 @@ def test_load_inputs_invalid() -> None:
         _load_inputs(["wrong_format"])
 
 
-def test_end_to_end() -> None:
-    pass
+default_args = [
+    "tkr",
+    "--run-id",
+    "1860",
+    "-v",
+    "-o",
+    "-n",
+    "200",
+    "-p",
+    "0.02",
+    "-r",
+    "--name",
+    "test_name",
+    "--uv",
+    "--registry-path",
+    "tests/controller/sample_graphdata",
+]
+
+cli_params = [
+    (
+        default_args + ["-f", "tierkreis/tests/cli/data/sample_graph"],
+        {"simple_eval_output": 12},
+    ),
+    (
+        default_args
+        + [
+            "-g",
+            "tests.controller.sample_graphdata:factorial",
+            "-i",
+            "n:tierkreis/tests/cli/data/n",
+            "factorial:tierkreis/tests/cli/data/factorial",
+        ],
+        {"factorial_output": 120},
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    "args,result", cli_params, ids=["simple_eval_cli", "factorial_cli"]
+)
+def test_end_to_end(args: list[str], result: dict[str, bytes]) -> None:
+    with mock.patch.object(sys, "argv", args):
+        main()
+    for key, value in result.items():
+        with open(
+            Path.home()
+            / ".tierkreis"
+            / "checkpoints"
+            / str(UUID(int=1860))
+            / f"-/outputs/{key}",
+            "rb",
+        ) as fh:
+            c = json.loads(fh.read())
+        assert c == value

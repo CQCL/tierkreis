@@ -28,8 +28,7 @@ class Eval:
 class Loop:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
-    continue_port: PortID  # The port that specified if the loop should continue.
-    acc_port: PortID  # The input and output that is modified by the loop.
+    continue_port: PortID  # The port that specifies if the loop should continue.
     type: Literal["loop"] = field(default="loop")
 
 

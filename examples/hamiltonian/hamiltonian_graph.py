@@ -116,15 +116,7 @@ def _fold_graph_outer() -> GraphData:
     )
 
     next_accum = g.add(IfElse(non_empty, if_true, accum))("value")
-    g.add(
-        Output(
-            {
-                "func": func,
-                "accum": next_accum,
-                "should_continue": non_empty,
-            },
-        )
-    )
+    g.add(Output({"accum": next_accum, "should_continue": non_empty}))
     return g
 
 
@@ -140,14 +132,7 @@ def _fold_graph() -> GraphData:
 
     helper = g.add(Const(_fold_graph_outer()))("value")
     # TODO: include the computation inside the fold
-    loop = g.add(
-        Loop(
-            helper,
-            {"func": func, "accum": accum},
-            "should_continue",
-            "accum",
-        )
-    )
+    loop = g.add(Loop(helper, {"func": func, "accum": accum}, "should_continue"))
 
     final_accum = g.add(Func("builtins.untuple", {"value": loop("accum")}))
 

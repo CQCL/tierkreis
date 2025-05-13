@@ -4,8 +4,8 @@ requires-python = "==3.12.*"
 
 [manifest]
 members = [
-    "tiekreis-visualization",
     "tierkreis",
+    "tierkreis-visualization",
 ]
 
 [manifest.dependency-groups]
@@ -1285,27 +1285,6 @@ wheels = [
 ]
 
 [[package]]
-name = "tiekreis-visualization"
-version = "0.1.0"
-source = { virtual = "tierkreis_visualization" }
-dependencies = [
-    { name = "fastapi", extra = ["standard"] },
-    { name = "jinja2" },
-    { name = "pydantic-settings" },
-    { name = "tierkreis" },
-    { name = "watchfiles" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.11" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "pydantic-settings", specifier = ">=2.8.1" },
-    { name = "tierkreis", editable = "tierkreis" },
-    { name = "watchfiles", specifier = ">=1.0.4" },
-]
-
-[[package]]
 name = "tierkreis"
 version = "0.7.8"
 source = { editable = "tierkreis" }
@@ -1327,6 +1306,27 @@ requires-dist = [{ name = "pydantic", specifier = "~=2.5" }]
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]
 dev = [{ name = "pytest" }]
+
+[[package]]
+name = "tierkreis-visualization"
+version = "0.1.0"
+source = { editable = "tierkreis_visualization" }
+dependencies = [
+    { name = "fastapi", extra = ["standard"] },
+    { name = "jinja2" },
+    { name = "pydantic-settings" },
+    { name = "tierkreis" },
+    { name = "watchfiles" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "fastapi", extras = ["standard"], specifier = ">=0.115.11" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "pydantic-settings", specifier = ">=2.8.1" },
+    { name = "tierkreis", editable = "tierkreis" },
+    { name = "watchfiles", specifier = ">=1.0.4" },
+]
 
 [[package]]
 name = "typer"

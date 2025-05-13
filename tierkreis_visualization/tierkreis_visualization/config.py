@@ -15,7 +15,9 @@ CONFIG = Settings()
 
 CONFIG.tierkreis_path.mkdir(parents=True, exist_ok=True)
 
-templates = Jinja2Templates(directory="templates")
+templates = Jinja2Templates(
+    directory=(Path(__file__).parent.parent / "templates").absolute()
+)
 
 
 def get_storage(workflow_id: UUID) -> ControllerStorage:

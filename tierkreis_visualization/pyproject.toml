@@ -1,7 +1,7 @@
 [project]
-name = "tiekreis_visualization"
+name = "tierkreis_visualization"
 version = "0.1.0"
-description = "Add your description here"
+description = "Browser based visualization tool for tierkreis"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
@@ -12,5 +12,13 @@ dependencies = [
     "watchfiles>=1.0.4",
 ]
 
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
 [tool.uv.sources]
 tierkreis = { workspace = true }
+
+[project.scripts]
+tkr-vis = "tierkreis_visualization.main:start"
+

@@ -1,5 +1,10 @@
 [tool.uv.workspace]
-members = ["tierkreis", "tierkreis_workers", "tierkreis_visualization"]
+members = [
+    "tierkreis",
+    "tierkreis_visualization",
+
+    "tierkreis_workers/*",
+]
 
 [dependency-groups]
 # Default dev dependency group

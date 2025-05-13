@@ -90,11 +90,8 @@ def _fold_graph_outer() -> GraphData:
     g = GraphData()
 
     func = g.add(Input("func"))("func")
-    # tuple of the list and value
     accum = g.add(Input("accum"))("accum")
-    untupled = g.add(Func("builtins.untuple", {"value": accum}))
-    folded = untupled("a")
-    values = untupled("b")
+    values = g.add(Input("values"))("values")
 
     zero = g.add(Const(0))("value")
     values_len = g.add(Func("builtins.len", {"l": values}))("value")
@@ -105,19 +102,20 @@ def _fold_graph_outer() -> GraphData:
     headed = g.add(Func("builtins.head", {"l": values}))
 
     # Apply the function if we were able to pop off a value.
-    apply_next = g.add(
+    applied_next = g.add(
         Eval(
             func,
-            {"accum": folded, "value": headed("head")},
+            {"accum": accum, "value": headed("head")},
         )
     )("value")
 
-    if_true = g.add(Func("builtins.tuple", {"a": apply_next, "b": headed("rest")}))(
-        "value"
+    next_accum = g.add(IfElse(non_empty, applied_next, accum))("value")
+    next_values = g.add(IfElse(non_empty, headed("rest"), values))("value")
+    g.add(
+        Output(
+            {"accum": next_accum, "values": next_values, "should_continue": non_empty}
+        )
     )
-
-    next_accum = g.add(IfElse(non_empty, if_true, accum))("value")
-    g.add(Output({"accum": next_accum, "should_continue": non_empty}))
     return g
 
 
@@ -129,16 +127,17 @@ def _fold_graph() -> GraphData:
     initial = g.add(Input("initial"))("initial")
     values = g.add(Input("values"))("values")
 
-    accum = g.add(Func("builtins.tuple", {"a": initial, "b": values}))("value")
-
     helper = g.add(Const(_fold_graph_outer()))("value")
     # TODO: include the computation inside the fold
-    loop = g.add(Loop(helper, {"func": func, "accum": accum}, "should_continue"))
+    loop = g.add(
+        Loop(
+            helper,
+            {"func": func, "accum": initial, "values": values},
+            "should_continue",
+        )
+    )
 
-    final_accum = g.add(Func("builtins.untuple", {"value": loop("accum")}))
-
-    # We need to return the values in order for evaluation to succeed.
-    g.add(Output({"value": final_accum("a"), "values": final_accum("b")}))
+    g.add(Output({"value": loop("accum")}))
 
     return g
 
@@ -249,9 +248,7 @@ def main() -> None:
     custom_executor = UvExecutor(
         registry_path=registry_path, logs_path=storage.logs_path
     )
-    common_registry_path = (
-        Path(__file__).parent.parent / "tierkreis_workers" / "tierkreis_workers"
-    )
+    common_registry_path = Path(__file__).parent.parent / "tierkreis_workers"
     common_executor = UvExecutor(
         registry_path=common_registry_path, logs_path=storage.logs_path
     )

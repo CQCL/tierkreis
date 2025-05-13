@@ -3,7 +3,7 @@
 # dependencies = ["tierkreis"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../tierkreis", editable = true }
+# tierkreis = { path = "../tierkreis", editable = true }
 # ///
 import json
 from pathlib import Path
@@ -44,9 +44,8 @@ def main() -> None:
         {Labels.VALUE: json.dumps("world!").encode()},
         name="hello_world",
         run_id=100,  # Assign a fixed uuid for our workflow.
-        registry_path=Path(
-            __file__
-        ).parent,  # Look for workers in the same directory as this file.
+        registry_path=Path(__file__).parent
+        / "example_workers",  # Look for workers in the `example_workers` directory.
         use_uv_worker=True,
         polling_interval_seconds=0.1,
         print_output=True,

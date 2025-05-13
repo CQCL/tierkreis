@@ -3,7 +3,7 @@
 # dependencies = ["tierkreis"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../tierkreis" }
+# tierkreis = { path = "../tierkreis", editable = true }
 # ///
 import json
 from pathlib import Path
@@ -36,8 +36,8 @@ def main() -> None:
     workflow_id = UUID(int=103)
     storage = ControllerFileStorage(workflow_id, name="error_handling", do_cleanup=True)
 
-    # Look for workers in the same directory as this file.
-    registry_path = Path(__file__).parent
+    # Look for workers in the `example_workers` directory.
+    registry_path = Path(__file__).parent / "example_workers"
     executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
     print("Starting workflow at location:", storage.logs_path)
     run_graph(

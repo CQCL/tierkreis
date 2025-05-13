@@ -6,6 +6,7 @@ requires-python = "==3.12.*"
 members = [
     "tierkreis",
     "tierkreis-visualization",
+    "tierkreis-workers",
 ]
 
 [manifest.dependency-groups]
@@ -15,8 +16,6 @@ dev = [
     { name = "pytest", specifier = ">=6.2,<9" },
     { name = "pytest-asyncio", specifier = ">=0.16,<0.17" },
     { name = "pytest-cov", specifier = ">=5.0,<6" },
-    { name = "pytket" },
-    { name = "pytket-qiskit" },
     { name = "ruff", specifier = ">=0.11.8" },
     { name = "sphinx", specifier = ">=4.3" },
     { name = "sphinx-book-theme", specifier = ">=1.1.2" },
@@ -24,10 +23,6 @@ dev = [
 docs = [
     { name = "sphinx", specifier = ">=4.3" },
     { name = "sphinx-book-theme", specifier = ">=1.1.2" },
-]
-examples = [
-    { name = "pytket" },
-    { name = "pytket-qiskit" },
 ]
 lint = [
     { name = "pyright", specifier = ">=1.1.400" },
@@ -1326,6 +1321,23 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.8.1" },
     { name = "tierkreis", editable = "tierkreis" },
     { name = "watchfiles", specifier = ">=1.0.4" },
+]
+
+[[package]]
+name = "tierkreis-workers"
+version = "0.1.0"
+source = { editable = "tierkreis_workers" }
+dependencies = [
+    { name = "pytket" },
+    { name = "pytket-qiskit" },
+    { name = "tierkreis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pytket" },
+    { name = "pytket-qiskit" },
+    { name = "tierkreis", editable = "tierkreis" },
 ]
 
 [[package]]

@@ -1,17 +1,12 @@
 [tool.uv.workspace]
-members = ["tierkreis", "tierkreis_visualization"]
+members = ["tierkreis", "tierkreis_workers", "tierkreis_visualization"]
 
 [dependency-groups]
 # Default dev dependency group
 dev = [
-    { include-group = "examples" },
     { include-group = "lint" },
     { include-group = "test" },
     { include-group = "docs" },
-]
-examples = [
-    "pytket",
-    "pytket-qiskit",
 ]
 lint = [
     "ruff>=0.11.8",

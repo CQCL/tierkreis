@@ -1,0 +1,18 @@
+[project]
+name = "tierkreis_workers"
+version = "0.1.0"
+description = "A collection of python tierkreis workers."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "tierkreis",
+    "pytket",
+    "pytket-qiskit",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv.sources]
+tierkreis = { workspace = true }

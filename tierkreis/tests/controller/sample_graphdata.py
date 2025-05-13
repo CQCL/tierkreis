@@ -49,7 +49,7 @@ def simple_loop() -> GraphData:
     g = GraphData()
     six = g.add(Const(6))(Labels.VALUE)
     g_const = g.add(Const(loop_body()))(Labels.VALUE)
-    loop = g.add(Loop(g_const, {"loop_acc": six}, "should_continue", "loop_acc"))
+    loop = g.add(Loop(g_const, {"loop_acc": six}, "should_continue"))
     g.add(Output({"simple_loop_output": loop("loop_acc")}))
     return g
 

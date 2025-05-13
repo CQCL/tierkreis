@@ -44,12 +44,7 @@ def loop_multiple_acc() -> GraphData:
     body_const = g.add(Const(_loop_body_multiple_acc()))(Labels.VALUE)
 
     loop = g.add(
-        Loop(
-            body_const,
-            {"acc": acc, "acc2": acc2, "acc3": acc3},
-            "should_continue",
-            "acc",
-        )
+        Loop(body_const, {"acc": acc, "acc2": acc2, "acc3": acc3}, "should_continue")
     )
 
     g.add(Output({"acc": loop("acc"), "acc2": loop("acc2"), "acc3": loop("acc3")}))

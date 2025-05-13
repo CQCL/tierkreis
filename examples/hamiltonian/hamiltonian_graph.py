@@ -140,14 +140,7 @@ def _fold_graph() -> GraphData:
 
     helper = g.add(Const(_fold_graph_outer()))("value")
     # TODO: include the computation inside the fold
-    loop = g.add(
-        Loop(
-            helper,
-            {"func": func, "accum": accum},
-            "should_continue",
-            "accum",
-        )
-    )
+    loop = g.add(Loop(helper, {"func": func, "accum": accum}, "should_continue"))
 
     final_accum = g.add(Func("builtins.untuple", {"value": loop("accum")}))
 

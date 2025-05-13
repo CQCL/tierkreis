@@ -110,10 +110,6 @@ def walk_loop(
     if storage.is_node_finished(loc):
         return WalkResult([], [], [])
 
-    acc_ports = loop.acc_port
-    if not isinstance(acc_ports, list):
-        acc_ports = [acc_ports]
-
     i = 0
     while storage.is_node_started(loc.L(i + 1)):
         i += 1
@@ -121,6 +117,7 @@ def walk_loop(
 
     message = storage.read_output(loc.N(-1), BODY_PORT)
     g = GraphData(**json.loads(message))
+    loop_outputs = g.nodes[g.output_idx()].inputs
 
     if not storage.is_node_finished(new_location):
         return walk_node(storage, new_location, g.output_idx(), g)
@@ -128,16 +125,19 @@ def walk_loop(
     # Latest iteration is finished. Do we BREAK or CONTINUE?
     should_continue = json.loads(storage.read_output(new_location, loop.continue_port))
     if should_continue is False:
-        for k in acc_ports:
+        for k in loop_outputs:
             storage.link_outputs(loc, k, new_location, k)
         storage.mark_node_finished(loc)
         return WalkResult([], [])
 
     # Include old inputs. The acc_port is the only one that can change.
-    ins = {k: (-1, k) for k in loop.inputs.keys() if k not in acc_ports}
-    for k in acc_ports:
-        ins[k] = g.nodes[g.output_idx()].inputs[k]
-    node_run_data = NodeRunData(loc.L(i + 1), Eval((-1, BODY_PORT), ins), acc_ports)
+    ins = {k: (-1, k) for k in loop.inputs.keys()}
+    ins.update(loop_outputs)
+    node_run_data = NodeRunData(
+        loc.L(i + 1),
+        Eval((-1, BODY_PORT), ins),
+        list(loop_outputs.keys()),
+    )
     return WalkResult([node_run_data], [])
 
 

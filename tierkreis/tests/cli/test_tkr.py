@@ -30,9 +30,9 @@ def test_load_graph_invalid() -> None:
     with pytest.raises(ModuleNotFoundError):
         load_graph("sample_graphdata:simple_eval")
     with pytest.raises(TierkreisError):
-        load_graph(["invalid_arg"])
-    with pytest.raises(TierkreisError):
-        load_graph(["at_least_a:colon"])
+        load_graph("invalid_arg")
+    with pytest.raises(ModuleNotFoundError):
+        load_graph("at_least_a:colon")
 
 
 input_params = [

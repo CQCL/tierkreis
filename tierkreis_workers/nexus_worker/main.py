@@ -1,14 +1,14 @@
-import json
 import logging
 import os
 from datetime import datetime
 from pathlib import Path
 from sys import argv
-from typing import Optional
+
+from pydantic import BaseModel
+from tierkreis.worker import Worker
 
 import qnexus as qnx
 from dotenv import load_dotenv
-from pydantic import BaseModel
 from pytket._tket.circuit import Circuit
 from pytket.backends.backendresult import BackendResult
 from pytket.backends.status import StatusEnum
@@ -21,13 +21,7 @@ from time import sleep
 logger = logging.getLogger(__name__)
 load_dotenv()
 
-
-class NodeDefinition(BaseModel):
-    function_name: str
-    inputs: dict[str, Path]
-    outputs: dict[str, Path]
-    done_path: Path
-    logs_path: Optional[Path] = None
+worker = Worker("nexus_worker")
 
 
 def setup_project():
@@ -36,7 +30,7 @@ def setup_project():
     write_token("refresh_token", refresh_token)
 
 
-def check_status(job_ref: ExecuteJobRef, delay: int) -> StatusEnum:
+def _check_status(job_ref: ExecuteJobRef, delay: int) -> StatusEnum:
     setup_project()
     sleep(delay)
     try:
@@ -86,66 +80,49 @@ def get_backend_results(execute_job_ref: ExecuteJobRef) -> list[BackendResult]:
     return backend_results
 
 
-def run(node_definition: NodeDefinition):
-    logging.basicConfig(
-        format="%(asctime)s: %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-        filename=node_definition.logs_path,
-        filemode="a",
-        level=logging.INFO,
+class SubmitResult(BaseModel):
+    execute_ref: dict
+
+
+@worker.function()
+def submit(circuits: dict, n_shots: int) -> SubmitResult:
+    pytket_circuits = [Circuit.from_dict(x) for x in circuits]
+
+    execute_ref = execute_circuits(
+        pytket_circuits,
+        n_shots=n_shots,
+        backend_name="H1-1LE",
+        project_name="Riken-Test",
     )
-    logger.info(node_definition.model_dump())
 
-    name = node_definition.function_name
-    if name == "submit":
-        with open(node_definition.inputs["circuits"], "rb") as fh:
-            circuit_jsons = json.loads(fh.read())
-            assert isinstance(circuit_jsons, list)
-            circuits = [Circuit.from_dict(x) for x in circuit_jsons]  # type:ignore
-
-        with open(node_definition.inputs["n_shots"], "rb") as fh:
-            n_shots = json.loads(fh.read())
-            assert isinstance(n_shots, int)
-
-        execute_ref = execute_circuits(
-            circuits,
-            n_shots=n_shots,
-            backend_name="H1-1LE",
-            project_name="Riken-Test",
-        )
-
-        with open(node_definition.outputs["execute_ref"], "w+") as fh:
-            fh.write(execute_ref.model_dump_json())
-
-    elif name == "check_status":
-        with open(node_definition.inputs["execute_ref"], "rb") as fh:
-            execute_ref = ExecuteJobRef(**json.loads(fh.read()))
-
-        status_enum = check_status(execute_ref, 30)
-
-        with open(node_definition.outputs["status_enum"], "w+") as fh:
-            fh.write(json.dumps(status_enum.name))
-
-    elif name == "get_results":
-        with open(node_definition.inputs["execute_ref"], "rb") as fh:
-            execute_ref = ExecuteJobRef(**json.loads(fh.read()))
-
-        results = get_backend_results(execute_ref)
-
-        with open(node_definition.outputs["backend_results"], "w+") as fh:
-            fh.write(json.dumps([x.to_dict() for x in results]))
-
-    else:
-        raise ValueError(f"nexus-worker: unknown function: {name}")
-
-    node_definition.done_path.touch()
+    return SubmitResult(execute_ref=execute_ref.model_dump())
 
 
-def main():
+class StatusResult(BaseModel):
+    status_enum: str
+
+
+@worker.function()
+def check_status(execute_ref: dict) -> StatusResult:
+    ref = ExecuteJobRef(**execute_ref)
+    status_enum = _check_status(ref, 30)
+    return StatusResult(status_enum=status_enum.name)
+
+
+class BackendResults(BaseModel):
+    backend_results: list[dict]
+
+
+@worker.function()
+def get_results(execute_ref: dict) -> BackendResults:
+    ref = ExecuteJobRef(**execute_ref)
+    results = get_backend_results(ref)
+    return BackendResults(backend_results=[x.to_dict() for x in results])
+
+
+def main() -> None:
     node_definition_path = argv[1]
-    with open(node_definition_path, "r") as fh:
-        node_definition = NodeDefinition(**json.loads(fh.read()))
-    run(node_definition)
+    worker.run(Path(node_definition_path))
 
 
 if __name__ == "__main__":

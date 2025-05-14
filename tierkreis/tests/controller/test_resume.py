@@ -9,6 +9,7 @@ from tests.controller.sample_graphdata import (
     factorial,
     map_with_str_keys,
     maps_in_series,
+    simple_eagerifelse,
     simple_eval,
     simple_ifelse,
     simple_loop,
@@ -33,6 +34,7 @@ params = [
     (factorial(), 24, "factorial", 8, {"n": b"4", "factorial": factorial_bytes}),
     (factorial(), 120, "factorial", 8, {"n": b"5", "factorial": factorial_bytes}),
     (loop_multiple_acc(), {"acc": 6, "acc2": 12, "acc3": 18}, "multi_acc", 9, {}),
+    (simple_eagerifelse(), 1, "simple_eagerifelse", 10, {"pred": b"true"}),
 ]
 ids = [
     "simple_eval",
@@ -45,6 +47,7 @@ ids = [
     "factorial_4",
     "factorial_5",
     "loop_multiple_acc",
+    "simple_eagerifelse",
 ]
 
 

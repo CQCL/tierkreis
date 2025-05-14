@@ -19,7 +19,7 @@ def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
         case "map":
             parents["body"] = node.body
             parents["map_eles"] = (node.input_idx, "map_eles")
-        case "ifelse":
+        case "ifelse" | "eifelse":
             parents["pred"] = node.pred
         case "const" | "function" | "input" | "output":
             pass

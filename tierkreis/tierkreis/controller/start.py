@@ -140,6 +140,8 @@ def start(
     elif node.type == "ifelse":
         pass
 
+    elif node.type == "eifelse":
+        pass
     else:
         assert_never(node)
 

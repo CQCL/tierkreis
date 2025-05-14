@@ -1,5 +1,5 @@
 from pathlib import Path
-from uuid import UUID, uuid4
+import uuid
 import logging
 
 from tierkreis.controller import run_graph
@@ -32,9 +32,9 @@ def run_workflow(
     )
 
     if run_id is None:
-        workflow_id = uuid4()
+        workflow_id = uuid.uuid4()
     else:
-        workflow_id = UUID(int=run_id)
+        workflow_id = uuid.UUID(int=run_id)
     logging.info("Workflow ID is %s", workflow_id)
     storage = ControllerFileStorage(workflow_id, name=name, do_cleanup=True)
     if registry_path is None:

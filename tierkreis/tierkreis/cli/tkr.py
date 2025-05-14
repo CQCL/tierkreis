@@ -11,7 +11,7 @@ from tierkreis.controller.data.graph import GraphData
 from tierkreis.exceptions import TierkreisError
 
 
-def import_from_path(module_name, file_path) -> Any:
+def _import_from_path(module_name: str, file_path: str) -> Any:
     spec = importlib.util.spec_from_file_location(module_name, file_path)  # type: ignore
     module = importlib.util.module_from_spec(spec)  # type: ignore
     sys.modules[module_name] = module
@@ -20,10 +20,12 @@ def import_from_path(module_name, file_path) -> Any:
 
 
 def load_graph(graph_input: str) -> GraphData:
+    if ":" not in graph_input:
+        raise TierkreisError(f"Invalid argument: {graph_input}")
     module_name, function_name = graph_input.split(":")
     print(f"Loading graph from module '{module_name}' and function '{function_name}'")
     if ".py" in module_name:
-        module = import_from_path("graph_module", module_name)
+        module = _import_from_path("graph_module", module_name)
     else:
         module = importlib.import_module(module_name, __package__)
     build_submission_graph: Callable[[], GraphData] = getattr(module, function_name)
@@ -31,7 +33,7 @@ def load_graph(graph_input: str) -> GraphData:
     return build_submission_graph()
 
 
-def load_inputs(input_files: list[str]) -> dict[str, bytes]:
+def _load_inputs(input_files: list[str]) -> dict[str, bytes]:
     if len(input_files) == 1 and input_files[0].endswith(".json"):
         with open(input_files[0], "r") as fh:
             return {k: json.dumps(v).encode() for k, v in json.load(fh).items()}
@@ -45,7 +47,7 @@ def load_inputs(input_files: list[str]) -> dict[str, bytes]:
     return inputs
 
 
-def main() -> None:
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="tkr",
         description="Tierkreis: a workflow engine for quantum HPC.",
@@ -117,6 +119,10 @@ def main() -> None:
     parser.add_argument("--uv", action="store_true", help="Use uv worker")
 
     args = parser.parse_args()
+    return args
+
+
+def run_workflow_args(args: argparse.Namespace):
     if args.verbose:
         args.log_level = logging.DEBUG
 
@@ -126,7 +132,7 @@ def main() -> None:
         with open(args.from_file, "r") as fh:
             graph = GraphData(**json.loads(fh.read()))
     if args.input_files is not None:
-        inputs = load_inputs(args.input_files)
+        inputs = _load_inputs(args.input_files)
     else:
         inputs = {}
     print(inputs)
@@ -141,3 +147,8 @@ def main() -> None:
         polling_interval_seconds=args.polling_interval_seconds,
         print_output=args.print_output,
     )
+
+
+def main() -> None:
+    args = parse_args()
+    run_workflow_args(args)

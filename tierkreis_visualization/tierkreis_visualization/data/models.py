@@ -1,6 +1,6 @@
 from typing import Literal
 from pydantic import BaseModel
-from tierkreis.controller.data.graph import PortID
+from tierkreis.controller.data.core import PortID
 
 NodeStatus = Literal["Not started", "Started", "Error", "Finished"]
 

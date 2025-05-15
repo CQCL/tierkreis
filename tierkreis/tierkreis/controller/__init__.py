@@ -2,13 +2,13 @@ import json
 import logging
 from time import sleep
 
-from tierkreis.controller.data.graph import Eval, GraphData, ValueRef
+from tierkreis.controller.data.graph import Eval, GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node
-from tierkreis.controller.data.graph import PortID
+from tierkreis.controller.data.core import PortID, ValueRef
 
 root_loc = Loc("")
 logger = logging.getLogger(__name__)

@@ -1,7 +1,8 @@
 import logging
 from typing import assert_never
 
-from tierkreis.controller.data.graph import NodeDef, PortID, ValueRef
+from tierkreis.controller.data.core import PortID, ValueRef
+from tierkreis.controller.data.graph import NodeDef
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
 
@@ -12,7 +13,7 @@ def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
     parents = {k: v for k, v in node.inputs.items()}
 
     match node.type:
-        case "eval":
+        case "eval" | "partial":
             parents["body"] = node.graph
         case "loop":
             parents["body"] = node.body

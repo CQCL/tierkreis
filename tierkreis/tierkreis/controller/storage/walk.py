@@ -176,13 +176,10 @@ def walk_eifelse(
     node: EagerIfElse,
 ) -> WalkResult:
     loc = parent.N(idx)
-    children = [node.if_true, node.if_false]
-    if all(storage.is_node_finished(parent.N(child[0])) for child in children):
-        # we still could stop this early when the correct node is finished
-        pred = storage.read_output(parent.N(node.pred[0]), node.pred[1])
-        next_node = node.if_true if pred == b"true" else node.if_false
-        next_loc = parent.N(next_node[0])
-        storage.link_outputs(loc, Labels.VALUE, next_loc, next_node[1])
-        storage.mark_node_finished(loc)
+    pred = storage.read_output(parent.N(node.pred[0]), node.pred[1])
+    next_node = node.if_true if pred == b"true" else node.if_false
+    next_loc = parent.N(next_node[0])
+    storage.link_outputs(loc, Labels.VALUE, next_loc, next_node[1])
+    storage.mark_node_finished(loc)
 
     return WalkResult([], [])

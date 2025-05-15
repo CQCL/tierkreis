@@ -1,7 +1,7 @@
 [project]
-name = "aer_worker"
+name = "tkr_aer_worker"
 version = "0.1.0"
-description = "A collection of python tierkreis workers."
+description = "A tierkreis worker for Aer."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

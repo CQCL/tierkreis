@@ -1,7 +1,7 @@
 [project]
-name = "pytket_worker"
+name = "tkr_pytket_worker"
 version = "0.1.0"
-description = "A worker for pytket operations."
+description = "A tierkreis worker for pytket."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

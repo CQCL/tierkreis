@@ -1,39 +1,30 @@
-# /// script
-# requires-python = ">=3.12"
-# dependencies = ["pydantic", "pytket", "tierkreis"]
-#
-# [tool.uv.sources]
-# tierkreis = { path = "../../../tierkreis" }
-# ///
 import logging
 from sys import argv
 from pathlib import Path
 
 
+from default_pass import default_compilation_pass
 from pydantic import BaseModel
 from tierkreis import Worker
 from pytket.backends.backendresult import BackendResult
 from pytket._tket.circuit import Circuit
 from pytket.transform import Transform
 from pytket.pauli import QubitPauliString
+from pytket.passes import BasePass
 from pytket.utils.expectations import expectation_from_counts
 from pytket.utils.measurements import append_pauli_measurement
-from sympy import Symbol
 
 logger = logging.getLogger(__name__)
 
-worker = Worker("pytket-worker")
+worker = Worker("pytket_worker")
 
 
 class CircuitResult(BaseModel):
     circuit: dict
 
 
-@worker.function()
-def substitute(circuit: dict, a: float, b: float, c: float) -> CircuitResult:
-    pytket_circuit = Circuit.from_dict(circuit)
-    pytket_circuit.symbol_substitution({Symbol("a"): a, Symbol("b"): b, Symbol("c"): c})
-    return CircuitResult(circuit=pytket_circuit.to_dict())
+class CircuitsResult(BaseModel):
+    circuits: list[dict]
 
 
 @worker.function()
@@ -56,6 +47,31 @@ def optimise_phase_gadgets(circuit: dict) -> CircuitResult:
     pytket_circuit = Circuit.from_dict(circuit)
     Transform.OptimisePhaseGadgets().apply(pytket_circuit)
     return CircuitResult(circuit=pytket_circuit.to_dict())
+
+
+@worker.function()
+def apply_pass(circuit: dict, compiler_pass: dict) -> CircuitResult:
+    pytket_circuit = Circuit.from_dict(circuit)
+    p = BasePass.from_dict(compiler_pass)
+    p.apply(pytket_circuit)
+    return CircuitResult(circuit=pytket_circuit.to_dict())
+
+
+@worker.function()
+def compile_circuit_quantinuum(circuit: dict) -> CircuitResult:
+    pytket_circuit = Circuit.from_dict(circuit)
+    p = default_compilation_pass()
+    p.apply(pytket_circuit)
+    return CircuitResult(circuit=pytket_circuit.to_dict())
+
+
+@worker.function()
+def compile_circuits_quantinuum(circuits: list[dict]) -> CircuitsResult:
+    pytket_circuits = [Circuit.from_dict(x) for x in circuits]
+    p = default_compilation_pass()
+    for pytket_circuit in pytket_circuits:
+        p.apply(pytket_circuit)
+    return CircuitsResult(circuits=[c.to_dict() for c in pytket_circuits])
 
 
 class ExpectationResult(BaseModel):

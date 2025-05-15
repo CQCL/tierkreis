@@ -1,10 +1,3 @@
-# /// script
-# requires-python = ">=3.12"
-# dependencies = ["pydantic", "pytket", "pytket-qiskit", "tierkreis"]
-#
-# [tool.uv.sources]
-# tierkreis = { path = "../../../tierkreis" }
-# ///
 import logging
 from sys import argv
 from pathlib import Path

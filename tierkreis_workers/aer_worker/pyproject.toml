@@ -1,12 +1,11 @@
 [project]
-name = "tierkreis_workers"
+name = "aer_worker"
 version = "0.1.0"
 description = "A collection of python tierkreis workers."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "tierkreis",
-    "pytket",
     "pytket-qiskit",
 ]
 
@@ -14,5 +13,17 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.hatch.build.targets.sdist]
+include = [
+  "*.py",
+]
+[tool.hatch.build.targets.wheel]
+include = [
+  "*.py",
+]
+
 [tool.uv.sources]
 tierkreis = { workspace = true }
+
+[project.scripts]
+tkr_aer_worker = "main:main"

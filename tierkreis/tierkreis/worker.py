@@ -6,6 +6,7 @@ from pathlib import Path
 from collections.abc import (
     Iterator,
 )  # Needs to be imported from here not typing to satisfy get_origin
+import sys
 from typing import Callable, Iterable, ParamSpec, TypeVar, get_origin
 
 from pydantic import BaseModel
@@ -77,6 +78,13 @@ class Worker:
     def __init__(self, name: str) -> None:
         self.name = name
         self.functions = {}
+
+        def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
+            logger.critical(
+                "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
+            )
+
+        sys.excepthook = handle_unhandled_exception
 
     def function(
         self,

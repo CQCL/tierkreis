@@ -13,7 +13,7 @@ app = FastAPI()
 app.include_router(workflows_router)
 app.mount(
     "/static",
-    StaticFiles(directory=(Path(__file__).parent.parent / "static").absolute()),
+    StaticFiles(directory=(Path(__file__).parent / "static").absolute()),
     name="static",
 )
 

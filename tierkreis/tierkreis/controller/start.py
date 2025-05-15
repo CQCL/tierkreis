@@ -33,15 +33,17 @@ def start_nodes(
 
 
 def run_builtin(def_path: Path, logs_path: Path) -> None:
-    formatter = logging.Formatter(
-        fmt="%(asctime)s: %(message)s",
-        datefmt="%Y-%m-%dT%H:%M:%S%z",
-    )
-    handler = logging.FileHandler(logs_path, mode="a")
-    handler.setFormatter(formatter)
     logger = getLogger("builtins")
-    logger.setLevel(logging.INFO)
-    logger.addHandler(handler)
+    if not logger.hasHandlers():
+        formatter = logging.Formatter(
+            fmt="%(asctime)s: %(message)s",
+            datefmt="%Y-%m-%dT%H:%M:%S%z",
+        )
+        handler = logging.FileHandler(logs_path, mode="a")
+        handler.setFormatter(formatter)
+        logger.setLevel(logging.INFO)
+
+        logger.addHandler(handler)
 
     logger.info("START builtin %s", def_path)
     with open(logs_path, "a") as fh:

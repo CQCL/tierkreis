@@ -15,7 +15,7 @@ worker = Worker("tests_worker")
 
 
 @worker.function()
-def sleep_and_return[T](*, output: T) -> T:
+def sleep_and_return[T](*, output: T) -> Value[T]:
     sleep(10)
     return Value(value=output)
 

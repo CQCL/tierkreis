@@ -35,6 +35,7 @@ def eagerifelse_long_running() -> GraphData:
 params = [({"pred": b"true"}, 1), ({"pred": b"false"}, 2)]
 
 
+@pytest.mark.slow
 @pytest.mark.parametrize("input, output", params)
 def test_eagerifelse_long_running(input: dict[str, bytes], output: int) -> None:
     g = eagerifelse_long_running()

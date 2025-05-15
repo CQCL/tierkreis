@@ -14,6 +14,7 @@ from tests.controller.sample_graphdata import (
     simple_ifelse,
     simple_loop,
     simple_map,
+    simple_partial,
 )
 from tests.controller.loop_graphdata import loop_multiple_acc
 from tierkreis.controller import run_graph
@@ -25,6 +26,7 @@ from tierkreis.controller.storage.filestorage import ControllerFileStorage
 factorial_bytes = factorial().model_dump_json().encode()
 params = [
     (simple_eval(), 12, "simple_eval", 1, {}),
+    (simple_partial(), 12, "simple_partial", 1, {}),
     (simple_loop(), 10, "simple_loop", 2, {}),
     (simple_map(), list(range(6, 47, 2)), "simple_map", 3, {}),
     (maps_in_series(), list(range(0, 81, 4)), "maps_in_series", 4, {}),
@@ -38,6 +40,7 @@ params = [
 ]
 ids = [
     "simple_eval",
+    "simple_partial",
     "simple_loop",
     "simple_map",
     "maps_in_series",

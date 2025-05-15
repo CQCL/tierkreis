@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal, assert_never
+from typing import Callable, Literal, assert_never
 
 from pydantic import BaseModel, RootModel
+from tierkreis.controller.data.core import Jsonable
+from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.core import NodeIndex
+from tierkreis.controller.data.core import ValueRef
+from tierkreis.controller.data.location import OutputLoc
 from tierkreis.exceptions import TierkreisError
-
-Jsonable = Any
-PortID = str
-NodeIndex = int
-ValueRef = tuple[NodeIndex, PortID]
 
 
 @dataclass
@@ -22,6 +22,13 @@ class Eval:
     graph: ValueRef
     inputs: dict[PortID, ValueRef]
     type: Literal["eval"] = field(default="eval")
+
+
+@dataclass
+class Partial:
+    graph: ValueRef
+    inputs: dict[PortID, ValueRef]
+    type: Literal["partial"] = field(default="partial")
 
 
 @dataclass
@@ -86,6 +93,7 @@ NodeDefModel = RootModel[NodeDef]
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
+    fixed_inputs: dict[PortID, OutputLoc] = {}
     outputs: list[set[PortID]] = []
     graph_output_idx: NodeIndex | None = None
 
@@ -106,7 +114,7 @@ class GraphData(BaseModel):
                 self.outputs[node.pred[0]].add(node.pred[1])
                 self.outputs[node.if_true[0]].add(node.if_true[1])
                 self.outputs[node.if_false[0]].add(node.if_false[1])
-            case "const" | "eval" | "function" | "input" | "loop" | "map":
+            case "const" | "eval" | "partial" | "function" | "input" | "loop" | "map":
                 pass
             case _:
                 assert_never(node)

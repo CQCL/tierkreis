@@ -1,7 +1,7 @@
 [project]
-name = "nexus_worker"
+name = "tkr_nexus_worker"
 version = "0.1.0"
-description = "A worker for interacting with Nexus."
+description = "A tierkreis worker for interacting with Nexus."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

@@ -4,20 +4,14 @@ on:
 
 jobs:
   pypi-publish:
-    name: upload release to PyPI
+    name: Upload all packages to PyPI
     runs-on: ubuntu-24.04
     environment: pypi
     permissions:
       id-token: write
     strategy:
       matrix:
-        package-directory:
-          - tierkreis
-          - tierkreis_visualization
         python-version: ['3.12']
-    defaults:
-      run:
-        working-directory: ${{ matrix.package-directory }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,7 +28,7 @@ jobs:
 
       - name: Build package
         run: |
-          uv build
+          uv build --all-packages
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

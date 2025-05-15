@@ -5,20 +5,22 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use color_eyre::Result;
+use color_eyre::{Result, Section, owo_colors::OwoColorize};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use directories::UserDirs;
 use ratatui::{
     DefaultTerminal, Frame,
-    layout::{Constraint, Layout},
-    style::Stylize,
-    widgets::{Block, Borders, Cell, Paragraph, Row, Table, Wrap},
+    layout::{Constraint, Layout, Margin},
+    style::{Style, Stylize},
+    widgets::{
+        Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarState, Table, TableState, Wrap,
+    },
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
 struct Metaddata {
-    name: String,
+    name: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -43,12 +45,13 @@ fn main() -> Result<()> {
 #[derive(Default)]
 struct App {
     checkpoints_dir: PathBuf,
-    workflow_select_idx: usize,
+    // workflow_select_idx: usize,
+    workflow_table_state: TableState,
     selected: bool,
     workflows: Vec<Workflow>,
 
     logs_buffer: String,
-    logs_scroll: u16,
+    logs_scroll: usize,
 
     has_error: bool,
     error_function: String,
@@ -66,6 +69,7 @@ impl App {
     pub fn new(checkpoints_dir: PathBuf) -> Self {
         Self {
             checkpoints_dir,
+            workflow_table_state: TableState::new().with_selected(Some(1)),
             ..Default::default()
         }
     }
@@ -100,9 +104,7 @@ impl App {
                 if self.selected {
                     self.logs_scroll += 1;
                 } else {
-                    if self.workflow_select_idx < self.workflows.len() - 1 {
-                        self.workflow_select_idx += 1;
-                    }
+                    self.workflow_table_state.select_next();
                 }
             }
             if matches!(
@@ -117,8 +119,8 @@ impl App {
                         self.logs_scroll -= 1;
                     }
                 } else {
-                    if self.workflow_select_idx > 0 {
-                        self.workflow_select_idx -= 1;
+                    if self.workflow_table_state.selected() != Some(1) {
+                        self.workflow_table_state.select_previous();
                     }
                 }
             }
@@ -149,20 +151,25 @@ impl App {
     fn refresh_workflows(&mut self) -> Result<()> {
         let mut workflows = Vec::new();
 
-        for workflow_dir in read_dir(&self.checkpoints_dir)? {
+        for workflow_dir in read_dir(&self.checkpoints_dir)
+            .with_note(|| "Checkpoints directory not found.")
+            .with_suggestion(
+                || "Checkpoint directory may not exist, try running a workflow first.",
+            )?
+        {
             let workflow_dir = workflow_dir?;
             let workflow_file_name = workflow_dir.file_name();
             let workflow_id = workflow_file_name.to_str().unwrap();
 
             let metadata_file_path = workflow_dir.path().join("_metadata");
-            let metadata_file = File::open(metadata_file_path)?;
+            let metadata_file = File::open(&metadata_file_path)?;
             let modified = metadata_file.metadata().unwrap().modified()?;
             let metadata: Metaddata = serde_json::from_reader(metadata_file)?;
             let modified = DateTime::<Utc>::from(modified);
 
             workflows.push(Workflow {
                 id: workflow_id.to_string(),
-                name: metadata.name,
+                name: metadata.name.unwrap_or("<unnamed workflow>".to_string()),
                 modified,
                 dir: workflow_dir,
             });
@@ -176,7 +183,7 @@ impl App {
     }
 
     fn read_logs(&mut self) -> Result<()> {
-        let workflow = &self.workflows[self.workflow_select_idx];
+        let workflow = &self.workflows[self.workflow_table_state.selected().unwrap() - 1];
         let logs_path = workflow.dir.path().join("logs");
 
         self.logs_buffer.clear();
@@ -187,7 +194,7 @@ impl App {
     }
 
     fn read_errors(&mut self) -> Result<()> {
-        let workflow = &self.workflows[self.workflow_select_idx];
+        let workflow = &self.workflows[self.workflow_table_state.selected().unwrap() - 1];
 
         self.has_error = false;
         for error_file_path in glob::glob(&format!(
@@ -200,7 +207,6 @@ impl App {
             self.error_buffer.clear();
             let mut error_file = File::open(&error_file_path)?;
             error_file.read_to_string(&mut self.error_buffer)?;
-            // todo: find out what function caused it
 
             let definition_file_path = error_file_path.parent().unwrap().join("definition");
             let definition_file = File::open(definition_file_path)?;
@@ -212,7 +218,7 @@ impl App {
         Ok(())
     }
 
-    fn render(&self, frame: &mut Frame) {
+    fn render(&mut self, frame: &mut Frame) {
         if !self.selected {
             self.render_menu(frame);
         } else {
@@ -220,7 +226,7 @@ impl App {
         }
     }
 
-    fn render_menu(&self, frame: &mut Frame) {
+    fn render_menu(&mut self, frame: &mut Frame) {
         let mut rows = Vec::new();
         let header = ["Workflow ID", "Name", "Last Updated"]
             .into_iter()
@@ -232,17 +238,13 @@ impl App {
             .on_white();
         rows.push(header);
 
-        for (idx, workflow) in self.workflows.iter().enumerate() {
+        for workflow in &self.workflows {
             let cells = [
                 Cell::new(workflow.id.clone()),
                 Cell::new(workflow.name.clone()),
                 Cell::new(format!("{:?}", workflow.modified)),
             ];
-            let mut row = Row::new(cells);
-            if idx == self.workflow_select_idx {
-                row = row.blue();
-            }
-            rows.push(row);
+            rows.push(Row::new(cells));
         }
         let table = Table::new(
             rows,
@@ -251,26 +253,44 @@ impl App {
                 Constraint::Min(32),
                 Constraint::Min(32),
             ],
-        );
-        frame.render_widget(table, frame.area());
+        )
+        .row_highlight_style(Style::new().blue())
+        .highlight_symbol(">>");
+
+        frame.render_stateful_widget(table, frame.area(), &mut self.workflow_table_state);
     }
 
     fn render_workflow(&self, frame: &mut Frame) {
-        let workflow = &self.workflows[self.workflow_select_idx];
+        let workflow = &self.workflows[self.workflow_table_state.selected().unwrap() - 1];
         let block = Block::new()
             .title(workflow.name.clone())
             .borders(Borders::all());
 
         let logs = Paragraph::new(self.logs_buffer.clone())
             .wrap(Wrap { trim: true })
-            .scroll((self.logs_scroll, 0))
+            .scroll((self.logs_scroll as u16, 0))
             .block(block);
+
+        let log_scroll = Scrollbar::new(ratatui::widgets::ScrollbarOrientation::VerticalRight)
+            .begin_symbol(Some("↑"))
+            .end_symbol(Some("↓"));
+
+        let mut scrollbar_state = ScrollbarState::new(1024).position(self.logs_scroll);
 
         if self.has_error {
             let layout =
-                Layout::vertical([Constraint::Min(1), Constraint::Max(3)]).split(frame.area());
+                Layout::vertical([Constraint::Min(1), Constraint::Max(25)]).split(frame.area());
 
             frame.render_widget(logs, layout[0]);
+            frame.render_stateful_widget(
+                log_scroll,
+                layout[0].inner(Margin {
+                    // using an inner vertical margin of 1 unit makes the scrollbar inside the block
+                    vertical: 1,
+                    horizontal: 0,
+                }),
+                &mut scrollbar_state,
+            );
 
             let error_block = Block::new()
                 .title(self.error_function.clone())
@@ -278,12 +298,22 @@ impl App {
                 .red();
 
             let error = Paragraph::new(self.error_buffer.clone())
-                .wrap(Wrap { trim: true })
+                .wrap(Wrap { trim: false })
                 .block(error_block);
 
             frame.render_widget(error, layout[1]);
         } else {
+            let area = frame.area();
             frame.render_widget(logs, frame.area());
+            frame.render_stateful_widget(
+                log_scroll,
+                area.inner(Margin {
+                    // using an inner vertical margin of 1 unit makes the scrollbar inside the block
+                    vertical: 1,
+                    horizontal: 0,
+                }),
+                &mut scrollbar_state,
+            );
         }
     }
 }

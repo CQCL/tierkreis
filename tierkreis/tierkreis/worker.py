@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from glob import glob
 from logging import getLogger
 from pathlib import Path
@@ -163,4 +164,4 @@ class Worker:
         except Exception as err:
             logger.error("encountered error: %s", err)
             with open(node_definition.error_path, "w+") as f:
-                f.write(str(err))
+                f.write(traceback.format_exc())

@@ -1,4 +1,5 @@
 import json
+import pytest
 from pathlib import Path
 from uuid import UUID
 
@@ -31,7 +32,11 @@ def eagerifelse_long_running() -> GraphData:
     return g
 
 
-def test_eagerifelse_long_running():
+params = [({"pred": b"true"}, 1), ({"pred": b"false"}, 2)]
+
+
+@pytest.mark.parametrize("input, output", params)
+def test_eagerifelse_long_running(input: dict[str, bytes], output: int) -> None:
     g = eagerifelse_long_running()
     storage = ControllerFileStorage(UUID(int=150), name="eagerifelse_long_running")
 
@@ -39,7 +44,6 @@ def test_eagerifelse_long_running():
     executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
 
     storage.clean_graph_files()
-    inputs = {"pred": b"true"}
-    run_graph(storage, executor, g, inputs)
+    run_graph(storage, executor, g, input, n_iterations=20000)
     actual_output = json.loads(storage.read_output(Loc(), "simple_eagerifelse_output"))
-    actual_output == 1
+    assert actual_output == output

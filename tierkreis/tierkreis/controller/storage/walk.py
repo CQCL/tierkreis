@@ -96,7 +96,7 @@ def walk_node(
                 return walk_node(storage, parent, next_node[0], graph)
 
         case "eifelse":
-            return walk_eifelse(storage, parent, idx, node, graph)
+            return walk_eifelse(storage, parent, idx, node)
 
         case "function":
             return WalkResult([], [loc])
@@ -174,10 +174,8 @@ def walk_eifelse(
     parent: Loc,
     idx: NodeIndex,
     node: EagerIfElse,
-    graph: GraphData,
 ) -> WalkResult:
     loc = parent.N(idx)
-    result = WalkResult([], [])
     children = [node.if_true, node.if_false]
     if all(storage.is_node_finished(parent.N(child[0])) for child in children):
         # we still could stop this early when the correct node is finished
@@ -186,10 +184,5 @@ def walk_eifelse(
         next_loc = parent.N(next_node[0])
         storage.link_outputs(loc, Labels.VALUE, next_loc, next_node[1])
         storage.mark_node_finished(loc)
-        return result
 
-    for child in children:
-        next_loc = parent.N(child[0])
-        if not storage.is_node_finished(child):
-            result.extend(walk_node(storage, parent, child[0], graph))
-    return result
+    return WalkResult([], [])

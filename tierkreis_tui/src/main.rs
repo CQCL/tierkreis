@@ -5,13 +5,14 @@ use std::{
 };
 
 use chrono::{DateTime, Utc};
-use color_eyre::{Result, Section, owo_colors::OwoColorize};
+use color_eyre::{Result, Section};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use directories::UserDirs;
 use ratatui::{
     DefaultTerminal, Frame,
     layout::{Constraint, Layout, Margin},
     style::{Style, Stylize},
+    text::Line,
     widgets::{
         Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarState, Table, TableState, Wrap,
     },
@@ -52,6 +53,7 @@ struct App {
 
     logs_buffer: String,
     logs_scroll: usize,
+    logs_scroll_state: ScrollbarState,
 
     has_error: bool,
     error_function: String,
@@ -102,7 +104,8 @@ impl App {
                 })
             ) {
                 if self.selected {
-                    self.logs_scroll += 1;
+                    self.logs_scroll = self.logs_scroll.saturating_add(1);
+                    self.logs_scroll_state = self.logs_scroll_state.position(self.logs_scroll);
                 } else {
                     self.workflow_table_state.select_next();
                 }
@@ -115,9 +118,8 @@ impl App {
                 })
             ) {
                 if self.selected {
-                    if self.logs_scroll > 0 {
-                        self.logs_scroll -= 1;
-                    }
+                    self.logs_scroll = self.logs_scroll.saturating_sub(1);
+                    self.logs_scroll_state = self.logs_scroll_state.position(self.logs_scroll);
                 } else {
                     if self.workflow_table_state.selected() != Some(1) {
                         self.workflow_table_state.select_previous();
@@ -144,6 +146,7 @@ impl App {
             ) {
                 self.selected = false;
                 self.logs_scroll = 0;
+                self.logs_scroll_state = self.logs_scroll_state.position(0);
             }
         }
     }
@@ -191,6 +194,19 @@ impl App {
         log_file.read_to_string(&mut self.logs_buffer)?;
 
         Ok(())
+    }
+
+    fn format_logs(&self) -> Vec<Line<'_>> {
+        self.logs_buffer
+            .lines()
+            .map(|line| {
+                if line.contains("START") {
+                    Line::styled(line, Style::new().green())
+                } else {
+                    Line::raw(line)
+                }
+            })
+            .collect()
     }
 
     fn read_errors(&mut self) -> Result<()> {
@@ -260,13 +276,17 @@ impl App {
         frame.render_stateful_widget(table, frame.area(), &mut self.workflow_table_state);
     }
 
-    fn render_workflow(&self, frame: &mut Frame) {
+    fn render_workflow(&mut self, frame: &mut Frame) {
         let workflow = &self.workflows[self.workflow_table_state.selected().unwrap() - 1];
         let block = Block::new()
             .title(workflow.name.clone())
             .borders(Borders::all());
 
-        let logs = Paragraph::new(self.logs_buffer.clone())
+        self.logs_scroll_state = self
+            .logs_scroll_state
+            .content_length(self.logs_buffer.lines().count());
+        let log_lines = self.format_logs();
+        let logs = Paragraph::new(log_lines)
             .wrap(Wrap { trim: true })
             .scroll((self.logs_scroll as u16, 0))
             .block(block);
@@ -274,8 +294,6 @@ impl App {
         let log_scroll = Scrollbar::new(ratatui::widgets::ScrollbarOrientation::VerticalRight)
             .begin_symbol(Some("↑"))
             .end_symbol(Some("↓"));
-
-        let mut scrollbar_state = ScrollbarState::new(1024).position(self.logs_scroll);
 
         if self.has_error {
             let layout =
@@ -289,7 +307,7 @@ impl App {
                     vertical: 1,
                     horizontal: 0,
                 }),
-                &mut scrollbar_state,
+                &mut self.logs_scroll_state,
             );
 
             let error_block = Block::new()
@@ -312,7 +330,7 @@ impl App {
                     vertical: 1,
                     horizontal: 0,
                 }),
-                &mut scrollbar_state,
+                &mut self.logs_scroll_state,
             );
         }
     }

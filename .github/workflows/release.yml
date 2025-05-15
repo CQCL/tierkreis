@@ -11,7 +11,9 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        package-directory: [tierkreis]
+        package-directory:
+          - tierkreis
+          - tierkreis_visualization
         python-version: ['3.12']
     defaults:
       run:

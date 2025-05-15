@@ -8,11 +8,12 @@ use chrono::{DateTime, Utc};
 use color_eyre::{Result, Section};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use directories::UserDirs;
+use itertools::Itertools;
 use ratatui::{
     DefaultTerminal, Frame,
     layout::{Constraint, Layout, Margin},
     style::{Style, Stylize},
-    text::Line,
+    text::{Line, Span},
     widgets::{
         Block, Borders, Cell, Paragraph, Row, Scrollbar, ScrollbarState, Table, TableState, Wrap,
     },
@@ -196,15 +197,22 @@ impl App {
         Ok(())
     }
 
+    #[allow(unstable_name_collisions)]
     fn format_logs(&self) -> Vec<Line<'_>> {
         self.logs_buffer
             .lines()
             .map(|line| {
-                if line.contains("START") {
-                    Line::styled(line, Style::new().green())
-                } else {
-                    Line::raw(line)
-                }
+                let spans = line
+                    .split_whitespace()
+                    .map(|word| match word {
+                        "START" => word.blue(),
+                        "RUNNING" => word.yellow(),
+                        "COMPLETE" => word.green(),
+                        "ERROR" => word.red(),
+                        _ => Span::raw(word),
+                    })
+                    .intersperse(Span::raw(" "));
+                Line::default().spans(spans)
             })
             .collect()
     }

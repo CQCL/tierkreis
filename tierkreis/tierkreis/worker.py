@@ -156,12 +156,14 @@ class Worker:
                 raise ValueError(
                     f"{self.name}: function name {node_definition.function_name} not found"
                 )
-            logger.info(f"running: {node_definition.function_name}")
+            logger.info(f"RUNNING {node_definition.function_name}")
 
             function(node_definition)
 
+            logger.info(f"COMPLETE {node_definition.function_name}")
+
             node_definition.done_path.touch()
         except Exception as err:
-            logger.error("encountered error: %s", err)
+            logger.error("ERROR %s", err)
             with open(node_definition.error_path, "w+") as f:
                 f.write(traceback.format_exc())

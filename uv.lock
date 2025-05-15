@@ -1281,7 +1281,7 @@ wheels = [
 
 [[package]]
 name = "tierkreis"
-version = "0.7.8"
+version = "2.0.0"
 source = { editable = "tierkreis" }
 dependencies = [
     { name = "pydantic" },

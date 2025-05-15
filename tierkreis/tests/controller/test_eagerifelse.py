@@ -12,8 +12,14 @@ from tierkreis.controller.data.graph import (
     Input,
     Output,
 )
+from tests.controller.sample_graphdata import (
+    simple_eagerifelse,
+    simple_ifelse,
+)
+
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
@@ -48,3 +54,27 @@ def test_eagerifelse_long_running(input: dict[str, bytes], output: int) -> None:
     run_graph(storage, executor, g, input, n_iterations=20000)
     actual_output = json.loads(storage.read_output(Loc(), "simple_eagerifelse_output"))
     assert actual_output == output
+
+
+def test_eagerifelse_nodes() -> None:
+    g = simple_eagerifelse()
+    storage = ControllerFileStorage(UUID(int=150), name="simple_if_else")
+    executor = ShellExecutor(
+        Path("./python/examples/launchers"), logs_path=storage.logs_path
+    )
+    storage.clean_graph_files()
+    run_graph(storage, executor, g, {"pred": b"true"})
+    assert storage.is_node_finished(Loc("-.N3"))
+    assert storage.is_node_finished(Loc("-.N4"))
+
+
+def test_ifelse_nodes():
+    g = simple_ifelse()
+    storage = ControllerFileStorage(UUID(int=151), name="simple_if_else")
+    executor = ShellExecutor(
+        Path("./python/examples/launchers"), logs_path=storage.logs_path
+    )
+    storage.clean_graph_files()
+    run_graph(storage, executor, g, {"pred": b"true"})
+    assert storage.is_node_finished(Loc("-.N1"))
+    assert not storage.is_node_finished(Loc("-.N2"))

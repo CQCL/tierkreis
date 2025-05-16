@@ -1,4 +1,4 @@
-# tierkreis
+# Tierkreis
 
 Tierkreis is a higher-order dataflow graph program representation and runtime
 designed for compositional, quantum-classical hybrid algorithms.
@@ -6,10 +6,8 @@ designed for compositional, quantum-classical hybrid algorithms.
 For a detailed introduction read the paper:
  [Tierkreis: a Dataflow Framework for Hybrid Quantum-Classical Computing](https://arxiv.org/abs/2211.02350).
 
-This repository contains the source for the `tierkreis` python package, and the
-protocol buffer definitions for Tierkreis data types and gRPC services (in the `protos` directory) which define the protocols for the system.
-
-The python package provides a complete development and testing environment for writing and running Tierkreis program, and allows you to write extensions ("workers") in python. By implementing the gRPC services you can also implement runtimes and workers in other languages.
+This repository contains the source for the `tierkreis` python package.
+The python package provides a complete development and testing environment for writing and running Tierkreis program, and allows you to write extensions ("workers") in python.
 
 ## Getting Started
 
@@ -18,113 +16,164 @@ To install the python package run:
 pip install tierkreis
 ```
 
-This package is pure python and is compatible with Python 3.10 and above. Tierkreis has a strong, static type system, and full automated type inference is available as an extension on supported platforms via the `typecheck` optional feature. To install that run:
-
-```bash
-pip install tierkreis[typecheck]
-```
-
-You can now build a graph (Tierkreis program), optionally type check it and execute it. The recommended environment for this is a Jupyter notebook (especially given some operations are async).
-
-First we need the runtime we are going to execute on and a handle to the primitive functions available on that runtime.
-The python package comes with the `PyRuntime` which runs locally in your python environment.
+This package is pure python and is compatible with Python 3.10 and above.
+In it's simplest form, `tierkreis` takes a computation graph (a workflow) and executes it.
+To simply run a workflow  we can use the `run_workflow` function: 
 
 ```python
-from tierkreis.builder import graph, Namespace, Output, ValueSource
-from tierkreis.pyruntime import PyRuntime
-
-cl = PyRuntime([]) # empty list for no extra workers
-sig = await cl.get_signature()
-ns = Namespace(sig) # get a handle to all functions
-print(ns.iadd)
-print(ns.unpack_pair)
+run_workflow(
+    graph = times_5(),
+    inputs = {Labels.VALUE: json.dumps(3).encode()},
+    run_id = 123,
+    name="times_5",
+    print_output=True,
+)
 ```
 
-The output shows the type signatures of the two functions we will use to add two integers together and unpack a pair. Note Tierkreis functions have named inputs _and_ outputs.
-```
-iadd(a: Int, b: Int) -> (value: Int)
-unpack_pair(pair: Pair[VarType(a), VarType(b)]) -> (first: VarType(a), second: VarType(b))
-```
 
-### Build
+### Build graphs
 
-The `@graph` decorator allows you to build graphs using python functions.
+A workflow graph can be constructed by adding nodes to a graph object.
+For each node one has to define the input and output ports of the node.
+The following example shows how to multiple a user input with a constant value.
 
 ```python
-@graph()
-def sum_pair(pair: ValueSource) -> Output:
-    first, second = ns.unpack_pair(pair) # tierkreis functions can have multiple outputs
-    return Output(ns.iadd(first, second))
+def times_5() -> GraphData:
+    """A graph that calculates input*5 """
+    g = GraphData()
+    # declare the constant value 5 with the output port "value"
+    const = g.add(Const(5))("value")
+    # declare the Input node that reads from a port "value" and maps to a port "value" 
+    user_input = g.add(Input("value"))("value")
+    # use a built in functionality that takes two inputs "a" and "b" and maps to a port "value"
+    output = g.add(
+        Func("builtins.itimes", {"a": const, "b": user_input})
+    )("value")
+    # the final output of the graph is put out at a port "value"
+    g.add(Output({"value": output}))
+    return g
 ```
 
-Calling the decorated function with no arguments (`sum_pair()`) returns a `TierkreisGraph`.
+### Visualize
+To visualize a workflow we provide a separate package `tierkreis-visualize` found [here](https://pypi.org/project/tierkreis-visualization/). 
+It can be invoked from the command line with `tkr-vis`.
+Opening [`localhost:8000`](https://localhost:8000) will open a browser window with the visualization.
 
-### Visualise
-In an Jupyter notebook this is immediately visualised, as long as you have [Graphviz](https://graphviz.org/download/) installed. In a script you can write the image to file with `render_graph`:
+![times 5](../assests/visualizer.png)
+
+### CLI
+
+Tierkreis comes with a command line interface for running workflows.
+To see all available options use `tkr --help`.
+To run the hello world example from the cli
+```
+uv run tkr -g examples/hello_world/hello_world_graph.py:hello_graph -i data.json --uv --registry-path examples/hello_world/ -o
+```
+Explanation:
+* `-g` specifies the graph to run by specifying the location and function to run.
+* `-i` specifies the input for the graph function. In this case it loads a json file from the project root with the contents `{"value": "world!"}`
+* `--uv` enables the use of the UV executor.
+* `--registry-path` specifies the location of the registry to use for the UV executor.
+* `-o` enables output printing.
+
+### Examples
+
+For more involved examples see [examples directory](../examples).
+
+## Under the Hood
+
+Under the hood, Tierkreis consists of three main components.
+- **Controller**: The controller orchestrates the workflow and progresses the computation.
+- **Executor**: Executors are responsible to execute external function calls implemented by workers. 
+- **Worker**: A worker is a standalone program which conforms to the tierkreis worker interface.
+
+The `run_workflow()` function provides sensible defaults which can be replaced as needed.
+Roughly, a workflow runs by
+```python
+graph = times_5()
+# Define a file based controller
+storage = ControllerFileStorage(UUID(int=id), name=name, do_cleanup=True)
+# Define an executor running binaries from the shell
+executor = ShellExecutor(
+    Path("./examples/launchers"), logs_path=storage.logs_path
+)
+inputs = {Labels.VALUE: json.dumps(3).encode()},
+run_graph(storage, executor, g, inputs)
+
+output_ports = g.nodes[g.output_idx()].inputs.keys()
+actual_output = {}
+for port in output_ports:
+    print(json.loads(storage.read_output(Loc(), port)))
+```
+
+### Controller
+
+The controller internally stores the progress of the workflow including:
+- The definition of nodes
+- The status of nodes (not started, started, error, done)
+- A map between node in- and output ports
+
+By default this is stored in the filesystem under `~/.tierkreis/workflows/<workflow_id>/`.
+
+### Executor
+
+An executor defines a way to run workers in a workflow.
+For example the `UVExecutor` provided out of the box, will run a python program by executing
+```shell
+uv run main.py <node_definition_path>
+```
+The command will be executed in the _registry_ directory of multiple workers which can be configured manually:
+```python
+executor = UVExecutor(registry_path=Path("/example/example_workers"))
+# the path to the directory where workers are stored
+```
+
+### Worker
+
+_Workers_ are standalone programs which implement a set of functions which can connect to a Tierkreis controller to add extra primitives.
+To define python based workers that run in an isolated environment, you can use the build in `Worker` utilities and the `UVExecutor`.
+
+For example, we could define a custom hello world worker:
 
 ```python
-from tierkreis import render_graph
+# The following defines the python program for uv 
+# /// script 
+# requires-python = ">=3.12"
+# dependencies = ["pydantic", "tierkreis"]
+#
+# ///
+import logging
+from sys import argv
+from pathlib import Path
+from tierkreis import Worker, Value
 
-render_graph(sum_pair, "filename", "pdf")
+logger = logging.getLogger(__name__)
+worker = Worker("hello_world_worker")
+
+# Workers can expose multiple functions returning a Value object
+@worker.function()
+def greet(greeting: str, subject: str) -> Value[str]:
+    logger.info("%s %s", greeting, subject)
+    return Value(value=greeting + subject)
+
+# The worker will be invoked from the executor with the node definition path as the only argument
+def main() -> None:
+    node_definition_path = argv[1]
+    logger.info(node_definition_path)
+    worker.run(Path(node_definition_path))
+
+if __name__ == "__main__":
+    logger.info("starting worker")
+    main()
 ```
 
-![sum_pair graph](https://user-images.githubusercontent.com/12997250/199997054-8cc815e2-39d3-4a9c-95d0-411510cb5465.svg )
-
-### Type check
-If you have the `typecheck` extension installed, you can replace `@graph` with `@graph(type_check_sig=sig)`, providing the signature retrieved from the client as above, and the graph will be type checked when you call the building function. A graph is well-typed if type annotations can be inferred for every edge of the graph. If type check fails, the error message will try to indicate the location of your error.
-
-The type checked version of the graph above looks like:
-
-![sum_pair graph](https://user-images.githubusercontent.com/12997250/199996763-e0431127-1e6d-402c-acde-7711e12eb0ee.svg)
-
-
-### Run graph
-
-We can now run the graph using the client set up earlier:
-
+In a graph such a worker would be invoked by calling
 ```python
-from tierkreis.core.types import TierkreisPair
-
-await cl.run_graph(sum_pair, pair=TierkreisPair(1, 2))
-```
-
-The inputs to the graph are provided via keyword argument, and most of the time
-you can just provide python values that are auto converted (for example
-integers, floats, strings).
-But here, since there is no exact Python equivalent for "Pair" we use the
-tierkreis utility type `TierkreisPair`.
- The output is given
-in Tierkreis form:
-```
-{'value': IntValue(value=3)}
-```
-## Examples
-
-For a more involved example see [variational.ipynb](examples/variational.ipynb)
-
-
-## Custom workers
-
-_Workers_ are standalone servers which implement a set of functions which can connect to a Tierkreis runtime to add extra primitives.
-They do this by implementing the `worker` gRPC service. The `tierkreis` python package makes it easy to do this by taking care of all the server logic, and the conversion to and from Tierkreis data types. Note that workers are intended to be deployed as part of remote Tierkreis runtimes, but we can use the PyRuntime to test and develop them without any networking code.
-
-For example, we could define a custom function to sum a list:
-
-```python
-from tierkreis.worker.namespace import Namespace as WorkerNS
-from tierkreis.builder import Const
-root = WorkerNS()
-custom_ns = root["custom"]
-
-@custom_ns.function()
-async def sum_list(lst: list[int]) -> int:
-    return sum(lst)
-
-cl = PyRuntime([root])
-ns = Namespace(await cl.get_signature())["custom"]
-
-@graph()
-def runsum() -> Output:
-    return Output(ns.sum_list(Const([1, 2, 3])))
-await cl.run_graph(runsum)
+    g = GraphData()
+    hello = g.add(Const("hello "))("value")
+    subject = g.add(Const("world!"))("value")
+    output = g.add(
+        Func("hello_world_worker.greet", {"greeting": hello, "subject": subject})
+    )("value")
+    g.add(Output({"value": output}))
 ```

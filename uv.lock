@@ -1454,7 +1454,7 @@ dev = [{ name = "pytest" }]
 
 [[package]]
 name = "tierkreis-visualization"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "tierkreis_visualization" }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },

@@ -59,6 +59,15 @@ class IfElse:
 
 
 @dataclass
+class EagerIfElse:
+    pred: ValueRef
+    if_true: ValueRef
+    if_false: ValueRef
+    type: Literal["eifelse"] = field(default="eifelse")
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+
+
+@dataclass
 class Input:
     name: str
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
@@ -71,7 +80,7 @@ class Output:
     type: Literal["output"] = field(default="output")
 
 
-NodeDef = Func | Eval | Loop | Map | Const | IfElse | Input | Output
+NodeDef = Func | Eval | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
 NodeDefModel = RootModel[NodeDef]
 
 
@@ -93,7 +102,7 @@ class GraphData(BaseModel):
                     )
 
                 self.graph_output_idx = idx
-            case "ifelse":
+            case "ifelse" | "eifelse":
                 self.outputs[node.pred[0]].add(node.pred[1])
                 self.outputs[node.if_true[0]].add(node.if_true[1])
                 self.outputs[node.if_false[0]].add(node.if_false[1])

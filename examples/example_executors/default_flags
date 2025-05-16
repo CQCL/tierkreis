@@ -1,0 +1,6 @@
+--no-check-directory
+-g hp240496
+-L rscgrp=q-QTM-M
+-x VIRTUAL_ENVIRONMENT=""
+--mpi max-proc-per-node=4
+-z jid

@@ -53,10 +53,12 @@ class HPCExecutor:
             with open(self.errors_path, "a") as efh:
                 process = subprocess.run(
                     self.command + self.flags,
-                    cwd=self.working_directory,
+                    cwd=self.working_directory / launcher_name,
                     env=self.env_vars,
-                    input=self.additional_input,
+                    input=self.additional_input + " " + node_definition_path,
                     start_new_session=True,
+                    capture_output=True,
+                    universal_newlines=True,
                     stderr=efh,
                     stdout=lfh,
                 )
@@ -69,8 +71,18 @@ class HPCExecutor:
             )
         return int(process.stdout.rstrip())
 
-    def add_flag(self, flag: str) -> None:
-        self.flags.extend(shlex.split(flag))
+    def add_flags(self, flags: str | list[str]) -> None:
+        if isinstance(flags, list):
+            for flag in flags:
+                self.flags.extend(shlex.split(flag))
+        else:
+            self.flags.extend(shlex.split(flag))
+
+    def add_flags_from_config_file(self, config_file: Path) -> None:
+        with open(config_file, "r") as fh:
+            for line in fh.readlines():
+                if not line.startswith("#"):
+                    self.add_flag(line.strip())
 
     @classmethod
     def from_config_file(
@@ -80,9 +92,11 @@ class HPCExecutor:
         logs_path: Path,
     ) -> "HPCExecutor":
         with open(config_file, "w") as fh:
-            config = ExecutorConfig(**json.load(fh))
+            config = json.load(fh)
 
-        return cls(registry_path, logs_path, **config)
+        return cls(
+            registry_path, logs_path, command=" ".join(config["command"]), **config
+        )
 
     def to_config(self, config_file: Path) -> None:
         config = ExecutorConfig(

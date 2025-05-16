@@ -9,6 +9,9 @@ setup:
 test:
     {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term
 
+test-slow:
+		{{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term --runslow
+
 lint:
 	{{uvrun}} ruff format --check
 	{{uvrun}} ruff check

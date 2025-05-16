@@ -1,5 +1,6 @@
 from tierkreis.controller.data.graph import (
     Const,
+    EagerIfElse,
     Eval,
     Func,
     GraphData,
@@ -134,4 +135,14 @@ def factorial() -> GraphData:
 
     out = g.add(IfElse(pred, if_true, if_false))(Labels.VALUE)
     g.add(Output({"factorial_output": out}))
+    return g
+
+
+def simple_eagerifelse() -> GraphData:
+    g = GraphData()
+    pred = g.add(Input("pred"))("pred")
+    one = g.add(Const(1))(Labels.VALUE)
+    two = g.add(Const(2))(Labels.VALUE)
+    out = g.add(EagerIfElse(pred, one, two))(Labels.VALUE)
+    g.add(Output({"simple_eagerifelse_output": out}))
     return g

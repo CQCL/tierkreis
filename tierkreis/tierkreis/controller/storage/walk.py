@@ -5,6 +5,7 @@ from typing import assert_never
 
 from tierkreis.controller.consts import BODY_PORT
 from tierkreis.controller.data.graph import (
+    EagerIfElse,
     Eval,
     GraphData,
     Loop,
@@ -94,6 +95,9 @@ def walk_node(
             else:
                 return walk_node(storage, parent, next_node[0], graph)
 
+        case "eifelse":
+            return walk_eifelse(storage, parent, idx, node)
+
         case "function":
             return WalkResult([], [loc])
 
@@ -163,3 +167,19 @@ def walk_map(
 
     storage.mark_node_finished(loc)
     return result
+
+
+def walk_eifelse(
+    storage: ControllerStorage,
+    parent: Loc,
+    idx: NodeIndex,
+    node: EagerIfElse,
+) -> WalkResult:
+    loc = parent.N(idx)
+    pred = storage.read_output(parent.N(node.pred[0]), node.pred[1])
+    next_node = node.if_true if pred == b"true" else node.if_false
+    next_loc = parent.N(next_node[0])
+    storage.link_outputs(loc, Labels.VALUE, next_loc, next_node[1])
+    storage.mark_node_finished(loc)
+
+    return WalkResult([], [])

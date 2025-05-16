@@ -54,7 +54,16 @@ def get_eval_node(
         match node.type:
             case "function":
                 name = node.function_name
-            case "const" | "map" | "eval" | "input" | "output" | "loop" | "ifelse":
+            case (
+                "const"
+                | "map"
+                | "eval"
+                | "input"
+                | "output"
+                | "loop"
+                | "ifelse"
+                | "eifelse"
+            ):
                 name = node.type
             case _:
                 assert_never(node)

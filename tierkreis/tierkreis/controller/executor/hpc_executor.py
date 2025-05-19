@@ -2,6 +2,7 @@ import json
 import logging
 import shlex
 import subprocess
+from collections import defaultdict
 from pathlib import Path
 
 from pydantic import BaseModel
@@ -15,7 +16,7 @@ class ExecutorConfig(BaseModel):
     command: list[str]
     cwd: Path | None = None
     env: dict[str, str] | None = None
-    flags: list[str] | None = None
+    flags: dict[str, list[str]] | None = None
 
 
 class HPCExecutor:
@@ -33,10 +34,11 @@ class HPCExecutor:
         self.logs_path = logs_path
         self.errors_path = logs_path
         self.command: list[str] = shlex.split(command)
-        self.flags: list[str] = flags or []
         self.working_directory: Path = working_directory or Path().cwd()
         self.env_vars: dict[str, str] = env_vars or {}
         self.additional_input: str = additional_input or ""
+        self.flag_dict: dict[str, list[str]] = defaultdict(list)
+        self._parse_flags_to_dict(flags)
 
     def run(self, launcher_name: str, node_definition_path: Path) -> int:
         logging.basicConfig(
@@ -72,11 +74,13 @@ class HPCExecutor:
         return int(process.stdout.rstrip())
 
     def add_flags(self, flags: str | list[str]) -> None:
+        flag_strings = []
         if isinstance(flags, list):
             for flag in flags:
-                self.flags.extend(shlex.split(flag))
+                flag_strings.extend(shlex.split(flag))
         else:
-            self.flags.extend(shlex.split(flag))
+            flag_strings.extend(shlex.split(flag))
+        self._parse_flags_to_dict(flag_strings)
 
     def add_flags_from_config_file(self, config_file: Path) -> None:
         with open(config_file, "r") as fh:
@@ -103,7 +107,31 @@ class HPCExecutor:
             command=self.command,
             cwd=self.working_directory,
             env=self.env_vars,
-            flags=self.flags,
+            flags=self.flag_dict,
         )
         with open(config_file, "w+") as fh:
             json.dump(config.model_dump_json(), fh)
+
+    def overwrite_flag(self, flag: str, value: str | list[str]) -> None:
+        if isinstance(value, str):
+            value = shlex.split(value)
+        self.flag_dict[flag] = value
+
+    def append_flag(self, flag: str, value: str | list[str]) -> None:
+        if isinstance(value, str):
+            value = shlex.split(value)
+        self.flag_dict[flag].extend(value)
+
+    def _parse_flags_to_dict(self, flags: list[str]) -> None:
+        current = ""
+        for flag in flags:
+            if flag.startswith("-") or flag.startswith("--"):
+                current = flag
+                self.flag_dict[current].append("")
+                continue
+            self.flag_dict[current].append(flag)
+
+    def _flags_to_list(self) -> list[str]:
+        return [
+            item for k, v in self.flag_dict.items() for item in [k] + v if item != ""
+        ]

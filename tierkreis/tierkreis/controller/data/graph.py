@@ -139,5 +139,5 @@ class GraphData(BaseModel):
                 f" should not intersect provided inputs {provided_inputs}."
             )
 
-        actual_inputs = set(self.fixed_inputs.keys()).union(provided_inputs)
+        actual_inputs = fixed_inputs.union(provided_inputs)
         return self.inputs - actual_inputs

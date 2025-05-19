@@ -142,7 +142,7 @@ class ControllerFileStorage:
         except FileNotFoundError as e:
             raise TierkreisError(
                 f"Could not link {e.filename} to {e.filename2}."
-                " Please check for mislabelled variables."
+                " Possibly a mislabelled variable?"
             )
         except OSError as e:
             raise TierkreisError(

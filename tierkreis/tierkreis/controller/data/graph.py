@@ -132,5 +132,12 @@ class GraphData(BaseModel):
         return idx
 
     def remaining_inputs(self, provided_inputs: set[PortID]) -> set[PortID]:
+        fixed_inputs = set(self.fixed_inputs.keys())
+        if fixed_inputs & provided_inputs:
+            raise TierkreisError(
+                f"Fixed inputs {fixed_inputs}"
+                f" should not intersect provided inputs {provided_inputs}."
+            )
+
         actual_inputs = set(self.fixed_inputs.keys()).union(provided_inputs)
         return self.inputs - actual_inputs

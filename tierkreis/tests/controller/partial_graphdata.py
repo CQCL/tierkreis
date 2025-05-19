@@ -35,3 +35,18 @@ def double_partial() -> GraphData:
 
     g.add(Output({"double_partial_output": six}))
     return g
+
+
+def partial_intersection() -> GraphData:
+    g = GraphData()
+    one = g.add(Const(1))(Labels.VALUE)
+    two = g.add(Const(2))(Labels.VALUE)
+    three = g.add(Const(3))(Labels.VALUE)
+    termary_add_const = g.add(Const(ternary_add()))(Labels.VALUE)
+
+    add_add_1 = g.add(Eval(termary_add_const, {"a": one}))("body")
+    add_3 = g.add(Eval(add_add_1, {"a": one, "b": two}))("body")
+    six = g.add(Eval(add_3, {"c": three}))("ternary_add_output")
+
+    g.add(Output({"double_partial_output": six}))
+    return g

@@ -25,13 +25,6 @@ class Eval:
 
 
 @dataclass
-class Partial:
-    graph: ValueRef
-    inputs: dict[PortID, ValueRef]
-    type: Literal["partial"] = field(default="partial")
-
-
-@dataclass
 class Loop:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
@@ -87,15 +80,14 @@ class Output:
     type: Literal["output"] = field(default="output")
 
 
-NodeDef = (
-    Func | Eval | Partial | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
-)
+NodeDef = Func | Eval | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
 NodeDefModel = RootModel[NodeDef]
 
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
     fixed_inputs: dict[PortID, OutputLoc] = {}
+    inputs: set[PortID] = set()
     outputs: list[set[PortID]] = []
     graph_output_idx: NodeIndex | None = None
 
@@ -116,7 +108,9 @@ class GraphData(BaseModel):
                 self.outputs[node.pred[0]].add(node.pred[1])
                 self.outputs[node.if_true[0]].add(node.if_true[1])
                 self.outputs[node.if_false[0]].add(node.if_false[1])
-            case "const" | "eval" | "partial" | "function" | "input" | "loop" | "map":
+            case "input":
+                self.inputs.add(node.name)
+            case "const" | "eval" | "function" | "loop" | "map":
                 pass
             case _:
                 assert_never(node)
@@ -136,3 +130,7 @@ class GraphData(BaseModel):
             raise TierkreisError(f"Expected output node at {idx} found {node}")
 
         return idx
+
+    def remaining_inputs(self, provided_inputs: set[PortID]) -> set[PortID]:
+        actual_inputs = set(self.fixed_inputs.keys()).union(provided_inputs)
+        return self.inputs - actual_inputs

@@ -26,7 +26,6 @@ from tierkreis.controller.storage.filestorage import ControllerFileStorage
 factorial_bytes = factorial().model_dump_json().encode()
 params = [
     (simple_eval(), 12, "simple_eval", 1, {}),
-    (simple_partial(), 12, "simple_partial", 1, {}),
     (simple_loop(), 10, "simple_loop", 2, {}),
     (simple_map(), list(range(6, 47, 2)), "simple_map", 3, {}),
     (maps_in_series(), list(range(0, 81, 4)), "maps_in_series", 4, {}),
@@ -34,13 +33,13 @@ params = [
     (simple_ifelse(), 1, "simple_ifelse", 6, {"pred": b"true"}),
     (simple_ifelse(), 2, "simple_ifelse", 7, {"pred": b"false"}),
     (factorial(), 24, "factorial", 8, {"n": b"4", "factorial": factorial_bytes}),
-    (factorial(), 120, "factorial", 8, {"n": b"5", "factorial": factorial_bytes}),
     (loop_multiple_acc(), {"acc": 6, "acc2": 12, "acc3": 18}, "multi_acc", 9, {}),
     (simple_eagerifelse(), 1, "simple_eagerifelse", 10, {"pred": b"true"}),
+    (simple_partial(), 12, "simple_partial", 11, {}),
+    (factorial(), 120, "factorial", 12, {"n": b"5", "factorial": factorial_bytes}),
 ]
 ids = [
     "simple_eval",
-    "simple_partial",
     "simple_loop",
     "simple_map",
     "maps_in_series",
@@ -48,9 +47,10 @@ ids = [
     "simple_ifelse_true",
     "simple_ifelse_false",
     "factorial_4",
-    "factorial_5",
     "loop_multiple_acc",
     "simple_eagerifelse",
+    "simple_partial",
+    "factorial_5",
 ]
 
 

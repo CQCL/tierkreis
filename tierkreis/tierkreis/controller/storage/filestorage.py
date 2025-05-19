@@ -139,6 +139,11 @@ class ControllerFileStorage:
         new_dir.parent.mkdir(parents=True, exist_ok=True)
         try:
             os.link(self._output_path(old_location, old_port), new_dir)
+        except FileNotFoundError as e:
+            raise TierkreisError(
+                f"Could not link {e.filename} to {e.filename2}."
+                " Please check for mislabelled variables."
+            )
         except OSError as e:
             raise TierkreisError(
                 "Workflow already exists. Try running with a different ID or do_cleanup."

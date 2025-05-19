@@ -58,7 +58,6 @@ def get_eval_node(
                 "const"
                 | "map"
                 | "eval"
-                | "partial"
                 | "input"
                 | "output"
                 | "loop"

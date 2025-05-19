@@ -71,10 +71,11 @@ def walk_node(
         case "eval":
             message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
             g = GraphData(**json.loads(message))
-            return walk_node(storage, loc, g.output_idx(), g)
 
-        case "partial":
-            return WalkResult([node_run_data], [])
+            if g.remaining_inputs(set(node.inputs.keys())):
+                return WalkResult([node_run_data], [])
+
+            return walk_node(storage, loc, g.output_idx(), g)
 
         case "output":
             return WalkResult([node_run_data], [])

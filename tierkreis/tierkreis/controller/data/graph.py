@@ -87,7 +87,9 @@ class Output:
     type: Literal["output"] = field(default="output")
 
 
-NodeDef = Func | Eval | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
+NodeDef = (
+    Func | Eval | Partial | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
+)
 NodeDefModel = RootModel[NodeDef]
 
 

@@ -9,7 +9,7 @@ from tierkreis.controller.executor.protocol import ControllerExecutor
 def _executor(registry_path: Path, logs_path: Path) -> HPCExecutor:
     uv_path = shutil.which("uv")
     if not uv_path:
-        return
+        raise ValueError("uv not found")
     executor = HPCExecutor(
         registry_path=registry_path,
         logs_path=logs_path,
@@ -18,7 +18,7 @@ def _executor(registry_path: Path, logs_path: Path) -> HPCExecutor:
         additional_input=uv_path + " run main.py",
     )
 
-    executor.add_flags_from_config_file("default_flags")
+    executor.add_flags_from_config_file(Path("./default_flags"))
     return executor
 
 
@@ -52,8 +52,8 @@ def large_executor(registry_path: Path, logs_path: Path) -> HPCExecutor:
 
 
 def pjsub_executor(registry_path: Path, logs_path: Path) -> ControllerExecutor:
-    s_executor = small_executor()
-    l_executor = large_executor()
+    s_executor = small_executor(registry_path, logs_path)
+    l_executor = large_executor(registry_path, logs_path)
     executor = MultipleExecutor(
         s_executor,
         {"small": s_executor, "large": l_executor},

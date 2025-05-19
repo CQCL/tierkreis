@@ -38,9 +38,10 @@ class HPCExecutor:
         self.env_vars: dict[str, str] = env_vars or {}
         self.additional_input: str = additional_input or ""
         self.flag_dict: dict[str, list[str]] = defaultdict(list)
-        self._parse_flags_to_dict(flags)
+        if flags is not None:
+            self._parse_flags_to_dict(flags)
 
-    def run(self, launcher_name: str, node_definition_path: Path) -> int:
+    def run(self, launcher_name: str, node_definition_path: Path) -> None:
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
@@ -54,10 +55,10 @@ class HPCExecutor:
         with open(self.logs_path, "a") as lfh:
             with open(self.errors_path, "a") as efh:
                 process = subprocess.run(
-                    self.command + self.flags,
+                    self.command + self._flags_to_list(),
                     cwd=self.working_directory / launcher_name,
                     env=self.env_vars,
-                    input=self.additional_input + " " + node_definition_path,
+                    input=self.additional_input + " " + str(node_definition_path),
                     start_new_session=True,
                     capture_output=True,
                     universal_newlines=True,
@@ -71,7 +72,7 @@ class HPCExecutor:
             raise TierkreisError(
                 f"Executor failed with return code {process.returncode}"
             )
-        return int(process.stdout.rstrip())
+        logger.info("Finished with return code %d", process.stdout.rstrip())
 
     def add_flags(self, flags: str | list[str]) -> None:
         flag_strings = []
@@ -79,14 +80,14 @@ class HPCExecutor:
             for flag in flags:
                 flag_strings.extend(shlex.split(flag))
         else:
-            flag_strings.extend(shlex.split(flag))
+            flag_strings.extend(shlex.split(flags))
         self._parse_flags_to_dict(flag_strings)
 
     def add_flags_from_config_file(self, config_file: Path) -> None:
         with open(config_file, "r") as fh:
             for line in fh.readlines():
                 if not line.startswith("#"):
-                    self.add_flag(line.strip())
+                    self.add_flags(line.strip())
 
     @classmethod
     def from_config_file(

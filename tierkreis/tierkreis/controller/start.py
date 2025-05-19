@@ -129,7 +129,7 @@ def start(
 
         for k, (i, p) in g.fixed_inputs.items():
             if k in ins:
-                raise TierkreisError(f"Input {k} already in fixed inputs of partial.")
+                raise TierkreisError(f"Input {k} already in fixed inputs of graph.")
             storage.link_outputs(node_location.N(-1), k, i, p)
 
     elif node.type == "loop":

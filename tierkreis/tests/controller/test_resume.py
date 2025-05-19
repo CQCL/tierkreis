@@ -5,8 +5,8 @@ from uuid import UUID
 
 import pytest
 
+from tests.controller.eval_graphdata import double_partial
 from tests.controller.sample_graphdata import (
-    factorial,
     map_with_str_keys,
     maps_in_series,
     simple_eagerifelse,
@@ -15,6 +15,7 @@ from tests.controller.sample_graphdata import (
     simple_loop,
     simple_map,
     simple_partial,
+    factorial,
 )
 from tests.controller.loop_graphdata import loop_multiple_acc
 from tierkreis.controller import run_graph
@@ -37,6 +38,7 @@ params = [
     (simple_eagerifelse(), 1, "simple_eagerifelse", 10, {"pred": b"true"}),
     (simple_partial(), 12, "simple_partial", 11, {}),
     (factorial(), 120, "factorial", 12, {"n": b"5", "factorial": factorial_bytes}),
+    (double_partial(), 6, "double_partial", 13, {}),
 ]
 ids = [
     "simple_eval",
@@ -51,6 +53,7 @@ ids = [
     "simple_eagerifelse",
     "simple_partial",
     "factorial_5",
+    "double_partial",
 ]
 
 

@@ -3,6 +3,15 @@
 Quantum-classical hybrid workflow orchestration tool.
 This is the top level repository containing the python packages.
 
+## Packages
+- **Tierkreis**: the core functionality `pip install tierkreis`
+- **Tierkreis Visualization**: A simple web visualization tool for debugging workflows `pip install tierkreis-visualization`
+- **Tierkreis Workers**: A collection of commonly used workers `pip install tkr-<name>-worker`
+  - Qiskit Aer
+  - Quantinuum Nexus
+  - Quantinuum PyTKet
+
+
 ## CLI
 
 Tierkreis comes with a command line interface for running workflows.

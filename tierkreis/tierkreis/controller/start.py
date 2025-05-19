@@ -117,20 +117,15 @@ def start(
         g = GraphData(**json.loads(message))
 
         if g.remaining_inputs(set(ins.keys())):
-            g.fixed_inputs.update(
-                {k: (parent.N(i), p) for k, (i, p) in node.inputs.items()}
-            )
+            provided_inputs = {k: (parent.N(i), p) for k, (i, p) in node.inputs.items()}
+            g.fixed_inputs.update(provided_inputs)
             storage.write_output(node_location, "body", g.model_dump_json().encode())
             storage.mark_node_finished(node_location)
             return
 
         ins["body"] = (parent.N(node.graph[0]), node.graph[1])
+        ins.update(g.fixed_inputs)
         pipe_inputs_to_output_location(storage, node_location.N(-1), ins)
-
-        for k, (i, p) in g.fixed_inputs.items():
-            if k in ins:
-                raise TierkreisError(f"Input {k} already in fixed inputs of graph.")
-            storage.link_outputs(node_location.N(-1), k, i, p)
 
     elif node.type == "loop":
         ins["body"] = (parent.N(node.body[0]), node.body[1])

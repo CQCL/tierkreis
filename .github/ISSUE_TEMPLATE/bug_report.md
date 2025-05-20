@@ -13,7 +13,7 @@ A clear and concise description of what the bug is
 ## To Reproduce 
 Steps to reproduce the behavior including a minimal reproducible example:
 
-** Configuratoin
+** Configuration
 1. Workflow
 2. Executor
 3. Workers

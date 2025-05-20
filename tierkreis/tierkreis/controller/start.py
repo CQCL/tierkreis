@@ -79,7 +79,6 @@ def start(
         raise TierkreisError(f"{node.type} node must have parent Loc.")
 
     ins = {k: (parent.N(idx), p) for k, (idx, p) in node.inputs.items()}
-    storage.write_worker_call_args(node_location, node.type, ins, output_list)
 
     logger.debug(f"start {node_location} {node} {ins} {output_list}")
     if node.type == "function":

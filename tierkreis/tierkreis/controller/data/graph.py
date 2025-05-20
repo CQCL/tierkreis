@@ -86,15 +86,15 @@ NodeDefModel = RootModel[NodeDef]
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
+    node_outputs: list[set[PortID]] = []
     fixed_inputs: dict[PortID, OutputLoc] = {}
-    inputs: set[PortID] = set()
-    outputs: list[set[PortID]] = []
+    graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
 
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
         self.nodes.append(node)
-        self.outputs.append(set())
+        self.node_outputs.append(set())
 
         match node.type:
             case "output":
@@ -105,18 +105,18 @@ class GraphData(BaseModel):
 
                 self.graph_output_idx = idx
             case "ifelse" | "eifelse":
-                self.outputs[node.pred[0]].add(node.pred[1])
-                self.outputs[node.if_true[0]].add(node.if_true[1])
-                self.outputs[node.if_false[0]].add(node.if_false[1])
+                self.node_outputs[node.pred[0]].add(node.pred[1])
+                self.node_outputs[node.if_true[0]].add(node.if_true[1])
+                self.node_outputs[node.if_false[0]].add(node.if_false[1])
             case "input":
-                self.inputs.add(node.name)
+                self.graph_inputs.add(node.name)
             case "const" | "eval" | "function" | "loop" | "map":
                 pass
             case _:
                 assert_never(node)
 
         for i, port in node.inputs.values():
-            self.outputs[i].add(port)
+            self.node_outputs[i].add(port)
 
         return lambda k: (idx, k)
 
@@ -140,4 +140,4 @@ class GraphData(BaseModel):
             )
 
         actual_inputs = fixed_inputs.union(provided_inputs)
-        return self.inputs - actual_inputs
+        return self.graph_inputs - actual_inputs

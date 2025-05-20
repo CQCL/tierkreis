@@ -57,7 +57,7 @@ def walk_node(
         return WalkResult([], [], [loc])
 
     node = graph.nodes[idx]
-    node_run_data = NodeRunData(loc, node, list(graph.outputs[idx]))
+    node_run_data = NodeRunData(loc, node, list(graph.node_outputs[idx]))
     storage.write_node_def(loc, node)
 
     result = WalkResult([], [])

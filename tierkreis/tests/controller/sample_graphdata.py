@@ -34,6 +34,17 @@ def simple_eval() -> GraphData:
     return g
 
 
+def simple_partial() -> GraphData:
+    g = GraphData()
+    zero = g.add(Const(0))(Labels.VALUE)
+    six = g.add(Const(6))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    partial = g.add(Eval(doubler_const, {"intercept": zero}))("body")
+    e = g.add(Eval(partial, {"doubler_input": six}))
+    g.add(Output({"simple_partial_output": e("doubler_output")}))
+    return g
+
+
 def loop_body() -> GraphData:
     g = GraphData()
     a = g.add(Input("loop_acc"))("loop_acc")

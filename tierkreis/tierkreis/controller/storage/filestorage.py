@@ -6,7 +6,8 @@ from time import time_ns
 from typing import Any
 from uuid import UUID
 
-from tierkreis.controller.data.graph import NodeDef, NodeDefModel, PortID
+from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.graph import NodeDef, NodeDefModel
 from tierkreis.controller.data.location import (
     Loc,
     OutputLoc,
@@ -138,6 +139,11 @@ class ControllerFileStorage:
         new_dir.parent.mkdir(parents=True, exist_ok=True)
         try:
             os.link(self._output_path(old_location, old_port), new_dir)
+        except FileNotFoundError as e:
+            raise TierkreisError(
+                f"Could not link {e.filename} to {e.filename2}."
+                " Possibly a mislabelled variable?"
+            )
         except OSError as e:
             raise TierkreisError(
                 "Workflow already exists. Try running with a different ID or do_cleanup."

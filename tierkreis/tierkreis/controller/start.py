@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 import json
 from logging import getLogger
 import logging
@@ -6,17 +7,25 @@ import subprocess
 import sys
 
 from pydantic import BaseModel
+from tierkreis.controller.data.core import PortID
 from typing_extensions import assert_never
 
 from tierkreis.controller.consts import PACKAGE_PATH
-from tierkreis.controller.data.graph import Eval, PortID
-from tierkreis.controller.data.location import Loc, NodeRunData, OutputLoc
+from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
+from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.labels import Labels
 from tierkreis.exceptions import TierkreisError
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class NodeRunData:
+    node_location: Loc
+    node: NodeDef
+    output_list: list[PortID]
 
 
 def start_nodes(
@@ -106,7 +115,17 @@ def start(
         storage.mark_node_finished(node_location)
 
     elif node.type == "eval":
+        message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
+        g = GraphData(**json.loads(message))
+
+        if g.remaining_inputs(set(ins.keys())):
+            g.fixed_inputs.update(ins)
+            storage.write_output(node_location, "body", g.model_dump_json().encode())
+            storage.mark_node_finished(node_location)
+            return
+
         ins["body"] = (parent.N(node.graph[0]), node.graph[1])
+        ins.update(g.fixed_inputs)
         pipe_inputs_to_output_location(storage, node_location.N(-1), ins)
 
     elif node.type == "loop":

@@ -1,12 +1,13 @@
-from dataclasses import dataclass
 from logging import getLogger
 from pathlib import Path
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, GetCoreSchemaHandler
+from pydantic_core import CoreSchema, core_schema
+from tierkreis.controller.data.core import PortID
 from typing_extensions import assert_never
 
-from tierkreis.controller.data.graph import NodeDef, NodeIndex, PortID
+from tierkreis.controller.data.core import NodeIndex
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -89,12 +90,11 @@ class Loc(str):
 
         return steps
 
+    @classmethod
+    def __get_pydantic_core_schema__(
+        cls, source_type: Any, handler: GetCoreSchemaHandler
+    ) -> CoreSchema:
+        return core_schema.no_info_after_validator_function(cls, handler(str))
+
 
 OutputLoc = tuple[Loc, PortID]
-
-
-@dataclass
-class NodeRunData:
-    node_location: Loc
-    node: NodeDef
-    output_list: list[PortID]

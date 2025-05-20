@@ -1,13 +1,13 @@
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal, assert_never
+from typing import Callable, Literal, assert_never
 
 from pydantic import BaseModel, RootModel
+from tierkreis.controller.data.core import Jsonable
+from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.core import NodeIndex
+from tierkreis.controller.data.core import ValueRef
+from tierkreis.controller.data.location import OutputLoc
 from tierkreis.exceptions import TierkreisError
-
-Jsonable = Any
-PortID = str
-NodeIndex = int
-ValueRef = tuple[NodeIndex, PortID]
 
 
 @dataclass
@@ -86,13 +86,15 @@ NodeDefModel = RootModel[NodeDef]
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
-    outputs: list[set[PortID]] = []
+    node_outputs: list[set[PortID]] = []
+    fixed_inputs: dict[PortID, OutputLoc] = {}
+    graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
 
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
         self.nodes.append(node)
-        self.outputs.append(set())
+        self.node_outputs.append(set())
 
         match node.type:
             case "output":
@@ -103,16 +105,18 @@ class GraphData(BaseModel):
 
                 self.graph_output_idx = idx
             case "ifelse" | "eifelse":
-                self.outputs[node.pred[0]].add(node.pred[1])
-                self.outputs[node.if_true[0]].add(node.if_true[1])
-                self.outputs[node.if_false[0]].add(node.if_false[1])
-            case "const" | "eval" | "function" | "input" | "loop" | "map":
+                self.node_outputs[node.pred[0]].add(node.pred[1])
+                self.node_outputs[node.if_true[0]].add(node.if_true[1])
+                self.node_outputs[node.if_false[0]].add(node.if_false[1])
+            case "input":
+                self.graph_inputs.add(node.name)
+            case "const" | "eval" | "function" | "loop" | "map":
                 pass
             case _:
                 assert_never(node)
 
         for i, port in node.inputs.values():
-            self.outputs[i].add(port)
+            self.node_outputs[i].add(port)
 
         return lambda k: (idx, k)
 
@@ -126,3 +130,14 @@ class GraphData(BaseModel):
             raise TierkreisError(f"Expected output node at {idx} found {node}")
 
         return idx
+
+    def remaining_inputs(self, provided_inputs: set[PortID]) -> set[PortID]:
+        fixed_inputs = set(self.fixed_inputs.keys())
+        if fixed_inputs & provided_inputs:
+            raise TierkreisError(
+                f"Fixed inputs {fixed_inputs}"
+                f" should not intersect provided inputs {provided_inputs}."
+            )
+
+        actual_inputs = fixed_inputs.union(provided_inputs)
+        return self.graph_inputs - actual_inputs

@@ -4,6 +4,7 @@ from logging import getLogger
 from typing import assert_never
 
 from tierkreis.controller.consts import BODY_PORT
+from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.graph import (
     EagerIfElse,
     Eval,
@@ -11,9 +12,9 @@ from tierkreis.controller.data.graph import (
     Loop,
     Map,
     NodeDef,
-    NodeIndex,
 )
-from tierkreis.controller.data.location import Loc, NodeRunData
+from tierkreis.controller.data.location import Loc
+from tierkreis.controller.start import NodeRunData
 from tierkreis.controller.storage.adjacency import unfinished_inputs
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.labels import Labels
@@ -56,7 +57,7 @@ def walk_node(
         return WalkResult([], [], [loc])
 
     node = graph.nodes[idx]
-    node_run_data = NodeRunData(loc, node, list(graph.outputs[idx]))
+    node_run_data = NodeRunData(loc, node, list(graph.node_outputs[idx]))
     storage.write_node_def(loc, node)
 
     result = WalkResult([], [])
@@ -70,6 +71,10 @@ def walk_node(
         case "eval":
             message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
             g = GraphData(**json.loads(message))
+
+            if g.remaining_inputs(set(node.inputs.keys())):
+                return WalkResult([node_run_data], [])
+
             return walk_node(storage, loc, g.output_idx(), g)
 
         case "output":

@@ -11,6 +11,7 @@
  * @property {string} from_port - The edge arrow
  * @property {number | string} to_node - The edge name.
  * @property {string} to_port - The edge label.
+ * @property {boolean} conditional - The edge doesn't always run.
  */
 
 /**
@@ -30,7 +31,8 @@
  * @property {number | string} to - The edge label..
  * @property {string} title - The edge name.
  * @property {string} label - Node shape.
- * @property {string} arrows - The edge arrow
+ * @property {string} arrows - The edge arrow.
+ * @property {boolean} dashes - If the edge should be dashed.
  */
 
 /**

@@ -26,7 +26,7 @@ logger = getLogger(__name__)
 class WalkResult:
     inputs_ready: list[NodeRunData]
     started: list[Loc]
-    errored: list[Loc] = field(default_factory=list)
+    errored: list[Loc] = field(default_factory=list[Loc])
 
     def extend(self, walk_result: "WalkResult") -> None:
         self.inputs_ready.extend(walk_result.inputs_ready)

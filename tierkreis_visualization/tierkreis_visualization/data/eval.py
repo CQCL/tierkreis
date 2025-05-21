@@ -46,22 +46,16 @@ def add_conditional_edges(
     except FileNotFoundError:
         pred = None
 
-    false_edge = PyEdge(
-        from_node=node.if_false[0],
-        from_port=node.if_false[1],
-        to_node=i,
-        to_port="if_false",
-        conditional=pred is None or pred,
-    )
-    true_edge = PyEdge(
-        from_node=node.if_true[0],
-        from_port=node.if_true[1],
-        to_node=i,
-        to_port="if_true",
-        conditional=pred is None or not pred,
-    )
-    py_edges.append(true_edge)
-    py_edges.append(false_edge)
+    refs = {True: node.if_true, False: node.if_false}
+    for branch, (idx, p) in refs.items():
+        edge = PyEdge(
+            from_node=idx,
+            from_port=p,
+            to_node=i,
+            to_port=f"If{branch}",
+            conditional=pred is None or pred != branch,
+        )
+        py_edges.append(edge)
 
 
 def get_eval_node(

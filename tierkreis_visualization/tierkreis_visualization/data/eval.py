@@ -43,7 +43,7 @@ def add_conditional_edges(
 ):
     try:
         pred = json.loads(storage.read_output(loc.N(node.pred[0]), node.pred[1]))
-    except:
+    except FileNotFoundError:
         pred = None
 
     false_edge = PyEdge(
@@ -51,14 +51,14 @@ def add_conditional_edges(
         from_port=node.if_false[1],
         to_node=i,
         to_port="if_false",
-        conditional=pred is None or pred == True,
+        conditional=pred is None or pred,
     )
     true_edge = PyEdge(
         from_node=node.if_true[0],
         from_port=node.if_true[1],
         to_node=i,
         to_port="if_true",
-        conditional=pred is None or pred == False,
+        conditional=pred is None or not pred,
     )
     py_edges.append(true_edge)
     py_edges.append(false_edge)

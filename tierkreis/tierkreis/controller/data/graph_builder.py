@@ -115,34 +115,48 @@ class AutoGraphBuilder:
 
 class GraphBuilder(GraphData):
     def func(
-        self, name: str, inputs: dict[PortID, ValueRef], ref: str = Labels.VALUE
+        self,
+        name: str,
+        inputs: dict[PortID, ValueRef] | ValueRef,
+        ref: str = Labels.VALUE,
     ) -> ValueRef:
+        if not isinstance(inputs, dict):
+            inputs = {Labels.VALUE: inputs}
         return self.add(Func(name, inputs))(ref)
 
     def eval(
-        self, body: GraphData, inputs: dict[PortID, ValueRef], ref: str = Labels.VALUE
+        self,
+        body: GraphData,
+        inputs: dict[PortID, ValueRef] | ValueRef,
+        ref: str = Labels.VALUE,
     ) -> ValueRef:
+        if not isinstance(inputs, dict):
+            inputs = {Labels.VALUE: inputs}
         return self.add(Eval(body, inputs))(ref)
 
     def loop(
         self,
         body: GraphData,
         loop_condition: str,
-        inputs: dict[PortID, ValueRef],
+        inputs: dict[PortID, ValueRef] | ValueRef,
         ref: str = Labels.VALUE,
     ) -> ValueRef:
+        if not isinstance(inputs, dict):
+            inputs = {Labels.VALUE: inputs}
         l_body = self.add(Const(body))(Labels.VALUE)
         return self.add(Loop(l_body, inputs, loop_condition))(ref)
 
     def map(
         self,
         body: GraphData,
-        inputs: dict[PortID, ValueRef],
+        inputs: dict[PortID, ValueRef] | ValueRef,
         index: int,
         in_port: str = Labels.VALUE,
         out_port: str = Labels.VALUE,
         ref: str = Labels.VALUE,
     ) -> ValueRef:
+        if not isinstance(inputs, dict):
+            inputs = {Labels.VALUE: inputs}
         m_body = self.add(Const(body))(in_port)
         map_def = Map(m_body, index, in_port, out_port, inputs)
         return self.add(map_def)(ref)
@@ -167,5 +181,8 @@ class GraphBuilder(GraphData):
     def input(self, name: str = Labels.VALUE) -> ValueRef:
         return self.add(Input(name))(name)
 
-    def output(self, outputs: dict[PortID, ValueRef]) -> ValueRef:
-        return self.add(Output(outputs))
+    def output(self, outputs: dict[PortID, ValueRef] | ValueRef) -> None:
+        if isinstance(outputs, dict):
+            self.add(Output(outputs))
+        else:
+            self.add(Output({Labels.VALUE: outputs}))

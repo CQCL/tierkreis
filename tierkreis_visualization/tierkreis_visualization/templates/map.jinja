@@ -16,7 +16,7 @@
   <div id="mynetwork"></div>
 
   <script type="text/javascript">
-    let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "M");
+    let [network, nodes, edges] = createNetwork({{ nodes|tojson }}, {{ edges|tojson }}, "M");
     network.setOptions({
       edges: {  hidden: false, physics: true, color: {opacity: 0}, font: {color: "white"} }
     })

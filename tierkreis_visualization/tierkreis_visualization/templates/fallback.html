@@ -1,10 +1,10 @@
-{% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %} {%
-from "macros/common_head.html" import common_head_macro with context %} {% from
-"macros/header.html" import header_macro with context %}
+{% from "macros/breadcrumbs.html" import breadcrumbs_macro with context %}
+{% from "macros/common_head.html" import common_head_macro with context %}
+{% from "macros/header.html" import header_macro with context %}
 <html>
   <head>
     <title>Tierkreis visualization: node</title>
-    {{ common_head_macro() }}
+      {{ common_head_macro() }}
   </head>
   <body>
     {{ header_macro() }}
@@ -12,65 +12,52 @@ from "macros/common_head.html" import common_head_macro with context %} {% from
       {{ breadcrumbs_macro(breadcrumbs) }}
 
       <script>
-        function openOutput(loc, port) {
-          url = window.location.href.split("/").slice(0, -1).join("/");
-          url += `/${loc}/outputs/${port}`;
-          window.open(url);
+        function openLink(path) {
+          console.log(`${window.location.href}/${path}`);
+          window.open(`${window.location.href}/${path}`, (target = "_blank"));
         }
       </script>
-      <h1 style="font-size: 1.75rem; font-weight: 500">{{ node.type }}</h1>
+      <h1 style="font-size: 1.75rem;
+    font-weight: 500;">{{ definition.function_name }}</h1>
 
       <ul>
         <li>
-          <span
-            style="
-              color: var(--neutral-600);
-              margin: 0.5rem 0;
-              margin-top: 1.25rem;
-              display: block;
-              font-size: 1.125rem;
-            "
-            >Inputs</span
-          >
+          <span  style="color: var(--neutral-600);
+    margin: 0.5rem 0;
+    margin-top: 1.25rem;
+    display: block;
+    font-size: 1.125rem;">Inputs</span>
 
-          <ul>
-            {% for input,(loc, port) in inputs.items() %}
-            <li>
-              <span
-                class="divLink"
-                onclick="openOutput('{{ loc }}', '{{ port }}')"
-                >{{ input }}</span
-              >
-              ({{ loc }}, {{port}})
-            </li>
-            {% endfor %}
+              <ul>
+              {% for input,path in definition.inputs.items() %}
+              <li>
+                <span class="divLink" onclick="openLink('inputs/{{ input }}')"
+                  >{{ input }}</span
+                >
+                ({{ path }})
+              </li>
+              {% endfor %}
           </ul>
         </li>
 
         <li>
-          <span
-            style="
-              color: var(--neutral-600);
-              margin: 0.5rem 0;
-              margin-top: 1.25rem;
-              display: block;
-              font-size: 1.125rem;
-            "
-            >Outputs</span
-          >
+          <span style="color: var(--neutral-600);
+    margin: 0.5rem 0;
+    margin-top: 1.25rem;
+    display: block;
+    font-size: 1.125rem;">Outputs</span>
           <ul>
-            {% for output,(loc, port) in outputs.items() %}
+            {% for output,path in definition.outputs.items() %}
             <li>
-              <span
-                class="divLink"
-                onclick="openOutput('{{ loc }}', '{{ port }}')"
+              <span class="divLink" onclick="openLink('outputs/{{ output }}')"
                 >{{ output }}</span
               >
-              ({{ loc }}, {{port}})
+              ({{ path }})
             </li>
             {% endfor %}
           </ul>
         </li>
+        <li><span class="divLink" onclick="openLink('logs')">logs</span></li>
       </ul>
     </main>
   </body>

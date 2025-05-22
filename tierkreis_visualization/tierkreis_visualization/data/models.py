@@ -16,3 +16,4 @@ class PyEdge(BaseModel):
     from_port: str
     to_node: int
     to_port: str
+    conditional: bool = False

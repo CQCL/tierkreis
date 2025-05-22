@@ -16,7 +16,7 @@
     <div id="mynetwork"></div>
 
     <script type="text/javascript">
-      let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "L");
+      let [network, nodes, edges] = createNetwork({{ nodes|tojson }}, {{ edges|tojson }}, "L");
       connectToStream("{{ url|safe }}", nodes, edges);
     </script>
   </main>

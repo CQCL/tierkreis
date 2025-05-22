@@ -2,8 +2,9 @@ import json
 from typing import Optional, assert_never
 
 from pydantic import BaseModel
+from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.location import WorkerCallArgs, Loc
-from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.data.graph import GraphData, IfElse
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
 
@@ -33,6 +34,30 @@ def check_error(node_location: Loc, errored_nodes: list[Loc]) -> bool:
     return any(node.startswith(node_location) for node in errored_nodes)
 
 
+def add_conditional_edges(
+    storage: ControllerStorage,
+    loc: Loc,
+    i: NodeIndex,
+    node: IfElse,
+    py_edges: list[PyEdge],
+):
+    try:
+        pred = json.loads(storage.read_output(loc.N(node.pred[0]), node.pred[1]))
+    except FileNotFoundError:
+        pred = None
+
+    refs = {True: node.if_true, False: node.if_false}
+    for branch, (idx, p) in refs.items():
+        edge = PyEdge(
+            from_node=idx,
+            from_port=p,
+            to_node=i,
+            to_port=f"If{branch}",
+            conditional=pred is None or pred != branch,
+        )
+        py_edges.append(edge)
+
+
 def get_eval_node(
     storage: ControllerStorage, node_location: Loc, errored_nodes: list[Loc]
 ) -> EvalNodeData:
@@ -40,6 +65,8 @@ def get_eval_node(
     graph = GraphData(**json.loads(thunk))
 
     pynodes: list[PyNode] = []
+    py_edges: list[PyEdge] = []
+
     for i, node in enumerate(graph.nodes):
         new_location = node_location.N(i)
         is_finished = storage.is_node_finished(new_location)
@@ -54,16 +81,10 @@ def get_eval_node(
         match node.type:
             case "function":
                 name = node.function_name
-            case (
-                "const"
-                | "map"
-                | "eval"
-                | "input"
-                | "output"
-                | "loop"
-                | "ifelse"
-                | "eifelse"
-            ):
+            case "ifelse":
+                name = node.type
+                add_conditional_edges(storage, node_location, i, node, py_edges)
+            case "const" | "map" | "eval" | "input" | "output" | "loop" | "eifelse":
                 name = node.type
             case _:
                 assert_never(node)
@@ -71,10 +92,8 @@ def get_eval_node(
         pynode = PyNode(id=i, status=status, function_name=name)
         pynodes.append(pynode)
 
-    py_edges: list[PyEdge] = []
-    for idx, node in enumerate(graph.nodes):
-        for p0, (i, p1) in in_edges(node).items():
-            py_edge = PyEdge(from_node=i, from_port=p1, to_node=idx, to_port=p0)
+        for p0, (idx, p1) in in_edges(node).items():
+            py_edge = PyEdge(from_node=idx, from_port=p1, to_node=i, to_port=p0)
             py_edges.append(py_edge)
 
     return EvalNodeData(nodes=pynodes, edges=py_edges)

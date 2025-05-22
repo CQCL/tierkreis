@@ -21,10 +21,10 @@
     <div style="display:flex;gap:2rem">
       <div id="mynetwork"></div>
        <script type="text/javascript">
-        let [network, nodes, edges] = createNetwork({{ nodes|safe }}, {{ edges|safe }}, "N");
+        let [network, nodes, edges] = createNetwork({{ nodes|tojson }}, {{ edges|tojson }}, "N");
         </script>
 
-      {{ json_editor_macro(nodes|safe, edges|safe) }}
+      {{ json_editor_macro(nodes|tojson, edges|tojson) }}
     </div>
   </main>
    <script type="text/javascript">

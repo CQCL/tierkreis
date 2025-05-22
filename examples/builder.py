@@ -2,19 +2,23 @@ from pathlib import Path
 from tierkreis.cli.run_workflow import run_workflow
 
 from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.data.graph_builder import AutoGraphBuilder, GraphBuilder
 from tierkreis import Labels
 
 
 def loop_body() -> GraphData:
-    g = GraphData()
-    g.input().const(1).const(10).func("builtins.iadd", {"a": 0, "b": 1}).func(
-        "builtins.igt", {"a": 2, "b": 3}
-    ).output({Labels.VALUE: -2, "should_continue": -1})
-    return g
+    g = AutoGraphBuilder()
+    g.input()
+    g.const(1)
+    g.const(10)
+    g.func("builtins.iadd", {"a": 0, "b": 1})
+    g.func("builtins.igt", {"a": 2, "b": 3})
+    g.output({Labels.VALUE: -2, "should_continue": -1})
+    return g.instantiate_graph()
 
 
-f = GraphData()
-f.const(6).loop(loop_body(), "should_continue", {Labels.VALUE: -1}).output()
+f = GraphBuilder()
+f.output(f.loop(loop_body(), "should_continue", f.const(6)))
 
 
 inputs = {}

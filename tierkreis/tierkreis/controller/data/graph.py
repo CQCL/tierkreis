@@ -1,8 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Callable, Literal, assert_never
 
-from pydantic import BaseModel, RootModel, Field
-from tierkreis import Labels
+from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import Jsonable
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
@@ -91,7 +90,6 @@ class GraphData(BaseModel):
     fixed_inputs: dict[PortID, OutputLoc] = {}
     graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
-    value_refs: list[ValueRef] = Field(exclude=True, default=[])
 
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
@@ -143,81 +141,3 @@ class GraphData(BaseModel):
 
         actual_inputs = fixed_inputs.union(provided_inputs)
         return self.graph_inputs - actual_inputs
-
-    def func(self, name: str, inputs: dict[str, int] | None = None) -> "GraphData":
-        inputs = {k: self.value_refs[v] for k, v in inputs.items()} if inputs else {}
-        self.value_refs.append(self.add(Func(name, inputs))(Labels.VALUE))
-        return self
-
-    def eval(self, body: "GraphData", n_inputs: int = 0) -> "GraphData":
-        if len(self.nodes) < n_inputs:
-            raise ValueError("Cannot add an eval, not enough nodes.")
-        inputs = {f"{x}": self.value_refs[-(n_inputs + x) - 1] for x in range(n_inputs)}
-        self.value_refs.append(self.add(Eval(body, inputs))(Labels.VALUE))
-        return self
-
-    def loop(
-        self,
-        body: "GraphData",
-        loop_condition: str,
-        inputs: dict[str, int] | None = None,
-    ) -> "GraphData":
-        l_body = self.add(Const(body))(Labels.VALUE)
-        inputs = {k: self.value_refs[v] for k, v in inputs.items()} if inputs else {}
-        self.value_refs.append(
-            self.add(Loop(l_body, inputs, loop_condition))(Labels.VALUE)
-        )
-        return self
-
-    def map(self, body: "GraphData", n_inputs: int = 0) -> "GraphData":
-        if len(self.nodes) < n_inputs:
-            raise ValueError("Cannot add an eval, not enough nodes.")
-        inputs = {f"{x}": self.value_refs[-(n_inputs + x) - 1] for x in range(n_inputs)}
-        m_body = self.const(body)
-
-        map_def = Map(
-            m_body, self.value_refs[-1][0], Labels.VALUE, Labels.VALUE, inputs
-        )
-        self.value_refs.append(self.add(map_def)(Labels.VALUE))
-        return self
-
-    def const(self, value: Jsonable) -> "GraphData":
-        self.value_refs.append(self.add(Const(value))(Labels.VALUE))
-        return self
-
-    def ifelse(self) -> "GraphData":
-        if len(self.nodes) < 3:
-            raise ValueError("Cannot add an eifelse, not enough nodes.")
-        self.value_refs.append(
-            self.add(
-                IfElse(self.value_refs[-3], self.value_refs[-2], self.value_refs[-1])
-            )
-        )
-        return self
-
-    def efelse(self) -> "GraphData":
-        if len(self.nodes) < 3:
-            raise ValueError("Cannot add an eifelse, not enough nodes.")
-        self.value_refs.append(
-            self.add(
-                EagerIfElse(
-                    self.value_refs[-3], self.value_refs[-2], self.value_refs[-1]
-                )
-            )
-        )
-        return self
-
-    def input(self, name: str = Labels.VALUE) -> "GraphData":
-        self.value_refs.append(self.add(Input(name))(name))
-        return self
-
-    def output(self, outputs: str | dict[str, int] = Labels.VALUE) -> "GraphData":
-        # multi outputs not supported yet
-        if len(self.nodes) == 0:
-            raise ValueError("Cannot add an output to an empty graph.")
-        if isinstance(outputs, dict):
-            outputs = {k: self.value_refs[v] for k, v in outputs.items()}
-            self.value_refs.append(self.add(Output(outputs)))
-        else:
-            self.value_refs.append(self.add(Output({outputs: self.value_refs[-1]})))
-        return self

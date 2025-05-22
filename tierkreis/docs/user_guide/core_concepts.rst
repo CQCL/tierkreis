@@ -20,7 +20,7 @@ Tasks are the basic building blocks of a workflow.
 They are independent and loosely coupled and represent an atomic operation in the workflow.
 Still, they can consume large amounts of resources and running time.
 While they can maintain state for the duration of their lifetime in the context of the workflow they are stateless.
-They simpl act on their inputs and produce outputs, which are linked to other tasks.
+They simply act on their inputs and produce outputs, which are linked to other tasks.
 
 
 Workflows
@@ -41,7 +41,7 @@ Controller
 ^^^^^^^^^^
 
 The controller is responsible for the execution of the entire workflow, maintaining the global state and checking the progress.
-It checks the state of the individual tasks and what to run next based on the given data availability.
+It checks the state of the individual tasks and decides what to run next based on the given data availability.
 In case of an error, the controller interrupts the progress such that a user can interfere.
 Further, the controller interacts with all the other components of the system:
 - It assigns executors to workers according to their requirements
@@ -50,21 +50,20 @@ Further, the controller interacts with all the other components of the system:
 
 A resulting feature is that computation can be interrupted and resumed at any point, without losing significant progress.
 The controller also validates the workflow to ensure each node can be implemented by a combination of worker and executor.
-It also has scheduling mechanisms to dispatch tasks.
 
 
 Storage
 ^^^^^^^
 
 The storage layer is an abstraction of the state of the computation.
-It stores the information of individual tasks such as their definition, their dependencies, and their status.
+It stores the information of individual tasks such as their definition, their inputs (dependencies), and their status.
 The actual implementation can be a file system, a database or cloud storage.
 
 Worker
 ^^^^^^
 
 A worker implements *atomic* functionalities that will not be broken further by the controller.
-These functionalities are unrestricted and can be implemented in any language as long as they expose well defined endpoints.
+These functionalities are unrestricted and can be implemented in any language as long as they correctly implement the interface defined by the storage layer.
 Typically, workers represent more expensive operations that run asynchronously.
 
 Executor

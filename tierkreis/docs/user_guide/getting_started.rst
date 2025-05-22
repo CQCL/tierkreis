@@ -34,11 +34,11 @@ The drawback of this approach is that it will be always run as a single node in 
 2. Construct a workflow graph
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Constructing a workflow is done by creating a ``Graph`` object, which contains all the nodes in the graph.
+Constructing a workflow is done by creating a `GraphData <https://github.com/CQCL/tierkreis/blob/main/tierkreis/tierkreis/controller/data/graph.py#87>`_ object, which contains all the nodes in the graph.
 An important aspect is setting up the in and outputs of each node.
 In general each node accepts at least one input and produces at least one output.
-The ``Graph`` object also contains a map between in- and outputs, which is used to connect nodes together.
-The core function for this is ``Graph.add`` which takes a node definition, and produces a callable, which typically is immediately called.
+The ``GraphData`` object also contains a map between in- and outputs, which is used to connect nodes together.
+The core function for this is ``Graphdata.add`` which takes a node definition, and produces a callable, which typically is immediately called.
 ``g.add(Input("my_input"))("my_input")`` creates a named input (``my_input``) with an output label ``"my_input"``.
 When constructing a graph, the result of such a call can then be feed as input to another node.
 

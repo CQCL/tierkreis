@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
 from tierkreis.exceptions import TierkreisError
-from watchfiles import awatch
+from watchfiles import awatch  # type: ignore
 
 from tierkreis_visualization.config import CONFIG, get_storage, templates
 from tierkreis_visualization.data.eval import get_eval_node
@@ -50,7 +50,6 @@ def get_node_data(workflow_id: UUID, loc: Loc) -> dict[str, Any]:
     node = storage.read_node_def(loc)
     ctx: dict[str, Any] = {}
     match node.type:
-
         case "eval":
             data = get_eval_node(storage, loc, errored_nodes)
             name = "eval.jinja"

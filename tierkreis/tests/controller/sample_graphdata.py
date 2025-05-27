@@ -1,25 +1,58 @@
+from pydantic import BaseModel
 from tierkreis.controller.data.graph import (
     Const,
     EagerIfElse,
     Eval,
     Func,
+    Function,
     GraphData,
     IfElse,
     Input,
     Loop,
     Map,
     Output,
+    TypedValueRef,
 )
 from tierkreis import Labels
 
 
+class IAdd(Function[TypedValueRef[int]]):
+    a: TypedValueRef[int]
+    b: TypedValueRef[int]
+
+    out: TypedValueRef[int] = TypedValueRef[int](0, "value")
+
+
+class CIAddOut(BaseModel):
+    a: TypedValueRef[int]
+    value: TypedValueRef[int]
+
+
+class CIAdd(Function[CIAddOut]):  # Multiple return types
+    a: TypedValueRef[int]
+    b: TypedValueRef[int]
+
+    out: CIAddOut = CIAddOut(
+        a=TypedValueRef[int](0, "a"), value=TypedValueRef[int](0, "value")
+    )
+
+
+class IAddS(Function[TypedValueRef[str]]):
+    a: TypedValueRef[int]
+    b: TypedValueRef[int]
+
+    out: TypedValueRef[str] = TypedValueRef[str](0, "value")
+
+
 def doubler_plus() -> GraphData:
     g = GraphData()
-    inp = g.add(Input("doubler_input"))("doubler_input")
-    intercept = g.add(Input("intercept"))("intercept")
-    two = g.add(Const(2))(Labels.VALUE)
-    mul = g.add(Func("builtins.itimes", {"a": inp, "b": two}))(Labels.VALUE)
-    out = g.add(Func("builtins.iadd", {"a": mul, "b": intercept}))(Labels.VALUE)
+    two = g.const(2)
+    three = g.const(3)
+    x = g.fn(IAdd(a=two, b=three))
+    y = g.fn(CIAdd(a=two, b=three))
+    z = g.fn(IAddS(a=two, b=three))
+    out = g.fn(IAdd(a=x, b=y.a))
+    out = g.fn(IAdd(a=x, b=z))
     g.add(Output({"doubler_output": out}))
     return g
 

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Callable, Literal, assert_never
+from typing import Any, Callable, Literal, NamedTuple, TypeVar, assert_never
 
 from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import Jsonable
@@ -8,6 +8,18 @@ from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
 from tierkreis.controller.data.location import OutputLoc
 from tierkreis.exceptions import TierkreisError
+
+
+class TypedValueRef[T](NamedTuple):
+    node_index: NodeIndex
+    port: PortID
+
+
+Out = TypeVar("Out", bound=TypedValueRef[Any] | dict[str, TypedValueRef[Any]])
+
+
+class Function[Out](BaseModel):
+    out: Out
 
 
 @dataclass
@@ -90,6 +102,15 @@ class GraphData(BaseModel):
     fixed_inputs: dict[PortID, OutputLoc] = {}
     graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
+
+    def const[T](self, value: T) -> TypedValueRef[T]:
+        x = self.add(Const(value))("value")
+        return TypedValueRef[T](x[0], x[1])
+
+    def fn[Out](self, function: Function[Out]) -> Out:
+        # rearrange function.out so it refers to the correct ValueRef
+        # and has the correct inputs
+        return function.out
 
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)

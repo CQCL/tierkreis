@@ -26,6 +26,13 @@
 
   languages.rust.enable = true;
 
+  languages.javascript = {
+    enable = true;
+    bun.enable = true;
+    bun.install.enable = true;
+    directory = "./tierkreis_visualization";
+  };
+
   # This allows building the type-check (pyo3) module on MacOSX "Apple Silicon"
   enterShell =
     if pkgs.stdenv.isDarwin && pkgs.stdenv.isAarch64 then ''

@@ -1,4 +1,5 @@
 from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
 
 
 from fastapi import FastAPI, Request
@@ -9,6 +10,15 @@ import uvicorn
 from tierkreis_visualization.routers.workflows import router as workflows_router
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "*",
+    ],  # Adjust as necessary
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(workflows_router)
 app.mount(

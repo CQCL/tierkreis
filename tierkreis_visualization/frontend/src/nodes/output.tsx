@@ -7,38 +7,27 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { NodeStatusIndicator } from '@/components/StatusIndicator';
 
 import { type BackendNode } from './types';
 
-export function InputNode({
+export function OutputNode({
   data,
 }: NodeProps<BackendNode>) {
 
   return (
-    <NodeStatusIndicator status={data.status}>
     <Card className="w-[350px]">
       <CardHeader>
-        <CardTitle>Input</CardTitle>
+        <CardTitle>Output</CardTitle>
         <CardDescription>Name: {data.name} </CardDescription>
       </CardHeader>
-
       <CardContent>
-        {
-          data.outputs.map((output, index) => (
-            <div key={index}>
-              <span>{`Output ${index + 1}: ${output.name}`}</span>
-              <p>{`Value: ${output.value}`}</p>
-            </div>
-          ))
-        }
+            <span>{`Value ${data.outputs[0].value}`}</span>
       </CardContent>
       <CardFooter>
         <p>Logs</p>
       </CardFooter>
 
-      <Handle type="source" position={Position.Bottom} />
+      <Handle type="target" position={Position.Top} />
     </Card>
-    </NodeStatusIndicator>
   );
 }

@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { NodeStatusIndicator } from '@/components/StatusIndicator';
 
 import { type InputNode } from './types';
 
@@ -15,6 +16,7 @@ export function InputNode({
 }: NodeProps<InputNode>) {
 
   return (
+    <NodeStatusIndicator status={data.status}>
     <Card className="w-[350px] react-flow__node-default" style={{
       backgroundColor: data.color,
     }}>
@@ -37,8 +39,8 @@ export function InputNode({
         <p>Logs</p>
       </CardFooter>
 
-      ?<Handle type="source" position={Position.Bottom} />
-      <Handle type="target" position={Position.Top} />
+      <Handle type="source" position={Position.Bottom} />
     </Card>
+    </NodeStatusIndicator>
   );
 }

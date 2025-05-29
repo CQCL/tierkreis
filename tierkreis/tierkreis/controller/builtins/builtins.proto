@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+message CAddResponse {
+  int32 a = 1;
+  AddResponse value = 2;
+}
+message AddRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+message AddResponse {
+  int32 value = 1;
+}
+
+message AddSRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+message AddSResponse {
+  string value = 1;
+}
+
+message CAddRequest {
+  int32 a = 1;
+  int32 b = 2;
+}
+
+service BuiltinsService {
+  rpc Add(AddRequest) returns (AddResponse) {}
+  rpc AddS(AddSRequest) returns (AddSResponse) {}
+  rpc CAdd(CAddRequest) returns (CAddResponse) {}
+}

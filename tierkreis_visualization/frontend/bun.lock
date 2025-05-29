@@ -5,6 +5,10 @@
       "name": "vite-react-flow-template",
       "dependencies": {
         "@cqcl/quantinuum-ui": "^1.26.5",
+        "@radix-ui/react-dialog": "^1.1.14",
+        "@radix-ui/react-separator": "^1.1.7",
+        "@radix-ui/react-slot": "^1.2.3",
+        "@radix-ui/react-tooltip": "^1.2.7",
         "@tailwindcss/vite": "^4.1.7",
         "@xyflow/react": "^12.5.1",
         "class-variance-authority": "^0.7.1",

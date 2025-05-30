@@ -6,6 +6,8 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
+from starlette.websockets import WebSocket, WebSocketDisconnect
+
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
 from watchfiles import awatch
 
@@ -19,6 +21,35 @@ from tierkreis_visualization.routers.models import PyGraph
 from tierkreis_visualization.routers.navigation import breadcrumbs
 
 router = APIRouter(prefix="/workflows")
+
+
+# Update the routes section with this new route:
+@router.websocket("/{workflow_id}/nodes/{node_location_str}")
+async def websocket_endpoint(
+    websocket: WebSocket, workflow_id: UUID, node_location_str: str
+) -> None:
+    # TODO: Check if this reopens on change
+    try:
+        await websocket.accept()
+        # Handle WebSocket connection.
+        await handle_websocket(websocket, workflow_id, node_location_str)
+    except WebSocketDisconnect:
+        pass
+    await websocket.close()
+
+
+async def handle_websocket(
+    websocket: WebSocket, workflow_id: UUID, node_location_str: str
+) -> None:
+    # Parse the node location.
+    node_location = parse_node_location(node_location_str)
+    node_path = CONFIG.tierkreis_path / str(workflow_id) / str(node_location)
+    async for _changes in awatch(node_path, recursive=True):
+        try:
+            ctx = get_node_data(workflow_id, node_location)
+            await websocket.send_json(ctx)
+        except WebSocketDisconnect:
+            break
 
 
 @router.get("/")

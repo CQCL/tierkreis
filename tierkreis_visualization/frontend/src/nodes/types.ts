@@ -15,6 +15,7 @@ export type AppNode = BuiltInNode | BackendNode;
 export type AppState = {
     nodes: AppNode[];
     edges: Edge[];
+    url: string;
     onNodesChange: OnNodesChange<AppNode>;
     onEdgesChange: OnEdgesChange;
     onConnect: OnConnect;
@@ -22,4 +23,6 @@ export type AppState = {
     setEdges: (edges: Edge[]) => void;
     appendNodes: (node: AppNode[]) => void;
     appendEdges: (edge: Edge[]) => void;
+    setUrl: (url: string) => void;
+    getUrl: () => string;
 };

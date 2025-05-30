@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 import {
   Sidebar,
   SidebarContent,
@@ -10,20 +12,20 @@ import {
 } from "@/components/ui/sidebar"
 
 
-import  useStore  from "@/data/store";
-import { url } from "@/data/constants"
+import useStore from "@/data/store";
+import { URL } from "@/data/constants"
 import { parseNodes } from "@/nodes/parseNodes";
 import { parseEdges } from "@/edges/parseEdges";
 
 // Menu items.
-const items = await getWorkflows(url)
+const items = await getWorkflows(URL)
 
-  
+
 async function getWorkflows(url: string) {
-  const response = await fetch(`${url}/all`, { method: "GET", headers: { "Content-Type": "application/json"  }});
+  const response = await fetch(`${url}/all`, { method: "GET", headers: { "Content-Type": "application/json" } });
   const data = await response.json();
   return data.map((workflow) => {
-     return {
+    return {
       id: workflow.id,
       name: workflow.name,
       url: `${url}/${workflow.id}/nodes/-`,
@@ -33,18 +35,35 @@ async function getWorkflows(url: string) {
 }
 
 
-
-
-const updateNodes = async (url: string) => {
-  let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
-  .then( response => response.json());
-  json.then(data => parseNodes(data)).then(nodes => useStore.setState({nodes}));
-  json.then(data => parseEdges(data)).then(edges => useStore.setState({edges}));
-
-}
-
-
 export function WorkflowSidebar() {
+  const setEdges = useStore((state) => state.setEdges);
+  const setNodes = useStore((state) => state.setNodes);
+  const setUrl = useStore((state) => state.setUrl);
+  const getUrl = useStore((state) => state.getUrl);
+  const updateNodes = async (url: string) => {
+    setUrl(url);
+    let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
+      .then(response => response.json());
+    json.then(data => parseNodes(data)).then(nodes => setNodes(nodes));
+    json.then(data => parseEdges(data)).then(edges => setEdges(edges));
+
+  }
+  useEffect(() => {
+    const url = getUrl();
+    if (url === "") {
+      return;
+    }
+    const ws = new WebSocket(url);
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setNodes(parseNodes(data.nodes));
+      setEdges(parseEdges(data.edges));
+    };
+    return () => {
+      ws.close();
+    };
+  }, [setUrl]);
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -55,7 +74,7 @@ export function WorkflowSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton asChild>
-                    <a onClick = {() => updateNodes(item.url)}>
+                    <a onClick={() => updateNodes(item.url)}>
                       <span>{item.name}</span>
                     </a>
                   </SidebarMenuButton>

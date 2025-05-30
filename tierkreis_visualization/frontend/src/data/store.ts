@@ -1,9 +1,9 @@
 import { create } from 'zustand';
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
  
-import { initialNodes } from '../nodes/index';
-import { initialEdges } from '../edges/index';
-import { type AppState } from '../nodes/types';
+import { initialNodes } from '@/nodes/index';
+import { initialEdges } from '@/edges/index';
+import { type AppState } from '@/nodes/types';
  
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
 const useStore = create<AppState>((set, get) => ({
@@ -29,6 +29,16 @@ const useStore = create<AppState>((set, get) => ({
   },
   setEdges: (edges) => {
     set({ edges });
+  },
+  appendNodes: (newNodes) => {
+    set({
+      nodes: [...get().nodes, ...newNodes],
+    });
+  },
+  appendEdges: (newEdges) => {
+    set({
+      edges: [...get().edges, ...newEdges],
+    });
   },
 }));
  

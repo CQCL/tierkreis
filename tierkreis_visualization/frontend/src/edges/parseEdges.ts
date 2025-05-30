@@ -1,8 +1,9 @@
-export function parseEdges(data) {
+export function parseEdges(data, parentId?: string) {
+    const prefix = parentId ? `${parentId}:` : "";
     let edges = data.edges.map((edge) => ({
-        id: edge.from_node + "-" + edge.to_node,
-        source: edge.from_node.toString(),
-        target: edge.to_node.toString(),
+        id: prefix + edge.from_node + "-" + prefix + edge.to_node,
+        source: prefix + edge.from_node.toString(),
+        target: prefix + edge.to_node.toString(),
         label: edge.from_port + "->" + edge.to_port,
     }));
     return edges;

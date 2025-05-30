@@ -7,13 +7,29 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { Button } from '@/components/ui/button';
+
+import useStore from "@/data/store";
+import { parseNodes } from "@/nodes/parseNodes";
+import { parseEdges } from "@/edges/parseEdges";
 
 import { type BackendNode } from './types';
+
+
+const tmpURL = "http://localhost:8000/workflows/00000000-0000-0000-0000-000000000001/nodes/-.N3"
 
 export function EvalNode({
   data,
 }: NodeProps<BackendNode>) {
+  const appendEdges = useStore((state) => state.appendEdges);
+  const appendNodes = useStore((state) => state.appendNodes);
+  const loadChildren = async (url: string, parentId: string) => {
+  let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
+    .then(response => response.json());
+  json.then(data => parseNodes(data, parentId)).then(nodes => appendNodes(nodes));
+  json.then(data => parseEdges(data,parentId)).then(edges => appendEdges(edges));
 
+}
   return (
     <Card className="w-[350px]">
       <CardHeader>
@@ -22,10 +38,10 @@ export function EvalNode({
       </CardHeader>
 
       <CardContent>
-            <span>{`Value ${data.outputs[0].value}`}</span>
+
       </CardContent>
       <CardFooter>
-        <p>Logs</p>
+        <Button onClick={() => loadChildren(tmpURL, data.id)} >Show</Button>
       </CardFooter>
     
       <Handle type="target" position={Position.Top} />

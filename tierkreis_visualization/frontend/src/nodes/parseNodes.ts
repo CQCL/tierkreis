@@ -1,7 +1,6 @@
 import { PyNode } from "./types";
 
 function nodeType(function_name: string) {
-    console.log(function_name);
     switch (function_name) {
         case 'input':
             return 'input-node';
@@ -27,7 +26,7 @@ function nodeType(function_name: string) {
 
 export function parseNodes(data: { nodes: [PyNode] }, parentId?: string) {  //
     let nodes = data.nodes.map((node, index) => ({
-        id: node.id.toString(),
+        id: (parentId ? `${parentId}:` : "") + node.id.toString(),
         position: {
             x: 10 + index * 50,
             y: 20 + index * 50,
@@ -36,6 +35,7 @@ export function parseNodes(data: { nodes: [PyNode] }, parentId?: string) {  //
         data: {
             label: node.function_name,
             name: node.function_name,
+            id: node.id.toString(),
             status: node.status,
             outputs: [
                 {
@@ -44,6 +44,8 @@ export function parseNodes(data: { nodes: [PyNode] }, parentId?: string) {  //
                 }]
 
         },
+        parentId: parentId ? parentId : undefined,
+        extent: parentId ? "parent" : undefined,
     }));
     return nodes;
 }

@@ -7,10 +7,9 @@ from collections.abc import (
     Iterator,
 )  # Needs to be imported from here not typing to satisfy get_origin
 import sys
-from typing import Any, Callable, Iterable, ParamSpec, TypeVar, get_origin
+from typing import Callable, Iterable, ParamSpec, TypeVar, get_origin
 
 from pydantic import BaseModel
-from tierkreis.worker.models import Namespace
 
 logger = getLogger(__name__)
 
@@ -75,12 +74,10 @@ def _save_results_iterator(
 
 class Worker:
     functions: dict[str, Callable[[WorkerCallArgs], None]]
-    namespace: Namespace
 
     def __init__(self, name: str) -> None:
         self.name = name
         self.functions = {}
-        self.namespace = {}
 
         def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
             logger.critical(
@@ -110,7 +107,6 @@ class Worker:
             ],
         ) -> None:
             func_name = name if name is not None else func.__name__
-            self.namespace[func_name] = func.__annotations__
 
             def wrapper(node_definition: WorkerCallArgs):
                 annotations = func.__annotations__

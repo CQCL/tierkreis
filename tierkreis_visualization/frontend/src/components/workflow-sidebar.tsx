@@ -13,6 +13,7 @@ import {
 import  useStore  from "@/data/store";
 import { url } from "@/data/constants"
 import { parseNodes } from "@/nodes/parseNodes";
+import { parseEdges } from "@/edges/parseEdges";
 
 // Menu items.
 const items = await getWorkflows(url)
@@ -21,7 +22,6 @@ const items = await getWorkflows(url)
 async function getWorkflows(url: string) {
   const response = await fetch(`${url}/all`, { method: "GET", headers: { "Content-Type": "application/json"  }});
   const data = await response.json();
-  console.log(data);
   return data.map((workflow) => {
      return {
       id: workflow.id,
@@ -36,10 +36,11 @@ async function getWorkflows(url: string) {
 
 
 const updateNodes = async (url: string) => {
-  fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
-  .then( response => response.json())
-  .then(data => parseNodes(data))
-  .then(nodes => useStore.setState({nodes}))
+  let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
+  .then( response => response.json());
+  json.then(data => parseNodes(data)).then(nodes => useStore.setState({nodes}));
+  json.then(data => parseEdges(data)).then(edges => useStore.setState({edges}));
+
 }
 
 

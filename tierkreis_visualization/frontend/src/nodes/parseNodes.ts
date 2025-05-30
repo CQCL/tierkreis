@@ -9,21 +9,30 @@ function nodeType(function_name: string) {
             return 'output-node';
         case 'const':
             return 'const-node';
+        case 'ifelse':
+            return 'ifelse-node';
+        case 'eifelse':
+            return 'ifelse-node';
+        case 'eval':
+           return 'eval-node';
+        case 'loop':
+            return 'loop-node';
+        case 'map':
+            return 'map-node';
         default:
-            return 'eval-node'
+            return 'function-node'
     }
 
 }
 
-export function parseNodes(data: { nodes: [PyNode] }) {
-    console.log(data);
+export function parseNodes(data: { nodes: [PyNode] }, parentId?: string) {  //
     let nodes = data.nodes.map((node, index) => ({
         id: node.id.toString(),
         position: {
             x: 10 + index * 50,
             y: 20 + index * 50,
         },
-        type:  nodeType(node.function_name),
+        type: nodeType(node.function_name),
         data: {
             label: node.function_name,
             name: node.function_name,

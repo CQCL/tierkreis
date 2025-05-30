@@ -11,14 +11,14 @@ import { Button } from '@/components/ui/button';
 
 import { type BackendNode } from './types';
 
-export function ConstNode({
+export function IfElseNode({
   data,
 }: NodeProps<BackendNode>) {
 
   return (
     <Card className="w-[350px]">
       <CardHeader>
-        <CardTitle>Const</CardTitle>
+        <CardTitle>IfElse</CardTitle>
         <CardDescription>Name: {data.name} </CardDescription>
       </CardHeader>
 
@@ -30,6 +30,7 @@ export function ConstNode({
       </CardFooter>
 
       <Handle type="source" position={Position.Bottom} />
+      <Handle type="target" position={Position.Top} />
     </Card>
   );
 }

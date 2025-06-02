@@ -23,9 +23,13 @@ fix:
 
 [working-directory:'tierkreis_visualization']
 serve:
+	{{uvrun}} fastapi dev tierkreis_visualization/main.py
+
+[working-directory:'tierkreis_visualization']
+prod:
 	bunx --bun vite build frontend
 	cp -r frontend/dist tierkreis_visualization/static
-	{{uvrun}} fastapi dev tierkreis_visualization/main.py
+
 
 examples:
 	{{uvrun}} examples/hello_world_graph.py

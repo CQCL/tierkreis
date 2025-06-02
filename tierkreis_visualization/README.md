@@ -31,8 +31,6 @@ bun start
 This project was created using `bun init` in bun v1.2.11. [Bun](https://bun.sh) is a fast all-in-one JavaScript runtime.
 
 To run with fast api:
-Bundle the frontend:
 ```bash 
-bun build ./src/frontend.tsx --outdir ./out --target bun
+just prod serve
 ```
-And copy the folders into the `static` folder.

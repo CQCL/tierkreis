@@ -10,6 +10,7 @@ import sys
 from typing import Callable, Iterable, ParamSpec, TypeVar, get_origin
 
 from pydantic import BaseModel
+from tierkreis.namespace import Namespace
 
 logger = getLogger(__name__)
 
@@ -74,10 +75,12 @@ def _save_results_iterator(
 
 class Worker:
     functions: dict[str, Callable[[WorkerCallArgs], None]]
+    namespace: Namespace
 
     def __init__(self, name: str) -> None:
         self.name = name
         self.functions = {}
+        self.namespace = Namespace(name=self.name, functions=[])
 
         def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
             logger.critical(
@@ -107,6 +110,7 @@ class Worker:
             ],
         ) -> None:
             func_name = name if name is not None else func.__name__
+            self.namespace.add_from_annotations(func.__name__, func.__annotations__)
 
             def wrapper(node_definition: WorkerCallArgs):
                 annotations = func.__annotations__

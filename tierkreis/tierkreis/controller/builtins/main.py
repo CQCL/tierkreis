@@ -20,6 +20,17 @@ def iadd(a: int, b: int) -> Value[int]:
     return Value(value=a + b)
 
 
+class CIAddOut(BaseModel):
+    a: int
+    value: int
+
+
+@worker.function()
+def ciadd(a: int, b: int) -> CIAddOut:
+    logger.debug(f"ciadd {a} {b}")
+    return CIAddOut(a=a, value=a + b)
+
+
 @worker.function()
 def itimes(a: int, b: int) -> Value[int]:
     logger.debug(f"itimes {a} {b}")

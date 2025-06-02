@@ -10,8 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 import useStore from "@/data/store";
-import { parseNodes } from "@/nodes/parseNodes";
-import { parseEdges } from "@/edges/parseEdges";
+import { parseNodes, parseEdges } from "@/graph/parseGraph";
 
 import { type BackendNode } from './types';
 

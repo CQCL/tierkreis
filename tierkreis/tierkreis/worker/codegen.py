@@ -31,8 +31,7 @@ def format_model(name: str, props: dict[str, Any]) -> str:
     attrs_str = "\n    ".join(attrs)
 
     return f"""class {name}(BaseModel):
-    {attrs_str}
-    """
+    {attrs_str}"""
 
 
 def format_method(name: str, annotations: dict[str, Any]) -> str:
@@ -44,18 +43,33 @@ def format_method(name: str, annotations: dict[str, Any]) -> str:
     return f"""    @staticmethod
     @abstractmethod
     def {name}({args_str}) -> {return_type}: ...
-
 """
 
 
-def format_namespace(name: str, namespace: dict[str, Any]) -> str:
+def remove_values(namespace: dict[str, Any]):
+    for _, f in namespace["$defs"].items():
+        props = f["properties"]
+        if "return" not in props:
+            continue
+        ret = props["return"]
+        if "$ref" in ret and ret["$ref"].startswith("#/$defs/Value_"):
+            def_key = def_key_from_path(ret["$ref"])
+            props["return"] = {
+                "type": namespace["$defs"][def_key]["properties"]["value"]["type"]
+            }
+
+
+def format_schema(name: str, namespace: dict[str, Any]) -> str:
+    print(namespace)
+    remove_values(namespace)
+    print(namespace)
     defs = namespace["$defs"]
     models = [
         format_model(k, v["properties"])
         for k, v in defs.items()
         if "return" not in v["properties"]
     ]
-    models_str = "\n".join(models)
+    models_str = "\n\n\n".join(models)
 
     methods = [
         format_method(k, defs[def_key_from_path(v["$ref"])])
@@ -65,6 +79,8 @@ def format_namespace(name: str, namespace: dict[str, Any]) -> str:
 
     return f"""from abc import ABC, abstractmethod
 from pydantic import BaseModel
+
+from tierkreis.controller.data.core import TypedValueRef
 
 
 {models_str}

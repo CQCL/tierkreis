@@ -110,7 +110,7 @@ class Worker:
             ],
         ) -> None:
             func_name = name if name is not None else func.__name__
-            self.namespace[func_name] = func.__annotations__
+            self.namespace[func.__name__] = func.__annotations__
 
             def wrapper(node_definition: WorkerCallArgs):
                 annotations = func.__annotations__

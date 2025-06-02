@@ -1,8 +1,16 @@
 from dataclasses import dataclass, field
-from typing import Callable, Literal, assert_never
+from typing import (
+    Callable,
+    Generic,
+    Literal,
+    Protocol,
+    TypeVar,
+    Unpack,
+    assert_never,
+)
 
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import Jsonable
+from tierkreis.controller.data.core import Jsonable, TKRRef, TypedValueRef
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
@@ -83,6 +91,13 @@ class Output:
 NodeDef = Func | Eval | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
 NodeDefModel = RootModel[NodeDef]
 
+In = TypeVar("In", bound=tuple[TKRRef, ...], infer_variance=True)
+Out = TypeVar("Out", bound=TKRRef, infer_variance=True)
+
+
+class Callback(Protocol, Generic[In, Out]):
+    def __call__(self, *args: Unpack[In]) -> Out: ...
+
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
@@ -90,6 +105,27 @@ class GraphData(BaseModel):
     fixed_inputs: dict[PortID, OutputLoc] = {}
     graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
+
+    def input[T](self, name: str, t: T) -> TypedValueRef[T]:
+        idx, port = self.add(Input(name))(name)
+        return TypedValueRef[T](idx, port)
+
+    def const[T](self, value: T) -> TypedValueRef[T]:
+        idx, port = self.add(Const(value))("value")
+        return TypedValueRef[T](idx, port)
+
+    def fn(self, f: Callback[In, Out], *args: Unpack[In]) -> Out:
+        print(f.__annotations__.items())
+        i = 0
+        ins: dict[PortID, ValueRef] = {}
+        for name in f.__annotations__.keys():
+            if name == "return":
+                continue
+            ins[name] = (args[i].node_index, args[i].port)
+            i += 1
+
+        idx = self.add(Func(f.__name__, ins))("*")
+        return f(*args, **kwargs)
 
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)

@@ -11,16 +11,19 @@ from tierkreis.controller.data.graph import (
     Output,
 )
 from tierkreis import Labels
+from tests.codegen.builtins import builtins
 
 
 def doubler_plus() -> GraphData:
     g = GraphData()
-    inp = g.add(Input("doubler_input"))("doubler_input")
-    intercept = g.add(Input("intercept"))("intercept")
-    two = g.add(Const(2))(Labels.VALUE)
-    mul = g.add(Func("builtins.itimes", {"a": inp, "b": two}))(Labels.VALUE)
-    out = g.add(Func("builtins.iadd", {"a": mul, "b": intercept}))(Labels.VALUE)
-    g.add(Output({"doubler_output": out}))
+    inp = g.input("doubler_input", int())
+    intercept = g.input("intercept", int())
+    two = g.const(2)
+
+    mul = g.fn(builtins.itimes, inp, two)
+    out = g.fn(builtins.iadd, mul, intercept)
+
+    g.add(Output({"doubler_output": (out.node_index, out.port)}))
     return g
 
 

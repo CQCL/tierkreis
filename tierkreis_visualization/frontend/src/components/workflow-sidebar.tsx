@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import {
   Sidebar,
@@ -17,25 +17,23 @@ import { URL } from "@/data/constants"
 import { parseNodes } from "@/nodes/parseNodes";
 import { parseEdges } from "@/edges/parseEdges";
 
-// Menu items.
-const items = await getWorkflows(URL)
-
-
-async function getWorkflows(url: string) {
-  const response = await fetch(`${url}/all`, { method: "GET", headers: { "Content-Type": "application/json" } });
-  const data = await response.json();
-  return data.map((workflow) => {
-    return {
-      id: workflow.id,
-      name: workflow.name,
-      url: `${url}/${workflow.id}/nodes/-`,
-    };
-
-  });
-}
-
-
 export function WorkflowSidebar() {
+  const [items, setItems] = useState([])
+  useEffect(() => {
+    function getWorkflows(url: string) {
+      fetch(`${url}/all`, { method: "GET", headers: { "Content-Type": "application/json" } })
+        .then(response => response.json())
+        .then(data => data.map((workflow) => {
+          return {
+            id: workflow.id,
+            name: workflow.name,
+            url: `${url}/${workflow.id}/nodes/-`,
+          };
+        }))
+        .then(items => setItems(items));
+    }
+    getWorkflows(URL)
+  }, []);
   const setEdges = useStore((state) => state.setEdges);
   const setNodes = useStore((state) => state.setNodes);
   const setUrl = useStore((state) => state.setUrl);

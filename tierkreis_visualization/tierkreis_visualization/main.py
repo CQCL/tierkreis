@@ -30,7 +30,7 @@ app.mount(
 
 @app.get("/")
 def read_root(request: Request):
-    return RedirectResponse(url="/workflows")
+    return RedirectResponse(url="/static/dist/index.html")
 
 
 def start():

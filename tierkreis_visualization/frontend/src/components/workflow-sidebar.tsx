@@ -14,8 +14,8 @@ import {
 
 import useStore from "@/data/store";
 import { URL } from "@/data/constants"
-import { parseNodes } from "@/nodes/parseNodes";
-import { parseEdges } from "@/edges/parseEdges";
+import { parseGraph, parseNodes, parseEdges } from "@/graph/parseGraph";
+
 
 export function WorkflowSidebar() {
   const [items, setItems] = useState([])
@@ -40,11 +40,12 @@ export function WorkflowSidebar() {
   const getUrl = useStore((state) => state.getUrl);
   const updateNodes = async (url: string) => {
     setUrl(url);
-    let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
-      .then(response => response.json());
-    json.then(data => parseNodes(data)).then(nodes => setNodes(nodes));
-    json.then(data => parseEdges(data)).then(edges => setEdges(edges));
-
+    fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
+      .then(response => response.json())
+      .then(data => parseGraph(data)).then(graph => {
+        setNodes(graph.nodes);
+        setEdges(graph.edges);
+      })
   }
   useEffect(() => {
     const url = getUrl();
@@ -53,6 +54,7 @@ export function WorkflowSidebar() {
     }
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
+      //TODO: update status only
       const data = JSON.parse(event.data);
       setNodes(parseNodes(data.nodes));
       setEdges(parseEdges(data.edges));

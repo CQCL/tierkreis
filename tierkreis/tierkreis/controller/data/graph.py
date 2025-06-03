@@ -1,9 +1,10 @@
 from dataclasses import dataclass, field
+import json
 import logging
-from typing import Callable, Literal, assert_never
-
+from typing import Callable, Generic, Literal, assert_never
+from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import Jsonable, TypedValueRef
+from tierkreis.controller.data.core import EmptyModel, Jsonable, TypedValueRef
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef, Function
@@ -180,31 +181,53 @@ class GraphData(BaseModel):
         return self.graph_inputs - actual_inputs
 
 
-class GraphBuilder[Inputs: BaseModel, Outputs: BaseModel]:
-    def __init__(self) -> None:
+Inputs = TypeVar("Inputs", bound=BaseModel, default=EmptyModel)
+Outputs = TypeVar("Outputs", bound=BaseModel, default=EmptyModel)
+
+
+class TypedGraphRef(BaseModel, Generic[Inputs, Outputs]):
+    graph_ref: TypedValueRef[GraphData]
+    inputs_type: type[Inputs]
+    outputs_type: type[Outputs]
+
+
+class GraphBuilder(Generic[Inputs, Outputs]):
+    outputs_type: type
+
+    def __init__(self, inputs_type: type[Inputs] = EmptyModel):
         self.data = GraphData()
+        self.inputs_type = inputs_type
 
-    def get_data(self) -> GraphData:
-        return self.data
-
-    def inputs(self, inputs_type: type[Inputs]) -> Inputs:
         fields = {}
         for name, info in inputs_type.model_fields.items():
             idx, _ = self.data.add(Input(name))(name)
             fields[name] = info.annotation.from_nodeindex(idx, name)  # type: ignore
 
-        return inputs_type(**fields)
+        self.inputs = inputs_type(**fields)
 
-    def outputs(self, outputs: Outputs) -> "GraphBuilder[Inputs, Outputs]":
+    def get_data(self) -> GraphData:
+        return self.data
+
+    def outputs[Out: BaseModel](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
         self.data.add(Output(inputs=outputs.model_dump()))
-        return self
+        builder = GraphBuilder[self.inputs_type, Out](self.inputs_type)
+        builder.data = GraphData(**json.loads(self.data.model_dump_json()))
+        builder.outputs_type = type(outputs)
+        return builder
 
     def const[T](self, value: T) -> TypedValueRef[T]:
-        if isinstance(value, GraphBuilder):
-            idx, port = self.data.add(Const(value.data))("value")
-        else:
-            idx, port = self.data.add(Const(value))("value")
+        idx, port = self.data.add(Const(value))("value")
         return TypedValueRef[T](idx, port)
+
+    def graph_const[A: BaseModel, B: BaseModel](
+        self, graph: "GraphBuilder[A, B]"
+    ) -> TypedGraphRef[A, B]:
+        idx, port = self.data.add(Const(graph.data))("value")
+        return TypedGraphRef[A, B](
+            graph_ref=TypedValueRef[GraphData](idx, port),
+            inputs_type=graph.inputs_type,
+            outputs_type=graph.outputs_type,
+        )
 
     def fn[Out](self, f: Function[Out]) -> Out:
         reserved_fields = ["namespace", "out"]
@@ -217,12 +240,14 @@ class GraphBuilder[Inputs: BaseModel, Outputs: BaseModel]:
         return f.out(idx)
 
     def eval[A: BaseModel, B: BaseModel](
-        self, g: "TypedValueRef[GraphBuilder[A, B]]", a: A, type_output: type[B]
+        self, typed_graph: TypedGraphRef[A, B], a: A
     ) -> B:
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
+        g = typed_graph.graph_ref
+        Out = typed_graph.outputs_type
         idx, _ = self.data.add(Eval((g[0], g[1]), ins))("*")
         fields = {  # type: ignore
             name: info.annotation.from_nodeindex(idx, name)  # type: ignore
-            for name, info in type_output.model_fields.items()  # type: ignore
+            for name, info in Out.model_fields.items()  # type: ignore
         }
-        return type_output(**fields)
+        return Out(**fields)

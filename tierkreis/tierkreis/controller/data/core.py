@@ -22,3 +22,7 @@ class TypedValueRef[T](NamedTuple):
 class Function[Out](BaseModel):
     namespace: str
     out: Callable[[NodeIndex], Out]
+
+
+class EmptyModel(BaseModel):
+    pass

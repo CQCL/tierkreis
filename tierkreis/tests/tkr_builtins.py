@@ -20,7 +20,8 @@ class ciaddOutput(BaseModel):
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
         return ciaddOutput(
-            a=TypedValueRef[int](n, "a"), value=TypedValueRef[int](n, "value")
+            value= TypedValueRef[int](n, "value"),
+            a= TypedValueRef[int](n, "a")
         )
 
 
@@ -78,3 +79,4 @@ class concat(Function[TypedValueRef[str]]):
     rhs: TypedValueRef[str]
 
     out: Callable[[NodeIndex], TypedValueRef[str]] = TypedValueRef[str].from_nodeindex
+    

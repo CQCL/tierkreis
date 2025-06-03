@@ -52,5 +52,7 @@ class Namespace(BaseModel):
             fn.add_inputs({k: v for k, v in annotations.items() if k != "result"})
             fn.add_outputs(annotations["return"])
             self.functions.append(fn)
-        except TierkreisWorkerError:
-            logger.exception(f"Error adding function {name} to {self.name} namespace.")
+        except TierkreisWorkerError as exc:
+            logger.info(
+                f"Error adding function {name} to {self.name} namespace.", exc_info=exc
+            )

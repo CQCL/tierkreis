@@ -151,5 +151,4 @@ def untuple[U, V](value: tuple[U, V]) -> Untupled[U, V]:
 
 
 if __name__ == "__main__":
-    worker_definition_path = argv[1]
-    worker.run(Path(worker_definition_path))
+    worker.app(argv)

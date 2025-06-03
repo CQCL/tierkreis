@@ -10,6 +10,7 @@ import sys
 from typing import Callable, Iterable, ParamSpec, TypeVar, get_origin
 
 from pydantic import BaseModel
+from tierkreis.codegen import format_namespace
 from tierkreis.namespace import Namespace
 
 logger = getLogger(__name__)
@@ -168,3 +169,13 @@ class Worker:
             logger.error("encountered error: %s", err)
             with open(node_definition.error_path, "w+") as f:
                 f.write(str(err))
+
+    def write_stubs(self, stubs_path: Path) -> None:
+        with open(stubs_path, "w+") as fh:
+            fh.write(format_namespace(self.namespace))
+
+    def app(self, argv: list[str]) -> None:
+        if argv[1] == "--stubs-path":
+            self.write_stubs(Path(argv[2]))
+        else:
+            self.run(Path(argv[1]))

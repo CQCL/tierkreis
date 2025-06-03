@@ -1,5 +1,4 @@
 from logging import getLogger
-from pathlib import Path
 from sys import argv
 from typing import Iterator
 

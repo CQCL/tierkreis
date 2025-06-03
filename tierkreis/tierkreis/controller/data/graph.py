@@ -1,13 +1,16 @@
 from dataclasses import dataclass, field
+import logging
 from typing import Callable, Literal, assert_never
 
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import Jsonable
+from tierkreis.controller.data.core import Jsonable, TypedValueRef
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
-from tierkreis.controller.data.core import ValueRef
+from tierkreis.controller.data.core import ValueRef, Function
 from tierkreis.controller.data.location import OutputLoc
 from tierkreis.exceptions import TierkreisError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -90,6 +93,24 @@ class GraphData(BaseModel):
     fixed_inputs: dict[PortID, OutputLoc] = {}
     graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
+
+    def input[T](self, name: str, t: T) -> TypedValueRef[T]:
+        ref = self.add(Input(name))(name)
+        return TypedValueRef[T](ref[0], ref[1])
+
+    def const[T](self, value: T) -> TypedValueRef[T]:
+        ref = self.add(Const(value))("value")
+        return TypedValueRef[T](ref[0], ref[1])
+
+    def fn[Out](self, f: Function[Out]) -> Out:
+        reserved_fields = ["namespace", "out"]
+        ins = {
+            k: (v[0], v[1])
+            for k, v in f.model_dump().items()
+            if k not in reserved_fields
+        }
+        ref = self.add(Func(f"{f.namespace}.{f.__class__.__name__}", ins))("*")
+        return f.out(ref[0])
 
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)

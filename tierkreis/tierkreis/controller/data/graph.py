@@ -178,3 +178,51 @@ class GraphData(BaseModel):
 
         actual_inputs = fixed_inputs.union(provided_inputs)
         return self.graph_inputs - actual_inputs
+
+
+class GraphBuilder[Inputs: BaseModel, Outputs: BaseModel]:
+    def __init__(self) -> None:
+        self.data = GraphData()
+
+    def get_data(self) -> GraphData:
+        return self.data
+
+    def inputs(self, inputs_type: type[Inputs]) -> Inputs:
+        fields = {}
+        for name, info in inputs_type.model_fields.items():
+            idx, _ = self.data.add(Input(name))(name)
+            fields[name] = info.annotation.from_nodeindex(idx, name)  # type: ignore
+
+        return inputs_type(**fields)
+
+    def outputs(self, outputs: Outputs) -> "GraphBuilder[Inputs, Outputs]":
+        self.data.add(Output(inputs=outputs.model_dump()))
+        return self
+
+    def const[T](self, value: T) -> TypedValueRef[T]:
+        if isinstance(value, GraphBuilder):
+            idx, port = self.data.add(Const(value.data))("value")
+        else:
+            idx, port = self.data.add(Const(value))("value")
+        return TypedValueRef[T](idx, port)
+
+    def fn[Out](self, f: Function[Out]) -> Out:
+        reserved_fields = ["namespace", "out"]
+        ins = {
+            k: (v[0], v[1])
+            for k, v in f.model_dump().items()
+            if k not in reserved_fields
+        }
+        idx, _ = self.data.add(Func(f"{f.namespace}.{f.__class__.__name__}", ins))("*")
+        return f.out(idx)
+
+    def eval[A: BaseModel, B: BaseModel](
+        self, g: "TypedValueRef[GraphBuilder[A, B]]", a: A, type_output: type[B]
+    ) -> B:
+        ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
+        idx, _ = self.data.add(Eval((g[0], g[1]), ins))("*")
+        fields = {  # type: ignore
+            name: info.annotation.from_nodeindex(idx, name)  # type: ignore
+            for name, info in type_output.model_fields.items()  # type: ignore
+        }
+        return type_output(**fields)

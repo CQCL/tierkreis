@@ -18,6 +18,7 @@ from tests.controller.sample_graphdata import (
     factorial,
 )
 from tests.controller.loop_graphdata import loop_multiple_acc
+from tests.controller.typed_graphdata import typed_eval
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
@@ -25,7 +26,7 @@ from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
 factorial_bytes = factorial().model_dump_json().encode()
-params = [
+params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (simple_eval(), 12, "simple_eval", 1, {}),
     (simple_loop(), 10, "simple_loop", 2, {}),
     (simple_map(), list(range(6, 47, 2)), "simple_map", 3, {}),
@@ -39,6 +40,7 @@ params = [
     (simple_partial(), 12, "simple_partial", 11, {}),
     (factorial(), 120, "factorial", 12, {"n": b"5", "factorial": factorial_bytes}),
     (double_partial(), 6, "double_partial", 13, {}),
+    (typed_eval().get_data(), 12, "typed_eval", 14, {}),
 ]
 ids = [
     "simple_eval",
@@ -54,6 +56,7 @@ ids = [
     "simple_partial",
     "factorial_5",
     "double_partial",
+    "typed_eval",
 ]
 
 

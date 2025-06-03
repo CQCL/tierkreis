@@ -15,8 +15,8 @@ class TypedValueRef[T](NamedTuple):
     port: PortID
 
     @staticmethod
-    def from_nodeindex(idx: NodeIndex) -> "TypedValueRef[T]":
-        return TypedValueRef[T](idx, "value")
+    def from_nodeindex(idx: NodeIndex, port: PortID = "value") -> "TypedValueRef[T]":
+        return TypedValueRef[T](idx, port)
 
 
 class Function[Out](BaseModel):

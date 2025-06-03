@@ -20,7 +20,7 @@ class FunctionSpec(BaseModel):
     def _parse_annotation(annotation: Any) -> TKType | None:
         if issubclass(annotation, BaseModel):
             return f"{annotation.__module__}.{annotation.__qualname__}"
-        elif not annotation in get_args(TKType):
+        elif annotation not in get_args(TKType):
             raise TierkreisWorkerError(f"Unsupported annotation: {annotation}.")
         else:
             return annotation

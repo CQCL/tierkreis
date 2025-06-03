@@ -11,6 +11,7 @@ from tierkreis.controller.data.graph import (
     Output,
 )
 from tierkreis import Labels
+from tests.tkr_builtins import iadd, itimes
 
 
 def doubler_plus() -> GraphData:
@@ -24,11 +25,22 @@ def doubler_plus() -> GraphData:
     return g
 
 
+def doubler_plus2() -> GraphData:
+    g = GraphData()
+    inp = g.input("doubler_input", int())
+    intercept = g.input("intercept", int())
+    two = g.const(2)
+    mul = g.fn(itimes(a=inp, b=two))
+    out = g.fn(iadd(a=mul, b=intercept))
+    g.add(Output({"doubler_output": (out[0], out[1])}))
+    return g
+
+
 def simple_eval() -> GraphData:
     g = GraphData()
     zero = g.add(Const(0))(Labels.VALUE)
     six = g.add(Const(6))(Labels.VALUE)
-    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus2()))(Labels.VALUE)
     e = g.add(Eval(doubler_const, {"doubler_input": six, "intercept": zero}))
     g.add(Output({"simple_eval_output": e("doubler_output")}))
     return g

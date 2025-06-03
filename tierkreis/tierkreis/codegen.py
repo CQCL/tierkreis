@@ -37,8 +37,7 @@ class {fn_name}Output(BaseModel):
     {outs_str}
 
     @staticmethod
-    def from_valueref(ref: ValueRef) -> "{fn_name}Output":
-        n = ref[0]
+    def from_nodeindex(n: NodeIndex) -> "{fn_name}Output":
         return {fn_name}Output(
             {out_constructor_str}
         )
@@ -46,26 +45,27 @@ class {fn_name}Output(BaseModel):
 """
 
 
-def format_function(fn: FunctionSpec) -> str:
+def format_function(namspace_name: str, fn: FunctionSpec) -> str:
     ins = [format_annotation(k, v) for k, v in fn.ins.items()]
     ins_str = "\n    ".join(ins)
     class_name = format_output(fn.name, fn.outs)
     return f"""{format_output_class(fn.name, fn.outs)}
 class {fn.name}(Function[{class_name}]):
+    namespace: str = "{namspace_name}"
     {ins_str}
 
-    out: Callable[[ValueRef], {class_name}] = {class_name}.from_valueref"""
+    out: Callable[[NodeIndex], {class_name}] = {class_name}.from_nodeindex"""
 
 
 def format_namespace(namespace: Namespace) -> str:
-    functions = [format_function(f) for f in namespace.functions]
+    functions = [format_function(namespace.name, f) for f in namespace.functions]
     functions_str = "\n\n".join(functions)
 
     return f'''"""Code generated from {namespace.name} namspace. Please do not edit."""
 
 from typing import Callable
 from pydantic import BaseModel
-from tierkreis.controller.data.core import TypedValueRef, Function, ValueRef
+from tierkreis.controller.data.core import TypedValueRef, Function, NodeIndex
 
 {functions_str}
     '''

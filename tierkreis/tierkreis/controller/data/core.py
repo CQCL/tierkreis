@@ -1,4 +1,4 @@
-from typing import Any, Callable, NamedTuple, TypeVar
+from typing import Any, Callable, NamedTuple
 
 from pydantic import BaseModel
 
@@ -15,12 +15,10 @@ class TypedValueRef[T](NamedTuple):
     port: PortID
 
     @staticmethod
-    def from_valueref(ref: ValueRef) -> "TypedValueRef[T]":
-        return TypedValueRef[T](ref[0], ref[1])
-
-
-Out = TypeVar("Out", bound=TypedValueRef[Any] | dict[str, TypedValueRef[Any]])
+    def from_nodeindex(idx: NodeIndex) -> "TypedValueRef[T]":
+        return TypedValueRef[T](idx, "value")
 
 
 class Function[Out](BaseModel):
-    out: Callable[[Out], Any]
+    namespace: str
+    out: Callable[[NodeIndex], Out]

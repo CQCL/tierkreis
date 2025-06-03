@@ -1,13 +1,16 @@
 from dataclasses import dataclass, field
+import logging
 from typing import Callable, Literal, assert_never
 
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import Jsonable
+from tierkreis.controller.data.core import Jsonable, TypedValueRef
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
-from tierkreis.controller.data.core import ValueRef
+from tierkreis.controller.data.core import ValueRef, Function
 from tierkreis.controller.data.location import OutputLoc
 from tierkreis.exceptions import TierkreisError
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass

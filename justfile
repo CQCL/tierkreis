@@ -21,8 +21,15 @@ fix:
 	{{uvrun}} ruff format
 	{{uvrun}} ruff check --fix
 
+[working-directory:'tierkreis_visualization']
 serve:
-	cd tierkreis_visualization && {{uvrun}} fastapi dev tierkreis_visualization/main.py
+	{{uvrun}} fastapi dev tierkreis_visualization/main.py
+
+[working-directory:'tierkreis_visualization']
+prod:
+	bunx --bun vite build frontend
+	cp -r frontend/dist tierkreis_visualization/static
+
 
 examples:
 	{{uvrun}} examples/hello_world_graph.py

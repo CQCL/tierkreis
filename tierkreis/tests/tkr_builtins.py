@@ -1,6 +1,6 @@
 """Code generated from builtins namspace. Please do not edit."""
 
-from typing import Callable
+from typing import Callable, Literal
 from pydantic import BaseModel
 from tierkreis.controller.data.core import TypedValueRef, Function, NodeIndex
 
@@ -14,13 +14,13 @@ class iadd(Function[TypedValueRef[int]]):
 
 
 class ciaddOutput(BaseModel):
-    a: TypedValueRef[int]
     value: TypedValueRef[int]
+    a: TypedValueRef[int]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
         return ciaddOutput(
-            value=TypedValueRef[int](n, "value"), a=TypedValueRef[int](n, "a")
+            a=TypedValueRef[int](n, "a"), value=TypedValueRef[int](n, "value")
         )
 
 

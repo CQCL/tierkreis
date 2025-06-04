@@ -7,7 +7,8 @@ Jsonable = Any
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
-TKType = bool | int | float | str | bytes | BaseModel
+ElementaryType = bool | int | float | str | bytes
+TKType = ElementaryType | BaseModel
 
 
 class TypedValueRef[T](NamedTuple):

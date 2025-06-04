@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
+import itertools
 import json
 import logging
-from typing import Callable, Generic, Literal, assert_never
+from typing import Any, Callable, Generator, Generic, Literal, assert_never, cast
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import EmptyModel, Jsonable, TypedValueRef
+from tierkreis.controller.data.core import EmptyModel, Jsonable, TKType, TypedValueRef
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef, Function
@@ -262,3 +263,39 @@ class GraphBuilder(Generic[Inputs, Outputs]):
             for name, info in Out.model_fields.items()  # type: ignore
         }
         return Out(**fields)
+
+    def unfold_list[T: TKType](
+        self, l: TypedValueRef[list[T]]
+    ) -> Generator[TypedValueRef[T], None, None]:
+        idx, _ = self.data.add(Func("builtins.unfold_values", {"value": l}))("*")
+        return (TypedValueRef[T](idx, str(n)) for n in itertools.count())
+
+    def fold_list[T: TKType](
+        self, l: Generator[TypedValueRef[T], None, None]
+    ) -> TypedValueRef[list[T]]:
+        idx, _ = next(l)
+        idx, _ = self.data.add(
+            Func("builtins.fold_values", {"values_glob": (idx, "*")})
+        )("*")
+        return TypedValueRef[list[T]](idx, "value")
+
+    def map[A: BaseModel, B: BaseModel](
+        self,
+        body: TypedGraphRef[A, B],
+        aes: Generator[A, None, None],
+        in_port: PortID,
+        out_port: PortID,
+    ) -> Generator[B, None, None]:
+        a = next(aes)
+        ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
+        g = body.graph_ref
+        first_ref = cast(TypedValueRef[Any], list(ins.values())[0])
+        idx, _ = self.data.add(Map(g, first_ref[0], in_port, out_port, ins))("*")
+
+        Out = body.outputs_type
+        for _ in itertools.count():
+            fields = {  # type: ignore
+                name: info.annotation.from_nodeindex(idx, name)  # type: ignore
+                for name, info in Out.model_fields.items()  # type: ignore
+            }
+            yield Out(**fields)

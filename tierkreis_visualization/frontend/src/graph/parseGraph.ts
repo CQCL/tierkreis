@@ -1,6 +1,7 @@
 import dagre from "@dagrejs/dagre";
-import { PyNode } from "@/nodes/types";
+import { AppNode, PyNode } from "@/nodes/types";
 import { PyEdge } from "@/edges/types";
+import { Edge } from "@xyflow/react";
 
 
 
@@ -45,8 +46,8 @@ export function parseNodes(nodes: [PyNode], parentId?: string) {  //
                 }]
 
         },
-        parentId: parentId ? parentId : undefined,
-        extent: parentId ? "parent" : undefined,
+        //parentId: parentId ? parentId : undefined,
+        //extent: parentId ? "parent" : undefined,
     }));
 }
 export function parseEdges(edges: [PyEdge], parentId?: string) {
@@ -66,16 +67,17 @@ export function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, parentId?
     // Update each node in nodes with a new position calculated in positions
     const updatedNodes = nodes.map((node) => ({
         ...node,
-        position: positions[node.id]
+        position: positions.find(position => position.id === node.id)
     }));
     return { nodes: updatedNodes, edges };
 }
 
 
 export const calculateNodePositions = (
-    nodes: ReturnType<typeof parseNodes>,
-    edges: ReturnType<typeof parseEdges>,
+    nodes: ReturnType<typeof parseNodes> | [AppNode],
+    edges: ReturnType<typeof parseEdges> | [Edge],
 ) => {
+    //console.log(nodes);
     const nodeWidth = 350;
     const nodeHeight = 200;
     const dagreGraph = new dagre.graphlib.Graph();

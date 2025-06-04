@@ -22,12 +22,17 @@ export function EvalNode({
 }: NodeProps<BackendNode>) {
   const appendEdges = useStore((state) => state.appendEdges);
   const appendNodes = useStore((state) => state.appendNodes);
+  const replaceNode = useStore((state) => state.replaceNode);
+  const recalculateNodePositions = useStore((state) => state.recalculateNodePositions);
   const loadChildren = async (url: string, parentId: string) => {
   let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
     .then(response => response.json());
-  json.then(data => parseNodes(data.nodes, parentId)).then(nodes => appendNodes(nodes));
-  json.then(data => parseEdges(data.edges, parentId)).then(edges => appendEdges(edges));
-
+  await json.then(data => parseNodes(data.nodes, parentId)).then(nodes => appendNodes(nodes));
+  await json.then(data => parseEdges(data.edges, parentId)).then(edges => appendEdges(edges));
+  //json.then(data => parseNodes(data.nodes
+  ;
+  replaceNode(parentId);
+  recalculateNodePositions();
 }
   return (
     <Card className="w-[350px]">

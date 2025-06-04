@@ -1,6 +1,6 @@
 """Code generated from builtins namspace. Please do not edit."""
 
-from typing import Callable, Literal
+from typing import Callable
 from pydantic import BaseModel
 from tierkreis.controller.data.core import TypedValueRef, Function, NodeIndex
 

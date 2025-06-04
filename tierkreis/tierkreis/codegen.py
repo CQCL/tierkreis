@@ -5,7 +5,7 @@ from tierkreis.namespace import FunctionSpec, Namespace
 
 def format_type(tk_type: TKType) -> str:
     if isinstance(tk_type, str):
-        return f"TypedValueRef[Literal[{tk_type}]]"
+        return f'TypedValueRef[Literal["{tk_type}"]]'
     return f"TypedValueRef[{tk_type.__qualname__}]"
 
 
@@ -63,7 +63,7 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namspace. Please do not edit."""
 
-from typing import Callable
+from typing import Callable, Literal
 from pydantic import BaseModel
 from tierkreis.controller.data.core import TypedValueRef, Function, NodeIndex
 

@@ -239,13 +239,24 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, _ = self.data.add(Func(f"{f.namespace}.{f.__class__.__name__}", ins))("*")
         return f.out(idx)
 
-    def eval[A: BaseModel, B: BaseModel](
-        self, typed_graph: TypedGraphRef[A, B], a: A
+    def eval[A: BaseModel, B: BaseModel](self, body: TypedGraphRef[A, B], a: A) -> B:
+        ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
+        g = body.graph_ref
+        Out = body.outputs_type
+        idx, _ = self.data.add(Eval(g, ins))("*")
+        fields = {  # type: ignore
+            name: info.annotation.from_nodeindex(idx, name)  # type: ignore
+            for name, info in Out.model_fields.items()  # type: ignore
+        }
+        return Out(**fields)
+
+    def loop[A: BaseModel, B: BaseModel](
+        self, body: TypedGraphRef[A, B], a: A, continue_port: PortID
     ) -> B:
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
-        g = typed_graph.graph_ref
-        Out = typed_graph.outputs_type
-        idx, _ = self.data.add(Eval((g[0], g[1]), ins))("*")
+        g = body.graph_ref
+        Out = body.outputs_type
+        idx, _ = self.data.add(Loop(g, ins, continue_port))("*")
         fields = {  # type: ignore
             name: info.annotation.from_nodeindex(idx, name)  # type: ignore
             for name, info in Out.model_fields.items()  # type: ignore

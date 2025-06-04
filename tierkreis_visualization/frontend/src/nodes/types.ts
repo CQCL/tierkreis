@@ -25,4 +25,6 @@ export type AppState = {
     appendEdges: (edge: Edge[]) => void;
     setUrl: (url: string) => void;
     getUrl: () => string;
+    replaceNode: (nodeId: string) => void;
+    recalculateNodePositions: () => void;
 };

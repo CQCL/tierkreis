@@ -36,7 +36,7 @@ export function InputNode({
       <CardFooter>
         <p>Logs</p>
       </CardFooter>
-
+      <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Bottom} />
     </Card>
     </NodeStatusIndicator>

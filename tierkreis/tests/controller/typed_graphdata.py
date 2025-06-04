@@ -62,3 +62,20 @@ def typed_loop() -> GraphBuilder[EmptyModel, TypedLoopOutput]:
     g_const = g.graph_const(loop_body())
     loop = g.loop(g_const, LoopBodyInput(loop_acc=six), "should_continue")
     return g.outputs(TypedLoopOutput(typed_loop_output=loop.loop_acc))
+
+
+class TypedMapOutput(BaseModel):
+    typed_map_output: TypedValueRef[list[int]]
+
+
+def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:
+    g = GraphBuilder()
+    six = g.const(6)
+    Ns_const = g.const(list(range(21)))
+    Ns = g.unfold_list(Ns_const)
+    doubler_inputs = (DoublerInput(doubler_input=x, intercept=six) for x in Ns)
+    doubler_const = g.graph_const(typed_doubler_plus())
+    m = g.map(doubler_const, doubler_inputs, "doubler_input", "doubler_output")
+    m_ints = (x.doubler_output for x in m)
+    folded = g.fold_list(m_ints)
+    return g.outputs(TypedMapOutput(typed_map_output=folded))

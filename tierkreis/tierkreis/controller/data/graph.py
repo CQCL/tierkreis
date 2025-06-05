@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import inspect
 import json
 import logging
 from typing import (
@@ -12,7 +13,13 @@ from typing import (
 )
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import EmptyModel, Jsonable, TKType, TypedValueRef
+from tierkreis.controller.data.core import (
+    EmptyModel,
+    Jsonable,
+    TKRef,
+    TKType,
+    TypedValueRef,
+)
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef, Function
@@ -189,11 +196,12 @@ class GraphData(BaseModel):
         return self.graph_inputs - actual_inputs
 
 
-Inputs = TypeVar("Inputs", bound=BaseModel, default=EmptyModel)
-Outputs = TypeVar("Outputs", bound=BaseModel, default=EmptyModel)
+Inputs = TypeVar("Inputs", bound=TKRef, default=EmptyModel)
+Outputs = TypeVar("Outputs", bound=TKRef, default=EmptyModel)
 
 
-class TypedGraphRef(BaseModel, Generic[Inputs, Outputs]):
+@dataclass
+class TypedGraphRef(Generic[Inputs, Outputs]):
     graph_ref: TypedValueRef[GraphData]
     inputs_type: type[Inputs]
     outputs_type: type[Outputs]
@@ -201,23 +209,32 @@ class TypedGraphRef(BaseModel, Generic[Inputs, Outputs]):
 
 class GraphBuilder(Generic[Inputs, Outputs]):
     outputs_type: type
+    inputs: Inputs
 
     def __init__(self, inputs_type: type[Inputs] = EmptyModel):
         self.data = GraphData()
         self.inputs_type = inputs_type
 
+        # if not inspect.isclass(self.inputs_type):
+        #     idx, _ = self.data.add(Input("value"))("value")
+        #     self.inputs = self.inputs_type.from_nodeindex(idx, "value")
+        #     return
+
         fields = {}
-        for name, info in inputs_type.model_fields.items():
+        annotations = inputs_type.__annotations__
+        if annotations == TypedValueRef[Any]:
+            annotations = {"value": annotations}
+        for name, annotation in annotations.items():
             idx, _ = self.data.add(Input(name))(name)
-            fields[name] = info.annotation.from_nodeindex(idx, name)  # type: ignore
+            fields[name] = annotation.from_nodeindex(idx, name)
 
         self.inputs = inputs_type(**fields)
 
     def get_data(self) -> GraphData:
         return self.data
 
-    def outputs[Out: BaseModel](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
-        self.data.add(Output(inputs=outputs.model_dump()))
+    def outputs[Out: TKRef](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
+        self.data.add(Output(inputs=outputs._asdict()))
         builder = GraphBuilder[self.inputs_type, Out](self.inputs_type)
         builder.data = GraphData(**json.loads(self.data.model_dump_json()))
         builder.outputs_type = type(outputs)
@@ -227,7 +244,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, port = self.data.add(Const(value))("value")
         return TypedValueRef[T](idx, port)
 
-    def graph_const[A: BaseModel, B: BaseModel](
+    def graph_const[A: TKRef, B: TKRef](
         self, graph: "GraphBuilder[A, B]"
     ) -> TypedGraphRef[A, B]:
         idx, port = self.data.add(Const(graph.data))("value")
@@ -249,27 +266,27 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         )
         return f.out(idx)
 
-    def eval[A: BaseModel, B: BaseModel](self, body: TypedGraphRef[A, B], a: A) -> B:
-        ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
+    def eval[A: TKRef, B: TKRef](self, body: TypedGraphRef[A, B], a: A) -> B:
+        ins = {k: (v[0], v[1]) for k, v in a._asdict().items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Eval(g, ins))("dummy")
         fields = {  # type: ignore
-            name: info.annotation.from_nodeindex(idx, name)  # type: ignore
-            for name, info in Out.model_fields.items()  # type: ignore
+            name: info.from_nodeindex(idx, name)  # type: ignore
+            for name, info in Out.__annotations__.items()  # type: ignore
         }
         return Out(**fields)
 
-    def loop[A: BaseModel, B: BaseModel](
+    def loop[A: TKRef, B: TKRef](
         self, body: TypedGraphRef[A, B], a: A, continue_port: PortID
     ) -> B:
-        ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
+        ins = {k: (v[0], v[1]) for k, v in a._asdict().items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
         fields = {  # type: ignore
-            name: info.annotation.from_nodeindex(idx, name)  # type: ignore
-            for name, info in Out.model_fields.items()  # type: ignore
+            name: info.from_nodeindex(idx, name)  # type: ignore
+            for name, info in Out.__annotations__.items()  # type: ignore
         }
         return Out(**fields)
 
@@ -288,11 +305,11 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         )("dummy")
         return TypedValueRef[list[T]](idx, "value")
 
-    def map[A: BaseModel, B: BaseModel](
+    def map[A: TKRef, B: TKRef](
         self, body: TypedGraphRef[A, B], aes: Iterator[A]
     ) -> Iterator[B]:
         a = next(aes)
-        ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
+        ins = {k: (v[0], v[1]) for k, v in a._asdict().items()}
         g = body.graph_ref
         first_ref = cast(
             TypedValueRef[Any], next(x for x in ins.values() if x[1] == "*")
@@ -302,7 +319,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         Out = body.outputs_type
         yield Out(
             **{
-                name: info.annotation.from_nodeindex(idx, f"{name}-*")  # type: ignore
-                for name, info in Out.model_fields.items()  # type: ignore
+                name: info.from_nodeindex(idx, f"{name}-*")  # type: ignore
+                for name, info in Out.__annotations__.items()  # type: ignore
             }
         )

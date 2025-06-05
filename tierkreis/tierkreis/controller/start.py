@@ -125,6 +125,7 @@ def start(
 
         ins["body"] = (parent.N(node.graph[0]), node.graph[1])
         ins.update(g.fixed_inputs)
+
         pipe_inputs_to_output_location(storage, node_location.N(-1), ins)
 
     elif node.type == "loop":

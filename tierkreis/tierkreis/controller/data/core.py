@@ -1,3 +1,4 @@
+import inspect
 from typing import Any, Callable, NamedTuple
 
 from pydantic import BaseModel
@@ -30,7 +31,7 @@ TKRModel = tuple[TKRRef[Any], ...] | TKRRef[Any]
 class EmptyModel(NamedTuple): ...
 
 
-def dict_from_tkrref(ref: TKRModel) -> dict[str, Any]:
+def annotations_from_tkrref(ref: TKRModel) -> dict[str, Any]:
     if hasattr(ref, "_todict"):
         return ref._todict()  # type: ignore
 
@@ -38,6 +39,13 @@ def dict_from_tkrref(ref: TKRModel) -> dict[str, Any]:
         return ref._asdict()  # type: ignore
 
     raise TierkreisError("Graph inputs and output types must be NamedTuples.")
+
+
+def annotations_from_tkr_type(ref: type[TKRModel]) -> dict[str, Any]:
+    if not inspect.isclass(ref):
+        return {"value": ref}
+
+    return ref.__annotations__
 
 
 class Function[Out](BaseModel):

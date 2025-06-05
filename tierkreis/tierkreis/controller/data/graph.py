@@ -242,14 +242,16 @@ class GraphBuilder(Generic[Inputs, Outputs]):
             for k, v in f.model_dump().items()
             if k not in reserved_fields
         }
-        idx, _ = self.data.add(Func(f"{f.namespace}.{f.__class__.__name__}", ins))("*")
+        idx, _ = self.data.add(Func(f"{f.namespace}.{f.__class__.__name__}", ins))(
+            "dummy"
+        )
         return f.out(idx)
 
     def eval[A: BaseModel, B: BaseModel](self, body: TypedGraphRef[A, B], a: A) -> B:
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref
         Out = body.outputs_type
-        idx, _ = self.data.add(Eval(g, ins))("*")
+        idx, _ = self.data.add(Eval(g, ins))("dummy")
         fields = {  # type: ignore
             name: info.annotation.from_nodeindex(idx, name)  # type: ignore
             for name, info in Out.model_fields.items()  # type: ignore
@@ -262,7 +264,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref
         Out = body.outputs_type
-        idx, _ = self.data.add(Loop(g, ins, continue_port))("*")
+        idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
         fields = {  # type: ignore
             name: info.annotation.from_nodeindex(idx, name)  # type: ignore
             for name, info in Out.model_fields.items()  # type: ignore
@@ -272,16 +274,16 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     def unfold_list[T: TKType](
         self, ref: TypedValueRef[list[T]]
     ) -> TKList[TypedValueRef[T]]:
-        idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("*")
+        idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
         return TKList(lambda n: TypedValueRef[T](idx, str(n)))
 
     def fold_list[T: TKType](
         self, refs: TKList[TypedValueRef[T]]
     ) -> TypedValueRef[list[T]]:
-        idx, port = refs("*")
+        idx, port = refs("dummy")
         idx, _ = self.data.add(
             Func("builtins.fold_values", {"values_glob": (idx, port)})
-        )("*")
+        )("dummy")
         return TypedValueRef[list[T]](idx, "value")
 
     def map[A: BaseModel, B: BaseModel](
@@ -291,13 +293,13 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref
         first_ref = cast(TypedValueRef[Any], list(ins.values())[0])
-        idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("*")
+        idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
 
         Out = body.outputs_type
         return TKList(
             lambda n: Out(
                 **{
-                    name: info.annotation.from_nodeindex(idx, f"{name}-{n}")  # type: ignore
+                    name: info.annotation.from_nodeindex(idx, f"{name}-*")  # type: ignore
                     for name, info in Out.model_fields.items()  # type: ignore
                 }
             )

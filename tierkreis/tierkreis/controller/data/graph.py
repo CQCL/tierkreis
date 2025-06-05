@@ -1,7 +1,15 @@
 from dataclasses import dataclass, field
 import json
 import logging
-from typing import Any, Callable, Generator, Generic, Literal, assert_never, cast
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Iterator,
+    Literal,
+    assert_never,
+    cast,
+)
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import EmptyModel, Jsonable, TKType, TypedValueRef
@@ -267,12 +275,12 @@ class GraphBuilder(Generic[Inputs, Outputs]):
 
     def unfold_list[T: TKType](
         self, ref: TypedValueRef[list[T]]
-    ) -> Generator[TypedValueRef[T], None, None]:
+    ) -> Iterator[TypedValueRef[T]]:
         idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
         yield TypedValueRef[T](idx, "*")
 
     def fold_list[T: TKType](
-        self, refs: Generator[TypedValueRef[T], None, None]
+        self, refs: Iterator[TypedValueRef[T]]
     ) -> TypedValueRef[list[T]]:
         idx, port = next(refs)
         idx, _ = self.data.add(
@@ -281,8 +289,8 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return TypedValueRef[list[T]](idx, "value")
 
     def map[A: BaseModel, B: BaseModel](
-        self, body: TypedGraphRef[A, B], aes: Generator[A, None, None]
-    ) -> Generator[B, None, None]:
+        self, body: TypedGraphRef[A, B], aes: Iterator[A]
+    ) -> Iterator[B]:
         a = next(aes)
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref

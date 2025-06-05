@@ -159,7 +159,7 @@ def walk_map(
 
     map_eles = storage.read_output_ports(parent.N(map.input_idx))
     unfinished = [p for p in map_eles if not storage.is_node_finished(loc.M(p))]
-    message = storage.read_output(loc.N(-1), BODY_PORT)
+    message = storage.read_output(loc.M(map_eles[0]).N(-1), BODY_PORT)
     g = GraphData(**json.loads(message))
     [result.extend(walk_node(storage, loc.M(p), g.output_idx(), g)) for p in unfinished]
 

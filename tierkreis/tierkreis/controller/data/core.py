@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any, Callable, NamedTuple
 
 from pydantic import BaseModel
@@ -25,11 +26,12 @@ class Function[Out](BaseModel):
     out: Callable[[NodeIndex], Out]
 
 
-class TKList[T](NamedTuple):
-    node_index: NodeIndex
-    port: PortID = "__star__"
+@dataclass
+class TKList[T]:
+    f: Callable[[PortID], T]
 
-    def map[U](self, f: Callable[[T], U]) -> "TKList[U]": ...
+    def __call__(self, port_id: PortID) -> T:
+        return self.f(port_id)
 
 
 class EmptyModel(BaseModel):

@@ -48,7 +48,8 @@ def _save_results(outputs: dict[str, Path], results: BaseModel) -> None:
 
 
 def _iterable_sort_key(path_str: str) -> str | int:
-    v = Path(path_str).name
+    # Output of a MAP is labelled as <attribute_name>.<port>
+    v = Path(path_str).name.split(".")[-1]
     try:
         return int(v)
     except ValueError:

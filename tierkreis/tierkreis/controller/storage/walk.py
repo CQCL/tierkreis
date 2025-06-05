@@ -138,7 +138,6 @@ def walk_loop(
         storage.mark_node_finished(loc)
         return WalkResult([], [])
 
-    # Include old inputs. The acc_port is the only one that can change.
     ins = {k: (-1, k) for k in loop.inputs.keys()}
     ins.update(loop_outputs)
     node_run_data = NodeRunData(
@@ -166,8 +165,10 @@ def walk_map(
     if len(unfinished) > 0:
         return result
 
+    map_outputs = g.nodes[g.output_idx()].inputs
     for j in map_eles:
-        storage.link_outputs(loc, j, loc.M(j), map.out_port)
+        for output in map_outputs.keys():
+            storage.link_outputs(loc, f"{output}.{j}", loc.M(j), output)
 
     storage.mark_node_finished(loc)
     return result

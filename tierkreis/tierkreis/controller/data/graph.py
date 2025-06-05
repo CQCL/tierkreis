@@ -272,27 +272,25 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     def fold_list[T: TKType](
         self, l: Callable[[PortID], TypedValueRef[T]]
     ) -> TypedValueRef[list[T]]:
-        idx, _ = l("*")
+        idx, port = l("*")
         idx, _ = self.data.add(
-            Func("builtins.fold_values", {"values_glob": (idx, "*")})
+            Func("builtins.fold_values", {"values_glob": (idx, port)})
         )("*")
         return TypedValueRef[list[T]](idx, "value")
 
     def map[A: BaseModel, B: BaseModel](
-        self,
-        body: TypedGraphRef[A, B],
-        aes: Callable[[PortID], A],
-        out_port: PortID,
+        self, body: TypedGraphRef[A, B], aes: Callable[[PortID], A]
     ) -> Callable[[PortID], B]:
         a = aes("__star__")
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref
         first_ref = cast(TypedValueRef[Any], list(ins.values())[0])
-        idx, _ = self.data.add(Map(g, first_ref[0], "dummy", out_port, ins))("*")
+        idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("*")
 
         Out = body.outputs_type
-        fields = {  # type: ignore
-            name: info.annotation.from_nodeindex(idx, name)  # type: ignore
-            for name, info in Out.model_fields.items()  # type: ignore
-        }
-        return lambda n: Out(**fields)
+        return lambda n: Out(
+            **{
+                name: info.annotation.from_nodeindex(idx, f"{name}.{n}")  # type: ignore
+                for name, info in Out.model_fields.items()  # type: ignore
+            }
+        )

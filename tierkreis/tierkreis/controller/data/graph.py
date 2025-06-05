@@ -1,16 +1,10 @@
 from dataclasses import dataclass, field
 import json
 import logging
-from typing import Any, Callable, Generic, Literal, assert_never, cast
+from typing import Any, Callable, Generator, Generic, Literal, assert_never, cast
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import (
-    EmptyModel,
-    Jsonable,
-    TKList,
-    TKType,
-    TypedValueRef,
-)
+from tierkreis.controller.data.core import EmptyModel, Jsonable, TKType, TypedValueRef
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef, Function
@@ -273,34 +267,32 @@ class GraphBuilder(Generic[Inputs, Outputs]):
 
     def unfold_list[T: TKType](
         self, ref: TypedValueRef[list[T]]
-    ) -> TKList[TypedValueRef[T]]:
+    ) -> Generator[TypedValueRef[T], None, None]:
         idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
-        return TKList(lambda n: TypedValueRef[T](idx, str(n)))
+        yield TypedValueRef[T](idx, "*")
 
     def fold_list[T: TKType](
-        self, refs: TKList[TypedValueRef[T]]
+        self, refs: Generator[TypedValueRef[T], None, None]
     ) -> TypedValueRef[list[T]]:
-        idx, port = refs("dummy")
+        idx, port = next(refs)
         idx, _ = self.data.add(
             Func("builtins.fold_values", {"values_glob": (idx, port)})
         )("dummy")
         return TypedValueRef[list[T]](idx, "value")
 
     def map[A: BaseModel, B: BaseModel](
-        self, body: TypedGraphRef[A, B], aes: TKList[A]
-    ) -> TKList[B]:
-        a = aes("__star__")
+        self, body: TypedGraphRef[A, B], aes: Generator[A, None, None]
+    ) -> Generator[B, None, None]:
+        a = next(aes)
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref
         first_ref = cast(TypedValueRef[Any], list(ins.values())[0])
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
 
         Out = body.outputs_type
-        return TKList(
-            lambda n: Out(
-                **{
-                    name: info.annotation.from_nodeindex(idx, f"{name}-*")  # type: ignore
-                    for name, info in Out.model_fields.items()  # type: ignore
-                }
-            )
+        yield Out(
+            **{
+                name: info.annotation.from_nodeindex(idx, f"{name}-*")  # type: ignore
+                for name, info in Out.model_fields.items()  # type: ignore
+            }
         )

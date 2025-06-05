@@ -146,7 +146,7 @@ def start(
         for p in map_eles:
             eval_inputs: dict[PortID, tuple[Loc, PortID]] = {}
             for k, (i, port) in ins.items():
-                if port == "__star__":
+                if port == "*":
                     eval_inputs[k] = (i, p)
                 else:
                     eval_inputs[k] = (i, port)

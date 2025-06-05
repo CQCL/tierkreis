@@ -9,16 +9,16 @@ class DoublerInput(NamedTuple):
     intercept: TKRRef[int]
 
 
-class DoublerOutput(NamedTuple):
-    doubler_output: TKRRef[int]
+# class DoublerOutput(NamedTuple):
+#     doubler_output: TKRRef[int]
 
 
-def typed_doubler_plus() -> GraphBuilder[DoublerInput, DoublerOutput]:
+def typed_doubler_plus() -> GraphBuilder[DoublerInput, TKRRef[int]]:
     g = GraphBuilder(DoublerInput)
     two = g.const(2)
     mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
     out = g.fn(iadd(a=mul, b=g.inputs.intercept))
-    return g.outputs(DoublerOutput(doubler_output=out))
+    return g.outputs(out)
 
 
 class TypedEvalOutputs(NamedTuple):
@@ -31,7 +31,7 @@ def typed_eval() -> GraphBuilder[EmptyModel, TypedEvalOutputs]:
     six = g.const(6)
     doubler_const = g.graph_const(typed_doubler_plus())
     e = g.eval(doubler_const, DoublerInput(doubler_input=six, intercept=zero))
-    return g.outputs(TypedEvalOutputs(typed_eval_output=e.doubler_output))
+    return g.outputs(TypedEvalOutputs(typed_eval_output=e))
 
 
 class LoopBodyInput(NamedTuple):
@@ -77,6 +77,6 @@ def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:
     doubler_const = g.graph_const(typed_doubler_plus())
     m = g.map(doubler_const, doubler_inputs)
 
-    m_ints = (x.doubler_output for x in m)
+    m_ints = (x for x in m)
     folded = g.fold_list(m_ints)
     return g.outputs(TypedMapOutput(typed_map_output=folded))

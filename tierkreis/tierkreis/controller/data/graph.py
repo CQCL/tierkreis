@@ -10,7 +10,7 @@ from tierkreis.controller.data.core import (
     TKRModel,
     TKType,
     TKRRef,
-    annotations_from_tkr_type,
+    ref_from_tkr_type,
     annotations_from_tkrref,
 )
 from tierkreis.controller.data.core import PortID
@@ -207,15 +207,9 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     def __init__(self, inputs_type: type[Inputs] = EmptyModel):
         self.data = GraphData()
         self.inputs_type = inputs_type
-
-        fields = {}
-        annotations = annotations_from_tkr_type(self.inputs_type)
-
-        for name, annotation in annotations.items():
-            idx, _ = self.data.add(Input(name))(name)
-            fields[name] = annotation.from_nodeindex(idx, name)
-
-        self.inputs = inputs_type(**fields)
+        self.inputs = ref_from_tkr_type(
+            self.inputs_type, lambda x: self.data.add(Input(x))(x)[0]
+        )
 
     def get_data(self) -> GraphData:
         return self.data
@@ -258,11 +252,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Eval(g, ins))("dummy")
-        fields = {
-            name: info.from_nodeindex(idx, name)
-            for name, info in annotations_from_tkr_type(Out).items()
-        }
-        return Out(**fields)
+        return ref_from_tkr_type(Out, lambda _: idx)
 
     def loop[A: TKRModel, B: TKRModel](
         self, body: TypedGraphRef[A, B], a: A, continue_port: PortID
@@ -271,11 +261,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
-        fields = {
-            name: info.from_nodeindex(idx, name)
-            for name, info in annotations_from_tkr_type(Out).items()
-        }
-        return Out(**fields)
+        return ref_from_tkr_type(Out, lambda _: idx)
 
     def unfold_list[T: TKType](self, ref: TKRRef[list[T]]) -> Iterator[TKRRef[T]]:
         idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
@@ -298,9 +284,4 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
 
         Out = body.outputs_type
-        yield Out(
-            **{
-                name: info.from_nodeindex(idx, f"{name}-*")
-                for name, info in annotations_from_tkr_type(Out).items()
-            }
-        )
+        yield ref_from_tkr_type(Out, lambda _: idx, name_fn=lambda s: s + "-*")

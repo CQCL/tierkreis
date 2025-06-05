@@ -1,4 +1,3 @@
-import inspect
 from typing import Any, Callable, NamedTuple
 
 from pydantic import BaseModel
@@ -41,11 +40,20 @@ def annotations_from_tkrref(ref: TKRModel) -> dict[str, Any]:
     raise TierkreisError("Graph inputs and output types must be NamedTuples.")
 
 
-def annotations_from_tkr_type(ref: type[TKRModel]) -> dict[str, Any]:
-    if not inspect.isclass(ref):
-        return {"value": ref}
+def ref_from_tkr_type[T: TKRModel](
+    ref: type[T],
+    idx_fn: Callable[[PortID], NodeIndex],
+    name_fn: Callable[[PortID], PortID] = lambda x: x,
+) -> T:
+    if issubclass(TKRRef, ref):
+        return ref.from_nodeindex(idx_fn("value"), name_fn("value"))  # type: ignore
 
-    return ref.__annotations__
+    fields = {
+        name: info.from_nodeindex(idx_fn(name), name_fn(name))
+        for name, info in ref.__annotations__.items()
+    }
+
+    return ref(**fields)
 
 
 class Function[Out](BaseModel):

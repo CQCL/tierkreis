@@ -286,7 +286,9 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         a = next(aes)
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref
-        first_ref = cast(TypedValueRef[Any], list(ins.values())[0])
+        first_ref = cast(
+            TypedValueRef[Any], next(x for x in ins.values() if x[1] == "*")
+        )
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
 
         Out = body.outputs_type

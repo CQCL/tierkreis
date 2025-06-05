@@ -76,6 +76,7 @@ def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:
     doubler_inputs = (DoublerInput(doubler_input=n, intercept=six) for n in Ns)
     doubler_const = g.graph_const(typed_doubler_plus())
     m = g.map(doubler_const, doubler_inputs)
+
     m_ints = (x.doubler_output for x in m)
     folded = g.fold_list(m_ints)
     return g.outputs(TypedMapOutput(typed_map_output=folded))

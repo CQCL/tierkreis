@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from typing import Any, Callable, NamedTuple
 
 from pydantic import BaseModel
@@ -24,14 +23,6 @@ class TypedValueRef[T](NamedTuple):
 class Function[Out](BaseModel):
     namespace: str
     out: Callable[[NodeIndex], Out]
-
-
-@dataclass
-class TKList[T]:
-    f: Callable[[PortID], T]
-
-    def __call__(self, port_id: PortID) -> T:
-        return self.f(port_id)
 
 
 class EmptyModel(BaseModel):

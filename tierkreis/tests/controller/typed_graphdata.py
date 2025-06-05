@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from tests.tkr_builtins import iadd, igt, itimes
-from tierkreis.controller.data.core import EmptyModel, TKList, TypedValueRef
+from tierkreis.controller.data.core import EmptyModel, TypedValueRef
 from tierkreis.controller.data.graph import GraphBuilder
 
 
@@ -73,9 +73,9 @@ def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:
     six = g.const(6)
     Ns_const = g.const(list(range(21)))
     Ns = g.unfold_list(Ns_const)
-    doubler_inputs = TKList(lambda n: DoublerInput(doubler_input=Ns(n), intercept=six))
+    doubler_inputs = (DoublerInput(doubler_input=n, intercept=six) for n in Ns)
     doubler_const = g.graph_const(typed_doubler_plus())
     m = g.map(doubler_const, doubler_inputs)
-    m_ints = TKList(lambda x: m(x).doubler_output)
+    m_ints = (x.doubler_output for x in m)
     folded = g.fold_list(m_ints)
     return g.outputs(TypedMapOutput(typed_map_output=folded))

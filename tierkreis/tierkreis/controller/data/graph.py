@@ -4,7 +4,13 @@ import logging
 from typing import Any, Callable, Generic, Literal, assert_never, cast
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import EmptyModel, Jsonable, TKType, TypedValueRef
+from tierkreis.controller.data.core import (
+    EmptyModel,
+    Jsonable,
+    TKList,
+    TKType,
+    TypedValueRef,
+)
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef, Function
@@ -264,23 +270,23 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return Out(**fields)
 
     def unfold_list[T: TKType](
-        self, l: TypedValueRef[list[T]]
-    ) -> Callable[[PortID], TypedValueRef[T]]:
-        idx, _ = self.data.add(Func("builtins.unfold_values", {"value": l}))("*")
-        return lambda n: TypedValueRef[T](idx, str(n))
+        self, ref: TypedValueRef[list[T]]
+    ) -> TKList[TypedValueRef[T]]:
+        idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("*")
+        return TKList(lambda n: TypedValueRef[T](idx, str(n)))
 
     def fold_list[T: TKType](
-        self, l: Callable[[PortID], TypedValueRef[T]]
+        self, refs: TKList[TypedValueRef[T]]
     ) -> TypedValueRef[list[T]]:
-        idx, port = l("*")
+        idx, port = refs("*")
         idx, _ = self.data.add(
             Func("builtins.fold_values", {"values_glob": (idx, port)})
         )("*")
         return TypedValueRef[list[T]](idx, "value")
 
     def map[A: BaseModel, B: BaseModel](
-        self, body: TypedGraphRef[A, B], aes: Callable[[PortID], A]
-    ) -> Callable[[PortID], B]:
+        self, body: TypedGraphRef[A, B], aes: TKList[A]
+    ) -> TKList[B]:
         a = aes("__star__")
         ins = {k: (v[0], v[1]) for k, v in a.model_dump().items()}
         g = body.graph_ref
@@ -288,9 +294,11 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("*")
 
         Out = body.outputs_type
-        return lambda n: Out(
-            **{
-                name: info.annotation.from_nodeindex(idx, f"{name}-{n}")  # type: ignore
-                for name, info in Out.model_fields.items()  # type: ignore
-            }
+        return TKList(
+            lambda n: Out(
+                **{
+                    name: info.annotation.from_nodeindex(idx, f"{name}-{n}")  # type: ignore
+                    for name, info in Out.model_fields.items()  # type: ignore
+                }
+            )
         )

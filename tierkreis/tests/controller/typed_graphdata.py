@@ -1,6 +1,7 @@
+from typing import Callable
 from pydantic import BaseModel
 from tests.tkr_builtins import iadd, igt, itimes
-from tierkreis.controller.data.core import EmptyModel, TypedValueRef
+from tierkreis.controller.data.core import EmptyModel, PortID, TypedValueRef
 from tierkreis.controller.data.graph import GraphBuilder
 
 
@@ -73,9 +74,11 @@ def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:
     six = g.const(6)
     Ns_const = g.const(list(range(21)))
     Ns = g.unfold_list(Ns_const)
-    doubler_inputs = (DoublerInput(doubler_input=x, intercept=six) for x in Ns)
+    doubler_inputs: Callable[[PortID], DoublerInput] = lambda n: DoublerInput(
+        doubler_input=Ns(n), intercept=six
+    )
     doubler_const = g.graph_const(typed_doubler_plus())
-    m = g.map(doubler_const, doubler_inputs, "doubler_input", "doubler_output")
-    m_ints = (x.doubler_output for x in m)
+    m = g.map(doubler_const, doubler_inputs, "doubler_output")
+    m_ints: Callable[[PortID], TypedValueRef[int]] = lambda x: m(x).doubler_output
     folded = g.fold_list(m_ints)
     return g.outputs(TypedMapOutput(typed_map_output=folded))

@@ -25,5 +25,12 @@ class Function[Out](BaseModel):
     out: Callable[[NodeIndex], Out]
 
 
+class TKList[T](NamedTuple):
+    node_index: NodeIndex
+    port: PortID = "__star__"
+
+    def map[U](self, f: Callable[[T], U]) -> "TKList[U]": ...
+
+
 class EmptyModel(BaseModel):
     pass

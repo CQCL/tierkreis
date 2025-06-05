@@ -19,11 +19,17 @@ class TypedValueRef[T](NamedTuple):
     def from_nodeindex(idx: NodeIndex, port: PortID = "value") -> "TypedValueRef[T]":
         return TypedValueRef[T](idx, port)
 
+    def _todict(self) -> dict[str, Any]:
+        return {"value": self}
+
+
+TKRef = tuple[TypedValueRef[Any], ...]  # | TypedValueRef[Any]
+
 
 class Function[Out](BaseModel):
     namespace: str
     out: Callable[[NodeIndex], Out]
 
 
-class EmptyModel(BaseModel):
+class EmptyModel(NamedTuple):
     pass

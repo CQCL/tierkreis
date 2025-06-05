@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import inspect
 import json
 import logging
 from typing import Any, Callable, Generic, Iterator, Literal, assert_never, cast
@@ -7,10 +8,10 @@ from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import (
     EmptyModel,
     Jsonable,
-    TKRef,
+    TKRModel,
     TKType,
-    TypedValueRef,
-    dict_from_tkref,
+    TKRRef,
+    dict_from_tkrref,
 )
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
@@ -188,13 +189,13 @@ class GraphData(BaseModel):
         return self.graph_inputs - actual_inputs
 
 
-Inputs = TypeVar("Inputs", bound=TKRef, default=EmptyModel)
-Outputs = TypeVar("Outputs", bound=TKRef, default=EmptyModel)
+Inputs = TypeVar("Inputs", bound=TKRModel, default=EmptyModel)
+Outputs = TypeVar("Outputs", bound=TKRModel, default=EmptyModel)
 
 
 @dataclass
 class TypedGraphRef(Generic[Inputs, Outputs]):
-    graph_ref: TypedValueRef[GraphData]
+    graph_ref: TKRRef[GraphData]
     inputs_type: type[Inputs]
     outputs_type: type[Outputs]
 
@@ -223,23 +224,23 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     def get_data(self) -> GraphData:
         return self.data
 
-    def outputs[Out: TKRef](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
-        self.data.add(Output(inputs=dict_from_tkref(outputs)))
+    def outputs[Out: TKRModel](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
+        self.data.add(Output(inputs=dict_from_tkrref(outputs)))
         builder = GraphBuilder[self.inputs_type, Out](self.inputs_type)
         builder.data = GraphData(**json.loads(self.data.model_dump_json()))
         builder.outputs_type = type(outputs)
         return builder
 
-    def const[T](self, value: T) -> TypedValueRef[T]:
+    def const[T](self, value: T) -> TKRRef[T]:
         idx, port = self.data.add(Const(value))("value")
-        return TypedValueRef[T](idx, port)
+        return TKRRef[T](idx, port)
 
-    def graph_const[A: TKRef, B: TKRef](
+    def graph_const[A: TKRModel, B: TKRModel](
         self, graph: "GraphBuilder[A, B]"
     ) -> TypedGraphRef[A, B]:
         idx, port = self.data.add(Const(graph.data))("value")
         return TypedGraphRef[A, B](
-            graph_ref=TypedValueRef[GraphData](idx, port),
+            graph_ref=TKRRef[GraphData](idx, port),
             inputs_type=graph.inputs_type,
             outputs_type=graph.outputs_type,
         )
@@ -256,8 +257,8 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         )
         return f.out(idx)
 
-    def eval[A: TKRef, B: TKRef](self, body: TypedGraphRef[A, B], a: A) -> B:
-        ins = {k: (v[0], v[1]) for k, v in dict_from_tkref(a).items()}
+    def eval[A: TKRModel, B: TKRModel](self, body: TypedGraphRef[A, B], a: A) -> B:
+        ins = {k: (v[0], v[1]) for k, v in dict_from_tkrref(a).items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Eval(g, ins))("dummy")
@@ -267,10 +268,10 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         }
         return Out(**fields)
 
-    def loop[A: TKRef, B: TKRef](
+    def loop[A: TKRModel, B: TKRModel](
         self, body: TypedGraphRef[A, B], a: A, continue_port: PortID
     ) -> B:
-        ins = {k: (v[0], v[1]) for k, v in dict_from_tkref(a).items()}
+        ins = {k: (v[0], v[1]) for k, v in dict_from_tkrref(a).items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
@@ -280,30 +281,24 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         }
         return Out(**fields)
 
-    def unfold_list[T: TKType](
-        self, ref: TypedValueRef[list[T]]
-    ) -> Iterator[TypedValueRef[T]]:
+    def unfold_list[T: TKType](self, ref: TKRRef[list[T]]) -> Iterator[TKRRef[T]]:
         idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
-        yield TypedValueRef[T](idx, "*")
+        yield TKRRef[T](idx, "*")
 
-    def fold_list[T: TKType](
-        self, refs: Iterator[TypedValueRef[T]]
-    ) -> TypedValueRef[list[T]]:
+    def fold_list[T: TKType](self, refs: Iterator[TKRRef[T]]) -> TKRRef[list[T]]:
         idx, port = next(refs)
         idx, _ = self.data.add(
             Func("builtins.fold_values", {"values_glob": (idx, port)})
         )("dummy")
-        return TypedValueRef[list[T]](idx, "value")
+        return TKRRef[list[T]](idx, "value")
 
-    def map[A: TKRef, B: TKRef](
+    def map[A: TKRModel, B: TKRModel](
         self, body: TypedGraphRef[A, B], aes: Iterator[A]
     ) -> Iterator[B]:
         a = next(aes)
-        ins = {k: (v[0], v[1]) for k, v in dict_from_tkref(a).items()}
+        ins = {k: (v[0], v[1]) for k, v in dict_from_tkrref(a).items()}
         g = body.graph_ref
-        first_ref = cast(
-            TypedValueRef[Any], next(x for x in ins.values() if x[1] == "*")
-        )
+        first_ref = cast(TKRRef[Any], next(x for x in ins.values() if x[1] == "*"))
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
 
         Out = body.outputs_type

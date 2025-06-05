@@ -1,6 +1,7 @@
 from typing import Any, Callable, NamedTuple
 
 from pydantic import BaseModel
+from tierkreis.exceptions import TierkreisError
 
 
 Jsonable = Any
@@ -24,6 +25,12 @@ class TypedValueRef[T](NamedTuple):
 
 
 TKRef = tuple[TypedValueRef[Any], ...]  # | TypedValueRef[Any]
+
+
+def dict_from_tkref(ref: TKRef) -> dict[str, Any]:
+    if not hasattr(ref, "_asdict"):
+        raise TierkreisError("Graph inputs and output types must be NamedTuples.")
+    return ref._asdict()  # type: ignore
 
 
 class Function[Out](BaseModel):

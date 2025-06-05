@@ -1,16 +1,7 @@
 from dataclasses import dataclass, field
-import inspect
 import json
 import logging
-from typing import (
-    Any,
-    Callable,
-    Generic,
-    Iterator,
-    Literal,
-    assert_never,
-    cast,
-)
+from typing import Any, Callable, Generic, Iterator, Literal, assert_never, cast
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import (
@@ -19,6 +10,7 @@ from tierkreis.controller.data.core import (
     TKRef,
     TKType,
     TypedValueRef,
+    dict_from_tkref,
 )
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
@@ -222,8 +214,6 @@ class GraphBuilder(Generic[Inputs, Outputs]):
 
         fields = {}
         annotations = inputs_type.__annotations__
-        if annotations == TypedValueRef[Any]:
-            annotations = {"value": annotations}
         for name, annotation in annotations.items():
             idx, _ = self.data.add(Input(name))(name)
             fields[name] = annotation.from_nodeindex(idx, name)
@@ -234,7 +224,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return self.data
 
     def outputs[Out: TKRef](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
-        self.data.add(Output(inputs=outputs._asdict()))
+        self.data.add(Output(inputs=dict_from_tkref(outputs)))
         builder = GraphBuilder[self.inputs_type, Out](self.inputs_type)
         builder.data = GraphData(**json.loads(self.data.model_dump_json()))
         builder.outputs_type = type(outputs)
@@ -267,7 +257,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return f.out(idx)
 
     def eval[A: TKRef, B: TKRef](self, body: TypedGraphRef[A, B], a: A) -> B:
-        ins = {k: (v[0], v[1]) for k, v in a._asdict().items()}
+        ins = {k: (v[0], v[1]) for k, v in dict_from_tkref(a).items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Eval(g, ins))("dummy")
@@ -280,7 +270,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     def loop[A: TKRef, B: TKRef](
         self, body: TypedGraphRef[A, B], a: A, continue_port: PortID
     ) -> B:
-        ins = {k: (v[0], v[1]) for k, v in a._asdict().items()}
+        ins = {k: (v[0], v[1]) for k, v in dict_from_tkref(a).items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
@@ -309,7 +299,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         self, body: TypedGraphRef[A, B], aes: Iterator[A]
     ) -> Iterator[B]:
         a = next(aes)
-        ins = {k: (v[0], v[1]) for k, v in a._asdict().items()}
+        ins = {k: (v[0], v[1]) for k, v in dict_from_tkref(a).items()}
         g = body.graph_ref
         first_ref = cast(
             TypedValueRef[Any], next(x for x in ins.values() if x[1] == "*")

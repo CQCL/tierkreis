@@ -1,6 +1,6 @@
 from typing import NamedTuple
 from tests.tkr_builtins import iadd, igt, itimes
-from tierkreis.controller.data.core import TypedValueRef
+from tierkreis.controller.data.core import EmptyModel, TypedValueRef
 from tierkreis.controller.data.graph import GraphBuilder
 
 
@@ -25,7 +25,7 @@ class TypedEvalOutputs(NamedTuple):
     typed_eval_output: TypedValueRef[int]
 
 
-def typed_eval() -> GraphBuilder[TypedValueRef[None], TypedEvalOutputs]:
+def typed_eval() -> GraphBuilder[EmptyModel, TypedEvalOutputs]:
     g = GraphBuilder()
     zero = g.const(0)
     six = g.const(6)
@@ -56,7 +56,7 @@ class TypedLoopOutput(NamedTuple):
     typed_loop_output: TypedValueRef[int]
 
 
-def typed_loop() -> GraphBuilder[TypedValueRef[None], TypedLoopOutput]:
+def typed_loop() -> GraphBuilder[EmptyModel, TypedLoopOutput]:
     g = GraphBuilder()
     six = g.const(6)
     g_const = g.graph_const(loop_body())
@@ -68,7 +68,7 @@ class TypedMapOutput(NamedTuple):
     typed_map_output: TypedValueRef[list[int]]
 
 
-def typed_map() -> GraphBuilder[TypedValueRef[None], TypedMapOutput]:
+def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:
     g = GraphBuilder()
     six = g.const(6)
     Ns_const = g.const(list(range(21)))

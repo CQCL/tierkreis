@@ -1,5 +1,4 @@
 from dataclasses import dataclass, field
-import inspect
 import json
 import logging
 from typing import Any, Callable, Generic, Iterator, Literal, assert_never, cast
@@ -11,7 +10,8 @@ from tierkreis.controller.data.core import (
     TKRModel,
     TKType,
     TKRRef,
-    dict_from_tkrref,
+    annotations_from_tkr_type,
+    annotations_from_tkrref,
 )
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
@@ -208,13 +208,9 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         self.data = GraphData()
         self.inputs_type = inputs_type
 
-        # if not inspect.isclass(self.inputs_type):
-        #     idx, _ = self.data.add(Input("value"))("value")
-        #     self.inputs = self.inputs_type.from_nodeindex(idx, "value")
-        #     return
-
         fields = {}
-        annotations = inputs_type.__annotations__
+        annotations = annotations_from_tkr_type(self.inputs_type)
+
         for name, annotation in annotations.items():
             idx, _ = self.data.add(Input(name))(name)
             fields[name] = annotation.from_nodeindex(idx, name)
@@ -225,7 +221,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return self.data
 
     def outputs[Out: TKRModel](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
-        self.data.add(Output(inputs=dict_from_tkrref(outputs)))
+        self.data.add(Output(inputs=annotations_from_tkrref(outputs)))
         builder = GraphBuilder[self.inputs_type, Out](self.inputs_type)
         builder.data = GraphData(**json.loads(self.data.model_dump_json()))
         builder.outputs_type = type(outputs)
@@ -258,26 +254,26 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return f.out(idx)
 
     def eval[A: TKRModel, B: TKRModel](self, body: TypedGraphRef[A, B], a: A) -> B:
-        ins = {k: (v[0], v[1]) for k, v in dict_from_tkrref(a).items()}
+        ins = {k: (v[0], v[1]) for k, v in annotations_from_tkrref(a).items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Eval(g, ins))("dummy")
-        fields = {  # type: ignore
-            name: info.from_nodeindex(idx, name)  # type: ignore
-            for name, info in Out.__annotations__.items()  # type: ignore
+        fields = {
+            name: info.from_nodeindex(idx, name)
+            for name, info in annotations_from_tkr_type(Out).items()
         }
         return Out(**fields)
 
     def loop[A: TKRModel, B: TKRModel](
         self, body: TypedGraphRef[A, B], a: A, continue_port: PortID
     ) -> B:
-        ins = {k: (v[0], v[1]) for k, v in dict_from_tkrref(a).items()}
+        ins = {k: (v[0], v[1]) for k, v in annotations_from_tkrref(a).items()}
         g = body.graph_ref
         Out = body.outputs_type
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
-        fields = {  # type: ignore
-            name: info.from_nodeindex(idx, name)  # type: ignore
-            for name, info in Out.__annotations__.items()  # type: ignore
+        fields = {
+            name: info.from_nodeindex(idx, name)
+            for name, info in annotations_from_tkr_type(Out).items()
         }
         return Out(**fields)
 
@@ -296,7 +292,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         self, body: TypedGraphRef[A, B], aes: Iterator[A]
     ) -> Iterator[B]:
         a = next(aes)
-        ins = {k: (v[0], v[1]) for k, v in dict_from_tkrref(a).items()}
+        ins = {k: (v[0], v[1]) for k, v in annotations_from_tkrref(a).items()}
         g = body.graph_ref
         first_ref = cast(TKRRef[Any], next(x for x in ins.values() if x[1] == "*"))
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
@@ -304,7 +300,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         Out = body.outputs_type
         yield Out(
             **{
-                name: info.from_nodeindex(idx, f"{name}-*")  # type: ignore
-                for name, info in Out.__annotations__.items()  # type: ignore
+                name: info.from_nodeindex(idx, f"{name}-*")
+                for name, info in annotations_from_tkr_type(Out).items()
             }
         )

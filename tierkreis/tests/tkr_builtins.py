@@ -2,79 +2,77 @@
 
 from typing import Callable
 from pydantic import BaseModel
-from tierkreis.controller.data.core import TypedValueRef, Function, NodeIndex
+from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
-class iadd(Function[TypedValueRef[int]]):
+class iadd(Function[TKRRef[int]]):
     namespace: str = "builtins"
-    a: TypedValueRef[int]
-    b: TypedValueRef[int]
+    a: TKRRef[int]
+    b: TKRRef[int]
 
-    out: Callable[[NodeIndex], TypedValueRef[int]] = TypedValueRef[int].from_nodeindex
+    out: Callable[[NodeIndex], TKRRef[int]] = TKRRef[int].from_nodeindex
 
 
 class ciaddOutput(BaseModel):
-    value: TypedValueRef[int]
-    a: TypedValueRef[int]
+    value: TKRRef[int]
+    a: TKRRef[int]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
-        return ciaddOutput(
-            a=TypedValueRef[int](n, "a"), value=TypedValueRef[int](n, "value")
-        )
+        return ciaddOutput(a=TKRRef[int](n, "a"), value=TKRRef[int](n, "value"))
 
 
 class ciadd(Function[ciaddOutput]):
     namespace: str = "builtins"
-    a: TypedValueRef[int]
-    b: TypedValueRef[int]
+    a: TKRRef[int]
+    b: TKRRef[int]
 
     out: Callable[[NodeIndex], ciaddOutput] = ciaddOutput.from_nodeindex
 
 
-class itimes(Function[TypedValueRef[int]]):
+class itimes(Function[TKRRef[int]]):
     namespace: str = "builtins"
-    a: TypedValueRef[int]
-    b: TypedValueRef[int]
+    a: TKRRef[int]
+    b: TKRRef[int]
 
-    out: Callable[[NodeIndex], TypedValueRef[int]] = TypedValueRef[int].from_nodeindex
+    out: Callable[[NodeIndex], TKRRef[int]] = TKRRef[int].from_nodeindex
 
 
-class igt(Function[TypedValueRef[bool]]):
+class igt(Function[TKRRef[bool]]):
     namespace: str = "builtins"
-    a: TypedValueRef[int]
-    b: TypedValueRef[int]
+    a: TKRRef[int]
+    b: TKRRef[int]
 
-    out: Callable[[NodeIndex], TypedValueRef[bool]] = TypedValueRef[bool].from_nodeindex
+    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
 
 
-class impl_and(Function[TypedValueRef[bool]]):
+class impl_and(Function[TKRRef[bool]]):
     namespace: str = "builtins"
-    a: TypedValueRef[bool]
-    b: TypedValueRef[bool]
+    a: TKRRef[bool]
+    b: TKRRef[bool]
 
-    out: Callable[[NodeIndex], TypedValueRef[bool]] = TypedValueRef[bool].from_nodeindex
+    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
 
 
-class str_eq(Function[TypedValueRef[bool]]):
+class str_eq(Function[TKRRef[bool]]):
     namespace: str = "builtins"
-    a: TypedValueRef[str]
-    b: TypedValueRef[str]
+    a: TKRRef[str]
+    b: TKRRef[str]
 
-    out: Callable[[NodeIndex], TypedValueRef[bool]] = TypedValueRef[bool].from_nodeindex
+    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
 
 
-class str_neq(Function[TypedValueRef[bool]]):
+class str_neq(Function[TKRRef[bool]]):
     namespace: str = "builtins"
-    a: TypedValueRef[str]
-    b: TypedValueRef[str]
+    a: TKRRef[str]
+    b: TKRRef[str]
 
-    out: Callable[[NodeIndex], TypedValueRef[bool]] = TypedValueRef[bool].from_nodeindex
+    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
 
 
-class concat(Function[TypedValueRef[str]]):
+class concat(Function[TKRRef[str]]):
     namespace: str = "builtins"
-    lhs: TypedValueRef[str]
-    rhs: TypedValueRef[str]
+    lhs: TKRRef[str]
+    rhs: TKRRef[str]
 
-    out: Callable[[NodeIndex], TypedValueRef[str]] = TypedValueRef[str].from_nodeindex
+    out: Callable[[NodeIndex], TKRRef[str]] = TKRRef[str].from_nodeindex

@@ -12,31 +12,34 @@ ElementaryType = bool | int | float | str | bytes
 TKType = ElementaryType | BaseModel
 
 
-class TypedValueRef[T](NamedTuple):
+class TKRRef[T](NamedTuple):
     node_index: NodeIndex
     port: PortID
 
     @staticmethod
-    def from_nodeindex(idx: NodeIndex, port: PortID = "value") -> "TypedValueRef[T]":
-        return TypedValueRef[T](idx, port)
+    def from_nodeindex(idx: NodeIndex, port: PortID = "value") -> "TKRRef[T]":
+        return TKRRef[T](idx, port)
 
     def _todict(self) -> dict[str, Any]:
         return {"value": self}
 
 
-TKRef = tuple[TypedValueRef[Any], ...]  # | TypedValueRef[Any]
+TKRModel = tuple[TKRRef[Any], ...] | TKRRef[Any]
 
 
-def dict_from_tkref(ref: TKRef) -> dict[str, Any]:
-    if not hasattr(ref, "_asdict"):
-        raise TierkreisError("Graph inputs and output types must be NamedTuples.")
-    return ref._asdict()  # type: ignore
+class EmptyModel(NamedTuple): ...
+
+
+def dict_from_tkrref(ref: TKRModel) -> dict[str, Any]:
+    if hasattr(ref, "_todict"):
+        return ref._todict()  # type: ignore
+
+    if hasattr(ref, "_asdict"):
+        return ref._asdict()  # type: ignore
+
+    raise TierkreisError("Graph inputs and output types must be NamedTuples.")
 
 
 class Function[Out](BaseModel):
     namespace: str
     out: Callable[[NodeIndex], Out]
-
-
-class EmptyModel(NamedTuple):
-    pass

@@ -1,16 +1,16 @@
 from typing import NamedTuple
 from tests.tkr_builtins import iadd, igt, itimes
-from tierkreis.controller.data.core import EmptyModel, TypedValueRef
+from tierkreis.controller.data.core import EmptyModel, TKRRef
 from tierkreis.controller.data.graph import GraphBuilder
 
 
 class DoublerInput(NamedTuple):
-    doubler_input: TypedValueRef[int]
-    intercept: TypedValueRef[int]
+    doubler_input: TKRRef[int]
+    intercept: TKRRef[int]
 
 
 class DoublerOutput(NamedTuple):
-    doubler_output: TypedValueRef[int]
+    doubler_output: TKRRef[int]
 
 
 def typed_doubler_plus() -> GraphBuilder[DoublerInput, DoublerOutput]:
@@ -22,7 +22,7 @@ def typed_doubler_plus() -> GraphBuilder[DoublerInput, DoublerOutput]:
 
 
 class TypedEvalOutputs(NamedTuple):
-    typed_eval_output: TypedValueRef[int]
+    typed_eval_output: TKRRef[int]
 
 
 def typed_eval() -> GraphBuilder[EmptyModel, TypedEvalOutputs]:
@@ -35,12 +35,12 @@ def typed_eval() -> GraphBuilder[EmptyModel, TypedEvalOutputs]:
 
 
 class LoopBodyInput(NamedTuple):
-    loop_acc: TypedValueRef[int]
+    loop_acc: TKRRef[int]
 
 
 class LoopBodyOutput(NamedTuple):
-    loop_acc: TypedValueRef[int]
-    should_continue: TypedValueRef[bool]
+    loop_acc: TKRRef[int]
+    should_continue: TKRRef[bool]
 
 
 def loop_body() -> GraphBuilder[LoopBodyInput, LoopBodyOutput]:
@@ -53,7 +53,7 @@ def loop_body() -> GraphBuilder[LoopBodyInput, LoopBodyOutput]:
 
 
 class TypedLoopOutput(NamedTuple):
-    typed_loop_output: TypedValueRef[int]
+    typed_loop_output: TKRRef[int]
 
 
 def typed_loop() -> GraphBuilder[EmptyModel, TypedLoopOutput]:
@@ -65,7 +65,7 @@ def typed_loop() -> GraphBuilder[EmptyModel, TypedLoopOutput]:
 
 
 class TypedMapOutput(NamedTuple):
-    typed_map_output: TypedValueRef[list[int]]
+    typed_map_output: TKRRef[list[int]]
 
 
 def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:

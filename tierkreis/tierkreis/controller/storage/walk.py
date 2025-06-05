@@ -168,7 +168,7 @@ def walk_map(
     map_outputs = g.nodes[g.output_idx()].inputs
     for j in map_eles:
         for output in map_outputs.keys():
-            storage.link_outputs(loc, f"{output}.{j}", loc.M(j), output)
+            storage.link_outputs(loc, f"{output}-{j}", loc.M(j), output)
 
     storage.mark_node_finished(loc)
     return result

@@ -290,7 +290,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         Out = body.outputs_type
         return lambda n: Out(
             **{
-                name: info.annotation.from_nodeindex(idx, f"{name}.{n}")  # type: ignore
+                name: info.annotation.from_nodeindex(idx, f"{name}-{n}")  # type: ignore
                 for name, info in Out.model_fields.items()  # type: ignore
             }
         )

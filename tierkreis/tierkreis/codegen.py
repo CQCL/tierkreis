@@ -5,8 +5,8 @@ from tierkreis.namespace import FunctionSpec, Namespace
 
 def format_type(tk_type: TKType) -> str:
     if isinstance(tk_type, str):
-        return f'TypedValueRef[Literal["{tk_type}"]]'
-    return f"TypedValueRef[{tk_type.__qualname__}]"
+        return f'TKRRef[Literal["{tk_type}"]]'
+    return f"TKRRef[{tk_type.__qualname__}]"
 
 
 def format_annotation(
@@ -33,7 +33,7 @@ def format_output_class(fn_name: str, outputs: dict[str, Any]) -> str:
     out_constructor = {format_annotation(k, v, True) for k, v in outputs.items()}
     out_constructor_str = ",\n            ".join(out_constructor)
     return f"""
-class {fn_name}Output(BaseModel):
+class {fn_name}Output(NamedTuple):
     {outs_str}
 
     @staticmethod
@@ -63,9 +63,8 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namspace. Please do not edit."""
 
-from typing import Callable, Literal
-from pydantic import BaseModel
-from tierkreis.controller.data.core import TypedValueRef, Function, NodeIndex
+from typing import Callable, Literal, NamedTuple
+from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 {functions_str}
     '''

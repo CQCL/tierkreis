@@ -50,6 +50,7 @@ const useStore = create<AppState>((set, get) => ({
   },
   replaceNode: (nodeId: string) => {
     let edges = get().edges;
+    const nodes = get().nodes;
     edges.forEach( (edge) => {
       if (edge.target == nodeId) {
         // todo find the correct mapping  to inputs do it in appendEdges 
@@ -69,8 +70,8 @@ const useStore = create<AppState>((set, get) => ({
       position: data.find(position => position.id === node.id)
     }));
     set({nodes: newNodes});
+    console.log(get())
   }
-
 }));
 
 export default useStore;

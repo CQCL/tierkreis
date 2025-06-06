@@ -9,6 +9,7 @@ class PyNode(BaseModel):
     id: int | PortID
     status: NodeStatus
     function_name: str
+    node_location: str = ""
 
 
 class PyEdge(BaseModel):

@@ -8,7 +8,7 @@ import {
 } from '@xyflow/react';
 
 
-export type PyNode = { id: string | number; status: "Not started" | "Started" | "Error" | "Finished"; function_name: string };
+export type PyNode = { id: string | number; status: "Not started" | "Started" | "Error" | "Finished"; function_name: string, node_location: string };
 export type BackendNode = Node<{ name: string, status: "Started" | "Finished" | "Error" | "Not Started", outputs: [{ name: string, value: any }], id: string }, 'Input'>;
 export type AppNode = BuiltInNode | BackendNode;
 

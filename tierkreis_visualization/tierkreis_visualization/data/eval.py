@@ -89,7 +89,9 @@ def get_eval_node(
             case _:
                 assert_never(node)
 
-        pynode = PyNode(id=i, status=status, function_name=name)
+        pynode = PyNode(
+            id=i, status=status, function_name=name, node_location=new_location
+        )
         pynodes.append(pynode)
 
         for p0, (idx, p1) in in_edges(node).items():

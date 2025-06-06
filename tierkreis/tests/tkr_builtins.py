@@ -19,8 +19,7 @@ class ciaddOutput(NamedTuple):
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
         return ciaddOutput(
-            value= TKRRef[Literal["CIAddOutInner"]](n, "value"),
-            a= TKRRef[int](n, "a")
+            value=TKRRef[Literal["CIAddOutInner"]](n, "value"), a=TKRRef[int](n, "a")
         )
 
 
@@ -78,4 +77,3 @@ class concat(Function[TKRRef[str]]):
     rhs: TKRRef[str]
 
     out: Callable[[NodeIndex], TKRRef[str]] = TKRRef[str].from_nodeindex
-    

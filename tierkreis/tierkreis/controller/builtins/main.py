@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from logging import getLogger
 from sys import argv
-from typing import Any, Iterator, Self
+from typing import Any, Iterator
 
 from pydantic import BaseModel
 

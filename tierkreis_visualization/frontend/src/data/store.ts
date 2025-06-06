@@ -70,7 +70,6 @@ const useStore = create<AppState>((set, get) => ({
       position: data.find(position => position.id === node.id)
     }));
     set({nodes: newNodes});
-    console.log(get())
   }
 }));
 

@@ -160,7 +160,7 @@ def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
     definition = storage.read_worker_call_args(node_location)
-    print(definition.inputs)
+
     with open(definition.inputs[port_name], "rb") as fh:
         return JSONResponse(json.loads(fh.read()))
 
@@ -170,7 +170,7 @@ def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
     definition = storage.read_worker_call_args(node_location)
-    print(definition.outputs)
+
     with open(definition.outputs[port_name], "rb") as fh:
         return JSONResponse(json.loads(fh.read()))
 

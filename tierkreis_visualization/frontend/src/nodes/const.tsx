@@ -23,7 +23,22 @@ export function ConstNode({
       </CardHeader>
 
       <CardContent>
-            <span>{`Value ${data.outputs[0].value}`}</span>
+        {!Object.keys(data.ports.inputs).length ? null : (
+          <>
+            <p>Inputs</p>
+              { Object.entries(data.ports.inputs).map(([key, value]) => (
+                  <p>{`${key}: ${value}`}</p>
+              ))}
+          </>
+        )}
+        {!Object.keys(data.ports.outputs).length ? null : (
+          <>
+            <p>Outputs</p>
+              { Object.entries(data.ports.outputs).map(([key, value]) => (
+                  <p>{`${key}: ${value}`}</p>
+              ))}
+          </>
+        )}
       </CardContent>
       <CardFooter>
         <Button>Logs</Button>

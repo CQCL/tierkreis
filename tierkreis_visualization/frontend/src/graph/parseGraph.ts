@@ -36,7 +36,7 @@ async function get_port_data(baseUrl: string, portId: string, inputs: boolean = 
     return data
 }
 
-async function node_data(parentUrl: string, node_location: string) {
+async function port_data(parentUrl: string, node_location: string) {
     const url = parentUrl.substring(0, parentUrl.lastIndexOf("/") + 1) + node_location;
     let inputs = {};
     let outputs = {};
@@ -59,31 +59,31 @@ async function node_data(parentUrl: string, node_location: string) {
     } catch (error) {
         console.error("Error fetching node data: ", error);
     }
-    console.log("inputs", inputs)
-    console.log("outputs", outputs)
     return { inputs, outputs };
 }
 
-    export function parseNodes(nodes: [PyNode], url: string, parentId?: string) {
-    return nodes.map((node) => ({
-        id: (parentId ? `${parentId}:` : "") + node.id.toString(),
-        type: nodeType(node.function_name),
-        position: { x: 0, y: 0 },
-        data: {
-            label: node.function_name,
-            name: node.function_name,
-            id: node.id.toString(),
-            status: node.status,
-            outputs: [
-                {
-                    name: "output-1",
-                    value: 0,
-                }],
-            children: node_data(url, node.node_location)
-
-        },
-        //parentId: parentId ? parentId : undefined,
-        //extent: parentId ? "parent" : undefined,
+export function parseNodes(nodes: [PyNode], url: string, parentId?: string) {
+    return Promise.all(nodes.map((node) => {
+        return port_data(url, node.node_location).then(ports => {
+            return {
+                id: (parentId ? `${parentId}:` : "") + node.id.toString(),
+                type: nodeType(node.function_name),
+                position: { x: 0, y: 0 },
+                data: {
+                    label: node.function_name,
+                    name: node.function_name,
+                    id: node.id.toString(),
+                    status: node.status,
+                    outputs: [
+                        {
+                            name: "output-1",
+                            value: 0,
+                        }
+                    ],
+                    ports: ports // Use the resolved value here
+                },
+            };
+        });
     }));
 }
 export function parseEdges(edges: [PyEdge], parentId?: string) {
@@ -96,10 +96,10 @@ export function parseEdges(edges: [PyEdge], parentId?: string) {
     }));
 }
 
-    export function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, url: string, parentId?: string) {
-        //console.log(data);
-        const nodes = parseNodes(data.nodes, url, parentId);
+export async function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, url: string, parentId?: string) {
+    const nodes = await parseNodes(data.nodes, url, parentId);
     const edges = parseEdges(data.edges, parentId);
+    console.log(nodes)
     const positions = calculateNodePositions(nodes, edges);
     // Update each node in nodes with a new position calculated in positions
     const updatedNodes = nodes.map((node) => ({

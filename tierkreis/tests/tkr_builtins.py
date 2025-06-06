@@ -1,6 +1,6 @@
 """Code generated from builtins namspace. Please do not edit."""
 
-from typing import Callable, NamedTuple
+from typing import Callable, Literal, NamedTuple
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
@@ -14,11 +14,14 @@ class iadd(Function[TKRRef[int]]):
 
 class ciaddOutput(NamedTuple):
     a: TKRRef[int]
-    value: TKRRef[int]
+    value: TKRRef[Literal["CIAddOutInner"]]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
-        return ciaddOutput(value=TKRRef[int](n, "value"), a=TKRRef[int](n, "a"))
+        return ciaddOutput(
+            value= TKRRef[Literal["CIAddOutInner"]](n, "value"),
+            a= TKRRef[int](n, "a")
+        )
 
 
 class ciadd(Function[ciaddOutput]):
@@ -75,3 +78,4 @@ class concat(Function[TKRRef[str]]):
     rhs: TKRRef[str]
 
     out: Callable[[NodeIndex], TKRRef[str]] = TKRRef[str].from_nodeindex
+    

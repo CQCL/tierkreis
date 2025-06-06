@@ -27,7 +27,7 @@ export function ConstNode({
           <>
             <p>Inputs</p>
               { Object.entries(data.ports.inputs).map(([key, value]) => (
-                  <p>{`${key}: ${value}`}</p>
+                  <p key={key}>{`${key}: ${value}`}</p>
               ))}
           </>
         )}
@@ -35,7 +35,7 @@ export function ConstNode({
           <>
             <p>Outputs</p>
               { Object.entries(data.ports.outputs).map(([key, value]) => (
-                  <p>{`${key}: ${value}`}</p>
+                  <p key= {key}>{`${key}: ${value}`}</p>
               ))}
           </>
         )}

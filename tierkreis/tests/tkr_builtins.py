@@ -1,7 +1,6 @@
 """Code generated from builtins namspace. Please do not edit."""
 
-from typing import Callable
-from pydantic import BaseModel
+from typing import Callable, Literal, NamedTuple
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
@@ -13,13 +12,13 @@ class iadd(Function[TKRRef[int]]):
     out: Callable[[NodeIndex], TKRRef[int]] = TKRRef[int].from_nodeindex
 
 
-class ciaddOutput(BaseModel):
-    value: TKRRef[int]
+class ciaddOutput(NamedTuple):
     a: TKRRef[int]
+    value: TKRRef[int]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
-        return ciaddOutput(a=TKRRef[int](n, "a"), value=TKRRef[int](n, "value"))
+        return ciaddOutput(value=TKRRef[int](n, "value"), a=TKRRef[int](n, "a"))
 
 
 class ciadd(Function[ciaddOutput]):

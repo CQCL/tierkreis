@@ -42,7 +42,7 @@ export function WorkflowSidebar() {
     setUrl(url);
     fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
       .then(response => response.json())
-      .then(data => parseGraph(data)).then(graph => {
+      .then(data => parseGraph(data, url)).then(graph => {
         setNodes(graph.nodes);
         setEdges(graph.edges);
       })

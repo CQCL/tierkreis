@@ -9,10 +9,6 @@ class DoublerInput(NamedTuple):
     intercept: TKRRef[int]
 
 
-# class DoublerOutput(NamedTuple):
-#     doubler_output: TKRRef[int]
-
-
 def typed_doubler_plus() -> GraphBuilder[DoublerInput, TKRRef[int]]:
     g = GraphBuilder(DoublerInput)
     two = g.const(2)

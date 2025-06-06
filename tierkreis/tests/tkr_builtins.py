@@ -1,6 +1,6 @@
 """Code generated from builtins namspace. Please do not edit."""
 
-from typing import Callable, Literal, NamedTuple
+from typing import Callable, NamedTuple
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 

@@ -1,18 +1,43 @@
-from typing import Any, Callable, NamedTuple
+from typing import (
+    Any,
+    Callable,
+    Mapping,
+    NamedTuple,
+    Protocol,
+    Self,
+    Sequence,
+    runtime_checkable,
+)
 
 from pydantic import BaseModel
 from tierkreis.exceptions import TierkreisError
+
+
+@runtime_checkable
+class DictConvertible(Protocol):
+    def to_dict(self) -> dict[str, Any]: ...
+    @classmethod
+    def from_dict(cls, arg: dict[str, Any]) -> Self: ...
 
 
 Jsonable = Any
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
-ElementaryType = bool | int | float | str | bytes
-TKType = ElementaryType | BaseModel
+TKType = (
+    bool
+    | int
+    | float
+    | str
+    | bytes
+    | Sequence["TKType"]
+    | Mapping[str, "TKType"]
+    | BaseModel
+    | DictConvertible
+)
 
 
-class TKRRef[T](NamedTuple):
+class TKRRef[T: TKType](NamedTuple):
     node_index: NodeIndex
     port: PortID
 
@@ -24,7 +49,7 @@ class TKRRef[T](NamedTuple):
         return {"value": self}
 
 
-TKRModel = tuple[TKRRef[Any], ...] | TKRRef[Any]
+TKRModel = tuple[TKRRef[TKType], ...] | TKRRef[TKType]
 
 
 class EmptyModel(NamedTuple): ...

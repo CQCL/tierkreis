@@ -221,7 +221,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         builder.outputs_type = type(outputs)
         return builder
 
-    def const[T](self, value: T) -> TKRRef[T]:
+    def const[T: TKType](self, value: T) -> TKRRef[T]:
         idx, port = self.data.add(Const(value))("value")
         return TKRRef[T](idx, port)
 
@@ -235,7 +235,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
             outputs_type=graph.outputs_type,
         )
 
-    def fn[Out](self, f: Function[Out]) -> Out:
+    def fn[Out: TKRModel](self, f: Function[Out]) -> Out:
         reserved_fields = ["namespace", "out"]
         ins = {
             k: (v[0], v[1])

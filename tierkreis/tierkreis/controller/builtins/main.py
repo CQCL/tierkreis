@@ -1,6 +1,7 @@
+from dataclasses import dataclass
 from logging import getLogger
 from sys import argv
-from typing import Iterator
+from typing import Any, Iterator, Self
 
 from pydantic import BaseModel
 
@@ -19,15 +20,27 @@ def iadd(a: int, b: int) -> Value[int]:
     return Value(value=a + b)
 
 
+@dataclass
+class CIAddOutInner:
+    x: int
+
+    def to_dict(self):
+        return {"x": self.x}
+
+    @classmethod
+    def from_dict(cls, arg: dict[str, Any]) -> "CIAddOutInner":
+        return CIAddOutInner(x=arg["x"])
+
+
 class CIAddOut(BaseModel):
     a: int
-    value: int
+    value: CIAddOutInner
 
 
 @worker.function()
 def ciadd(a: int, b: int) -> CIAddOut:
     logger.debug(f"ciadd {a} {b}")
-    return CIAddOut(a=a, value=a + b)
+    return CIAddOut(a=a, value=CIAddOutInner(x=a + b))
 
 
 @worker.function()

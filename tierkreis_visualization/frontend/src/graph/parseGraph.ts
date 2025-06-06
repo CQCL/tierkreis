@@ -99,7 +99,6 @@ export function parseEdges(edges: [PyEdge], parentId?: string) {
 export async function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, url: string, parentId?: string) {
     const nodes = await parseNodes(data.nodes, url, parentId);
     const edges = parseEdges(data.edges, parentId);
-    console.log(nodes)
     const positions = calculateNodePositions(nodes, edges);
     // Update each node in nodes with a new position calculated in positions
     const updatedNodes = nodes.map((node) => ({

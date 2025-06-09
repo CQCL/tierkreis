@@ -105,12 +105,15 @@ def get_node_data(workflow_id: UUID, loc: Loc) -> dict[str, Any]:
         case "loop":
             data = get_loop_node(storage, loc, errored_nodes)
             name = "loop.jinja"
-            ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump()
-
+            ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
+                by_alias=True, mode="json"
+            )
         case "map":
             data = get_map_node(storage, loc, node, errored_nodes)
             name = "map.jinja"
-            ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump()
+            ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
+                by_alias=True, mode="json"
+            )
 
         case "function":
             try:
@@ -124,8 +127,10 @@ def get_node_data(workflow_id: UUID, loc: Loc) -> dict[str, Any]:
                 }
             data = get_function_node(storage, loc)
             name = "function.jinja"
-            ctx = {"definition": definition.model_dump(), "data": data}
-
+            ctx = {
+                "definition": definition.model_dump(mode="json"),
+                "data": data.model_dump(mode="json"),
+            }
         case "const" | "ifelse" | "eifelse" | "input" | "output":
             name = "fallback.jinja"
             parent = loc.parent()

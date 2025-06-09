@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from '@/components/ui/button';
-
+import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import { type BackendNode } from './types';
 
 export function ConstNode({
@@ -16,6 +16,7 @@ export function ConstNode({
 }: NodeProps<BackendNode>) {
 
   return (
+    <NodeStatusIndicator status={data.status}>
     <Card className="w-[350px]">
       <CardHeader>
         <CardTitle>Const</CardTitle>
@@ -46,5 +47,6 @@ export function ConstNode({
 
       <Handle type="source" position={Position.Bottom} />
     </Card>
+    </NodeStatusIndicator>
   );
 }

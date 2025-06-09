@@ -8,14 +8,13 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from '@/components/ui/button';
-
+import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import useStore from "@/data/store";
 import { parseNodes, parseEdges } from "@/graph/parseGraph";
 
 import { type BackendNode } from './types';
+import { URL } from '@/data/constants';
 
-
-const tmpURL = "http://localhost:8000/workflows/00000000-0000-0000-0000-000000000001/nodes/-.N3"
 
 export function EvalNode({
   data,
@@ -24,10 +23,12 @@ export function EvalNode({
   const appendNodes = useStore((state) => state.appendNodes);
   const replaceNode = useStore((state) => state.replaceNode);
   const recalculateNodePositions = useStore((state) => state.recalculateNodePositions);
-  const loadChildren = async (url: string, parentId: string) => {
-  let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
+  const loadChildren = async (workflowId: string, node_location: string, parentId: string) => {
+  const url = `${URL}/${workflowId}/nodes/${node_location}`;
+  console.log(url);
+   let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
     .then(response => response.json());
-  await json.then(data => parseNodes(data.nodes, url, parentId)).then(nodes => appendNodes(nodes));
+  await json.then(data => parseNodes(data.nodes, workflowId, parentId)).then(nodes => appendNodes(nodes));
   await json.then(data => parseEdges(data.edges,parentId)).then(edges => appendEdges(edges));
   //json.then(data => parseNodes(data.nodes
   ;
@@ -35,6 +36,7 @@ export function EvalNode({
   recalculateNodePositions();
 }
   return (
+    <NodeStatusIndicator status={data.status}>
     <Card className="w-[350px]">
       <CardHeader>
         <CardTitle>Eval</CardTitle>
@@ -45,11 +47,12 @@ export function EvalNode({
 
       </CardContent>
       <CardFooter>
-        <Button onClick={() => loadChildren(tmpURL, data.id)} >Show</Button>
+        <Button onClick={() => loadChildren(data.workflowId, data.node_location, data.id)} >Show</Button>
       </CardFooter>
     
       <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Bottom} />
     </Card>
+    </NodeStatusIndicator>
   );
 }

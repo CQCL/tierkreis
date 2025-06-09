@@ -36,33 +36,35 @@ export function WorkflowSidebar() {
   }, []);
   const setEdges = useStore((state) => state.setEdges);
   const setNodes = useStore((state) => state.setNodes);
-  const setUrl = useStore((state) => state.setUrl);
-  const getUrl = useStore((state) => state.getUrl);
-  const updateNodes = async (url: string) => {
-    setUrl(url);
+  const setWorkflowId = useStore((state) => state.setWorkflowId);
+  const getWorkflowId = useStore((state) => state.getWorkflowId);
+  const updateNodes = async (workflowId: string) => {
+    setWorkflowId(workflowId);
+    const url = `${URL}/${workflowId}/nodes/-`;
     fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
       .then(response => response.json())
-      .then(data => parseGraph(data, url)).then(graph => {
+      .then(data => parseGraph(data, workflowId)).then(graph => {
         setNodes(graph.nodes);
         setEdges(graph.edges);
       })
   }
   useEffect(() => {
-    const url = getUrl();
-    if (url === "") {
+    const workflowId = getWorkflowId();
+    if (workflowId === "") {
       return;
     }
+    const url = `${URL}/${workflowId}/nodes/-`;
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
       //TODO: update status only
       const data = JSON.parse(event.data);
-      setNodes(parseNodes(data.nodes));
+      setNodes(parseNodes(data.nodes, workflowId));
       setEdges(parseEdges(data.edges));
     };
     return () => {
       ws.close();
     };
-  }, [setUrl]);
+  }, [setWorkflowId]);
 
   return (
     <Sidebar>
@@ -74,7 +76,7 @@ export function WorkflowSidebar() {
               {items.map((item) => (
                 <SidebarMenuItem key={item.id}>
                   <SidebarMenuButton asChild>
-                    <a onClick={() => updateNodes(item.url)}>
+                    <a onClick={() => updateNodes(item.id)}>
                       <span>{item.name}</span>
                     </a>
                   </SidebarMenuButton>

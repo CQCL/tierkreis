@@ -2,7 +2,7 @@ import dagre from "@dagrejs/dagre";
 import { AppNode, PyNode } from "@/nodes/types";
 import { PyEdge } from "@/edges/types";
 import { Edge } from "@xyflow/react";
-
+import { URL } from "@/data/constants";
 
 
 function nodeType(function_name: string) {
@@ -62,7 +62,8 @@ async function port_data(parentUrl: string, node_location: string) {
     return { inputs, outputs };
 }
 
-export function parseNodes(nodes: [PyNode], url: string, parentId?: string) {
+export function parseNodes(nodes: [PyNode], workflowId: string, parentId?: string) {
+    const url = `${URL}/${workflowId}/nodes/-`;
     return Promise.all(nodes.map((node) => {
         return port_data(url, node.node_location).then(ports => {
             return {
@@ -74,12 +75,8 @@ export function parseNodes(nodes: [PyNode], url: string, parentId?: string) {
                     name: node.function_name,
                     id: node.id.toString(),
                     status: node.status,
-                    outputs: [
-                        {
-                            name: "output-1",
-                            value: 0,
-                        }
-                    ],
+                    node_location: node.node_location,
+                    workflowId: workflowId,
                     ports: ports // Use the resolved value here
                 },
             };
@@ -96,8 +93,8 @@ export function parseEdges(edges: [PyEdge], parentId?: string) {
     }));
 }
 
-export async function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, url: string, parentId?: string) {
-    const nodes = await parseNodes(data.nodes, url, parentId);
+export async function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, workflowId: string, parentId?: string) {
+    const nodes = await parseNodes(data.nodes, workflowId, parentId);
     const edges = parseEdges(data.edges, parentId);
     const positions = calculateNodePositions(nodes, edges);
     // Update each node in nodes with a new position calculated in positions
@@ -114,7 +111,7 @@ export const calculateNodePositions = (
     edges: ReturnType<typeof parseEdges> | [Edge],
 ) => {
     const nodeWidth = 350;
-    const nodeHeight = 200;
+    const nodeHeight = 250;
     const dagreGraph = new dagre.graphlib.Graph();
     dagreGraph.setDefaultEdgeLabel(() => ({}));
     dagreGraph.setGraph({ rankdir: "TB", ranker: "longest-path" });

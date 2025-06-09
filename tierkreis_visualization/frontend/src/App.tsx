@@ -1,10 +1,12 @@
 import { useShallow } from 'zustand/react/shallow';
+import { SidebarTrigger } from "@/components/ui/sidebar"
 import {
   ReactFlow,
   ReactFlowProvider,
   Background,
   Controls,
   MiniMap,
+  ControlButton,
 } from '@xyflow/react';
 import Layout from '@/components/layout';
 
@@ -44,7 +46,11 @@ export default function App() {
         >
           <Background />
           <MiniMap />
-          <Controls />
+          <Controls>
+            <ControlButton>
+              <SidebarTrigger/>
+            </ControlButton>
+          </Controls>
         </ReactFlow>
       </ReactFlowProvider>
     </Layout>

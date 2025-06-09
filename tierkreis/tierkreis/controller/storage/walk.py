@@ -58,7 +58,6 @@ def walk_node(
 
     node = graph.nodes[idx]
     node_run_data = NodeRunData(loc, node, list(graph.node_outputs[idx]))
-    storage.write_node_def(loc, node)
 
     result = WalkResult([], [])
     if unfinished_results(result, storage, parent, node, graph):

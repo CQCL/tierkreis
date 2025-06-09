@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import { type BackendNode } from './types';
 
@@ -22,10 +23,10 @@ export function FunctionNode({
         <CardTitle>Function</CardTitle>
         <CardDescription>Name: {data.name} </CardDescription>
       </CardHeader>
-
       <CardContent>
             {!Object.keys(data.ports.inputs).length ? null : (
           <>
+           <Separator />
             <p>Inputs</p>
               { Object.entries(data.ports.inputs).map(([key, value]) => (
                   <p key={key}>{`${key}: ${value}`}</p>
@@ -34,6 +35,7 @@ export function FunctionNode({
         )}
         {!Object.keys(data.ports.outputs).length ? null : (
           <>
+            <Separator />
             <p>Outputs</p>
               { Object.entries(data.ports.outputs).map(([key, value]) => (
                   <p key= {key}>{`${key}: ${value}`}</p>

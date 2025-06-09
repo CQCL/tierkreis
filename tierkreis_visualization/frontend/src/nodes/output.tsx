@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card"
 import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { type BackendNode } from './types';
 
 export function OutputNode({
@@ -25,6 +26,7 @@ export function OutputNode({
       <CardContent>
             {!Object.keys(data.ports.inputs).length ? null : (
           <>
+           <Separator />
             <p>Inputs</p>
               { Object.entries(data.ports.inputs).map(([key, value]) => (
                   <p key={key}>{`${key}: ${value}`}</p>
@@ -33,6 +35,7 @@ export function OutputNode({
         )}
         {!Object.keys(data.ports.outputs).length ? null : (
           <>
+            <Separator />
             <p>Outputs</p>
               { Object.entries(data.ports.outputs).map(([key, value]) => (
                   <p key= {key}>{`${key}: ${value}`}</p>

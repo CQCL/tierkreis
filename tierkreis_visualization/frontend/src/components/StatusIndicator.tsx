@@ -50,6 +50,7 @@ const StatusBorder = ({
           "absolute -left-[1px] -top-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] rounded-xl border-2",
           className,
         )}
+        style={{ pointerEvents: 'none' }}
       />
       {children}
     </>

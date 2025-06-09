@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from '@/components/ui/button';
-
+import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import { type BackendNode } from './types';
 
 export function FunctionNode({
@@ -16,6 +16,7 @@ export function FunctionNode({
 }: NodeProps<BackendNode>) {
 
   return (
+    <NodeStatusIndicator status={data.status}>
     <Card className="w-[350px]">
       <CardHeader>
         <CardTitle>Function</CardTitle>
@@ -23,7 +24,22 @@ export function FunctionNode({
       </CardHeader>
 
       <CardContent>
-            <span>{`Value ${data.outputs[0].value}`}</span>
+            {!Object.keys(data.ports.inputs).length ? null : (
+          <>
+            <p>Inputs</p>
+              { Object.entries(data.ports.inputs).map(([key, value]) => (
+                  <p key={key}>{`${key}: ${value}`}</p>
+              ))}
+          </>
+        )}
+        {!Object.keys(data.ports.outputs).length ? null : (
+          <>
+            <p>Outputs</p>
+              { Object.entries(data.ports.outputs).map(([key, value]) => (
+                  <p key= {key}>{`${key}: ${value}`}</p>
+              ))}
+          </>
+        )}
       </CardContent>
       <CardFooter>
         <Button>Logs</Button>
@@ -32,5 +48,6 @@ export function FunctionNode({
       <Handle type="source" position={Position.Bottom} />
       <Handle type="target" position={Position.Top} />
     </Card>
+    </NodeStatusIndicator>
   );
 }

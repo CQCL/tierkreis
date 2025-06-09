@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Button } from '@/components/ui/button';
-
+import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import { type BackendNode } from './types';
 
 export function IfElseNode({
@@ -16,6 +16,7 @@ export function IfElseNode({
 }: NodeProps<BackendNode>) {
 
   return (
+    <NodeStatusIndicator status={data.status}>
     <Card className="w-[350px]">
       <CardHeader>
         <CardTitle>IfElse</CardTitle>
@@ -32,5 +33,6 @@ export function IfElseNode({
       <Handle type="source" position={Position.Bottom} />
       <Handle type="target" position={Position.Top} />
     </Card>
+    </NodeStatusIndicator>
   );
 }

@@ -24,14 +24,22 @@ export function InputNode({
       </CardHeader>
 
       <CardContent>
-        {
-          data.outputs.map((output, index) => (
-            <div key={index}>
-              <span>{`Output ${index + 1}: ${output.name}`}</span>
-              <p>{`Value: ${output.value}`}</p>
-            </div>
-          ))
-        }
+            {!Object.keys(data.ports.inputs).length ? null : (
+          <>
+            <p>Inputs</p>
+              { Object.entries(data.ports.inputs).map(([key, value]) => (
+                  <p key={key}>{`${key}: ${value}`}</p>
+              ))}
+          </>
+        )}
+        {!Object.keys(data.ports.outputs).length ? null : (
+          <>
+            <p>Outputs</p>
+              { Object.entries(data.ports.outputs).map(([key, value]) => (
+                  <p key= {key}>{`${key}: ${value}`}</p>
+              ))}
+          </>
+        )}
       </CardContent>
       <CardFooter>
         <p>Logs</p>

@@ -27,7 +27,7 @@ export const LoadingIndicator = ({ children }: { children: ReactNode }) => {
         }
       `}
         </style>
-        <div className="absolute inset-0 overflow-hidden rounded-[7px]">
+        <div className="absolute inset-0 overflow-hidden rounded-xl">
           <div className="spinner rounded-full bg-[conic-gradient(from_0deg_at_50%_50%,_rgb(42,67,233)_0deg,_rgba(42,138,246,0)_360deg)]" />
         </div>
       </div>
@@ -47,7 +47,7 @@ const StatusBorder = ({
     <>
       <div
         className={clsx(
-          "absolute -left-[1px] -top-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] rounded-[7px] border-2",
+          "absolute -left-[1px] -top-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] rounded-xl border-2",
           className,
         )}
       />

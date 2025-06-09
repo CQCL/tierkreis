@@ -68,7 +68,7 @@ export function ConstNode({
           <SheetContent className="max-h-screen overflow-y-scroll"> 
                 <SheetHeader>
                   <SheetTitle>Logs</SheetTitle>
-                  <SheetDescription className='overflow-auto'>{logs}</SheetDescription>
+                  <SheetDescription>{logs}</SheetDescription>
                 </SheetHeader>
           </SheetContent>
         </Sheet>

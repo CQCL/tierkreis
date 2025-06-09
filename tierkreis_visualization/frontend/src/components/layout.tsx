@@ -1,4 +1,4 @@
-import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
+import { SidebarProvider } from "@/components/ui/sidebar"
 import { WorkflowSidebar } from "@/components/workflow-sidebar"
  
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -6,7 +6,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <SidebarProvider>
       <WorkflowSidebar />
       <main>
-        <SidebarTrigger />
         {children}
       </main>
     </SidebarProvider>

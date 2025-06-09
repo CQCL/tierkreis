@@ -177,12 +177,15 @@ def get_node(request: Request, workflow_id: UUID, node_location_str: str):
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/inputs/{port_name}")
 def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
-    node_location = parse_node_location(node_location_str)
-    storage = get_storage(workflow_id)
-    definition = storage.read_worker_call_args(node_location)
+    try:
+        node_location = parse_node_location(node_location_str)
+        storage = get_storage(workflow_id)
+        definition = storage.read_worker_call_args(node_location)
 
-    with open(definition.inputs[port_name], "rb") as fh:
-        return JSONResponse(json.loads(fh.read()))
+        with open(definition.inputs[port_name], "rb") as fh:
+            return JSONResponse(json.loads(fh.read()))
+    except FileNotFoundError as e:
+        return PlainTextResponse(str(e))
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/outputs/{port_name}")
@@ -194,9 +197,11 @@ def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
         / "outputs"
         / port_name
     )
-
-    with open(output_file, "rb") as fh:
-        return JSONResponse(json.loads(fh.read()))
+    try:
+        with open(output_file, "rb") as fh:
+            return JSONResponse(json.loads(fh.read()))
+    except FileNotFoundError as e:
+        return PlainTextResponse(str(e))
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/logs")

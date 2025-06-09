@@ -32,7 +32,7 @@ function nodeType(function_name: string) {
 async function get_port_data(baseUrl: string, portId: string, inputs: boolean = false) {
     const type = inputs ? "/inputs/" : "/outputs/"
     const url = baseUrl + type + portId;
-    const data = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } }).then((res) => res.json())
+    const data = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } }).then((res) => res.json()).catch(() => {});
     return data
 }
 

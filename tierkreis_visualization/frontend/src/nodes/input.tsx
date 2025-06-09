@@ -8,7 +8,8 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { NodeStatusIndicator } from '@/components/StatusIndicator';
-
+import { Separator } from '@/components/ui/separator';
+import { Button } from '@/components/ui/button';
 import { type BackendNode } from './types';
 
 export function InputNode({
@@ -26,6 +27,7 @@ export function InputNode({
       <CardContent>
             {!Object.keys(data.ports.inputs).length ? null : (
           <>
+           <Separator />
             <p>Inputs</p>
               { Object.entries(data.ports.inputs).map(([key, value]) => (
                   <p key={key}>{`${key}: ${value}`}</p>
@@ -34,6 +36,7 @@ export function InputNode({
         )}
         {!Object.keys(data.ports.outputs).length ? null : (
           <>
+            <Separator />
             <p>Outputs</p>
               { Object.entries(data.ports.outputs).map(([key, value]) => (
                   <p key= {key}>{`${key}: ${value}`}</p>
@@ -42,7 +45,7 @@ export function InputNode({
         )}
       </CardContent>
       <CardFooter>
-        <p>Logs</p>
+        <Button>Logs</Button>
       </CardFooter>
       <Handle type="target" position={Position.Top} />
       <Handle type="source" position={Position.Bottom} />

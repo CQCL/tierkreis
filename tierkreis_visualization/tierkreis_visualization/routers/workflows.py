@@ -106,23 +106,28 @@ def get_node_data(workflow_id: UUID, node_location: Loc) -> dict[str, Any]:
     elif node.type == "loop":
         data = get_loop_node(storage, node_location, errored_nodes)
         name = "loop.jinja"
-        ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
+        ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
+            by_alias=True, mode="json"
+        )
 
     elif node.type == "map":
         data = get_map_node(storage, node_location, node, errored_nodes)
         name = "map.jinja"
-        ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(by_alias=True)
+        ctx = PyGraph(nodes=data.nodes, edges=data.edges).model_dump(
+            by_alias=True, mode="json"
+        )
 
     elif node.type == "function":
         data = get_function_node(storage, node_location)
         name = "function.jinja"
-        ctx = {"definition": definition.model_dump(), "data": data}
+        ctx = {
+            "definition": definition.model_dump(mode="json"),
+            "data": data.model_dump(mode="json"),
+        }
 
     else:
         name = "fallback.html"
-        # Path() instances cant be serialized -> workaround
-        model = json.loads(definition.model_dump_json())
-        ctx = {"definition": model}
+        ctx = {"definition": definition.model_dump(mode="json")}
 
     ctx["breadcrumbs"] = breadcrumbs(workflow_id, node_location)
     ctx["url"] = f"/workflows/{workflow_id}/nodes/{node_location}"

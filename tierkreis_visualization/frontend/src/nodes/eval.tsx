@@ -27,8 +27,8 @@ export function EvalNode({
   const loadChildren = async (url: string, parentId: string) => {
   let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
     .then(response => response.json());
-  await json.then(data => parseNodes(data.nodes, parentId)).then(nodes => appendNodes(nodes));
-  await json.then(data => parseEdges(data.edges, parentId)).then(edges => appendEdges(edges));
+  await json.then(data => parseNodes(data.nodes, url, parentId)).then(nodes => appendNodes(nodes));
+  await json.then(data => parseEdges(data.edges,parentId)).then(edges => appendEdges(edges));
   //json.then(data => parseNodes(data.nodes
   ;
   replaceNode(parentId);

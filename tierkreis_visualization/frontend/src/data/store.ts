@@ -10,7 +10,7 @@ import { calculateNodePositions } from '@/graph/parseGraph';
 const useStore = create<AppState>((set, get) => ({
   nodes: initialNodes,
   edges: initialEdges,
-  url: "",
+  workflowId: "",
   onNodesChange: (changes) => {
     set({
       nodes: applyNodeChanges(changes, get().nodes),
@@ -42,11 +42,11 @@ const useStore = create<AppState>((set, get) => ({
       edges: [...get().edges, ...newEdges],
     });
   },
-  setUrl: (url) => {
-    set({ url });
+  setWorkflowId: (workflowId) => {
+    set({ workflowId });
   },
-  getUrl: () => {
-    return get().url;
+  getWorkflowId: () => {
+    return get().workflowId;
   },
   replaceNode: (nodeId: string) => {
     let edges = get().edges;

@@ -9,13 +9,13 @@ import {
 
 
 export type PyNode = { id: string | number; status: "Not started" | "Started" | "Error" | "Finished"; function_name: string, node_location: string };
-export type BackendNode = Node<{ name: string, status: "Started" | "Finished" | "Error" | "Not Started", ports: { inputs :any, outputs: any }, id: string }, 'Input'>;
+export type BackendNode = Node<{ name: string, status: "Started" | "Finished" | "Error" | "Not Started", ports: { inputs :any, outputs: any }, workflowId:string, node_location:string, id: string }, 'Input'>;
 export type AppNode = BuiltInNode | BackendNode;
 
 export type AppState = {
     nodes: AppNode[];
     edges: Edge[];
-    url: string;
+    workflowId: string;
     onNodesChange: OnNodesChange<AppNode>;
     onEdgesChange: OnEdgesChange;
     onConnect: OnConnect;
@@ -23,8 +23,8 @@ export type AppState = {
     setEdges: (edges: Edge[]) => void;
     appendNodes: (node: AppNode[]) => void;
     appendEdges: (edge: Edge[]) => void;
-    setUrl: (url: string) => void;
-    getUrl: () => string;
+    setWorkflowId: (workflowId: string) => void;
+    getWorkflowId: () => string;
     replaceNode: (nodeId: string) => void;
     recalculateNodePositions: () => void;
 };

@@ -8,6 +8,10 @@ terraform {
       source  = "hashicorp/helm"
       version = "3.0.0-pre2"
     }
+    docker = {
+      source  = "kreuzwerker/docker"
+      version = "~> 3.6.1"
+    }
   }
 }
 
@@ -18,77 +22,19 @@ provider "kubernetes" {
 provider "helm" {
   kubernetes = { config_path = "~/.kube/config" }
 }
+provider "docker" {}
 
-
-resource "kubernetes_namespace" "tierkreis_kueue" {
-  metadata {
-    name        = "tierkreis-kueue"
-    annotations = { name = "tierkreis-kueue" }
+resource "docker_image" "tkr_builtins" {
+  name         = "tkr_builtins"
+  force_remove = true
+  build {
+    builder    = "default"
+    tag        = ["tkr_builtins:4"]
+    context    = "${path.cwd}/../../../tierkreis/tierkreis"
+    dockerfile = "${path.cwd}/../../../tierkreis/tierkreis/tierkreis/controller/builtins/Dockerfile"
   }
 }
 
-resource "helm_release" "kueue" {
-  name       = "kueue"
-  repository = "oci://registry.k8s.io/kueue/charts"
-  chart      = "kueue"
-
-  version          = "0.12.2"
-  namespace        = "kueue-system"
-  create_namespace = true
-}
-
-resource "kubernetes_manifest" "cpu_resource_flavor" {
-  manifest = {
-    apiVersion = "kueue.x-k8s.io/v1beta1"
-    kind       = "ResourceFlavor"
-    metadata   = { name = "cpu" }
-  }
-}
-
-resource "kubernetes_manifest" "cluster_queue" {
-  manifest = {
-
-    "apiVersion" = "kueue.x-k8s.io/v1beta1"
-    "kind"       = "ClusterQueue"
-    "metadata"   = { "name" = "cluster-queue" }
-    "spec" = {
-      "namespaceSelector" = {}
-      "resourceGroups" = [
-        {
-          "coveredResources" = ["cpu", "memory", "pods"]
-          "flavors" = [
-            {
-              "name" = "default-flavor"
-              "resources" = [
-                {
-                  "name"         = "cpu"
-                  "nominalQuota" = 2
-                },
-                {
-                  "name"         = "memory"
-                  "nominalQuota" = "1Gi"
-                },
-                {
-                  "name"         = "pods"
-                  "nominalQuota" = 5
-                },
-              ]
-            },
-          ]
-        },
-      ]
-    }
-  }
-}
-
-resource "kubernetes_manifest" "local_queue" {
-  manifest = {
-    "apiVersion" = "kueue.x-k8s.io/v1beta1"
-    "kind"       = "LocalQueue"
-    "metadata" = {
-      "name"      = "tierkreis-queue"
-      "namespace" = kubernetes_namespace.tierkreis_kueue.metadata[0].name
-    }
-    "spec" = { "clusterQueue" = "cluster-queue" }
-  }
+module "kqueue" {
+  source = "../kqueue"
 }

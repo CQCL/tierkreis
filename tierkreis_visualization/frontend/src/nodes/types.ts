@@ -9,7 +9,7 @@ import {
 
 
 export type PyNode = { id: string | number; status: "Not started" | "Started" | "Error" | "Finished"; function_name: string, node_location: string };
-export type BackendNode = Node<{ name: string, status: "Started" | "Finished" | "Error" | "Not Started", ports: { inputs :any, outputs: any }, workflowId:string, node_location:string, id: string }, 'Input'>;
+export type BackendNode = Node<{ name: string, status: "Started" | "Finished" | "Error" | "Not Started", ports: { inputs: any, outputs: any }, handles: { inputs: any, outputs: any }, workflowId: string, node_location: string, id: string, title: string }, 'Input'>;
 export type AppNode = BuiltInNode | BackendNode;
 
 export type AppState = {

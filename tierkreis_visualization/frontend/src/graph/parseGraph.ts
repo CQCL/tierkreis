@@ -8,15 +8,11 @@ import { URL } from "@/data/constants";
 function nodeType(function_name: string) {
     switch (function_name) {
         case 'input':
-            return 'input-node';
         case 'output':
-            return 'output-node';
         case 'const':
-            return 'const-node';
         case 'ifelse':
-            return 'ifelse-node';
         case 'eifelse':
-            return 'ifelse-node';
+            return 'default-node';
         case 'eval':
             return 'eval-node';
         case 'loop':
@@ -28,18 +24,26 @@ function nodeType(function_name: string) {
     }
 
 }
+function getTitle(function_name: string) {
+    switch (function_name) {
+        case 'eifelse':
+        case 'ifelse':
+            return "If Else"
+        default:
+            return String(function_name).charAt(0).toUpperCase() + String(function_name).slice(1);
+    }}
 
 async function get_port_data(baseUrl: string, portId: string, inputs: boolean = false) {
     const type = inputs ? "/inputs/" : "/outputs/"
     const url = baseUrl + type + portId;
-    const data = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } }).then((res) => res.json()).catch(() => {});
+    const data = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } }).then((res) => res.json()).catch(() => { });
     return data
 }
 
 async function port_data(parentUrl: string, node_location: string) {
     const url = parentUrl.substring(0, parentUrl.lastIndexOf("/") + 1) + node_location;
     let inputs = {};
-    let outputs = {};
+    let outputs = {}
     try {
         let res = await fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } }).then((res) => res.json());
         if (res.definition == undefined) {
@@ -62,7 +66,21 @@ async function port_data(parentUrl: string, node_location: string) {
     return { inputs, outputs };
 }
 
-export function parseNodes(nodes: [PyNode], workflowId: string, parentId?: string) {
+function getHandlesFromEdges(id: Number, edges: [PyEdge]) {
+    let inputs = {};
+    let outputs = {};
+    edges.map((edge) => {
+        if (edge.from_node == id) {
+            outputs[edge.from_port] = edge.from_port;
+        }
+        if (edge.to_node == id) {
+            inputs[edge.to_port] = edge.to_port;
+        }});
+    let output = { inputs, outputs };
+    return output;
+}
+
+export function parseNodes(nodes: [PyNode], edges: [PyEdge] ,workflowId: string, parentId?: string) {
     const url = `${URL}/${workflowId}/nodes/-`;
     return Promise.all(nodes.map((node) => {
         return port_data(url, node.node_location).then(ports => {
@@ -71,31 +89,36 @@ export function parseNodes(nodes: [PyNode], workflowId: string, parentId?: strin
                 type: nodeType(node.function_name),
                 position: { x: 0, y: 0 },
                 data: {
+                    title: getTitle(node.function_name),
                     label: node.function_name,
                     name: node.function_name,
                     id: node.id.toString(),
                     status: node.status,
                     node_location: node.node_location,
                     workflowId: workflowId,
-                    ports: ports // Use the resolved value here
+                    ports: ports,
+                    handles: getHandlesFromEdges(Number(node.id), edges),
                 },
             };
         });
     }));
 }
-export function parseEdges(edges: [PyEdge], parentId?: string) {
+export function parseEdges(edges: [PyEdge],parentId?: string) {
     const prefix = parentId ? `${parentId}:` : "";
     return edges.map((edge) => ({
-        id: prefix + edge.from_node + "-" + prefix + edge.to_node,
+        id: prefix + edge.from_node + "-" + prefix + edge.to_node,        
         source: prefix + edge.from_node.toString(),
         target: prefix + edge.to_node.toString(),
+        sourceHandle: prefix +edge.from_node+"_"+ edge.from_port.toString(),
+        targetHandle: prefix +edge.to_node+"_"+ edge.to_port.toString(),
         label: edge.from_port + "->" + edge.to_port,
     }));
 }
 
 export async function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, workflowId: string, parentId?: string) {
-    const nodes = await parseNodes(data.nodes, workflowId, parentId);
+    const nodes = await parseNodes(data.nodes, data.edges, workflowId, parentId);
     const edges = parseEdges(data.edges, parentId);
+    console.log(edges, nodes);
     const positions = calculateNodePositions(nodes, edges);
     // Update each node in nodes with a new position calculated in positions
     const updatedNodes = nodes.map((node) => ({

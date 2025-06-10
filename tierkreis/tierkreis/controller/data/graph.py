@@ -91,6 +91,40 @@ class GraphData(BaseModel):
     graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
 
+    def input(self, name: str) -> ValueRef:
+        return self.add(Input(name))(name)
+
+    def const(self, value: Jsonable) -> ValueRef:
+        return self.add(Const(value))("value")
+
+    def func(
+        self, function_name: str, inputs: dict[PortID, ValueRef]
+    ) -> Callable[[PortID], ValueRef]:
+        return self.add(Func(function_name, inputs))
+
+    def eval(
+        self, graph: ValueRef, inputs: dict[PortID, ValueRef]
+    ) -> Callable[[PortID], ValueRef]:
+        return self.add(Eval(graph, inputs))
+
+    def loop(
+        self, body: ValueRef, inputs: dict[PortID, ValueRef], continue_port: PortID
+    ) -> Callable[[PortID], ValueRef]:
+        return self.add(Loop(body, inputs, continue_port))
+
+    def map(
+        self,
+        body: ValueRef,
+        input_idx: NodeIndex,
+        in_port: PortID,
+        out_port: PortID,
+        inputs: dict[PortID, ValueRef],
+    ) -> Callable[[PortID], ValueRef]:
+        return self.add(Map(body, input_idx, in_port, out_port, inputs))
+
+    def output(self, inputs: dict[PortID, ValueRef]) -> None:
+        self.add(Output(inputs))
+
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
         self.nodes.append(node)

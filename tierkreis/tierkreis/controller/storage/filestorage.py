@@ -180,7 +180,7 @@ class ControllerFileStorage:
         return [x.name for x in dir_list if x.is_file()]
 
     def is_node_started(self, node_location: Loc) -> bool:
-        return Path(self._worker_call_args_path(node_location)).exists()
+        return Path(self._nodedef_path(node_location)).exists()
 
     def is_node_finished(self, node_location: Loc) -> bool:
         return self._done_path(node_location).exists()

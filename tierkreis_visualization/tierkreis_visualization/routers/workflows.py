@@ -47,7 +47,17 @@ def get_errored_nodes(workflow_id: UUID) -> list[Loc]:
 def get_node_data(workflow_id: UUID, loc: Loc) -> dict[str, Any]:
     storage = get_storage(workflow_id)
     errored_nodes = get_errored_nodes(workflow_id)
-    node = storage.read_node_def(loc)
+
+    try:
+        node = storage.read_node_def(loc)
+    except FileNotFoundError:
+        return {
+            "breadcrumbs": breadcrumbs(workflow_id, loc),
+            "url": f"/workflows/{workflow_id}/nodes/{loc}",
+            "node_location": str(loc),
+            "name": "unavailable.jinja",
+        }
+
     ctx: dict[str, Any] = {}
     match node.type:
         case "eval":

@@ -7,13 +7,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+
 import { Button } from '@/components/ui/button';
 import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import useStore from "@/data/store";
 import { parseNodes, parseEdges } from "@/graph/parseGraph";
-
+import { InputHandleArray, OutputHandleArray } from '@/components/handles';
 import { type BackendNode } from './types';
 import { URL } from '@/data/constants';
+
 
 
 export function EvalNode({
@@ -24,35 +26,33 @@ export function EvalNode({
   const replaceNode = useStore((state) => state.replaceNode);
   const recalculateNodePositions = useStore((state) => state.recalculateNodePositions);
   const loadChildren = async (workflowId: string, node_location: string, parentId: string) => {
-  const url = `${URL}/${workflowId}/nodes/${node_location}`;
-  console.log(url);
-   let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
-    .then(response => response.json());
-  await json.then(data => parseNodes(data.nodes, workflowId, parentId)).then(nodes => appendNodes(nodes));
-  await json.then(data => parseEdges(data.edges,parentId)).then(edges => appendEdges(edges));
-  //json.then(data => parseNodes(data.nodes
-  ;
-  replaceNode(parentId);
-  recalculateNodePositions();
-}
+    const url = `${URL}/${workflowId}/nodes/${node_location}`;
+    console.log(url);
+    let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
+      .then(response => response.json());
+    await json.then(data => parseNodes(data.nodes, workflowId, parentId)).then(nodes => appendNodes(nodes));
+    await json.then(data => parseEdges(data.edges, parentId)).then(edges => appendEdges(edges));
+    //json.then(data => parseNodes(data.nodes
+    ;
+    replaceNode(parentId);
+    recalculateNodePositions();
+  }
   return (
     <NodeStatusIndicator status={data.status}>
-    <Card className="w-[350px]">
-      <CardHeader>
-        <CardTitle>Eval</CardTitle>
-        <CardDescription>Name: {data.name} </CardDescription>
-      </CardHeader>
+      <Card className="w-[350px]">
+        <CardHeader>
+          <CardTitle>Eval</CardTitle>
+          <CardDescription>Name: {data.name} </CardDescription>
+        </CardHeader>
 
-      <CardContent>
-
-      </CardContent>
-      <CardFooter>
-        <Button onClick={() => loadChildren(data.workflowId, data.node_location, data.id)} >Show</Button>
-      </CardFooter>
-    
-      <Handle type="target" position={Position.Top} />
-      <Handle type="source" position={Position.Bottom} />
-    </Card>
+        <CardContent>
+          <InputHandleArray handles={data.handles.inputs} id={data.id} />
+          <OutputHandleArray handles={data.handles.outputs} id={data.id} />
+        </CardContent>
+        <CardFooter>
+          <Button onClick={() => loadChildren(data.workflowId, data.node_location, data.id)} >Show</Button>
+        </CardFooter>
+      </Card>
     </NodeStatusIndicator>
   );
 }

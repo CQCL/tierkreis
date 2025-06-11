@@ -220,3 +220,15 @@ def get_logs(workflow_id: UUID, node_location_str: str):
             messages += line.decode()
 
     return PlainTextResponse(messages)
+
+
+@router.get("/{workflow_id}/nodes/{node_location_str}/errors")
+def get_errors(workflow_id: UUID, node_location_str: str):
+    node_location = parse_node_location(node_location_str)
+    storage = get_storage(workflow_id)
+    if not storage.node_has_error(node_location):
+        return PlainTextResponse("Node has no errors.", status_code=404)
+
+    messages = storage.read_errors(node_location)
+    print(messages)
+    return PlainTextResponse(messages)

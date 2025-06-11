@@ -20,15 +20,20 @@ import { NodeStatusIndicator } from '@/components/StatusIndicator';
 import { Button } from '@/components/ui/button';
 import { type BackendNode } from './types';
 import { InputHandleArray, OutputHandleArray } from '@/components/handles';
-import { getLogs } from '@/data/logs';
+import { getLogs, getErrors } from '@/data/logs';
 
 export function DefaultNode({
   data,
 }: NodeProps<BackendNode>) {
-  const [logs, setLogs] = useState("")
+  const [logs, setLogs] = useState("");
+  const [errors, setErrors] = useState("");
   const updateLogs = (workflowId: string, node_location: string) => {
     getLogs(workflowId, node_location)
       .then(logs => setLogs(logs))
+  };
+  const updateErrors = (workflowId: string, node_location: string) => {
+    getErrors(workflowId, node_location)
+      .then(errors => setErrors(errors))
   }
   return (
     <NodeStatusIndicator status={data.status}>
@@ -41,7 +46,7 @@ export function DefaultNode({
           <InputHandleArray handles={data.handles.inputs} id={data.id} />
           <OutputHandleArray handles={data.handles.outputs} id={data.id} />
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex justify-between">
           <Sheet>
             <SheetTrigger asChild>
               <Button onClick={() => updateLogs(data.workflowId, data.node_location)}>Logs</Button>
@@ -53,6 +58,19 @@ export function DefaultNode({
               </SheetHeader>
             </SheetContent>
           </Sheet>
+          {data.status == "Error" && (
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button onClick={() => updateErrors(data.workflowId, data.node_location)}>Errors</Button>
+              </SheetTrigger>
+              <SheetContent className="max-h-screen overflow-y-scroll">
+                <SheetHeader>
+                  <SheetTitle>Errors</SheetTitle>
+                  <SheetDescription>{errors}</SheetDescription>
+                </SheetHeader>
+              </SheetContent>
+            </Sheet>
+          )}
         </CardFooter>
 
       </Card>

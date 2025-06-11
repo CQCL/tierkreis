@@ -50,18 +50,44 @@ const useStore = create<AppState>((set, get) => ({
   },
   replaceNode: (nodeId: string) => {
     let edges = get().edges;
-    const nodes = get().nodes;
-    edges.forEach( (edge) => {
+    let nodes = get().nodes;
+    console.log(edges, nodes)
+    edges.forEach((edge) => {
       if (edge.target == nodeId) {
-        // todo find the correct mapping  to inputs do it in appendEdges 
-        edge.target = nodeId + ":0";
+        // find the correct node which has an output handle of the form id:\dport_name
+        nodes.forEach(node => {
+          if (node.id.startsWith(nodeId)) {
+            Object.entries(node.data.handles.outputs).forEach(([key, value]) => {
+              if (edge.targetHandle.endsWith(value)) {
+                node.data.handles.inputs[key] = edge.target;
+                edge.targetHandle = node.id + "_" + value;
+                edge.target = node.id;
+
+              };
+            }
+            );
+          }
+        })
       }
       if (edge.source == nodeId) {
-        // map outputs to further nodes
-        edge.source = "3:5";
+         nodes.forEach(node => {
+          if (node.id.startsWith(nodeId)) {
+            Object.entries(node.data.handles.inputs).forEach(([key, value]) => {
+              if (edge.sourceHandle.endsWith(value)) {
+                node.data.handles.outputs[key] = edge.source;
+                edge.sourceHandle = node.id + "_" + value;
+                edge.source = node.id;
+
+              };
+            }
+            );
+          }
+        })
       }
     });
-     set({edges});
+    // remove the old node
+    console.log(edges);
+    set({ edges });
   },
   recalculateNodePositions: () => {
     const data = calculateNodePositions(get().nodes, get().edges);
@@ -69,7 +95,7 @@ const useStore = create<AppState>((set, get) => ({
       ...node,
       position: data.find(position => position.id === node.id)
     }));
-    set({nodes: newNodes});
+    set({ nodes: newNodes });
   }
 }));
 

@@ -35,7 +35,7 @@ export function DefaultNode({
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>{data.title}</CardTitle>
-          <CardDescription>Name: {data.node_location} </CardDescription>
+          <CardDescription>Name: {data.title =="Function" ? data.name : data.node_location} </CardDescription>
         </CardHeader>
         <CardContent>
           <InputHandleArray handles={data.handles.inputs} id={data.id} />

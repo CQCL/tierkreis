@@ -27,13 +27,10 @@ export function EvalNode({
   const recalculateNodePositions = useStore((state) => state.recalculateNodePositions);
   const loadChildren = async (workflowId: string, node_location: string, parentId: string) => {
     const url = `${URL}/${workflowId}/nodes/${node_location}`;
-    console.log(url);
     let json = fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
       .then(response => response.json());
-    await json.then(data => parseNodes(data.nodes, workflowId, parentId)).then(nodes => appendNodes(nodes));
+    await json.then(data => parseNodes(data.nodes,data.edges, workflowId, parentId)).then(nodes => appendNodes(nodes));
     await json.then(data => parseEdges(data.edges, parentId)).then(edges => appendEdges(edges));
-    //json.then(data => parseNodes(data.nodes
-    ;
     replaceNode(parentId);
     recalculateNodePositions();
   }

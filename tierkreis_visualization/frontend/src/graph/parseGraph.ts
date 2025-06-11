@@ -20,7 +20,7 @@ function nodeType(function_name: string) {
         case 'map':
             return 'map-node';
         default:
-            return 'function-node'
+            return 'default-node'
     }
 
 }
@@ -29,8 +29,15 @@ function getTitle(function_name: string) {
         case 'eifelse':
         case 'ifelse':
             return "If Else"
-        default:
+        case 'input':
+        case 'output':
+        case 'const':
+        case 'eval':
+        case 'loop':
+        case 'map':
             return String(function_name).charAt(0).toUpperCase() + String(function_name).slice(1);
+        default:
+            return "Function"
     }}
 
 async function get_port_data(baseUrl: string, portId: string, inputs: boolean = false) {
@@ -92,7 +99,7 @@ export function parseNodes(nodes: [PyNode], edges: [PyEdge] ,workflowId: string,
                     title: getTitle(node.function_name),
                     label: node.function_name,
                     name: node.function_name,
-                    id: node.id.toString(),
+                    id: (parentId ? `${parentId}:` : "") + node.id.toString(),
                     status: node.status,
                     node_location: node.node_location,
                     workflowId: workflowId,

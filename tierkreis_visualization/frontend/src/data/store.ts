@@ -3,7 +3,7 @@ import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react';
 
 import { initialNodes } from '@/nodes/index';
 import { initialEdges } from '@/edges/index';
-import { type AppState } from '@/nodes/types';
+import { AppNode, type AppState } from '@/nodes/types';
 import { calculateNodePositions } from '@/graph/parseGraph';
 
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
@@ -48,14 +48,17 @@ const useStore = create<AppState>((set, get) => ({
   getWorkflowId: () => {
     return get().workflowId;
   },
-  replaceNode: (nodeId: string) => {
+  replaceNode: (nodeId: string, newNodes: AppNode[]) => {
     let edges = get().edges;
-    let nodes = get().nodes;
-    console.log(edges, nodes)
+    let oldNodes = get().nodes;
+    let nodesToRemove = [nodeId];
     edges.forEach((edge) => {
       if (edge.target == nodeId) {
+        if (edge.label?.includes("body")){
+          nodesToRemove.push(edge.source);
+        }
         // find the correct node which has an output handle of the form id:\dport_name
-        nodes.forEach(node => {
+        newNodes.forEach(node => {
           if (node.id.startsWith(nodeId)) {
             Object.entries(node.data.handles.outputs).forEach(([key, value]) => {
               if (edge.targetHandle.endsWith(value)) {
@@ -70,7 +73,7 @@ const useStore = create<AppState>((set, get) => ({
         })
       }
       if (edge.source == nodeId) {
-         nodes.forEach(node => {
+         newNodes.forEach(node => {
           if (node.id.startsWith(nodeId)) {
             Object.entries(node.data.handles.inputs).forEach(([key, value]) => {
               if (edge.sourceHandle.endsWith(value)) {
@@ -85,9 +88,11 @@ const useStore = create<AppState>((set, get) => ({
         })
       }
     });
-    // remove the old node
-    console.log(edges);
-    set({ edges });
+    oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
+    set({
+      nodes: [...newNodes, ...oldNodes],
+      edges: edges,
+    });
   },
   recalculateNodePositions: () => {
     const data = calculateNodePositions(get().nodes, get().edges);

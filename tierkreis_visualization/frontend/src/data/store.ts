@@ -54,12 +54,12 @@ const useStore = create<AppState>((set, get) => ({
     let nodesToRemove = [nodeId];
     edges.forEach((edge) => {
       if (edge.target == nodeId) {
-        if (edge.label?.includes("body")){
+        if (edge.label === "Graph Body"){//how can we tell body 
           nodesToRemove.push(edge.source);
         }
         // find the correct node which has an output handle of the form id:\dport_name
         newNodes.forEach(node => {
-          if (node.id.startsWith(nodeId)) {
+          if (node.id.startsWith(nodeId+":0")) {
             Object.entries(node.data.handles.outputs).forEach(([key, value]) => {
               if (edge.targetHandle.endsWith(value)) {
                 node.data.handles.inputs[key] = edge.target;

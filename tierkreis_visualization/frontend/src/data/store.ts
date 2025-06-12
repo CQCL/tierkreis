@@ -54,38 +54,47 @@ const useStore = create<AppState>((set, get) => ({
     let nodesToRemove = [nodeId];
     edges.forEach((edge) => {
       if (edge.target == nodeId) {
-        if (edge.label === "Graph Body"){//how can we tell body 
+        if (edge.label === "Graph Body") {//how can we tell body 
           nodesToRemove.push(edge.source);
         }
         // find the correct node which has an output handle of the form id:\dport_name
-        newNodes.forEach(node => {
-          if (node.id.startsWith(nodeId+":0")) {
+
+        newNodes.sort((a, b) => a.id.localeCompare(b.id));
+        let found = false;
+        for (const node of newNodes) {
+          if (node.id.startsWith(nodeId)) {
             Object.entries(node.data.handles.outputs).forEach(([key, value]) => {
               if (edge.targetHandle.endsWith(value)) {
                 node.data.handles.inputs[key] = edge.target;
                 edge.targetHandle = node.id + "_" + value;
                 edge.target = node.id;
-
-              };
+                found = true;
+              }
+            });
+            if (found) {
+              break;
             }
-            );
           }
-        })
+
+        }
       }
       if (edge.source == nodeId) {
-         newNodes.forEach(node => {
+        let found = false;
+        for (const node of newNodes) {
           if (node.id.startsWith(nodeId)) {
             Object.entries(node.data.handles.inputs).forEach(([key, value]) => {
               if (edge.sourceHandle.endsWith(value)) {
                 node.data.handles.outputs[key] = edge.source;
                 edge.sourceHandle = node.id + "_" + value;
                 edge.source = node.id;
-
-              };
+                found = true;
+              }
+            });
+            if (found) {
+              break;
             }
-            );
           }
-        })
+        };
       }
     });
     oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));

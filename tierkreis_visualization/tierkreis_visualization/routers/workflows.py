@@ -193,6 +193,8 @@ def get_logs(workflow_id: UUID, node_location_str: str):
 
     if definition.logs_path is None:
         return PlainTextResponse("Node definition not found.")
+    if not definition.logs_path.exists():
+        return PlainTextResponse("No logs available.")
 
     messages = ""
 

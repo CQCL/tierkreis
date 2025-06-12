@@ -1,7 +1,8 @@
+import json
 from pydantic import BaseModel
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
-from tierkreis import Labels
+
 
 from tierkreis_visualization.data.eval import check_error
 from tierkreis_visualization.data.models import PyNode, PyEdge
@@ -29,9 +30,17 @@ def get_loop_node(
     else:
         last_status = "Started"
     nodes.append(PyNode(id=i, status=last_status, function_name=f"L{i}"))
-
+    port_name = next(
+        iter(storage.read_worker_call_args(node_location.L(0)).inputs.keys())
+    )
     edges = [
-        PyEdge(from_node=n, from_port=Labels.VALUE, to_node=n + 1, to_port=Labels.VALUE)
+        PyEdge(
+            from_node=n,
+            from_port=port_name,
+            to_node=n + 1,
+            to_port=port_name,
+            value=json.loads(storage.read_output(node_location.L(n), port_name)),
+        )
         for n in range(i)
     ]
 

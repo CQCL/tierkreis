@@ -52,6 +52,7 @@ const useStore = create<AppState>((set, get) => ({
     let edges = get().edges;
     let oldNodes = get().nodes;
     let nodesToRemove = [nodeId];
+    newNodes.sort((a, b) => a.id.localeCompare(b.id));
     edges.forEach((edge) => {
       if (edge.target == nodeId) {
         if (edge.label === "Graph Body") {//how can we tell body 
@@ -59,7 +60,7 @@ const useStore = create<AppState>((set, get) => ({
         }
         // find the correct node which has an output handle of the form id:\dport_name
 
-        newNodes.sort((a, b) => a.id.localeCompare(b.id));
+       
         let found = false;
         for (const node of newNodes) {
           if (node.id.startsWith(nodeId)) {
@@ -80,7 +81,7 @@ const useStore = create<AppState>((set, get) => ({
       }
       if (edge.source == nodeId) {
         let found = false;
-        for (const node of newNodes) {
+        for (const node of newNodes.reverse()) {
           if (node.id.startsWith(nodeId)) {
             Object.entries(node.data.handles.inputs).forEach(([key, value]) => {
               if (edge.sourceHandle.endsWith(value)) {

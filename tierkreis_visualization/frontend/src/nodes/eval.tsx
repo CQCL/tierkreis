@@ -37,7 +37,7 @@ export function EvalNode({
     <NodeStatusIndicator status={data.status}>
       <Card className="w-[350px]">
         <CardHeader>
-          <CardTitle>Eval</CardTitle>
+          <CardTitle>{data.title}</CardTitle>
           <CardDescription>Name: {data.name} </CardDescription>
         </CardHeader>
 

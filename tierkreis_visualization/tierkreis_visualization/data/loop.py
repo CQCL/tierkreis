@@ -21,7 +21,15 @@ def get_loop_node(
         i += 1
     new_location = node_location.L(i)
 
-    nodes = [PyNode(id=n, status="Finished", function_name=f"L{n}") for n in range(i)]
+    nodes = [
+        PyNode(
+            id=n,
+            status="Finished",
+            function_name=f"L{n}",
+            node_location=node_location.L(n),
+        )
+        for n in range(i)
+    ]
 
     if check_error(node_location, errored_nodes):
         last_status = "Error"
@@ -29,7 +37,11 @@ def get_loop_node(
         last_status = "Finished"
     else:
         last_status = "Started"
-    nodes.append(PyNode(id=i, status=last_status, function_name=f"L{i}"))
+    nodes.append(
+        PyNode(
+            id=i, status=last_status, function_name=f"L{i}", node_location=new_location
+        )
+    )
     port_name = next(
         iter(storage.read_worker_call_args(node_location.L(0)).inputs.keys())
     )

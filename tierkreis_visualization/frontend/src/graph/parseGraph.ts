@@ -2,10 +2,12 @@ import dagre from "@dagrejs/dagre";
 import { AppNode, PyNode } from "@/nodes/types";
 import { PyEdge } from "@/edges/types";
 import { Edge } from "@xyflow/react";
-import { URL } from "@/data/constants";
 
 
 function nodeType(function_name: string) {
+    if (function_name.match(/^L\d$/)) {
+        return "eval-node";
+    }
     switch (function_name) {
         case 'input':
         case 'output':
@@ -20,11 +22,14 @@ function nodeType(function_name: string) {
         case 'map':
             return 'map-node';
         default:
-            return 'default-node'
+            return 'default-node';
     }
 
 }
 function getTitle(function_name: string) {
+    if (function_name.match(/^L\d$/)) {
+        return "Loop Iteration";
+    }
     switch (function_name) {
         case 'eifelse':
         case 'ifelse':

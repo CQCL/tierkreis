@@ -25,6 +25,6 @@ export type AppState = {
     appendEdges: (edge: Edge[]) => void;
     setWorkflowId: (workflowId: string) => void;
     getWorkflowId: () => string;
-    replaceNode: (nodeId: string) => void;
+    replaceNode: (nodeId: string, oldNodes: AppNode[]) => void;
     recalculateNodePositions: () => void;
 };

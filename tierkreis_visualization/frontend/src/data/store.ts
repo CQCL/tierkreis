@@ -59,8 +59,6 @@ const useStore = create<AppState>((set, get) => ({
           nodesToRemove.push(edge.source);
         }
         // find the correct node which has an output handle of the form id:\dport_name
-
-       
         let found = false;
         for (const node of newNodes) {
           if (node.id.startsWith(nodeId)) {
@@ -102,6 +100,36 @@ const useStore = create<AppState>((set, get) => ({
     set({
       nodes: [...newNodes, ...oldNodes],
       edges: edges,
+    });
+  },
+  replaceMap: (nodeId: string, newNodes: AppNode[]) => {
+    let edges = get().edges;
+    let oldNodes = get().nodes;
+    let nodesToRemove = [nodeId];
+    let edgesToRemove = [];
+    let newEdges = [];
+    edges.forEach((edge) => {
+      if (edge.target == nodeId) {
+        newNodes.forEach((node) => {
+          node.data.handles.inputs[edge.targetHandle.replace(`${nodeId}_`, "")] = edge.label;
+          let newEdge = { ...edge, target: node.id, targetHandle: node.id + "_" + edge.targetHandle.replace(`${nodeId}_`, ""), id: edge.id.replace(`${nodeId}`, `${node.id}`) };
+          newEdges.push(newEdge);
+        });
+      }
+      if (edge.source == nodeId) {
+        newNodes.forEach((node) => {
+          node.data.handles.outputs[edge.sourceHandle.replace(`${nodeId}_`, "")] = edge.label;
+          let newEdge = { ...edge, source: node.id, sourceHandle: node.id + "_" + edge.sourceHandle.replace(`${nodeId}_`, ""), id: edge.id.replace(`${nodeId}`, `${node.id}`) };
+          newEdges.push(newEdge);
+        });
+      }
+
+    });
+    oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
+    edges = edges.filter((edge) => !edgesToRemove.includes(edge.id));
+    set({
+      nodes: [...newNodes, ...oldNodes],
+      edges: [...edges, ...newEdges],
     });
   },
   recalculateNodePositions: () => {

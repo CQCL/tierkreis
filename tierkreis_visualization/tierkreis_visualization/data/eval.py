@@ -101,7 +101,10 @@ def get_eval_node(
         pynodes.append(pynode)
 
         for p0, (idx, p1) in in_edges(node).items():
-            value = json.loads(storage.read_output(node_location.N(idx), p1))
+            value = None
+            if p1 in storage.read_output_ports(node_location.N(idx)):
+                value = json.loads(storage.read_output(node_location.N(idx), p1))
+
             py_edge = PyEdge(
                 from_node=idx, from_port=p1, to_node=i, to_port=p0, value=value
             )

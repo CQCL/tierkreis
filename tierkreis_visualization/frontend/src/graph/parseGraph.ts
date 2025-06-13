@@ -5,7 +5,7 @@ import { Edge } from "@xyflow/react";
 
 
 function nodeType(function_name: string) {
-    if (function_name.match(/^L\d$/)) {
+    if (function_name.match(/^L?\d+$/)) {
         return "eval-node";
     }
     switch (function_name) {
@@ -16,7 +16,6 @@ function nodeType(function_name: string) {
         case 'eifelse':
             return 'default-node';
         case 'eval':
-            return 'eval-node';
         case 'loop':
             return 'eval-node';
         case 'map':
@@ -27,8 +26,11 @@ function nodeType(function_name: string) {
 
 }
 function getTitle(function_name: string) {
-    if (function_name.match(/^L\d$/)) {
+    if (function_name.match(/^L\d+$/)) {
         return "Loop Iteration";
+    }
+    if (function_name.match(/^\d+$/)) {
+        return "Map Value";
     }
     switch (function_name) {
         case 'eifelse':
@@ -91,15 +93,12 @@ export function parseEdges(edges: [PyEdge], parentId?: string) {
         sourceHandle: prefix + edge.from_node + "_" + edge.from_port,
         targetHandle: prefix + edge.to_node + "_" + edge.to_port,
         label: edge.to_port == "body" ? "Graph Body": edge.value?.toString(),
-        is_body: edge.to_port == "body",
     }));
 }
 
 export async function parseGraph(data: { nodes: [PyNode], edges: [PyEdge] }, workflowId: string, parentId?: string) {
-    console.log(data)
     const nodes = await parseNodes(data.nodes, data.edges, workflowId, parentId);
     const edges = parseEdges(data.edges, parentId);
-    console.log(edges); 
     const positions = calculateNodePositions(nodes, edges);
     // Update each node in nodes with a new position calculated in positions
     const updatedNodes = nodes.map((node) => ({

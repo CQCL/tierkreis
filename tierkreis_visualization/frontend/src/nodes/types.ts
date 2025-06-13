@@ -26,5 +26,6 @@ export type AppState = {
     setWorkflowId: (workflowId: string) => void;
     getWorkflowId: () => string;
     replaceNode: (nodeId: string, oldNodes: AppNode[]) => void;
-    recalculateNodePositions: () => void;
+    replaceMap: (nodeId: string, oldNodes: AppNode[]) => void;
+    recalculateNodePositions: () => void; 
 };

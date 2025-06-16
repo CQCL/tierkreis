@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { type NodeProps } from '@xyflow/react';
+import { useState } from "react";
+import { type NodeProps } from "@xyflow/react";
 import {
   Card,
   CardContent,
@@ -7,7 +7,7 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
+} from "@/components/ui/card";
 import {
   Sheet,
   SheetContent,
@@ -15,32 +15,30 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-} from "@/components/ui/sheet"
-import { NodeStatusIndicator } from '@/components/StatusIndicator';
-import { Button } from '@/components/ui/button';
-import { type BackendNode } from './types';
-import { InputHandleArray, OutputHandleArray } from '@/components/handles';
-import { getLogs, getErrors } from '@/data/logs';
+} from "@/components/ui/sheet";
+import { NodeStatusIndicator } from "@/components/StatusIndicator";
+import { Button } from "@/components/ui/button";
+import { type BackendNode } from "./types";
+import { InputHandleArray, OutputHandleArray } from "@/components/handles";
+import { getLogs, getErrors } from "@/data/logs";
 
-export function DefaultNode({
-  data,
-}: NodeProps<BackendNode>) {
+export function DefaultNode({ data }: NodeProps<BackendNode>) {
   const [logs, setLogs] = useState("");
   const [errors, setErrors] = useState("");
   const updateLogs = (workflowId: string, node_location: string) => {
-    getLogs(workflowId, node_location)
-      .then(logs => setLogs(logs))
+    getLogs(workflowId, node_location).then((logs) => setLogs(logs));
   };
   const updateErrors = (workflowId: string, node_location: string) => {
-    getErrors(workflowId, node_location)
-      .then(errors => setErrors(errors))
-  }
+    getErrors(workflowId, node_location).then((errors) => setErrors(errors));
+  };
   return (
     <NodeStatusIndicator status={data.status}>
       <Card className="w-[350px]">
         <CardHeader>
           <CardTitle>{data.title}</CardTitle>
-          <CardDescription>Name: {data.title =="Function" ? data.name : data.node_location} </CardDescription>
+          <CardDescription>
+            Name: {data.title == "Function" ? data.name : data.node_location}{" "}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <InputHandleArray handles={data.handles.inputs} id={data.id} />
@@ -49,19 +47,29 @@ export function DefaultNode({
         <CardFooter className="flex justify-between">
           <Sheet>
             <SheetTrigger asChild>
-              <Button onClick={() => updateLogs(data.workflowId, data.node_location)}>Logs</Button>
+              <Button
+                onClick={() => updateLogs(data.workflowId, data.node_location)}
+              >
+                Logs
+              </Button>
             </SheetTrigger>
             <SheetContent className="max-h-screen overflow-y-scroll">
               <SheetHeader>
                 <SheetTitle>Logs</SheetTitle>
-                <SheetDescription>{logs}</SheetDescription>
               </SheetHeader>
+              <SheetDescription>{logs}</SheetDescription>
             </SheetContent>
           </Sheet>
           {data.status == "Error" && (
             <Sheet>
               <SheetTrigger asChild>
-                <Button onClick={() => updateErrors(data.workflowId, data.node_location)}>Errors</Button>
+                <Button
+                  onClick={() =>
+                    updateErrors(data.workflowId, data.node_location)
+                  }
+                >
+                  Errors
+                </Button>
               </SheetTrigger>
               <SheetContent className="max-h-screen overflow-y-scroll">
                 <SheetHeader>
@@ -72,7 +80,6 @@ export function DefaultNode({
             </Sheet>
           )}
         </CardFooter>
-
       </Card>
     </NodeStatusIndicator>
   );

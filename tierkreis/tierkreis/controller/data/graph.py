@@ -1,12 +1,13 @@
 from dataclasses import dataclass, field
 import json
 import logging
-from typing import Any, Callable, Generic, Iterator, Literal, assert_never, cast
+from typing import Any, Callable, Generic, Literal, assert_never, cast
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import (
     EmptyModel,
     Jsonable,
+    TKRGlob,
     TKRModel,
     TKRType,
     TKRRef,
@@ -263,25 +264,27 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
         return ref_from_tkr_type(Out, lambda _: idx)
 
-    def unfold_list[T: TKRType](self, ref: TKRRef[list[T]]) -> Iterator[TKRRef[T]]:
+    def unfold_list[T: TKRType](self, ref: TKRRef[list[T]]) -> TKRGlob[TKRRef[T]]:
         idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
-        yield TKRRef[T](idx, "*")
+        return TKRGlob(TKRRef[T](idx, "*"))
 
-    def fold_list[T: TKRType](self, refs: Iterator[TKRRef[T]]) -> TKRRef[list[T]]:
-        idx, port = next(refs)
+    def fold_list[T: TKRType](self, refs: TKRGlob[TKRRef[T]]) -> TKRRef[list[T]]:
+        idx, port = refs.t
         idx, _ = self.data.add(
             Func("builtins.fold_values", {"values_glob": (idx, port)})
         )("dummy")
         return TKRRef[list[T]](idx, "value")
 
     def map[A: TKRModel, B: TKRModel](
-        self, body: TypedGraphRef[A, B], aes: Iterator[A]
-    ) -> Iterator[B]:
-        a = next(aes)
+        self, body: TypedGraphRef[A, B], aes: TKRGlob[A]
+    ) -> TKRGlob[B]:
+        a = aes.t
         ins = {k: (v[0], v[1]) for k, v in annotations_from_tkrref(a).items()}
         g = body.graph_ref
         first_ref = cast(TKRRef[Any], next(x for x in ins.values() if x[1] == "*"))
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
 
         Out = body.outputs_type
-        yield ref_from_tkr_type(Out, lambda _: idx, name_fn=lambda s: s + "-*")
+        return TKRGlob(
+            ref_from_tkr_type(Out, lambda _: idx, name_fn=lambda s: s + "-*")
+        )

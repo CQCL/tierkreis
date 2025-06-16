@@ -82,7 +82,8 @@ def ref_from_tkr_type[T: TKRModel](
 
 
 class Function[Out](BaseModel):
-    namespace: str
+    @property
+    def namespace(self) -> str: ...
 
     @staticmethod
     def out(idx: NodeIndex) -> Out: ...

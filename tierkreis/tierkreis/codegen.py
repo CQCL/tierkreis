@@ -45,18 +45,21 @@ class {fn_name}Output(NamedTuple):
 """
 
 
-def format_function(namspace_name: str, fn: FunctionSpec) -> str:
+def format_function(namespace_name: str, fn: FunctionSpec) -> str:
     ins = [format_annotation(k, v) for k, v in fn.ins.items()]
     ins_str = "\n    ".join(ins)
     class_name = format_output(fn.name, fn.outs)
     return f"""{format_output_class(fn.name, fn.outs)}
 class {fn.name}(Function[{class_name}]):
-    namespace: str = "{namspace_name}"
     {ins_str}
 
     @staticmethod
     def out(idx: NodeIndex) -> {class_name}:
-        return {class_name}.from_nodeindex(idx)"""
+        return {class_name}.from_nodeindex(idx)
+
+    @property
+    def namespace(self) -> str:
+        return "{namespace_name}" """
 
 
 def format_namespace(namespace: Namespace) -> str:

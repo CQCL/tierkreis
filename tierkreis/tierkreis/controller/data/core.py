@@ -1,3 +1,4 @@
+from types import NoneType
 from typing import (
     Any,
     Callable,
@@ -30,6 +31,7 @@ TKType = (
     | float
     | str
     | bytes
+    | NoneType
     | Sequence["TKType"]
     | Mapping[str, "TKType"]
     | BaseModel

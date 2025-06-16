@@ -26,7 +26,7 @@ resource "kubernetes_manifest" "cluster_queue" {
           "coveredResources" = ["cpu", "memory", "pods"]
           "flavors" = [
             {
-              "name" = "default-flavor"
+              "name" = "cpu"
               "resources" = [
                 {
                   "name"         = "cpu"

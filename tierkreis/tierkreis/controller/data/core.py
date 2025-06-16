@@ -25,21 +25,21 @@ Jsonable = Any
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
-TKType = (
+TKRType = (
     bool
     | int
     | float
     | str
     | bytes
     | NoneType
-    | Sequence["TKType"]
-    | Mapping[str, "TKType"]
+    | Sequence["TKRType"]
+    | Mapping[str, "TKRType"]
     | BaseModel
     | DictConvertible
 )
 
 
-class TKRRef[T: TKType](NamedTuple):
+class TKRRef[T: TKRType](NamedTuple):
     node_index: NodeIndex
     port: PortID
 
@@ -51,7 +51,7 @@ class TKRRef[T: TKType](NamedTuple):
         return {"value": self}
 
 
-TKRModel = tuple[TKRRef[TKType], ...] | TKRRef[TKType]
+TKRModel = tuple[TKRRef[TKRType], ...] | TKRRef[TKRType]
 
 
 class EmptyModel(NamedTuple): ...

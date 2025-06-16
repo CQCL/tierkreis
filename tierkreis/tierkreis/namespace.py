@@ -4,7 +4,7 @@ from logging import getLogger
 from types import NoneType
 from typing import Any, get_args
 from pydantic import BaseModel
-from tierkreis.controller.data.core import DictConvertible, PortID, TKType
+from tierkreis.controller.data.core import DictConvertible, PortID, TKRType
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -18,14 +18,14 @@ class TierkreisWorkerError(TierkreisError):
 class FunctionSpec:
     name: str
     namespace: str
-    ins: dict[PortID, type[TKType] | str]
-    outs: dict[PortID, type[TKType] | str]
+    ins: dict[PortID, type[TKRType] | str]
+    outs: dict[PortID, type[TKRType] | str]
 
-    def _parse_annotation(self, annotation: type | None) -> type[TKType] | str:
+    def _parse_annotation(self, annotation: type | None) -> type[TKRType] | str:
         if annotation is None:
             return NoneType
 
-        if annotation in get_args(TKType):
+        if annotation in get_args(TKRType):
             return annotation
 
         if inspect.isclass(annotation):

@@ -45,7 +45,7 @@ class TKRRef[T: TKType](NamedTuple):
     def from_nodeindex(idx: NodeIndex, port: PortID = "value") -> "TKRRef[T]":
         return TKRRef[T](idx, port)
 
-    def _todict(self) -> dict[str, Any]:
+    def _to_dict(self) -> dict[str, Any]:
         return {"value": self}
 
 
@@ -56,8 +56,8 @@ class EmptyModel(NamedTuple): ...
 
 
 def annotations_from_tkrref(ref: TKRModel) -> dict[str, Any]:
-    if hasattr(ref, "_todict"):
-        return ref._todict()  # type: ignore
+    if hasattr(ref, "_to_dict"):
+        return ref._to_dict()  # type: ignore
 
     if hasattr(ref, "_asdict"):
         return ref._asdict()  # type: ignore

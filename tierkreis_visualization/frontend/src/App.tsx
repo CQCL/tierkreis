@@ -1,5 +1,5 @@
-import { useShallow } from 'zustand/react/shallow';
-import { SidebarTrigger } from "@/components/ui/sidebar"
+import { useShallow } from "zustand/react/shallow";
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -7,10 +7,11 @@ import {
   Controls,
   MiniMap,
   ControlButton,
-} from '@xyflow/react';
-import Layout from '@/components/layout';
+} from "@xyflow/react";
+import { RedoDot, UndoDot } from "lucide-react";
+import Layout from "@/components/layout";
 
-import useStore from './data/store';
+import useStore from "@/data/store";
 
 const selector = (state) => ({
   nodes: state.nodes,
@@ -20,17 +21,16 @@ const selector = (state) => ({
   onConnect: state.onConnect,
 });
 
+import "@xyflow/react/dist/style.css";
 
-import '@xyflow/react/dist/style.css';
-
-import { nodeTypes } from './nodes';
-import { edgeTypes } from './edges';
+import { nodeTypes } from "./nodes";
+import { edgeTypes } from "./edges";
 
 export default function App() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useStore(
-    useShallow(selector),
+    useShallow(selector)
   );
-
+  const { undo, redo } = useStore.temporal.getState();
   return (
     <Layout>
       <ReactFlowProvider>
@@ -46,9 +46,13 @@ export default function App() {
         >
           <Background />
           <MiniMap />
-          <Controls>
-            <ControlButton>
-              <SidebarTrigger/>
+          <Controls showZoom={false} showInteractive={false}>
+            <SidebarTrigger style={{fill: "none"}}/>
+            <ControlButton onClick={() => undo()}>
+              <UndoDot style={{fill: "none"}}/>
+            </ControlButton>
+            <ControlButton onClick={() => redo()}>
+              <RedoDot style={{fill: "none"}}/>
             </ControlButton>
           </Controls>
         </ReactFlow>

@@ -9,45 +9,46 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from "@/components/ui/sidebar"
-
+} from "@/components/ui/sidebar";
 
 import useStore from "@/data/store";
-import { URL } from "@/data/constants"
+import { URL } from "@/data/constants";
 import { parseGraph, parseNodes, parseEdges } from "@/graph/parseGraph";
 
-
 export function WorkflowSidebar() {
-  const [items, setItems] = useState([])
+  const [items, setItems] = useState([]);
   useEffect(() => {
     function getWorkflows(url: string) {
-      fetch(`${url}/all`, { method: "GET", headers: { "Content-Type": "application/json" } })
-        .then(response => response.json())
-        .then(data => data.map((workflow) => {
-          return {
-            id: workflow.id,
-            name: workflow.name,
-            url: `${url}/${workflow.id}/nodes/-`,
-          };
-        }))
-        .then(items => setItems(items));
+      fetch(`${url}/all`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then((response) => response.json())
+        .then((data) =>
+          data.map((workflow) => {
+            return {
+              id: workflow.id,
+              name: workflow.name,
+              url: `${url}/${workflow.id}/nodes/-`,
+            };
+          })
+        )
+        .then((items) => setItems(items));
     }
-    getWorkflows(URL)
+    getWorkflows(URL);
   }, []);
-  const setEdges = useStore((state) => state.setEdges);
-  const setNodes = useStore((state) => state.setNodes);
-  const setWorkflowId = useStore((state) => state.setWorkflowId);
-  const getWorkflowId = useStore((state) => state.getWorkflowId);
+  const { setEdges, setNodes, setWorkflowId, getWorkflowId } = useStore();
   const updateNodes = async (workflowId: string) => {
     setWorkflowId(workflowId);
     const url = `${URL}/${workflowId}/nodes/-`;
-    fetch(url, { method: 'GET', headers: { 'Accept': 'application/json' } })
-      .then(response => response.json())
-      .then(data => parseGraph(data, workflowId)).then(graph => {
+    fetch(url, { method: "GET", headers: { Accept: "application/json" } })
+      .then((response) => response.json())
+      .then((data) => parseGraph(data, workflowId))
+      .then((graph) => {
         setNodes(graph.nodes);
         setEdges(graph.edges);
-      })
-  }
+      });
+  };
   useEffect(() => {
     const workflowId = getWorkflowId();
     if (workflowId === "") {
@@ -87,5 +88,5 @@ export function WorkflowSidebar() {
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-  )
+  );
 }

@@ -83,4 +83,6 @@ def ref_from_tkr_type[T: TKRModel](
 
 class Function[Out](BaseModel):
     namespace: str
-    out: Callable[[NodeIndex], Out]
+
+    @staticmethod
+    def out(idx: NodeIndex) -> Out: ...

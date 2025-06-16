@@ -8,7 +8,7 @@ from tierkreis.controller.data.core import (
     EmptyModel,
     Jsonable,
     TKRModel,
-    TKType,
+    TKRType,
     TKRRef,
     ref_from_tkr_type,
     annotations_from_tkrref,
@@ -221,7 +221,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         builder.outputs_type = type(outputs)
         return builder
 
-    def const[T: TKType](self, value: T) -> TKRRef[T]:
+    def const[T: TKRType](self, value: T) -> TKRRef[T]:
         idx, port = self.data.add(Const(value))("value")
         return TKRRef[T](idx, port)
 
@@ -263,11 +263,11 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
         return ref_from_tkr_type(Out, lambda _: idx)
 
-    def unfold_list[T: TKType](self, ref: TKRRef[list[T]]) -> Iterator[TKRRef[T]]:
+    def unfold_list[T: TKRType](self, ref: TKRRef[list[T]]) -> Iterator[TKRRef[T]]:
         idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
         yield TKRRef[T](idx, "*")
 
-    def fold_list[T: TKType](self, refs: Iterator[TKRRef[T]]) -> TKRRef[list[T]]:
+    def fold_list[T: TKRType](self, refs: Iterator[TKRRef[T]]) -> TKRRef[list[T]]:
         idx, port = next(refs)
         idx, _ = self.data.add(
             Func("builtins.fold_values", {"values_glob": (idx, port)})

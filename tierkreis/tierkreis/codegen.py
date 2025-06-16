@@ -1,16 +1,16 @@
 from typing import Any
-from tierkreis.controller.data.core import PortID, TKType
+from tierkreis.controller.data.core import PortID, TKRType
 from tierkreis.namespace import FunctionSpec, Namespace
 
 
-def format_type(tk_type: type[TKType] | str) -> str:
+def format_type(tk_type: type[TKRType] | str) -> str:
     if isinstance(tk_type, str):
         return f'TKRRef[Literal["{tk_type}"]]'
     return f"TKRRef[{tk_type.__qualname__}]"
 
 
 def format_annotation(
-    port_id: PortID, tk_type: type[TKType] | str, is_constructor: bool = False
+    port_id: PortID, tk_type: type[TKRType] | str, is_constructor: bool = False
 ) -> str:
     sep = "=" if is_constructor else ":"
     constructor = f'(n, "{port_id}")' if is_constructor else ""

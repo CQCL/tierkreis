@@ -33,3 +33,4 @@ examples:
 
 generate:
 	{{uvrun}} tierkreis/tierkreis/controller/builtins/main.py --stubs-path tierkreis/tests/tkr_builtins.py
+	{{uvrun}} ruff format tierkreis/tests/tkr_builtins.py

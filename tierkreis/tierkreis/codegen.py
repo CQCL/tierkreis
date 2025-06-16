@@ -54,7 +54,9 @@ class {fn.name}(Function[{class_name}]):
     namespace: str = "{namspace_name}"
     {ins_str}
 
-    out: Callable[[NodeIndex], {class_name}] = {class_name}.from_nodeindex"""
+    @staticmethod
+    def out(idx: NodeIndex) -> {class_name}:
+        return {class_name}.from_nodeindex(idx)"""
 
 
 def format_namespace(namespace: Namespace) -> str:
@@ -63,7 +65,7 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namspace. Please do not edit."""
 
-from typing import Callable, Literal, NamedTuple
+from typing import Literal, NamedTuple
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 {functions_str}

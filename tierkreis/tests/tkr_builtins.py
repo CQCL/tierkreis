@@ -1,6 +1,6 @@
 """Code generated from builtins namspace. Please do not edit."""
 
-from typing import Callable, Literal, NamedTuple
+from typing import Literal, NamedTuple
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
@@ -9,17 +9,19 @@ class iadd(Function[TKRRef[int]]):
     a: TKRRef[int]
     b: TKRRef[int]
 
-    out: Callable[[NodeIndex], TKRRef[int]] = TKRRef[int].from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[int]:
+        return TKRRef[int].from_nodeindex(idx)
 
 
 class ciaddOutput(NamedTuple):
-    a: TKRRef[int]
     value: TKRRef[Literal["CIAddOutInner"]]
+    a: TKRRef[int]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
         return ciaddOutput(
-            value=TKRRef[Literal["CIAddOutInner"]](n, "value"), a=TKRRef[int](n, "a")
+            a=TKRRef[int](n, "a"), value=TKRRef[Literal["CIAddOutInner"]](n, "value")
         )
 
 
@@ -28,7 +30,9 @@ class ciadd(Function[ciaddOutput]):
     a: TKRRef[int]
     b: TKRRef[int]
 
-    out: Callable[[NodeIndex], ciaddOutput] = ciaddOutput.from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> ciaddOutput:
+        return ciaddOutput.from_nodeindex(idx)
 
 
 class itimes(Function[TKRRef[int]]):
@@ -36,7 +40,9 @@ class itimes(Function[TKRRef[int]]):
     a: TKRRef[int]
     b: TKRRef[int]
 
-    out: Callable[[NodeIndex], TKRRef[int]] = TKRRef[int].from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[int]:
+        return TKRRef[int].from_nodeindex(idx)
 
 
 class igt(Function[TKRRef[bool]]):
@@ -44,7 +50,9 @@ class igt(Function[TKRRef[bool]]):
     a: TKRRef[int]
     b: TKRRef[int]
 
-    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[bool]:
+        return TKRRef[bool].from_nodeindex(idx)
 
 
 class impl_and(Function[TKRRef[bool]]):
@@ -52,7 +60,9 @@ class impl_and(Function[TKRRef[bool]]):
     a: TKRRef[bool]
     b: TKRRef[bool]
 
-    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[bool]:
+        return TKRRef[bool].from_nodeindex(idx)
 
 
 class str_eq(Function[TKRRef[bool]]):
@@ -60,7 +70,9 @@ class str_eq(Function[TKRRef[bool]]):
     a: TKRRef[str]
     b: TKRRef[str]
 
-    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[bool]:
+        return TKRRef[bool].from_nodeindex(idx)
 
 
 class str_neq(Function[TKRRef[bool]]):
@@ -68,7 +80,9 @@ class str_neq(Function[TKRRef[bool]]):
     a: TKRRef[str]
     b: TKRRef[str]
 
-    out: Callable[[NodeIndex], TKRRef[bool]] = TKRRef[bool].from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[bool]:
+        return TKRRef[bool].from_nodeindex(idx)
 
 
 class concat(Function[TKRRef[str]]):
@@ -76,4 +90,6 @@ class concat(Function[TKRRef[str]]):
     lhs: TKRRef[str]
     rhs: TKRRef[str]
 
-    out: Callable[[NodeIndex], TKRRef[str]] = TKRRef[str].from_nodeindex
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[str]:
+        return TKRRef[str].from_nodeindex(idx)

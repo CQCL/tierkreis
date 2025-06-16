@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from types import NoneType
 from typing import (
     Any,
@@ -52,6 +53,14 @@ class TKRRef[T: TKRType](NamedTuple):
 
 
 TKRModel = tuple[TKRRef[TKRType], ...] | TKRRef[TKRType]
+
+
+@dataclass
+class TKRGlob[T: TKRModel]:
+    t: T
+
+    def map[S: TKRModel](self, f: Callable[[T], S]) -> "TKRGlob[S]":
+        return TKRGlob(f(self.t))
 
 
 class EmptyModel(NamedTuple): ...

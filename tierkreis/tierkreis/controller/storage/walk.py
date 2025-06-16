@@ -138,7 +138,6 @@ def walk_loop(
         storage.mark_node_finished(loc)
         return WalkResult([], [])
 
-    # Include old inputs. The acc_port is the only one that can change.
     ins = {k: (-1, k) for k in loop.inputs.keys()}
     ins.update(loop_outputs)
     node_run_data = NodeRunData(
@@ -159,15 +158,17 @@ def walk_map(
 
     map_eles = storage.read_output_ports(parent.N(map.input_idx))
     unfinished = [p for p in map_eles if not storage.is_node_finished(loc.M(p))]
-    message = storage.read_output(loc.N(-1), BODY_PORT)
+    message = storage.read_output(loc.M(map_eles[0]).N(-1), BODY_PORT)
     g = GraphData(**json.loads(message))
     [result.extend(walk_node(storage, loc.M(p), g.output_idx(), g)) for p in unfinished]
 
     if len(unfinished) > 0:
         return result
 
+    map_outputs = g.nodes[g.output_idx()].inputs
     for j in map_eles:
-        storage.link_outputs(loc, j, loc.M(j), map.out_port)
+        for output in map_outputs.keys():
+            storage.link_outputs(loc, f"{output}-{j}", loc.M(j), output)
 
     storage.mark_node_finished(loc)
     return result

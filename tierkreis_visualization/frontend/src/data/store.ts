@@ -1,13 +1,42 @@
+import { addEdge, applyEdgeChanges, applyNodeChanges } from "@xyflow/react";
+import { temporal, ZundoOptions } from "zundo";
 import { create } from "zustand";
-import { temporal } from "zundo";
-import { addEdge, applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 
-import { initialNodes } from "@/nodes/index";
 import { initialEdges } from "@/edges/index";
+import { calculateNodePositions } from "@/graph/parseGraph";
+import { initialNodes } from "@/nodes/index";
 import { AppNode, type AppState } from "@/nodes/types";
 import { Edge } from "@xyflow/react";
-import { calculateNodePositions } from "@/graph/parseGraph";
 
+type PartialState = Pick<AppState, "nodes" | "edges">;
+// For type annotation I pulled this out
+const options: ZundoOptions<AppState, PartialState> = {
+  partialize: (state: AppState): PartialState => ({
+    nodes: state.nodes,
+    edges: state.edges,
+  }),
+  equality: (pastState: PartialState, currentState: PartialState) => {
+    if (
+      currentState.nodes.length !== pastState.nodes.length ||
+      currentState.edges.length !== pastState.edges.length
+    ) {
+      return false;
+    }
+    const pastNodeIds = new Set(pastState.nodes.map((node) => node.id));
+    const pastEdgeIds = new Set(pastState.edges.map((edge) => edge.id));
+    const allCurrentNodeIdsExistInPast = currentState.nodes.every((node) =>
+      pastNodeIds.has(node.id)
+    );
+    const allCurrentEdgeIdsExistInPast = currentState.edges.every((edge) =>
+      pastEdgeIds.has(edge.id)
+    );
+
+    if (allCurrentNodeIdsExistInPast && allCurrentEdgeIdsExistInPast) {
+      return true;
+    }
+    return false;
+  },
+};
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
 const useStore = create<AppState>()(
   temporal(
@@ -37,12 +66,8 @@ const useStore = create<AppState>()(
         set({ edges });
       },
 
-      //todo use getIncomers and getOutcomers
-      replaceEval: (
-        nodeId: string,
-        newNodes: AppNode[],
-        newEdges: Edge[],
-      ) => {
+      //todo use getIncomers and getOutcomers instead of all
+      replaceEval: (nodeId: string, newNodes: AppNode[], newEdges: Edge[]) => {
         const edges: Edge[] = JSON.parse(JSON.stringify(get().edges)); // is there a better way to do this?
         let oldNodes = get().nodes;
         const nodesToRemove = [nodeId];
@@ -50,23 +75,21 @@ const useStore = create<AppState>()(
         edges.forEach((edge) => {
           if (edge.target == nodeId) {
             if (edge.label === "Graph Body") {
-              //how can we tell body
+              //Only way to identify body is by explicitly setting the label?
               nodesToRemove.push(edge.source);
             }
             // find the correct node which has an output handle of the form id:\dport_name
             let found = false;
             for (const node of newNodes) {
               if (node.id.startsWith(nodeId)) {
-                Object.entries(node.data.handles.outputs).forEach(
-                  ([key, value]) => {
-                    if (edge.targetHandle.endsWith(value)) {
-                      node.data.handles.inputs[key] = edge.target;
-                      edge.targetHandle = node.id + "_" + value;
-                      edge.target = node.id;
-                      found = true;
-                    }
+                node.data.handles.outputs.forEach((value) => {
+                  if (edge.targetHandle?.endsWith(value)) {
+                    node.data.handles.inputs.push(value);
+                    edge.targetHandle = node.id + "_" + value;
+                    edge.target = node.id;
+                    found = true;
                   }
-                );
+                });
                 if (found) {
                   break;
                 }
@@ -77,16 +100,14 @@ const useStore = create<AppState>()(
             let found = false;
             for (const node of newNodes.reverse()) {
               if (node.id.startsWith(nodeId)) {
-                Object.entries(node.data.handles.inputs).forEach(
-                  ([key, value]) => {
-                    if (edge.sourceHandle?.endsWith(value)) {
-                      node.data.handles.outputs[key] = edge.source;
-                      edge.sourceHandle = node.id + "_" + value;
-                      edge.source = node.id;
-                      found = true;
-                    }
+                node.data.handles.inputs.forEach((value) => {
+                  if (edge.sourceHandle?.endsWith(value)) {
+                    node.data.handles.outputs.push(value);
+                    edge.sourceHandle = node.id + "_" + value;
+                    edge.source = node.id;
+                    found = true;
                   }
-                );
+                });
                 if (found) {
                   break;
                 }
@@ -101,22 +122,24 @@ const useStore = create<AppState>()(
         });
       },
       replaceMap: (nodeId: string, newNodes: AppNode[]) => {
-        let edges = JSON.parse(JSON.stringify(get().edges));
+        let edges: Edge[] = JSON.parse(JSON.stringify(get().edges));
         let oldNodes = get().nodes;
         const nodesToRemove = [nodeId];
         const edgesToRemove: string[] = [];
-        const newEdges = [];
+        const newEdges: Edge[] = [];
         edges.forEach((edge) => {
           if (edge.target == nodeId) {
             newNodes.forEach((node) => {
-              node.data.handles.inputs[
-                edge.targetHandle.replace(`${nodeId}_`, "")
-              ] = edge.label;
-              let newEdge = {
+              if (edge.targetHandle === "string") {
+                node.data.handles.inputs.push(
+                  edge.targetHandle.replace(`${nodeId}_`, "")
+                );
+              }
+              const newEdge = {
                 ...edge,
                 target: node.id,
                 targetHandle:
-                  node.id + "_" + edge.targetHandle.replace(`${nodeId}_`, ""),
+                  node.id + "_" + edge.targetHandle?.replace(`${nodeId}_`, ""),
                 id: edge.id.replace(`${nodeId}`, `${node.id}`),
               };
               newEdges.push(newEdge);
@@ -124,14 +147,16 @@ const useStore = create<AppState>()(
           }
           if (edge.source == nodeId) {
             newNodes.forEach((node) => {
-              node.data.handles.outputs[
-                edge.sourceHandle.replace(`${nodeId}_`, "")
-              ] = edge.label;
-              let newEdge = {
+              if (edge.sourceHandle === "string") {
+                node.data.handles.outputs.push(
+                  edge.sourceHandle.replace(`${nodeId}_`, "")
+                );
+              }
+              const newEdge = {
                 ...edge,
                 source: node.id,
                 sourceHandle:
-                  node.id + "_" + edge.sourceHandle.replace(`${nodeId}_`, ""),
+                  node.id + "_" + edge.sourceHandle?.replace(`${nodeId}_`, ""),
                 id: edge.id.replace(`${nodeId}`, `${node.id}`),
               };
               newEdges.push(newEdge);
@@ -149,38 +174,16 @@ const useStore = create<AppState>()(
         const data = calculateNodePositions(get().nodes, get().edges);
         const newNodes = get().nodes.map((node) => ({
           ...node,
-          position: data.find((position) => position.id === node.id),
+          position: data.find((position) => position.id === node.id) || {
+            id: "-",
+            x: 0,
+            y: 0,
+          },
         }));
         set({ nodes: newNodes });
       },
     }),
-    {
-      partialize: (state) => ({
-        nodes: state.nodes,
-        edges: state.edges,
-      }),
-      equality: (pastState: AppState, currentState: AppState) => {
-        if (
-          currentState.nodes.length !== pastState.nodes.length ||
-          currentState.edges.length !== pastState.edges.length
-        ) {
-          return false;
-        }
-        const pastNodeIds = new Set(pastState.nodes.map((node) => node.id));
-        const pastEdgeIds = new Set(pastState.edges.map((edge) => edge.id));
-        const allCurrentNodeIdsExistInPast = currentState.nodes.every((node) =>
-          pastNodeIds.has(node.id)
-        );
-        const allCurrentEdgeIdsExistInPast = currentState.edges.every((edge) =>
-          pastEdgeIds.has(edge.id)
-        );
-
-        if (allCurrentNodeIdsExistInPast && allCurrentEdgeIdsExistInPast) {
-          return true;
-        }
-        return false;
-      },
-    }
+    options
   )
 );
 

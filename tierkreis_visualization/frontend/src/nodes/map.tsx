@@ -1,5 +1,3 @@
-import { useShallow } from "zustand/react/shallow";
-import { type NodeProps } from "@xyflow/react";
 import {
   Card,
   CardContent,
@@ -8,16 +6,18 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { type NodeProps } from "@xyflow/react";
+import { useShallow } from "zustand/react/shallow";
 
-import { Button } from "@/components/ui/button";
+import { InputHandleArray, OutputHandleArray } from "@/components/handles";
 import { NodeStatusIndicator } from "@/components/StatusIndicator";
+import { Button } from "@/components/ui/button";
+import { URL } from "@/data/constants";
 import useStore from "@/data/store";
 import { parseNodes } from "@/graph/parseGraph";
-import { InputHandleArray, OutputHandleArray } from "@/components/handles";
-import { type BackendNode } from "./types";
-import { URL } from "@/data/constants";
+import { AppState, type BackendNode } from "@/nodes/types";
 
-const selector = (state) => ({
+const selector = (state: AppState) => ({
   replaceMap: state.replaceMap,
   recalculateNodePositions: state.recalculateNodePositions,
 });

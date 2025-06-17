@@ -1,11 +1,11 @@
-import React, { ReactNode } from "react";
 import clsx from "clsx";
- 
+import { ReactNode } from "react";
+
 export type NodeStatusIndicatorProps = {
-  status?: "Started" | "Finished" | "Error" | "Not Started";
+  status?: "Not started" | "Started" | "Error" | "Finished";
   children: ReactNode;
 };
- 
+
 export const LoadingIndicator = ({ children }: { children: ReactNode }) => {
   return (
     <>
@@ -36,7 +36,7 @@ export const LoadingIndicator = ({ children }: { children: ReactNode }) => {
     </>
   );
 };
- 
+
 const StatusBorder = ({
   children,
   className,
@@ -49,15 +49,15 @@ const StatusBorder = ({
       <div
         className={clsx(
           "absolute -left-[1px] -top-[1px] h-[calc(100%+2px)] w-[calc(100%+2px)] rounded-xl border-2",
-          className,
+          className
         )}
-        style={{ pointerEvents: 'none' }}
+        style={{ pointerEvents: "none" }}
       />
       {children}
     </>
   );
 };
- 
+
 export const NodeStatusIndicator = ({
   status,
   children,

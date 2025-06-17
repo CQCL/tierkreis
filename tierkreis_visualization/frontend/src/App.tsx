@@ -25,7 +25,6 @@ const selector = (state: AppState) => ({
   onConnect: state.onConnect,
 });
 
-
 export default function App() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useStore(
     useShallow(selector)
@@ -47,12 +46,12 @@ export default function App() {
           <Background />
           <MiniMap />
           <Controls showZoom={false} showInteractive={false}>
-            <SidebarTrigger style={{fill: "none"}}/>
+            <SidebarTrigger style={{ fill: "none" }} />
             <ControlButton onClick={() => undo()}>
-              <UndoDot style={{fill: "none"}}/>
+              <UndoDot style={{ fill: "none" }} />
             </ControlButton>
             <ControlButton onClick={() => redo()}>
-              <RedoDot style={{fill: "none"}}/>
+              <RedoDot style={{ fill: "none" }} />
             </ControlButton>
           </Controls>
         </ReactFlow>

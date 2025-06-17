@@ -1,16 +1,18 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App";
 import {
   createBrowserRouter,
   RouterProvider,
+  type LoaderFunction,
+  type Params,
 } from "react-router";
+import App from "./App";
 
 import "./index.css";
 
-function workflowId({ params }) {
-  return { params}
-}
+const workflowId: LoaderFunction = ({ params }: { params: Params }) => {
+  return { params };
+};
 
 const router = createBrowserRouter([
   {
@@ -20,8 +22,8 @@ const router = createBrowserRouter([
   {
     path: "/:workflowId",
     element: <App />,
-    loader: workflowId
-  }
+    loader: workflowId,
+  },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

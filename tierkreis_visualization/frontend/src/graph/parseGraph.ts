@@ -49,7 +49,7 @@ function getTitle(function_name: string) {
   }
 }
 
-function getHandlesFromEdges(id: number, edges: [PyEdge]) {
+function getHandlesFromEdges(id: number, edges: PyEdge[]) {
   const inputs: string[] = [];
   const outputs: string[] = [];
   edges.map((edge) => {
@@ -64,8 +64,8 @@ function getHandlesFromEdges(id: number, edges: [PyEdge]) {
 }
 
 export function parseNodes(
-  nodes: [PyNode],
-  edges: [PyEdge],
+  nodes: PyNode[],
+  edges: PyEdge[],
   workflowId: string,
   parentId?: string
 ): BackendNode[] {
@@ -110,15 +110,16 @@ export function parseGraph(
   // Update each node in nodes with a new position calculated in positions
   const updatedNodes = nodes.map((node) => ({
     ...node,
-    position: positions.find((position) => position.id === node.id) || {id: "-", x: 0, y:0},
+    position: positions.find((position) => position.id === node.id) || {
+      id: "-",
+      x: 0,
+      y: 0,
+    },
   }));
   return { nodes: updatedNodes, edges };
 }
 
-export const calculateNodePositions = (
-  nodes: AppNode[],
-  edges: Edge[]
-) => {
+export const calculateNodePositions = (nodes: AppNode[], edges: Edge[]) => {
   const nodeWidth = 350;
   const nodeHeight = 250;
   const dagreGraph = new dagre.graphlib.Graph();

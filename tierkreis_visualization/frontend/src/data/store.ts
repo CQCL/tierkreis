@@ -130,7 +130,7 @@ const useStore = create<AppState>()(
         edges.forEach((edge) => {
           if (edge.target == nodeId) {
             newNodes.forEach((node) => {
-              if (edge.targetHandle === "string") {
+              if (typeof edge.targetHandle === "string") {
                 node.data.handles.inputs.push(
                   edge.targetHandle.replace(`${nodeId}_`, "")
                 );
@@ -147,7 +147,7 @@ const useStore = create<AppState>()(
           }
           if (edge.source == nodeId) {
             newNodes.forEach((node) => {
-              if (edge.sourceHandle === "string") {
+              if (typeof edge.sourceHandle === "string") {
                 node.data.handles.outputs.push(
                   edge.sourceHandle.replace(`${nodeId}_`, "")
                 );

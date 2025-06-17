@@ -28,28 +28,23 @@ router = APIRouter(prefix="/workflows")
 async def websocket_endpoint(
     websocket: WebSocket, workflow_id: UUID, node_location_str: str
 ) -> None:
-    # TODO: Check if this reopens on change
     try:
         await websocket.accept()
         # Handle WebSocket connection.
         await handle_websocket(websocket, workflow_id, node_location_str)
     except WebSocketDisconnect:
         pass
-    await websocket.close()
 
 
 async def handle_websocket(
     websocket: WebSocket, workflow_id: UUID, node_location_str: str
 ) -> None:
-    # Parse the node location.
     node_location = parse_node_location(node_location_str)
-    node_path = CONFIG.tierkreis_path / str(workflow_id) / str(node_location)
+    # currently we are watching the entire workflow in the frontend
+    node_path = CONFIG.tierkreis_path / str(workflow_id)
     async for _changes in awatch(node_path, recursive=True):
-        try:
-            ctx = get_node_data(workflow_id, node_location)
-            await websocket.send_json(ctx)
-        except WebSocketDisconnect:
-            break
+        ctx = get_node_data(workflow_id, node_location)
+        await websocket.send_json(ctx)
 
 
 @router.get("/")

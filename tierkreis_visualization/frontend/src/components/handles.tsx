@@ -1,16 +1,16 @@
-
-import { Handle, Position } from '@xyflow/react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/components/ui/tooltip";
+import { Handle, Position } from "@xyflow/react";
 
+interface Props {
+  handles: string[];
+  id: string;
+}
 // I have no idea about the style, but it seems to be working now
-export const InputHandleArray = ({
-  handles,
-  id,
-}) => {
+export const InputHandleArray = ({ handles, id }: Props) => {
   return (
     <div
       style={{
@@ -24,7 +24,7 @@ export const InputHandleArray = ({
         width: "100%",
       }}
     >
-      {Object.entries(handles).map(([key, value]) => {
+      {handles.map((key) => {
         return (
           <div
             key={key}
@@ -36,12 +36,11 @@ export const InputHandleArray = ({
             }}
           >
             <>
-
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Handle
                     type="target"
-                    id={id+"_"+key.toString()}
+                    id={id + "_" + key.toString()}
                     position={Position.Top}
                     style={{
                       position: "initial",
@@ -53,10 +52,10 @@ export const InputHandleArray = ({
                     }}
                   />
                 </TooltipTrigger>
-                <TooltipContent><p>{id+"_"+key.toString()}</p>
+                <TooltipContent>
+                  <p>{id + "_" + key.toString()}</p>
                 </TooltipContent>
               </Tooltip>
-
             </>
           </div>
         );
@@ -65,10 +64,7 @@ export const InputHandleArray = ({
   );
 };
 
-export const OutputHandleArray = ({
-  handles,
-  id,
-}) => {
+export const OutputHandleArray = ({ handles, id }: Props) => {
   return (
     <div
       style={{
@@ -81,9 +77,8 @@ export const OutputHandleArray = ({
         left: 0,
         width: "100%",
       }}
-
     >
-      {Object.entries(handles).map(([key, value]) => {
+      {handles.map((key) => {
         return (
           <div
             key={key}
@@ -99,7 +94,7 @@ export const OutputHandleArray = ({
                 <TooltipTrigger asChild>
                   <Handle
                     type="source"
-                    id={id+"_"+key.toString()}
+                    id={id + "_" + key.toString()}
                     position={Position.Bottom}
                     style={{
                       position: "initial",
@@ -111,10 +106,10 @@ export const OutputHandleArray = ({
                     }}
                   />
                 </TooltipTrigger>
-                <TooltipContent><p>{id+"_"+key.toString()}</p>
+                <TooltipContent>
+                  <p>{id + "_" + key.toString()}</p>
                 </TooltipContent>
               </Tooltip>
-
             </>
           </div>
         );
@@ -122,4 +117,3 @@ export const OutputHandleArray = ({
     </div>
   );
 };
-

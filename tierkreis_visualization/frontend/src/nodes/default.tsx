@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { type NodeProps } from "@xyflow/react";
+import { InputHandleArray, OutputHandleArray } from "@/components/handles";
+import { NodeStatusIndicator } from "@/components/StatusIndicator";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -16,11 +17,10 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { NodeStatusIndicator } from "@/components/StatusIndicator";
-import { Button } from "@/components/ui/button";
+import { getErrors, getLogs } from "@/data/logs";
+import { type NodeProps } from "@xyflow/react";
+import { useState } from "react";
 import { type BackendNode } from "./types";
-import { InputHandleArray, OutputHandleArray } from "@/components/handles";
-import { getLogs, getErrors } from "@/data/logs";
 
 export function DefaultNode({ data }: NodeProps<BackendNode>) {
   const [logs, setLogs] = useState("");
@@ -57,7 +57,9 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               <SheetHeader>
                 <SheetTitle>Logs</SheetTitle>
               </SheetHeader>
-              <SheetDescription>{logs}</SheetDescription>
+              <SheetDescription>
+                <pre>{logs}</pre>
+              </SheetDescription>
             </SheetContent>
           </Sheet>
           {data.status == "Error" && (
@@ -74,7 +76,9 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               <SheetContent className="max-h-screen overflow-y-scroll">
                 <SheetHeader>
                   <SheetTitle>Errors</SheetTitle>
-                  <SheetDescription>{errors}</SheetDescription>
+                  <SheetDescription>
+                    <pre>{errors}</pre>
+                  </SheetDescription>
                 </SheetHeader>
               </SheetContent>
             </Sheet>

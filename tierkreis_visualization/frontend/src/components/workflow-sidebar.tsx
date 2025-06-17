@@ -12,12 +12,12 @@ import {
 } from "@/components/ui/sidebar";
 import { Link, useParams } from "react-router";
 
-import useStore from "@/data/store";
 import { URL } from "@/data/constants";
+import useStore from "@/data/store";
 import { parseGraph } from "@/graph/parseGraph";
 
 export function WorkflowSidebar() {
-  const [items, setItems] = useState([]);
+  const [items, setItems] = useState<{id: string, name:string}[]>([]);
   const { workflowId = "" } = useParams();
   useEffect(() => {
     function getWorkflows(url: string) {
@@ -27,15 +27,16 @@ export function WorkflowSidebar() {
       })
         .then((response) => response.json())
         .then((data) =>
-          data.map((workflow) => {
+          data.map((workflow: { id: string; name: string }) => {
             return {
               id: workflow.id,
               name: workflow.name,
-              url: `${url}/${workflow.id}/nodes/-`,
             };
           })
         )
-        .then((items) => {setItems(items)});
+        .then((items) => {
+          setItems(items);
+        });
     }
     getWorkflows(URL);
   }, []);
@@ -54,21 +55,20 @@ export function WorkflowSidebar() {
     if (workflowId === "") {
       return;
     }
-    
+
     //TODO: use websocket to update nodes and edges
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
       //TODO: update status only
-      parseGraph(JSON.parse(event.data), workflowId).then((graph) => {
+      const graph = parseGraph(JSON.parse(event.data), workflowId)
       setEdges(graph.edges);
       setNodes(graph.nodes);
-      });
-    };
+    }
     return () => {
       ws.close();
     };
   }, [setEdges, setNodes, workflowId]);
-  
+
   return (
     <Sidebar>
       <SidebarContent>
@@ -78,8 +78,14 @@ export function WorkflowSidebar() {
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton asChild isActive={workflowId === item.id} onClick={() => clear()}>
-                      <Link to={`/${item.id}`}><span>{item.name}</span></Link>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={workflowId === item.id}
+                    onClick={() => clear()}
+                  >
+                    <Link to={`/${item.id}`}>
+                      <span>{item.name}</span>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

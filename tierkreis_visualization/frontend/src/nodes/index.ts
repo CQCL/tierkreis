@@ -1,9 +1,9 @@
-import type { NodeTypes } from '@xyflow/react';
+import type { NodeTypes } from "@xyflow/react";
 
-import { DefaultNode } from './default';
-import { EvalNode } from './eval';
-import { MapNode } from './map';
-import { AppNode } from './types';
+import { DefaultNode } from "./default";
+import { EvalNode } from "./eval";
+import { MapNode } from "./map";
+import { AppNode } from "./types";
 
 export const initialNodes = [] as AppNode[];
 

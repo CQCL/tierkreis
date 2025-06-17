@@ -1543,8 +1543,12 @@ name = "tierkreis"
 version = "2.0.0"
 source = { editable = "tierkreis" }
 dependencies = [
-    { name = "kubernetes" },
     { name = "pydantic" },
+]
+
+[package.optional-dependencies]
+kubernetes = [
+    { name = "kubernetes" },
 ]
 
 [package.dev-dependencies]
@@ -1557,9 +1561,10 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "kubernetes", specifier = ">=33.1.0" },
+    { name = "kubernetes", marker = "extra == 'kubernetes'", specifier = ">=33.1.0" },
     { name = "pydantic", specifier = "~=2.5" },
 ]
+provides-extras = ["kubernetes"]
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]

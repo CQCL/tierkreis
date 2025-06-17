@@ -88,7 +88,7 @@ def start(
         def_path = storage.write_worker_call_args(node_location, name, ins, output_list)
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
 
-        if launcher_name == "builtins":
+        if not executor.disable_builtins and launcher_name == "builtins":
             run_builtin(def_path, storage.logs_path)
         else:
             executor.run(launcher_name, def_path)

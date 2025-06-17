@@ -1,6 +1,5 @@
 import logging
 from pathlib import Path
-from typing import Any
 from kubernetes import config, client  # type: ignore
 
 config.load_kube_config("~/.kube/config", "docker-desktop")  # type: ignore
@@ -12,26 +11,35 @@ logger = logging.getLogger(__name__)
 
 
 def generate_job_crd(job_name: str, image: str, worker_call_args_path: Path):
-    """
-    Generate an equivalent job CRD to sample-job.yaml
-    """
     metadata = client.V1ObjectMeta(
         generate_name=job_name, labels={"kueue.x-k8s.io/queue-name": "tierkreis-queue"}
     )
-
-    # Job container
+    pv_name = "tierkreis-pv-storage"
+    volume = client.V1Volume(
+        name=pv_name,
+        persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
+            claim_name="tierkreis-persistent-volume-claim"
+        ),
+    )
+    volume_mount = client.V1VolumeMount(
+        mount_path=str(Path.home() / ".tierkreis"), name=pv_name
+    )
     container = client.V1Container(
         image=image,
-        name="testjob",
-        args=[str(worker_call_args_path)],
-        # resources={"requests": {"cpu": 0.2, "memory": "200Mi"}},
+        name="tierkreis_job",
+        command=[
+            "python",
+            "/tierkreis/tierkreis/controller/builtins/main.py",
+            str(worker_call_args_path),
+        ],
         image_pull_policy="IfNotPresent",
+        volume_mounts=[volume_mount],
     )
-
-    # Job template
-    template: dict[str, Any] = {
-        "spec": {"containers": [container], "restartPolicy": "Never"}
-    }
+    template = client.V1PodTemplateSpec(
+        spec=client.V1PodSpec(
+            containers=[container], restart_policy="Never", volumes=[volume]
+        )
+    )
     return client.V1Job(
         api_version="batch/v1",
         kind="Job",
@@ -41,8 +49,7 @@ def generate_job_crd(job_name: str, image: str, worker_call_args_path: Path):
 
 
 class KueueExecutor:
-    def __init__(self, registry_path: Path, logs_path: Path) -> None:
-        self.launchers_path = registry_path
+    def __init__(self, logs_path: Path) -> None:
         self.logs_path = logs_path
         self.errors_path = logs_path
 
@@ -58,6 +65,6 @@ class KueueExecutor:
         logger.info("START %s %s", launcher_name, node_definition_path)
 
         batch_api = client.BatchV1Api()
-        crd = generate_job_crd("testjobname", "tkr_builtins:4", node_definition_path)
-
+        name = f"tkr_{launcher_name}"
+        crd = generate_job_crd(name, name, node_definition_path)
         batch_api.create_namespaced_job("tierkreis-kueue", crd)  # type: ignore

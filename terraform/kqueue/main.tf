@@ -30,15 +30,15 @@ resource "kubernetes_manifest" "cluster_queue" {
               "resources" = [
                 {
                   "name"         = "cpu"
-                  "nominalQuota" = 2
+                  "nominalQuota" = 20
                 },
                 {
                   "name"         = "memory"
-                  "nominalQuota" = "1Gi"
+                  "nominalQuota" = "10Gi"
                 },
                 {
                   "name"         = "pods"
-                  "nominalQuota" = 5
+                  "nominalQuota" = 20
                 },
               ]
             },

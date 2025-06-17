@@ -42,13 +42,8 @@ resource "kubernetes_persistent_volume_claim" "tierkreis_directory_claim" {
     namespace = "tierkreis-kueue"
   }
   spec {
-    storage_class_name = "hostpath"
-    access_modes       = ["ReadWriteMany"]
-    resources {
-      requests = {
-        "storage" = "1Gi"
-      }
-    }
+    access_modes = ["ReadWriteMany"]
+    resources { requests = { "storage" = "1Gi" } }
   }
 }
 

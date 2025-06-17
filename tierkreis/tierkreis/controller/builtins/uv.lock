@@ -92,7 +92,11 @@ dependencies = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = "~=2.5" }]
+requires-dist = [
+    { name = "kubernetes", marker = "extra == 'kubernetes'", specifier = ">=33.1.0" },
+    { name = "pydantic", specifier = "~=2.5" },
+]
+provides-extras = ["kubernetes"]
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]

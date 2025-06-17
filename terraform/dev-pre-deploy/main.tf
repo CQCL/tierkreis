@@ -33,18 +33,3 @@ resource "helm_release" "kueue" {
   namespace        = "kueue-system"
   create_namespace = true
 }
-
-resource "kubernetes_persistent_volume" "tierkreis_directory" {
-  metadata {
-    name   = "tierkreis-persistent-volume"
-    labels = { "type" = "local" }
-  }
-  spec {
-    storage_class_name = "hostpath"
-    access_modes       = ["ReadWriteMany"]
-    capacity           = { "storage" = "1G" }
-    persistent_volume_source {
-      host_path { path = pathexpand("~/.tierkreis") }
-    }
-  }
-}

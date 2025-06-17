@@ -2,11 +2,10 @@ import logging
 from pathlib import Path
 from kubernetes import config, client  # type: ignore
 
-config.load_kube_config("~/.kube/config", "docker-desktop")  # type: ignore
+config.load_config()  # type: ignore
+# config.load_kube_config("~/.kube/config", "docker-desktop")  # type: ignore
 crd_api = client.CustomObjectsApi()
 api_client = crd_api.api_client  # type: ignore
-
-
 logger = logging.getLogger(__name__)
 
 
@@ -17,16 +16,14 @@ def generate_job_crd(job_name: str, image: str, worker_call_args_path: Path):
     pv_name = "tierkreis-pv-storage"
     volume = client.V1Volume(
         name=pv_name,
-        persistent_volume_claim=client.V1PersistentVolumeClaimVolumeSource(
-            claim_name="tierkreis-persistent-volume-claim"
-        ),
+        host_path=client.V1HostPathVolumeSource(path=str(Path.home() / ".tierkreis")),
     )
     volume_mount = client.V1VolumeMount(
         mount_path=str(Path.home() / ".tierkreis"), name=pv_name
     )
     container = client.V1Container(
         image=image,
-        name="tierkreis_job",
+        name="tierkreis-job",
         command=[
             "python",
             "/tierkreis/tierkreis/controller/builtins/main.py",
@@ -34,6 +31,9 @@ def generate_job_crd(job_name: str, image: str, worker_call_args_path: Path):
         ],
         image_pull_policy="IfNotPresent",
         volume_mounts=[volume_mount],
+        resources=client.V1ResourceRequirements(
+            limits={"cpu": "0.2", "memory": "100M"}
+        ),
     )
     template = client.V1PodTemplateSpec(
         spec=client.V1PodSpec(
@@ -49,6 +49,8 @@ def generate_job_crd(job_name: str, image: str, worker_call_args_path: Path):
 
 
 class KueueExecutor:
+    disable_builtins: bool = True
+
     def __init__(self, logs_path: Path) -> None:
         self.logs_path = logs_path
         self.errors_path = logs_path
@@ -65,6 +67,7 @@ class KueueExecutor:
         logger.info("START %s %s", launcher_name, node_definition_path)
 
         batch_api = client.BatchV1Api()
-        name = f"tkr_{launcher_name}"
-        crd = generate_job_crd(name, name, node_definition_path)
+        crd = generate_job_crd(
+            f"tkr-{launcher_name}", f"tkr_{launcher_name}", node_definition_path
+        )
         batch_api.create_namespaced_job("tierkreis-kueue", crd)  # type: ignore

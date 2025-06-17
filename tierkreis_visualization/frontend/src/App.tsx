@@ -1,19 +1,23 @@
-import { useShallow } from "zustand/react/shallow";
-import { SidebarTrigger } from "@/components/ui/sidebar";
 import {
-  ReactFlow,
-  ReactFlowProvider,
   Background,
+  ControlButton,
   Controls,
   MiniMap,
-  ControlButton,
+  ReactFlow,
+  ReactFlowProvider,
 } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 import { RedoDot, UndoDot } from "lucide-react";
+import { useShallow } from "zustand/react/shallow";
+
 import Layout from "@/components/layout";
-
+import { SidebarTrigger } from "@/components/ui/sidebar";
 import useStore from "@/data/store";
+import { edgeTypes } from "@/edges";
+import { nodeTypes } from "@/nodes";
+import { AppState } from "@/nodes/types";
 
-const selector = (state) => ({
+const selector = (state: AppState) => ({
   nodes: state.nodes,
   edges: state.edges,
   onNodesChange: state.onNodesChange,
@@ -21,10 +25,6 @@ const selector = (state) => ({
   onConnect: state.onConnect,
 });
 
-import "@xyflow/react/dist/style.css";
-
-import { nodeTypes } from "./nodes";
-import { edgeTypes } from "./edges";
 
 export default function App() {
   const { nodes, edges, onNodesChange, onEdgesChange, onConnect } = useStore(

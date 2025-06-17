@@ -5,6 +5,7 @@ import { addEdge, applyNodeChanges, applyEdgeChanges } from "@xyflow/react";
 import { initialNodes } from "@/nodes/index";
 import { initialEdges } from "@/edges/index";
 import { AppNode, type AppState } from "@/nodes/types";
+import { Edge } from "@xyflow/react";
 import { calculateNodePositions } from "@/graph/parseGraph";
 
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
@@ -13,7 +14,6 @@ const useStore = create<AppState>()(
     (set, get) => ({
       nodes: initialNodes,
       edges: initialEdges,
-      workflowId: "",
       onNodesChange: (changes) => {
         set({
           nodes: applyNodeChanges(changes, get().nodes),
@@ -36,21 +36,16 @@ const useStore = create<AppState>()(
       setEdges: (edges) => {
         set({ edges });
       },
-      setWorkflowId: (workflowId) => {
-        set({ workflowId });
-      },
-      getWorkflowId: () => {
-        return get().workflowId;
-      },
+
       //todo use getIncomers and getOutcomers
       replaceEval: (
         nodeId: string,
         newNodes: AppNode[],
-        newEdges: AppEdge[]
+        newEdges: Edge[],
       ) => {
-        let edges = JSON.parse(JSON.stringify(get().edges)); // is there a better way to do this?
+        const edges: Edge[] = JSON.parse(JSON.stringify(get().edges)); // is there a better way to do this?
         let oldNodes = get().nodes;
-        let nodesToRemove = [nodeId];
+        const nodesToRemove = [nodeId];
         newNodes.sort((a, b) => a.id.localeCompare(b.id));
         edges.forEach((edge) => {
           if (edge.target == nodeId) {
@@ -84,7 +79,7 @@ const useStore = create<AppState>()(
               if (node.id.startsWith(nodeId)) {
                 Object.entries(node.data.handles.inputs).forEach(
                   ([key, value]) => {
-                    if (edge.sourceHandle.endsWith(value)) {
+                    if (edge.sourceHandle?.endsWith(value)) {
                       node.data.handles.outputs[key] = edge.source;
                       edge.sourceHandle = node.id + "_" + value;
                       edge.source = node.id;
@@ -108,9 +103,9 @@ const useStore = create<AppState>()(
       replaceMap: (nodeId: string, newNodes: AppNode[]) => {
         let edges = JSON.parse(JSON.stringify(get().edges));
         let oldNodes = get().nodes;
-        let nodesToRemove = [nodeId];
-        let edgesToRemove = [];
-        let newEdges = [];
+        const nodesToRemove = [nodeId];
+        const edgesToRemove: string[] = [];
+        const newEdges = [];
         edges.forEach((edge) => {
           if (edge.target == nodeId) {
             newNodes.forEach((node) => {
@@ -163,12 +158,8 @@ const useStore = create<AppState>()(
       partialize: (state) => ({
         nodes: state.nodes,
         edges: state.edges,
-        workflowId: state.workflowId,
       }),
       equality: (pastState: AppState, currentState: AppState) => {
-        if (pastState.workflowId !== currentState.workflowId) {
-          return false;
-        }
         if (
           currentState.nodes.length !== pastState.nodes.length ||
           currentState.edges.length !== pastState.edges.length

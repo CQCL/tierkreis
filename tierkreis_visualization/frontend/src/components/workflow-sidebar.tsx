@@ -10,13 +10,15 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { Link, useParams } from "react-router";
 
 import useStore from "@/data/store";
 import { URL } from "@/data/constants";
-import { parseGraph, parseNodes, parseEdges } from "@/graph/parseGraph";
+import { parseGraph } from "@/graph/parseGraph";
 
 export function WorkflowSidebar() {
   const [items, setItems] = useState([]);
+  const { workflowId = "" } = useParams();
   useEffect(() => {
     function getWorkflows(url: string) {
       fetch(`${url}/all`, {
@@ -33,13 +35,14 @@ export function WorkflowSidebar() {
             };
           })
         )
-        .then((items) => setItems(items));
+        .then((items) => {setItems(items)});
     }
     getWorkflows(URL);
   }, []);
-  const { setEdges, setNodes, setWorkflowId, getWorkflowId } = useStore();
-  const updateNodes = async (workflowId: string) => {
-    setWorkflowId(workflowId);
+  const { setEdges, setNodes } = useStore();
+  const { clear } = useStore.temporal.getState();
+
+  useEffect(() => {
     const url = `${URL}/${workflowId}/nodes/-`;
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
@@ -48,38 +51,35 @@ export function WorkflowSidebar() {
         setNodes(graph.nodes);
         setEdges(graph.edges);
       });
-  };
-  useEffect(() => {
-    const workflowId = getWorkflowId();
     if (workflowId === "") {
       return;
     }
-    const url = `${URL}/${workflowId}/nodes/-`;
+    
+    //TODO: use websocket to update nodes and edges
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
       //TODO: update status only
-      const data = JSON.parse(event.data);
-      setNodes(parseNodes(data.nodes, workflowId));
-      setEdges(parseEdges(data.edges));
+      parseGraph(JSON.parse(event.data), workflowId).then((graph) => {
+      setEdges(graph.edges);
+      setNodes(graph.nodes);
+      });
     };
     return () => {
       ws.close();
     };
-  }, [setWorkflowId]);
-
+  }, [setEdges, setNodes, workflowId]);
+  
   return (
     <Sidebar>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Workflows</SidebarGroupLabel>
+          <SidebarGroupLabel>Workflows </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {items.map((item) => (
                 <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton asChild>
-                    <a onClick={() => updateNodes(item.id)}>
-                      <span>{item.name}</span>
-                    </a>
+                  <SidebarMenuButton asChild isActive={workflowId === item.id} onClick={() => clear()}>
+                      <Link to={`/${item.id}`}><span>{item.name}</span></Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}

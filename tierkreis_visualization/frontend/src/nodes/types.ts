@@ -31,15 +31,12 @@ export type AppNode = BuiltInNode | BackendNode;
 export interface AppState {
   nodes: AppNode[];
   edges: Edge[];
-  workflowId: string;
   onNodesChange: OnNodesChange<AppNode>;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
   setNodes: (nodes: AppNode[]) => void;
   setEdges: (edges: Edge[]) => void;
-  setWorkflowId: (workflowId: string) => void;
-  getWorkflowId: () => string;
-  replaceEval: (nodeId: string, oldNodes: AppNode[]) => void;
+  replaceEval: (nodeId: string, oldNodes: AppNode[], newEdges: Edge[],) => void;
   replaceMap: (nodeId: string, oldNodes: AppNode[]) => void;
   recalculateNodePositions: () => void;
 }

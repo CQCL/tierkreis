@@ -35,6 +35,23 @@ resource "docker_image" "tkr_builtins" {
   }
 }
 
+
+resource "kubernetes_persistent_volume_claim" "tierkreis_directory_claim" {
+  metadata {
+    name      = "tierkreis-persistent-volume-claim"
+    namespace = "tierkreis-kueue"
+  }
+  spec {
+    storage_class_name = "hostpath"
+    access_modes       = ["ReadWriteMany"]
+    resources {
+      requests = {
+        "storage" = "1Gi"
+      }
+    }
+  }
+}
+
 module "kqueue" {
   source = "../kqueue"
 }

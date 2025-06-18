@@ -12,8 +12,10 @@ dev = [
     { include-group = "lint" },
     { include-group = "test" },
     { include-group = "docs" },
+    { include-group = "examples"}
 ]
 lint = [
+    "isort>=6.0.1",
     "ruff>=0.11.8",
     "pyright>=1.1.400",
 ]
@@ -24,3 +26,4 @@ test = [
     "pydantic>=2.9.2",
 ]
 docs = ["sphinx>=4.3", "sphinx-book-theme>=1.1.2"]
+examples = ["pyscf>=2.9.0"]

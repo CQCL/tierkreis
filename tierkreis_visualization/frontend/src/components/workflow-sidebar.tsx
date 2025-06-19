@@ -17,7 +17,7 @@ import useStore from "@/data/store";
 import { parseGraph } from "@/graph/parseGraph";
 
 export function WorkflowSidebar() {
-  const [items, setItems] = useState<{id: string, name:string}[]>([]);
+  const [items, setItems] = useState<{ id: string; name: string }[]>([]);
   const { workflowId = "" } = useParams();
   useEffect(() => {
     function getWorkflows(url: string) {
@@ -44,6 +44,9 @@ export function WorkflowSidebar() {
   const { clear } = useStore.temporal.getState();
 
   useEffect(() => {
+    if (workflowId === "") {
+      return;
+    }
     const url = `${URL}/${workflowId}/nodes/-`;
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
@@ -52,20 +55,17 @@ export function WorkflowSidebar() {
         setNodes(graph.nodes);
         setEdges(graph.edges);
       });
-    if (workflowId === "") {
-      return;
-    }
-
-    //TODO: use websocket to update nodes and edges
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
       //TODO: update status only
-      const graph = parseGraph(JSON.parse(event.data), workflowId)
+      const graph = parseGraph(JSON.parse(event.data), workflowId);
       setEdges(graph.edges);
       setNodes(graph.nodes);
-    }
+    };
     return () => {
-      ws.close();
+      if (ws.readyState == WebSocket.OPEN) {
+        ws.close();
+      }
     };
   }, [setEdges, setNodes, workflowId]);
 

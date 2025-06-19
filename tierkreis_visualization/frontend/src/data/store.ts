@@ -49,7 +49,6 @@ const useStore = create<AppState>()(
         });
       },
       onEdgesChange: (changes) => {
-        console.log("calling on edges change");
         set({
           edges: applyEdgeChanges(changes, get().edges),
         });
@@ -68,12 +67,14 @@ const useStore = create<AppState>()(
 
       replaceEval: (nodeId: string, newNodes: AppNode[], newEdges: Edge[]) => {
         // replaces an eval node with its nested subgraph
-
         const edges: Edge[] = JSON.parse(JSON.stringify(get().edges)); // is there a better way to do this?
         let oldNodes = get().nodes;
         const nodesToRemove = [nodeId];
         newNodes.sort(
-          (a, b) => // we only care about the last part of the id as number
+          (
+            a,
+            b // we only care about the last part of the id as number
+          ) =>
             Number(a.id.substring(a.id.lastIndexOf(":"), a.id.length)) -
             Number(b.id.substring(b.id.lastIndexOf(":"), b.id.length))
         );
@@ -103,6 +104,14 @@ const useStore = create<AppState>()(
                 }
               }
             }
+            if (!found && edge.label !== "Graph Body") {
+              // workaround for elements inside map, only works correctly if the unfolded value is mapped to the first input
+              const node = newNodes[0];
+              const value = edge.targetHandle?.split("_")[1] || "";
+              node.data.handles.inputs.push(value);
+              edge.targetHandle = node.id + "_" + value;
+              edge.target = node.id;
+            }
           }
           if (edge.source == nodeId) {
             let found = false;
@@ -121,6 +130,14 @@ const useStore = create<AppState>()(
                   break;
                 }
               }
+            }
+            if (!found && edge.label !== "Graph Body") {
+              // workaround for elements inside map, only works correctly if there is a single output
+              const node = newNodes[newNodes.length - 1];
+              const value = edge.sourceHandle?.split("_")[1] || "";
+              node.data.handles.outputs.push(value);
+              edge.sourceHandle = node.id + "_" + value;
+              edge.source = node.id;
             }
           }
         });

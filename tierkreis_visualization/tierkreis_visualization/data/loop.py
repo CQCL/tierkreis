@@ -42,18 +42,23 @@ def get_loop_node(
             id=i, status=last_status, function_name=f"L{i}", node_location=new_location
         )
     )
-    port_name = next(
-        iter(storage.read_worker_call_args(node_location.L(0)).inputs.keys())
-    )
-    edges = [
-        PyEdge(
-            from_node=n,
-            from_port=port_name,
-            to_node=n + 1,
-            to_port=port_name,
-            value=json.loads(storage.read_output(node_location.L(n), port_name)),
+    edges = []
+    for port_name in storage.read_worker_call_args(node_location.L(0)).inputs:
+        if port_name not in storage.read_output_ports(new_location):
+            print(port_name, node_location)
+            continue
+        edges.extend(
+            [
+                PyEdge(
+                    from_node=n,
+                    from_port=port_name,
+                    to_node=n + 1,
+                    to_port=port_name,
+                    value=json.loads(
+                        storage.read_output(node_location.L(n), port_name)
+                    ),
+                )
+                for n in range(i)
+            ]
         )
-        for n in range(i)
-    ]
-
     return LoopNodeData(nodes=nodes, edges=edges)

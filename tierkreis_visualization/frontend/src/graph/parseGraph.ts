@@ -69,6 +69,7 @@ export function parseNodes(
   workflowId: string,
   parentId?: string
 ): BackendNode[] {
+  // child nodes prepend their parents id eg. [0,1,2] => [0:0,0:1,0:2]
   const parsedNodes = nodes.map((node) => ({
     id: (parentId ? `${parentId}:` : "") + node.id.toString(),
     type: nodeType(node.function_name),
@@ -88,15 +89,28 @@ export function parseNodes(
 }
 
 export function parseEdges(edges: [PyEdge], parentId?: string): Edge[] {
+  const uniqueCount: Map<string, number> = new Map();
   const prefix = parentId ? `${parentId}:` : "";
-  return edges.map((edge) => ({
-    id: prefix + edge.from_node + "-" + prefix + edge.to_node,
-    source: prefix + edge.from_node.toString(),
-    target: prefix + edge.to_node.toString(),
-    sourceHandle: prefix + edge.from_node + "_" + edge.from_port,
-    targetHandle: prefix + edge.to_node + "_" + edge.to_port,
-    label: edge.to_port == "body" ? "Graph Body" : edge.value?.toString(),
-  }));
+  return edges.map((edge) => {
+    const id = prefix + edge.from_node + "-" + prefix + edge.to_node;
+    const count = uniqueCount.get(id) || 0;
+    uniqueCount.set(id, count + 1);
+    return {
+      id:
+        prefix +
+        edge.from_node +
+        "-" +
+        count.toString() +
+        "-" +
+        prefix +
+        edge.to_node,
+      source: prefix + edge.from_node.toString(),
+      target: prefix + edge.to_node.toString(),
+      sourceHandle: prefix + edge.from_node + "_" + edge.from_port,
+      targetHandle: prefix + edge.to_node + "_" + edge.to_port,
+      label: edge.to_port == "body" ? "Graph Body" : edge.value?.toString(),
+    };
+  });
 }
 
 export function parseGraph(

@@ -6,7 +6,7 @@ import { initialEdges } from "@/edges/index";
 import { calculateNodePositions } from "@/graph/parseGraph";
 import { initialNodes } from "@/nodes/index";
 import { AppNode, type AppState } from "@/nodes/types";
-import { Edge } from "@xyflow/react";
+import { Edge, getOutgoers } from "@xyflow/react";
 
 type PartialState = Pick<AppState, "nodes" | "edges">;
 // For type annotation I pulled this out
@@ -66,15 +66,23 @@ const useStore = create<AppState>()(
         set({ edges });
       },
 
-      //todo use getIncomers and getOutcomers instead of all
       replaceEval: (nodeId: string, newNodes: AppNode[], newEdges: Edge[]) => {
+        // replaces an eval node with its nested subgraph
+
         const edges: Edge[] = JSON.parse(JSON.stringify(get().edges)); // is there a better way to do this?
         let oldNodes = get().nodes;
         const nodesToRemove = [nodeId];
-        newNodes.sort((a, b) => a.id.localeCompare(b.id));
+        newNodes.sort(
+          (a, b) => // we only care about the last part of the id as number
+            Number(a.id.substring(a.id.lastIndexOf(":"), a.id.length)) -
+            Number(b.id.substring(b.id.lastIndexOf(":"), b.id.length))
+        );
         edges.forEach((edge) => {
           if (edge.target == nodeId) {
-            if (edge.label === "Graph Body") {
+            if (
+              edge.label === "Graph Body" &&
+              getOutgoers({ id: edge.source }, oldNodes, edges).length === 1
+            ) {
               //Only way to identify body is by explicitly setting the label?
               nodesToRemove.push(edge.source);
             }
@@ -98,7 +106,8 @@ const useStore = create<AppState>()(
           }
           if (edge.source == nodeId) {
             let found = false;
-            for (const node of newNodes.reverse()) {
+            for (let index = newNodes.length - 1; index >= 0; index--) {
+              const node = newNodes[index];
               if (node.id.startsWith(nodeId)) {
                 node.data.handles.inputs.forEach((value) => {
                   if (edge.sourceHandle?.endsWith(value)) {
@@ -122,6 +131,7 @@ const useStore = create<AppState>()(
         });
       },
       replaceMap: (nodeId: string, newNodes: AppNode[]) => {
+        // copy over all the inputs and outputs from the map node to its children
         let edges: Edge[] = JSON.parse(JSON.stringify(get().edges));
         let oldNodes = get().nodes;
         const nodesToRemove = [nodeId];

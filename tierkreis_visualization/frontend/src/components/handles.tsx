@@ -24,7 +24,7 @@ export const InputHandleArray = ({ handles, id }: Props) => {
         width: "100%",
       }}
     >
-      {handles.map((key) => {
+      {[... new Set(handles)].map((key) => {
         return (
           <div
             key={key}
@@ -78,7 +78,7 @@ export const OutputHandleArray = ({ handles, id }: Props) => {
         width: "100%",
       }}
     >
-      {handles.map((key) => {
+      {[... new Set(handles)].map((key) => {
         return (
           <div
             key={key}

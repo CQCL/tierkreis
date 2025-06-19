@@ -61,7 +61,7 @@ export function EvalNode({ data }: NodeProps<BackendNode>) {
               loadChildren(data.workflowId, data.node_location, data.id)
             }
           >
-            Show
+            Expand
           </Button>
         </CardFooter>
       </Card>

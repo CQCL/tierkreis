@@ -17,17 +17,14 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { getErrors, getLogs } from "@/data/logs";
+import { getErrors } from "@/data/logs";
 import { type NodeProps } from "@xyflow/react";
 import { useState } from "react";
 import { type BackendNode } from "./types";
+import { URL } from "@/data/constants";
 
 export function DefaultNode({ data }: NodeProps<BackendNode>) {
-  const [logs, setLogs] = useState("");
   const [errors, setErrors] = useState("");
-  const updateLogs = (workflowId: string, node_location: string) => {
-    getLogs(workflowId, node_location).then((logs) => setLogs(logs));
-  };
   const updateErrors = (workflowId: string, node_location: string) => {
     getErrors(workflowId, node_location).then((errors) => setErrors(errors));
   };
@@ -45,23 +42,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
           <OutputHandleArray handles={data.handles.outputs} id={data.id} />
         </CardContent>
         <CardFooter className="flex justify-between">
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button
-                onClick={() => updateLogs(data.workflowId, data.node_location)}
-              >
-                Logs
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="max-h-screen overflow-y-scroll">
-              <SheetHeader>
-                <SheetTitle>Logs</SheetTitle>
-              </SheetHeader>
-              <SheetDescription>
-                <pre>{logs}</pre>
-              </SheetDescription>
-            </SheetContent>
-          </Sheet>
+            <Button><a href={`${URL}/${data.workflowId}/nodes/${data.node_location}/logs`} target="_blank">Logs</a></Button>
           {data.status == "Error" && (
             <Sheet>
               <SheetTrigger asChild>

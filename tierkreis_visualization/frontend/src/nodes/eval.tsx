@@ -19,13 +19,10 @@ import { AppState, type BackendNode } from "./types";
 
 const selector = (state: AppState) => ({
   replaceEval: state.replaceEval,
-  recalculateNodePositions: state.recalculateNodePositions,
 });
 
 export function EvalNode({ data }: NodeProps<BackendNode>) {
-  const { replaceEval, recalculateNodePositions } = useStore(
-    useShallow(selector)
-  );
+  const { replaceEval } = useStore(useShallow(selector));
   const loadChildren = async (
     workflowId: string,
     node_location: string,
@@ -38,9 +35,6 @@ export function EvalNode({ data }: NodeProps<BackendNode>) {
         const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
         const edges = parseEdges(data.edges, parentId);
         replaceEval(parentId, nodes, edges);
-      })
-      .then(() => {
-        recalculateNodePositions();
       });
   };
   return (

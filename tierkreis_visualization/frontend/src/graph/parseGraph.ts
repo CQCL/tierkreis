@@ -1,7 +1,9 @@
 import { PyEdge } from "@/edges/types";
-import { AppNode, BackendNode, PyNode } from "@/nodes/types";
+import { AppNode, PyNode } from "@/nodes/types";
 import dagre from "@dagrejs/dagre";
 import { Edge } from "@xyflow/react";
+import { nodeHeight, nodeWidth } from "@/data/constants";
+import { CSSProperties } from "react";
 
 function nodeType(function_name: string) {
   if (function_name.match(/^L?\d+$/)) {
@@ -68,7 +70,7 @@ export function parseNodes(
   edges: PyEdge[],
   workflowId: string,
   parentId?: string
-): BackendNode[] {
+): AppNode[] {
   // child nodes prepend their parents id eg. [0,1,2] => [0:0,0:1,0:2]
   const parsedNodes = nodes.map((node) => ({
     id: (parentId ? `${parentId}:` : "") + node.id.toString(),
@@ -84,6 +86,7 @@ export function parseNodes(
       id: (parentId ? `${parentId}:` : "") + node.id.toString(),
       label: node.function_name,
     },
+    parentId: parentId ? `${parentId}` : undefined,
   }));
   return parsedNodes;
 }
@@ -133,16 +136,18 @@ export function parseGraph(
   return { nodes: updatedNodes, edges };
 }
 
-export const calculateNodePositions = (nodes: AppNode[], edges: Edge[]) => {
-  const nodeWidth = 350;
-  const nodeHeight = 250;
+export const calculateNodePositions = (
+  nodes: { id: string; style?: CSSProperties }[],
+  edges: Edge[],
+  padding: number = 0
+) => {
   const dagreGraph = new dagre.graphlib.Graph();
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({ rankdir: "TB", ranker: "longest-path" });
   nodes.forEach((node) => {
     dagreGraph.setNode(node.id, {
-      width: nodeWidth,
-      height: nodeHeight,
+      width: node.style?.width ? Number(node.style.width) : nodeWidth,
+      height: node.style?.height ? Number(node.style.height) : nodeHeight,
     });
   });
   edges.forEach((edge) => {
@@ -151,11 +156,11 @@ export const calculateNodePositions = (nodes: AppNode[], edges: Edge[]) => {
 
   dagre.layout(dagreGraph);
   return nodes.map((node) => {
-    const { x, y } = dagreGraph.node(node.id);
+    const { x, y, width, height } = dagreGraph.node(node.id);
     return {
       id: node.id,
-      x: x - nodeWidth / 2,
-      y: y - nodeHeight / 2,
+      x: x - width / 2 + padding,
+      y: y - height / 2 + padding,
     };
   });
 };

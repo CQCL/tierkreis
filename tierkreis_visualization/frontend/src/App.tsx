@@ -44,7 +44,6 @@ export default function App() {
           fitView
         >
           <Background />
-          <MiniMap />
           <Controls showZoom={false} showInteractive={false}>
             <SidebarTrigger style={{ fill: "none" }} />
             <ControlButton onClick={() => undo()}>

@@ -184,6 +184,8 @@ def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
 def get_logs(workflow_id: UUID, node_location_str: str):
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
+    if not storage.is_node_started(node_location):
+        return PlainTextResponse("Node not started yet.")
     definition = storage.read_worker_call_args(node_location)
 
     if definition.logs_path is None:

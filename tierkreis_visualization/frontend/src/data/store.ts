@@ -43,6 +43,7 @@ const useStore = create<AppState>()(
     (set, get) => ({
       nodes: initialNodes,
       edges: initialEdges,
+      info: { type: "Logs", content: "" },
       onNodesChange: (changes) => {
         set({
           nodes: applyNodeChanges(changes, get().nodes),
@@ -63,6 +64,12 @@ const useStore = create<AppState>()(
       },
       setEdges: (edges) => {
         set({ edges });
+      },
+      setInfo: (info) => {
+        set({ info });
+      },
+      getInfo: () => {
+        return get().info;
       },
 
       replaceEval: (nodeId: string, newNodes: AppNode[], newEdges: Edge[]) => {

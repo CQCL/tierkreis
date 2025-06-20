@@ -1,3 +1,4 @@
+import { HandleProps } from "@/components/types";
 import {
   Tooltip,
   TooltipContent,
@@ -5,12 +6,8 @@ import {
 } from "@/components/ui/tooltip";
 import { Handle, Position } from "@xyflow/react";
 
-interface Props {
-  handles: string[];
-  id: string;
-}
 // I have no idea about the style, but it seems to be working now
-export const InputHandleArray = ({ handles, id }: Props) => {
+export const InputHandleArray = ({ handles, id }: HandleProps) => {
   return (
     <div
       style={{
@@ -24,7 +21,7 @@ export const InputHandleArray = ({ handles, id }: Props) => {
         width: "100%",
       }}
     >
-      {[... new Set(handles)].map((key) => {
+      {[...new Set(handles)].map((key) => {
         return (
           <div
             key={key}
@@ -64,7 +61,7 @@ export const InputHandleArray = ({ handles, id }: Props) => {
   );
 };
 
-export const OutputHandleArray = ({ handles, id }: Props) => {
+export const OutputHandleArray = ({ handles, id }: HandleProps) => {
   return (
     <div
       style={{
@@ -78,7 +75,7 @@ export const OutputHandleArray = ({ handles, id }: Props) => {
         width: "100%",
       }}
     >
-      {[... new Set(handles)].map((key) => {
+      {[...new Set(handles)].map((key) => {
         return (
           <div
             key={key}

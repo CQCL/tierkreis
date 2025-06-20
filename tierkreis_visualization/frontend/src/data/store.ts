@@ -7,6 +7,53 @@ import { calculateNodePositions } from "@/graph/parseGraph";
 import { initialNodes } from "@/nodes/index";
 import { AppNode, type AppState } from "@/nodes/types";
 import { Edge, getOutgoers } from "@xyflow/react";
+import { nodeHeight, nodeWidth } from "@/data/constants";
+
+function createParentNode(
+  nodeId: string,
+  newNodes: AppNode[],
+  newEdges: Edge[],
+  oldNodes: AppNode[],
+  oldEdges: Edge[]
+) {
+  const padding = 20;
+  let data = calculateNodePositions(newNodes, newEdges, padding);
+  newNodes = newNodes.map((node) => ({
+    ...node,
+    position: data.find((position) => position.id === node.id) || {
+      id: "-",
+      x: 0,
+      y: 0,
+    },
+  }));
+  const dim = data.reduce(
+    (acc, node) => {
+      acc.width = Math.max(acc.width, node.x + nodeWidth);
+      acc.height = Math.max(acc.height, node.y + nodeHeight);
+      return acc;
+    },
+    { width: 0, height: 0 }
+  );
+  // add a new group node;
+  const groupNode = {
+    id: nodeId,
+    type: "group",
+    position: { x: 0, y: 0 },
+    style: { width: dim.width + 2 * padding, height: dim.height },
+    // get this from the size of the graph in newNodes, width is exact->padding
+    data: {},
+  };
+  data = calculateNodePositions([groupNode, ...oldNodes], oldEdges);
+  const tmpNodes = [groupNode, ...oldNodes].map((node) => ({
+    ...node,
+    position: data.find((position) => position.id === node.id) || {
+      id: "-",
+      x: 0,
+      y: 0,
+    },
+  }));
+  return [...tmpNodes, ...newNodes];
+}
 
 type PartialState = Pick<AppState, "nodes" | "edges">;
 // For type annotation I pulled this out
@@ -149,11 +196,23 @@ const useStore = create<AppState>()(
           }
         });
         oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
+        const tmpNodes = createParentNode(
+          nodeId,
+          newNodes,
+          newEdges,
+          oldNodes,
+          get().edges
+        );
+        const tmpEdges = edges.filter(
+          (edge) => edge.source != nodeId && edge.label != "Graph Body"
+        );
         set({
-          nodes: [...newNodes, ...oldNodes],
-          edges: [...edges, ...newEdges],
+          //@ts-expect-error the group node is not a BackendNode but that's not an issue
+          nodes: [...tmpNodes],
+          edges: [...tmpEdges, ...newEdges],
         });
       },
+
       replaceMap: (nodeId: string, newNodes: AppNode[]) => {
         // copy over all the inputs and outputs from the map node to its children
         let edges: Edge[] = JSON.parse(JSON.stringify(get().edges));
@@ -163,6 +222,7 @@ const useStore = create<AppState>()(
         const newEdges: Edge[] = [];
         edges.forEach((edge) => {
           if (edge.target == nodeId) {
+            edgesToRemove.push(edge.id);
             newNodes.forEach((node) => {
               if (typeof edge.targetHandle === "string") {
                 node.data.handles.inputs.push(
@@ -180,6 +240,7 @@ const useStore = create<AppState>()(
             });
           }
           if (edge.source == nodeId) {
+            edgesToRemove.push(edge.id);
             newNodes.forEach((node) => {
               if (typeof edge.sourceHandle === "string") {
                 node.data.handles.outputs.push(
@@ -198,9 +259,18 @@ const useStore = create<AppState>()(
           }
         });
         oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
+        const tmpNodes = createParentNode(
+          nodeId,
+          newNodes,
+          [],
+          oldNodes,
+          edges
+        );
         edges = edges.filter((edge) => !edgesToRemove.includes(edge.id));
+        // there are no edges between the newNodes
         set({
-          nodes: [...newNodes, ...oldNodes],
+          //@ts-expect-error see replaceEval-> group node
+          nodes: [...tmpNodes],
           edges: [...edges, ...newEdges],
         });
       },

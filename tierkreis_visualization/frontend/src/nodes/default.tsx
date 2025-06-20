@@ -30,7 +30,6 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
   };
   const updateLogs = (workflowId: string, node_location: string) => {
     getLogs(workflowId, node_location).then((logs) => {
-      console.log(logs);
       setInfo({ type: "Logs", content: logs });
     });
   };

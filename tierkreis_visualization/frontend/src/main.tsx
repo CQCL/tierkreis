@@ -24,6 +24,15 @@ const router = createBrowserRouter([
     element: <App />,
     loader: workflowId,
   },
+  {
+    path: "*/:workflowId",
+    element: <App />,
+    loader: workflowId,
+  },
+    {
+    path: "*",
+    element: <App />,
+  },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

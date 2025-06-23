@@ -241,6 +241,9 @@ const useStore = create<AppState>()(
         ]);
         set({ nodes: newNodes });
       },
+      clearOldEdges: () => {
+        set({ oldEdges: [] });
+      },
     }),
     options
   )

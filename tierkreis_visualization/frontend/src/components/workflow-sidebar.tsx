@@ -40,7 +40,7 @@ export function WorkflowSidebar() {
     }
     getWorkflows(URL);
   }, []);
-  const { setEdges, setNodes } = useStore();
+  const { setEdges, setNodes, clearOldEdges } = useStore();
   const { clear } = useStore.temporal.getState();
 
   useEffect(() => {
@@ -81,7 +81,10 @@ export function WorkflowSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={workflowId === item.id}
-                    onClick={() => clear()}
+                    onClick={() => {
+                      clearOldEdges();// not part of the state
+                      clear();
+                    }}
                   >
                     <Link to={`/${item.id}`}>
                       <span>{item.name}</span>

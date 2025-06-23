@@ -32,6 +32,7 @@ export interface AppState {
   nodes: AppNode[];
   edges: Edge[];
   info: InfoProps;
+  oldEdges: Edge[];
   onNodesChange: OnNodesChange<AppNode>;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;

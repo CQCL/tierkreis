@@ -8,52 +8,7 @@ import { initialNodes } from "@/nodes/index";
 import { AppNode, type AppState } from "@/nodes/types";
 import { Edge, getOutgoers } from "@xyflow/react";
 import { nodeHeight, nodeWidth } from "@/data/constants";
-
-function createParentNode(
-  nodeId: string,
-  newNodes: AppNode[],
-  newEdges: Edge[],
-  oldNodes: AppNode[],
-  oldEdges: Edge[]
-) {
-  const padding = 20;
-  let data = calculateNodePositions(newNodes, newEdges, padding);
-  newNodes = newNodes.map((node) => ({
-    ...node,
-    position: data.find((position) => position.id === node.id) || {
-      id: "-",
-      x: 0,
-      y: 0,
-    },
-  }));
-  const dim = data.reduce(
-    (acc, node) => {
-      acc.width = Math.max(acc.width, node.x + nodeWidth);
-      acc.height = Math.max(acc.height, node.y + nodeHeight);
-      return acc;
-    },
-    { width: 0, height: 0 }
-  );
-  // add a new group node;
-  const groupNode = {
-    id: nodeId,
-    type: "group",
-    position: { x: 0, y: 0 },
-    style: { width: dim.width + 2 * padding, height: dim.height },
-    // get this from the size of the graph in newNodes, width is exact->padding
-    data: {},
-  };
-  data = calculateNodePositions([groupNode, ...oldNodes], oldEdges);
-  const tmpNodes = [groupNode, ...oldNodes].map((node) => ({
-    ...node,
-    position: data.find((position) => position.id === node.id) || {
-      id: "-",
-      x: 0,
-      y: 0,
-    },
-  }));
-  return [...tmpNodes, ...newNodes];
-}
+import { CSSProperties } from "react";
 
 type PartialState = Pick<AppState, "nodes" | "edges">;
 // For type annotation I pulled this out
@@ -91,6 +46,7 @@ const useStore = create<AppState>()(
       nodes: initialNodes,
       edges: initialEdges,
       info: { type: "Logs", content: "" },
+      oldEdges: initialEdges,
       onNodesChange: (changes) => {
         set({
           nodes: applyNodeChanges(changes, get().nodes),
@@ -195,20 +151,22 @@ const useStore = create<AppState>()(
             }
           }
         });
+        const groupNode = {
+          id: nodeId,
+          type: "group",
+          position: { x: 0, y: 0 },
+          data: {},
+          parentId: oldNodes.find((node) => node.id === nodeId)?.parentId,
+        };
         oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
-        const tmpNodes = createParentNode(
-          nodeId,
-          newNodes,
-          newEdges,
-          oldNodes,
-          get().edges
-        );
         const tmpEdges = edges.filter(
-          (edge) => edge.source != nodeId && edge.label != "Graph Body"
+          (edge) => edge.target !== nodeId && edge.source !== nodeId
         );
+        // This is a memory leak, should only add ones we don't know about yet
+        get().oldEdges.push(...edges);
         set({
           //@ts-expect-error the group node is not a BackendNode but that's not an issue
-          nodes: [...tmpNodes],
+          nodes: [groupNode, ...oldNodes, ...newNodes],
           edges: [...tmpEdges, ...newEdges],
         });
       },
@@ -258,37 +216,114 @@ const useStore = create<AppState>()(
             });
           }
         });
+        const groupNode = {
+          id: nodeId,
+          type: "group",
+          position: { x: 0, y: 0 },
+          data: {},
+          parentId: oldNodes.find((node) => node.id === nodeId)?.parentId,
+        };
         oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
-        const tmpNodes = createParentNode(
-          nodeId,
-          newNodes,
-          [],
-          oldNodes,
-          edges
-        );
+
+        get().oldEdges.push(...edges);
         edges = edges.filter((edge) => !edgesToRemove.includes(edge.id));
         // there are no edges between the newNodes
         set({
           //@ts-expect-error see replaceEval-> group node
-          nodes: [...tmpNodes],
+          nodes: [groupNode, ...oldNodes, ...newNodes],
           edges: [...edges, ...newEdges],
         });
       },
       recalculateNodePositions: () => {
-        const data = calculateNodePositions(get().nodes, get().edges);
-        const newNodes = get().nodes.map((node) => ({
-          ...node,
-          position: data.find((position) => position.id === node.id) || {
-            id: "-",
-            x: 0,
-            y: 0,
-          },
-        }));
+        const newNodes = bottomUpLayout(get().nodes, [
+          ...get().edges,
+          ...get().oldEdges,
+        ]);
         set({ nodes: newNodes });
       },
     }),
     options
   )
 );
+
+interface ShallowNode {
+  id: string;
+  style?: CSSProperties;
+  position: { x: number; y: number };
+  parentId?: string;
+}
+
+function bottomUpLayout(nodes: AppNode[], edges: Edge[]) {
+  // sort nodes by levels i.e. number of : in their id
+  // calculate each level individually
+  const nodeLevels = new Map<number, ShallowNode[]>();
+  nodes.forEach((node) => {
+    const level = node.id.split(":").length - 1;
+    if (!nodeLevels.has(level)) {
+      nodeLevels.set(level, []);
+    }
+    nodeLevels.get(level)?.push({
+      id: node.id,
+      style: node.style,
+      position: node.position,
+      parentId: node.parentId,
+    });
+  });
+  const newNodes: AppNode[] = [];
+  let previousNodes: ShallowNode[] = [];
+  // construct graph from most nested level
+  const levelKeys = Array.from(nodeLevels.keys()).sort((a, b) => b - a);
+  for (const level of levelKeys) {
+    const padding = level == 0 ? 1 : 20;
+    const currentNodes = nodeLevels.get(level);
+    if (!currentNodes) continue;
+    const idsInLevel = new Set(currentNodes.map((nodeInfo) => nodeInfo.id));
+    const levelNodes = nodes.filter((node) => idsInLevel.has(node.id));
+    const levelEdges = edges.filter(
+      (edge) => idsInLevel.has(edge.source) && idsInLevel.has(edge.target)
+    );
+    resizeNodes(levelNodes, previousNodes, 20);
+    const data = calculateNodePositions(levelNodes, levelEdges, padding);
+    const tmpNodes = levelNodes.map((node) => ({
+      ...node,
+      position: data.find((position) => position.id === node.id) || {
+        id: "-",
+        x: 0,
+        y: 0,
+      },
+    }));
+    newNodes.push(...tmpNodes);
+    previousNodes = tmpNodes;
+  }
+  return newNodes.reverse();
+}
+
+function resizeNodes(
+  nodesToResize: ShallowNode[],
+  childNodes: ShallowNode[],
+  padding: number
+) {
+  // resizes all the nodes in nodesToResize to fit their children
+  if (!childNodes.length) return;
+  for (const node of nodesToResize) {
+    const children = childNodes.filter((child) => child.parentId === node.id);
+    if (!children.length) continue;
+    const dim = children.reduce(
+      (acc, node) => {
+        acc.width = Math.max(
+          acc.width,
+          node.position.x + (Number(node.style?.width) || nodeWidth)
+        );
+        acc.height = Math.max(
+          acc.height,
+          node.position.y + (Number(node.style?.height) || nodeHeight)
+        );
+        return acc;
+      },
+      { width: 0, height: 0 }
+    );
+    node.style = { width: dim.width + padding, height: dim.height + padding };
+  }
+}
 
 export default useStore;

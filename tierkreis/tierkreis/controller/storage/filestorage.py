@@ -34,17 +34,14 @@ class ControllerFileStorage:
 
     def _nodedef_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "nodedef"
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def _worker_call_args_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "definition"
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def _metadata_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "_metadata"
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def _outputs_dir(self, node_location: Loc) -> Path:
@@ -54,47 +51,46 @@ class ControllerFileStorage:
 
     def _output_path(self, node_location: Loc, port_name: PortID) -> Path:
         path = self._outputs_dir(node_location) / port_name
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def _done_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "_done"
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def _error_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "_error"
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def _error_logs_path(self, node_location: Loc) -> Path:
         path = self.workflow_dir / str(node_location) / "errors"
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
-    def clean_graph_files(self) -> None:
+    def _read(self, path: Path) -> bytes:
+        with open(path, "rb") as fh:
+            return fh.read()
+
+    def _write(self, path: Path, value: bytes) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with open(path, "wb+") as fh:
+            fh.write(value)
+
+    def _delete(self) -> None:
         uid = os.getuid()
         tmp_dir = Path(f"/tmp/{uid}/tierkreis/archive/{self.workflow_id}/{time_ns()}")
         tmp_dir.mkdir(parents=True)
         if self.workflow_dir.exists():
             shutil.move(self.workflow_dir, tmp_dir)
 
-    def add_input(self, port_name: PortID, value: bytes) -> Loc:
-        input_loc = Loc().N(-1)
-        path = self._output_path(input_loc, port_name)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb+") as fh:
-            fh.write(bytes(value))
-
-        return input_loc
+    def clean_graph_files(self) -> None:
+        self._delete()
 
     def write_node_def(self, node_location: Loc, node: NodeDef):
-        with open(self._nodedef_path(node_location), "w+") as fh:
-            fh.write(NodeDefModel(root=node).model_dump_json())
+        bs = NodeDefModel(root=node).model_dump_json().encode()
+        self._write(self._nodedef_path(node_location), bs)
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        with open(self._nodedef_path(node_location)) as fh:
-            return NodeDefModel(**json.load(fh)).root
+        bs = self._read(self._nodedef_path(node_location))
+        return NodeDefModel(**json.loads(bs)).root
 
     def write_worker_call_args(
         self,
@@ -115,8 +111,7 @@ class ControllerFileStorage:
             error_path=self._error_path(node_location),
             logs_path=self.logs_path,
         )
-        with open(node_definition_path, "w+") as fh:
-            fh.write(node_definition.model_dump_json())
+        self._write(node_definition_path, node_definition.model_dump_json().encode())
 
         if (parent := node_location.parent()) is not None:
             self._metadata_path(parent).touch()
@@ -125,8 +120,8 @@ class ControllerFileStorage:
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         node_definition_path = self._worker_call_args_path(node_location)
-        with open(node_definition_path, "r") as fh:
-            return WorkerCallArgs(**json.load(fh))
+        bs = self._read(node_definition_path)
+        return WorkerCallArgs(**json.loads(bs))
 
     def link_outputs(
         self,
@@ -156,23 +151,19 @@ class ControllerFileStorage:
         self, node_location: Loc, output_name: PortID, value: bytes
     ) -> Path:
         output_path = self._output_path(node_location, output_name)
-        with open(output_path, "wb+") as fh:
-            fh.write(bytes(value))
+        self._write(output_path, value)
         return output_path
 
     def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
-        with open(self._output_path(node_location, output_name), "rb") as fh:
-            return fh.read()
+        return self._read(self._output_path(node_location, output_name))
 
     def read_errors(self, node_location: Loc) -> str:
         if not self._error_logs_path(node_location).exists():
             return ""
-        with open(self._error_logs_path(node_location), "r") as fh:
-            return fh.read()
+        return self._read(self._error_logs_path(node_location)).decode()
 
     def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
-        with open(self._error_logs_path(node_location), "w+") as fh:
-            fh.write(error_logs)
+        self._write(self._error_logs_path(node_location), error_logs.encode())
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
         dir_list = list(self._outputs_dir(node_location).iterdir())
@@ -195,9 +186,9 @@ class ControllerFileStorage:
             self._metadata_path(parent).touch()
 
     def write_metadata(self, node_location: Loc) -> None:
-        with open(self._metadata_path(node_location), "w+") as fh:
-            fh.write(json.dumps({"name": self.name}))
+        bs = json.dumps({"name": self.name}).encode()
+        self._write(self._metadata_path(node_location), bs)
 
     def read_metadata(self, node_location: Loc) -> dict[str, Any]:
-        with open(self._metadata_path(node_location)) as fh:
-            return json.load(fh)
+        bs = self._read(self._metadata_path(node_location))
+        return json.loads(bs)

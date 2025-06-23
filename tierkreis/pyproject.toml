@@ -36,3 +36,8 @@ ignore = []
 
 [project.scripts]
 tkr = "tierkreis.cli.tkr:main"
+
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.38.41",
+]

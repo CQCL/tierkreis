@@ -19,10 +19,11 @@ import { AppState, type BackendNode } from "@/nodes/types";
 
 const selector = (state: AppState) => ({
   replaceMap: state.replaceMap,
+  recalculateNodePositions: state.recalculateNodePositions,
 });
 
 export function MapNode({ data }: NodeProps<BackendNode>) {
-  const { replaceMap } = useStore(
+  const { replaceMap, recalculateNodePositions } = useStore(
     useShallow(selector)
   );
   const loadChildren = async (
@@ -34,7 +35,7 @@ export function MapNode({ data }: NodeProps<BackendNode>) {
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
       .then((data) => parseNodes(data.nodes, data.edges, workflowId, parentId))
-      .then((nodes) => replaceMap(parentId, nodes));
+      .then((nodes) => replaceMap(parentId, nodes)).then(() => recalculateNodePositions());
   };
   return (
     <NodeStatusIndicator status={data.status}>

@@ -163,7 +163,7 @@ const useStore = create<AppState>()(
           (edge) => edge.target !== nodeId && edge.source !== nodeId
         );
         // This is a memory leak, should only add ones we don't know about yet
-        get().oldEdges.push(...edges);
+        get().oldEdges.push(...get().edges);
         set({
           //@ts-expect-error the group node is not a BackendNode but that's not an issue
           nodes: [groupNode, ...oldNodes, ...newNodes],

@@ -35,6 +35,17 @@ resource "docker_image" "tkr_builtins" {
   }
 }
 
+resource "docker_image" "tkr_visualization" {
+  name         = "tkr_visualization"
+  force_remove = true
+  build {
+    builder    = "default"
+    tag        = ["tkr_visualization:9"]
+    context    = "${path.cwd}/../../../tierkreis"
+    dockerfile = "${path.cwd}/../../../tierkreis/tierkreis_visualization/Dockerfile"
+  }
+}
+
 
 resource "kubernetes_persistent_volume_claim" "tierkreis_directory_claim" {
   metadata {
@@ -49,4 +60,27 @@ resource "kubernetes_persistent_volume_claim" "tierkreis_directory_claim" {
 
 module "kqueue" {
   source = "../kqueue"
+}
+
+resource "kubernetes_service" "visualizer" {
+  metadata {
+    name = "visualizer"
+  }
+  spec {
+    selector = { app = kubernetes_pod.visualizer.metadata.0.labels.app }
+    port { port = 800 }
+  }
+}
+
+resource "kubernetes_pod" "visualizer" {
+  metadata {
+    name   = "visualizer"
+    labels = { app = "TKRVisualizer" }
+  }
+  spec {
+    container {
+      image = docker_image.tkr_visualization.image_id
+      name  = "tkr-visualization"
+    }
+  }
 }

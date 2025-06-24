@@ -14,6 +14,16 @@ root_loc = Loc("")
 logger = logging.getLogger(__name__)
 
 
+def prepare_graph(
+    storage: ControllerStorage, g: GraphData, graph_inputs: dict[str, bytes]
+) -> None:
+    storage.write_metadata(Loc(""))
+    for name, value in graph_inputs.items():
+        storage.write_output(root_loc.N(-1), name, value)
+
+    storage.write_output(root_loc.N(-1), "body", g.model_dump_json().encode())
+
+
 def run_graph(
     storage: ControllerStorage,
     executor: ControllerExecutor,
@@ -22,12 +32,7 @@ def run_graph(
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
 ) -> None:
-    storage.write_metadata(Loc(""))
-    for name, value in graph_inputs.items():
-        storage.write_output(root_loc.N(-1), name, value)
-
-    storage.write_output(root_loc.N(-1), "body", g.model_dump_json().encode())
-
+    prepare_graph(storage, g, graph_inputs)
     inputs: dict[PortID, ValueRef] = {
         k: (-1, k) for k, _ in graph_inputs.items() if k != "body"
     }

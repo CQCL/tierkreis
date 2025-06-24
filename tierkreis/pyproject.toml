@@ -18,7 +18,10 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = [
+    "boto3-stubs[s3]>=1.38.41",
+    "pytest",
+]
 build = ["build[uv]"]
 
 [build-system]

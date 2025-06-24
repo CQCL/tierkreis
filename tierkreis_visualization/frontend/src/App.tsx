@@ -2,7 +2,6 @@ import {
   Background,
   ControlButton,
   Controls,
-  MiniMap,
   ReactFlow,
   ReactFlowProvider,
 } from "@xyflow/react";
@@ -46,10 +45,10 @@ export default function App() {
           <Background />
           <Controls showZoom={false} showInteractive={false}>
             <SidebarTrigger style={{ fill: "none" }} />
-            <ControlButton onClick={() => undo()}>
+            <ControlButton onClick={() => undo(2)}>
               <UndoDot style={{ fill: "none" }} />
             </ControlButton>
-            <ControlButton onClick={() => redo()}>
+            <ControlButton onClick={() => redo(2)}>
               <RedoDot style={{ fill: "none" }} />
             </ControlButton>
           </Controls>

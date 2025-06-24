@@ -1,8 +1,8 @@
 import {
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
 } from "@/components/ui/dialog";
 import { useShallow } from "zustand/react/shallow";
 
@@ -16,13 +16,12 @@ const selector = (state: AppState) => ({
 export function NodeInfo() {
   const { info } = useStore(useShallow(selector));
   return (
-    <DialogContent className="sm:max-w-7xl overflow-auto">
+    <DialogContent className="sm:max-w-7xl min-w-7xl  sm:max-h-[80vh]">
       <DialogHeader>
         <DialogTitle>{info.type}</DialogTitle>
-        <DialogDescription>
-          <pre>{info.content}</pre>
-        </DialogDescription>
+        <DialogDescription></DialogDescription>
       </DialogHeader>
+      <pre style={{ height: "70vh", overflow: "auto" }}>{info.content}</pre>
     </DialogContent>
   );
 }

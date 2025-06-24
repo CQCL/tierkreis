@@ -91,6 +91,21 @@ export function parseNodes(
   return parsedNodes;
 }
 
+function replacer(_: string, value: unknown): unknown {
+  if (typeof value === "number") {
+    const highThreshold = 1_000;
+    const lowThreshold = 0.0001;
+    if (
+      Math.abs(value) >= highThreshold ||
+      (Math.abs(value) < lowThreshold && value !== 0)
+    ) {
+      return value.toExponential(); // Convert it to scientific notation
+    }
+    return Number(value.toPrecision(3));
+  }
+  return value;
+}
+
 export function parseEdges(edges: [PyEdge], parentId?: string): Edge[] {
   const uniqueCount: Map<string, number> = new Map();
   const prefix = parentId ? `${parentId}:` : "";
@@ -99,6 +114,7 @@ export function parseEdges(edges: [PyEdge], parentId?: string): Edge[] {
     const count = uniqueCount.get(id) || 0;
     uniqueCount.set(id, count + 1);
     return {
+      type: "custom-edge",
       id:
         prefix +
         edge.from_node +
@@ -111,7 +127,10 @@ export function parseEdges(edges: [PyEdge], parentId?: string): Edge[] {
       target: prefix + edge.to_node.toString(),
       sourceHandle: prefix + edge.from_node + "_" + edge.from_port,
       targetHandle: prefix + edge.to_node + "_" + edge.to_port,
-      label: edge.to_port == "body" ? "Graph Body" : edge.value?.toString(),
+      label:
+        edge.to_port == "body"
+          ? "Graph Body"
+          : JSON.stringify(edge.value, replacer, 2),
     };
   });
 }

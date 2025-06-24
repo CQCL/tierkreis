@@ -50,7 +50,7 @@ export const InputHandleArray = ({ handles, id }: HandleProps) => {
                   />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{id + "_" + key.toString()}</p>
+                  <p>{key.toString()}</p>
                 </TooltipContent>
               </Tooltip>
             </>
@@ -104,7 +104,7 @@ export const OutputHandleArray = ({ handles, id }: HandleProps) => {
                   />
                 </TooltipTrigger>
                 <TooltipContent>
-                  <p>{id + "_" + key.toString()}</p>
+                  <p>{key.toString()}</p>
                 </TooltipContent>
               </Tooltip>
             </>

@@ -1,7 +1,7 @@
+from dataclasses import dataclass
 from logging import getLogger
-from pathlib import Path
 from sys import argv
-from typing import Iterator
+from typing import Any, Iterator
 
 from pydantic import BaseModel
 
@@ -18,6 +18,29 @@ worker = Worker("builtins")
 def iadd(a: int, b: int) -> Value[int]:
     logger.debug(f"iadd {a} {b}")
     return Value(value=a + b)
+
+
+@dataclass
+class CIAddOutInner:
+    x: int
+
+    def to_dict(self):
+        return {"x": self.x}
+
+    @classmethod
+    def from_dict(cls, arg: dict[str, Any]) -> "CIAddOutInner":
+        return CIAddOutInner(x=arg["x"])
+
+
+class CIAddOut(BaseModel):
+    a: int
+    value: CIAddOutInner
+
+
+@worker.function()
+def ciadd(a: int, b: int) -> CIAddOut:
+    logger.debug(f"ciadd {a} {b}")
+    return CIAddOut(a=a, value=CIAddOutInner(x=a + b))
 
 
 @worker.function()
@@ -140,5 +163,4 @@ def untuple[U, V](value: tuple[U, V]) -> Untupled[U, V]:
 
 
 if __name__ == "__main__":
-    worker_definition_path = argv[1]
-    worker.run(Path(worker_definition_path))
+    worker.app(argv)

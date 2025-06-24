@@ -18,6 +18,7 @@ from tests.controller.sample_graphdata import (
     factorial,
 )
 from tests.controller.loop_graphdata import loop_multiple_acc
+from tests.controller.typed_graphdata import typed_eval, typed_loop, typed_map
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
@@ -25,12 +26,18 @@ from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
 factorial_bytes = factorial().model_dump_json().encode()
-params = [
+params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (simple_eval(), 12, "simple_eval", 1, {}),
     (simple_loop(), 10, "simple_loop", 2, {}),
     (simple_map(), list(range(6, 47, 2)), "simple_map", 3, {}),
     (maps_in_series(), list(range(0, 81, 4)), "maps_in_series", 4, {}),
-    (map_with_str_keys(), {"one": 2, "two": 4, "three": 6}, "map_with_str_keys", 5, {}),
+    (
+        map_with_str_keys(),
+        {"doubler_output-one": 2, "doubler_output-two": 4, "doubler_output-three": 6},
+        "map_with_str_keys",
+        5,
+        {},
+    ),
     (simple_ifelse(), 1, "simple_ifelse", 6, {"pred": b"true"}),
     (simple_ifelse(), 2, "simple_ifelse", 7, {"pred": b"false"}),
     (factorial(), 24, "factorial", 8, {"n": b"4", "factorial": factorial_bytes}),
@@ -39,6 +46,9 @@ params = [
     (simple_partial(), 12, "simple_partial", 11, {}),
     (factorial(), 120, "factorial", 12, {"n": b"5", "factorial": factorial_bytes}),
     (double_partial(), 6, "double_partial", 13, {}),
+    (typed_eval().get_data(), 12, "typed_eval", 14, {}),
+    (typed_loop().get_data(), 10, "typed_loop", 15, {}),
+    (typed_map().get_data(), list(range(6, 47, 2)), "typed_map", 16, {}),
 ]
 ids = [
     "simple_eval",
@@ -54,6 +64,9 @@ ids = [
     "simple_partial",
     "factorial_5",
     "double_partial",
+    "typed_eval",
+    "typed_loop",
+    "typed_map",
 ]
 
 

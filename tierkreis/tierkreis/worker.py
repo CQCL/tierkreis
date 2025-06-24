@@ -10,6 +10,8 @@ import sys
 from typing import Callable, Iterable, ParamSpec, TypeVar, get_origin
 
 from pydantic import BaseModel
+from tierkreis.codegen import format_namespace
+from tierkreis.namespace import Namespace
 
 logger = getLogger(__name__)
 
@@ -46,7 +48,8 @@ def _save_results(outputs: dict[str, Path], results: BaseModel) -> None:
 
 
 def _iterable_sort_key(path_str: str) -> str | int:
-    v = Path(path_str).name
+    # Output of a MAP is labelled as <attribute_name>-<port>
+    v = Path(path_str).name.split("-")[-1]
     try:
         return int(v)
     except ValueError:
@@ -74,10 +77,12 @@ def _save_results_iterator(
 
 class Worker:
     functions: dict[str, Callable[[WorkerCallArgs], None]]
+    namespace: Namespace
 
     def __init__(self, name: str) -> None:
         self.name = name
         self.functions = {}
+        self.namespace = Namespace(name=self.name, functions=[])
 
         def handle_unhandled_exception(exc_type, exc_value, exc_traceback):
             logger.critical(
@@ -107,6 +112,7 @@ class Worker:
             ],
         ) -> None:
             func_name = name if name is not None else func.__name__
+            self.namespace.add_from_annotations(func.__name__, func.__annotations__)
 
             def wrapper(node_definition: WorkerCallArgs):
                 annotations = func.__annotations__
@@ -164,3 +170,13 @@ class Worker:
             logger.error("encountered error: %s", err)
             with open(node_definition.error_path, "w+") as f:
                 f.write(str(err))
+
+    def write_stubs(self, stubs_path: Path) -> None:
+        with open(stubs_path, "w+") as fh:
+            fh.write(format_namespace(self.namespace))
+
+    def app(self, argv: list[str]) -> None:
+        if argv[1] == "--stubs-path":
+            self.write_stubs(Path(argv[2]))
+        else:
+            self.run(Path(argv[1]))

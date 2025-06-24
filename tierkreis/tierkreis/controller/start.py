@@ -125,6 +125,7 @@ def start(
 
         ins["body"] = (parent.N(node.graph[0]), node.graph[1])
         ins.update(g.fixed_inputs)
+
         pipe_inputs_to_output_location(storage, node_location.N(-1), ins)
 
     elif node.type == "loop":
@@ -142,19 +143,17 @@ def start(
 
     elif node.type == "map":
         ins["body"] = (parent.N(node.body[0]), node.body[1])
-        pipe_inputs_to_output_location(storage, node_location.N(-1), ins)
-
         map_eles = storage.read_output_ports(parent.N(node.input_idx))
         for p in map_eles:
-            storage.link_outputs(node_location.N(-1), p, parent.N(node.input_idx), p)
-            eval_inputs = {k: (-1, k) for k in ins.keys()}
-            eval_inputs[node.in_port] = (-1, p)
-            start(
-                storage,
-                executor,
-                NodeRunData(
-                    node_location.M(p), Eval((-1, "body"), eval_inputs), output_list
-                ),
+            eval_inputs: dict[PortID, tuple[Loc, PortID]] = {}
+            for k, (i, port) in ins.items():
+                if port == "*":
+                    eval_inputs[k] = (i, p)
+                else:
+                    eval_inputs[k] = (i, port)
+            eval_inputs[node.in_port] = (parent.N(node.input_idx), p)
+            pipe_inputs_to_output_location(
+                storage, node_location.M(p).N(-1), eval_inputs
             )
 
     elif node.type == "ifelse":

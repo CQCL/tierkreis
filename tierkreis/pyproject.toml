@@ -18,7 +18,10 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["pytest"]
+dev = [
+    "ipykernel>=6.29.5",
+    "pytest",
+]
 build = ["build[uv]"]
 
 [build-system]

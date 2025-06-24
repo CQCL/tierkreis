@@ -33,8 +33,16 @@ TKRType = (
     | str
     | bytes
     | NoneType
-    | Sequence["TKRType"]
-    | Mapping[str, "TKRType"]
+    | Sequence[bool]
+    | Sequence[int]
+    | Sequence[float]
+    | Sequence[str]
+    | Sequence[bytes]
+    | Mapping[str, bool]
+    | Mapping[str, int]
+    | Mapping[str, float]
+    | Mapping[str, str]
+    | Mapping[str, bytes]
     | BaseModel
     | DictConvertible
 )

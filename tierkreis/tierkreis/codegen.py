@@ -1,3 +1,4 @@
+import inspect
 from typing import Any
 from tierkreis.controller.data.core import PortID, TKRType
 from tierkreis.namespace import FunctionSpec, Namespace
@@ -6,7 +7,9 @@ from tierkreis.namespace import FunctionSpec, Namespace
 def format_type(tk_type: type[TKRType] | str) -> str:
     if isinstance(tk_type, str):
         return f'TKRRef[Literal["{tk_type}"]]'
-    return f"TKRRef[{tk_type.__qualname__}]"
+    if inspect.isclass(tk_type):
+        return f"TKRRef[{tk_type.__qualname__}]"
+    return f"TKRRef[{tk_type}]"
 
 
 def format_annotation(
@@ -66,9 +69,10 @@ def format_namespace(namespace: Namespace) -> str:
     functions = [format_function(namespace.name, f) for f in namespace.functions]
     functions_str = "\n\n".join(functions)
 
-    return f'''"""Code generated from {namespace.name} namspace. Please do not edit."""
+    return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
 from typing import Literal, NamedTuple
+import typing
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 {functions_str}

@@ -1,6 +1,7 @@
-"""Code generated from builtins namspace. Please do not edit."""
+"""Code generated from builtins namespace. Please do not edit."""
 
 from typing import Literal, NamedTuple
+import typing
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
@@ -113,6 +114,18 @@ class concat(Function[TKRRef[str]]):
     @staticmethod
     def out(idx: NodeIndex) -> TKRRef[str]:
         return TKRRef[str].from_nodeindex(idx)
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class mean(Function[TKRRef[float]]):
+    values: TKRRef[typing.Sequence[float]]
+
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[float]:
+        return TKRRef[float].from_nodeindex(idx)
 
     @property
     def namespace(self) -> str:

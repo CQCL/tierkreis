@@ -18,24 +18,24 @@ class iadd(Function[TKRRef[int]]):
         return "builtins"
 
 
-class ciaddOutput(NamedTuple):
-    value: TKRRef[Literal["CIAddOutInner"]]
+class CiaddOutput(NamedTuple):
     a: TKRRef[int]
+    value: TKRRef[Literal["CIAddOutInner"]]
 
     @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
-        return ciaddOutput(
-            a=TKRRef[int](n, "a"), value=TKRRef[Literal["CIAddOutInner"]](n, "value")
+    def from_nodeindex(n: NodeIndex) -> "CiaddOutput":
+        return CiaddOutput(
+            value=TKRRef[Literal["CIAddOutInner"]](n, "value"), a=TKRRef[int](n, "a")
         )
 
 
-class ciadd(Function[ciaddOutput]):
+class ciadd(Function[CiaddOutput]):
     a: TKRRef[int]
     b: TKRRef[int]
 
     @staticmethod
-    def out(idx: NodeIndex) -> ciaddOutput:
-        return ciaddOutput.from_nodeindex(idx)
+    def out(idx: NodeIndex) -> CiaddOutput:
+        return CiaddOutput.from_nodeindex(idx)
 
     @property
     def namespace(self) -> str:

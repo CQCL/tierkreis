@@ -23,7 +23,7 @@ def format_annotation(
 def format_output(fn_name: str, outputs: dict[str, Any]) -> str:
     if len(outputs) == 1 and "value" in outputs:
         return format_type(outputs["value"])
-    return f"{fn_name}Output"
+    return f"{fn_name.title()}Output"
 
 
 def format_output_class(fn_name: str, outputs: dict[str, Any]) -> str:
@@ -36,12 +36,12 @@ def format_output_class(fn_name: str, outputs: dict[str, Any]) -> str:
     out_constructor = {format_annotation(k, v, True) for k, v in outputs.items()}
     out_constructor_str = ",\n            ".join(out_constructor)
     return f"""
-class {fn_name}Output(NamedTuple):
+class {fn_name.title()}Output(NamedTuple):
     {outs_str}
 
     @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "{fn_name}Output":
-        return {fn_name}Output(
+    def from_nodeindex(n: NodeIndex) -> "{fn_name.title()}Output":
+        return {fn_name.title()}Output(
             {out_constructor_str}
         )
 

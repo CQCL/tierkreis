@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from inspect import isclass
 from types import NoneType
 from typing import (
     Any,
@@ -8,6 +9,7 @@ from typing import (
     Protocol,
     Self,
     Sequence,
+    get_origin,
     runtime_checkable,
 )
 
@@ -33,16 +35,8 @@ TKRType = (
     | str
     | bytes
     | NoneType
-    | Sequence[bool]
-    | Sequence[int]
-    | Sequence[float]
-    | Sequence[str]
-    | Sequence[bytes]
-    | Mapping[str, bool]
-    | Mapping[str, int]
-    | Mapping[str, float]
-    | Mapping[str, str]
-    | Mapping[str, bytes]
+    | Sequence["TKRType"]
+    | Mapping[str, "TKRType"]
     | BaseModel
     | DictConvertible
 )
@@ -89,6 +83,8 @@ def ref_from_tkr_type[T: TKRModel](
     idx_fn: Callable[[PortID], NodeIndex],
     name_fn: Callable[[PortID], PortID] = lambda x: x,
 ) -> T:
+    if isclass(get_origin(ref)) and issubclass(TKRRef, get_origin(ref)):  # type: ignore
+        return ref.from_nodeindex(idx_fn("value"), name_fn("value"))  # type: ignore
     if issubclass(TKRRef, ref):
         return ref.from_nodeindex(idx_fn("value"), name_fn("value"))  # type: ignore
 

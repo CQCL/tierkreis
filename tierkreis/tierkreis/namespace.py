@@ -1,8 +1,8 @@
+from inspect import isclass
 from dataclasses import dataclass
-import inspect
 from logging import getLogger
 from types import NoneType
-from typing import Any, get_args
+from typing import Any, Sequence, get_args, get_origin
 from pydantic import BaseModel
 from tierkreis.controller.data.core import DictConvertible, PortID, TKRType
 from tierkreis.exceptions import TierkreisError
@@ -25,10 +25,21 @@ class FunctionSpec:
         if annotation is None:
             return NoneType
 
+        origin = get_origin(annotation)
+        args = get_args(annotation)
+
+        if origin and origin.__name__ == "Sequence":
+            if all(x in get_args(TKRType) for x in args):
+                return annotation
+
+        if origin and origin.__name__ == "Mapping":
+            if all(x in get_args(TKRType) for x in args):
+                return annotation
+
         if annotation in get_args(TKRType):
             return annotation
 
-        if inspect.isclass(annotation):
+        if isclass(annotation):
             if issubclass(annotation, (BaseModel, DictConvertible)):
                 return annotation.__name__
 

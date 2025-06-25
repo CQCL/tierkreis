@@ -8,7 +8,7 @@ import pyscrypt  # type: ignore
 from tierkreis.worker import Worker
 
 
-worker = Worker("cpu_worker")
+worker = Worker("auth_worker")
 logger = logging.getLogger(__name__)
 
 

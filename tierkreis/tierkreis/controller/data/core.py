@@ -58,11 +58,11 @@ TKRModel = tuple[TKRRef[TKRType], ...] | TKRRef[TKRType]
 
 
 @dataclass
-class TKRGlob[T: TKRModel]:
+class TKRList[T: TKRModel]:
     t: T
 
-    def map[S: TKRModel](self, f: Callable[[T], S]) -> "TKRGlob[S]":
-        return TKRGlob(f(self.t))
+    def map[S: TKRModel](self, f: Callable[[T], S]) -> "TKRList[S]":
+        return TKRList(f(self.t))
 
 
 class EmptyModel(NamedTuple): ...

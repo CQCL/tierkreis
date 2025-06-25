@@ -11,8 +11,8 @@ class EncryptOutput(NamedTuple):
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "EncryptOutput":
         return EncryptOutput(
-            time_taken=TKRRef[float](n, "time_taken"),
             ciphertext=TKRRef[str](n, "ciphertext"),
+            time_taken=TKRRef[float](n, "time_taken"),
         )
 
 

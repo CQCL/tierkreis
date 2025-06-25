@@ -1,5 +1,5 @@
 from typing import NamedTuple
-from tests.tkr_builtins import iadd, igt, itimes
+from tierkreis.builtins.stubs import iadd, igt, itimes
 from tierkreis.controller.data.core import EmptyModel, TKRRef
 from tierkreis.controller.data.graph import GraphBuilder
 

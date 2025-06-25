@@ -5,8 +5,8 @@ from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
 class EncryptOutput(NamedTuple):
-    ciphertext: TKRRef[str]
     time_taken: TKRRef[float]
+    ciphertext: TKRRef[str]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "EncryptOutput":

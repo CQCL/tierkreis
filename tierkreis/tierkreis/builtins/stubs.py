@@ -19,8 +19,8 @@ class iadd(Function[TKRRef[int]]):
 
 
 class CiaddOutput(NamedTuple):
-    a: TKRRef[int]
     value: TKRRef[Literal["CIAddOutInner"]]
+    a: TKRRef[int]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "CiaddOutput":

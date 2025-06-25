@@ -1,18 +1,18 @@
-"""Code generated from cpu_worker namspace. Please do not edit."""
+"""Code generated from cpu_worker namespace. Please do not edit."""
 
 from typing import NamedTuple
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
 class encryptOutput(NamedTuple):
-    time_taken: TKRRef[float]
     ciphertext: TKRRef[str]
+    time_taken: TKRRef[float]
 
     @staticmethod
     def from_nodeindex(n: NodeIndex) -> "encryptOutput":
         return encryptOutput(
-            time_taken=TKRRef[float](n, "time_taken"),
             ciphertext=TKRRef[str](n, "ciphertext"),
+            time_taken=TKRRef[float](n, "time_taken"),
         )
 
 

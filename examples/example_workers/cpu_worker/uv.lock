@@ -25,7 +25,7 @@ dependencies = [
 requires-dist = [
     { name = "pydantic", specifier = ">=2.11.7" },
     { name = "pyscrypt", specifier = ">=1.6.2" },
-    { name = "tierkreis", directory = "../../../tierkreis" },
+    { name = "tierkreis", editable = "../../../tierkreis" },
 ]
 
 [[package]]
@@ -94,7 +94,7 @@ sdist = { url = "https://files.pythonhosted.org/packages/c6/56/51603b5714d221b78
 [[package]]
 name = "tierkreis"
 version = "2.0.0"
-source = { directory = "../../../tierkreis" }
+source = { editable = "../../../tierkreis" }
 dependencies = [
     { name = "pydantic" },
 ]

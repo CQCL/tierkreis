@@ -24,7 +24,6 @@ def encrypt(plaintext: str, work_factor: int) -> EncryptionResult:
     ciphertext = pyscrypt.hash(  # type:ignore
         password=plaintext.encode(), salt=salt, N=work_factor, r=1, p=1, dkLen=32
     )
-    logger.error(ciphertext)
     time_taken = time() - start_time
 
     return EncryptionResult(ciphertext=str(ciphertext), time_taken=time_taken)

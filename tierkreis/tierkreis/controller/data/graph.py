@@ -7,7 +7,7 @@ from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import (
     EmptyModel,
     Jsonable,
-    TKRGlob,
+    TKRList,
     TKRModel,
     TKRType,
     TKRRef,
@@ -264,11 +264,11 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, _ = self.data.add(Loop(g, ins, continue_port))("dummy")
         return ref_from_tkr_type(Out, lambda _: idx)
 
-    def unfold_list[T: TKRType](self, ref: TKRRef[list[T]]) -> TKRGlob[TKRRef[T]]:
+    def unfold_list[T: TKRType](self, ref: TKRRef[list[T]]) -> TKRList[TKRRef[T]]:
         idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
-        return TKRGlob(TKRRef[T](idx, "*"))
+        return TKRList(TKRRef[T](idx, "*"))
 
-    def fold_list[T: TKRType](self, refs: TKRGlob[TKRRef[T]]) -> TKRRef[list[T]]:
+    def fold_list[T: TKRType](self, refs: TKRList[TKRRef[T]]) -> TKRRef[list[T]]:
         idx, port = refs.t
         idx, _ = self.data.add(
             Func("builtins.fold_values", {"values_glob": (idx, port)})
@@ -276,8 +276,8 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return TKRRef[list[T]](idx, "value")
 
     def map[A: TKRModel, B: TKRModel](
-        self, body: TypedGraphRef[A, B], aes: TKRGlob[A]
-    ) -> TKRGlob[B]:
+        self, body: TypedGraphRef[A, B], aes: TKRList[A]
+    ) -> TKRList[B]:
         a = aes.t
         ins = {k: (v[0], v[1]) for k, v in annotations_from_tkrref(a).items()}
         g = body.graph_ref
@@ -285,6 +285,6 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
 
         Out = body.outputs_type
-        return TKRGlob(
+        return TKRList(
             ref_from_tkr_type(Out, lambda _: idx, name_fn=lambda s: s + "-*")
         )

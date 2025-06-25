@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
 from typing_extensions import assert_never
 
-from tierkreis.controller.consts import PACKAGE_PATH
+from tierkreis.consts import PACKAGE_PATH
 from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
 from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
@@ -59,7 +59,7 @@ def run_builtin(def_path: Path, logs_path: Path) -> None:
         subprocess.Popen(
             [sys.executable, "main.py", def_path],
             start_new_session=True,
-            cwd=PACKAGE_PATH / "builtins",
+            cwd=PACKAGE_PATH / "tierkreis" / "builtins",
             stderr=fh,
             stdout=fh,
         )

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from inspect import isclass
 from types import NoneType
 from typing import (
     Any,
@@ -8,6 +9,7 @@ from typing import (
     Protocol,
     Self,
     Sequence,
+    get_origin,
     runtime_checkable,
 )
 
@@ -56,11 +58,11 @@ TKRModel = tuple[TKRRef[TKRType], ...] | TKRRef[TKRType]
 
 
 @dataclass
-class TKRGlob[T: TKRModel]:
+class TKRList[T: TKRModel]:
     t: T
 
-    def map[S: TKRModel](self, f: Callable[[T], S]) -> "TKRGlob[S]":
-        return TKRGlob(f(self.t))
+    def map[S: TKRModel](self, f: Callable[[T], S]) -> "TKRList[S]":
+        return TKRList(f(self.t))
 
 
 class EmptyModel(NamedTuple): ...
@@ -81,6 +83,8 @@ def ref_from_tkr_type[T: TKRModel](
     idx_fn: Callable[[PortID], NodeIndex],
     name_fn: Callable[[PortID], PortID] = lambda x: x,
 ) -> T:
+    if isclass(get_origin(ref)) and issubclass(TKRRef, get_origin(ref)):  # type: ignore
+        return ref.from_nodeindex(idx_fn("value"), name_fn("value"))  # type: ignore
     if issubclass(TKRRef, ref):
         return ref.from_nodeindex(idx_fn("value"), name_fn("value"))  # type: ignore
 

@@ -31,6 +31,8 @@ examples:
 	{{uvrun}} examples/hamiltonian_graph.py
 	{{uvrun}} examples/qsci_graph.py
 
+[working-directory: 'tierkreis/tierkreis/builtins']
 generate:
-	{{uvrun}} tierkreis/tierkreis/controller/builtins/main.py --stubs-path tierkreis/tests/tkr_builtins.py
-	{{uvrun}} ruff format tierkreis/tests/tkr_builtins.py
+	{{uvrun}} main.py --stubs-path ./stubs.py
+	{{uvrun}} ruff format stubs.py
+	{{uvrun}} ruff check --fix stubs.py

@@ -1,6 +1,7 @@
-"""Code generated from builtins namspace. Please do not edit."""
+"""Code generated from builtins namespace. Please do not edit."""
 
 from typing import Literal, NamedTuple
+import typing
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 
@@ -17,24 +18,24 @@ class iadd(Function[TKRRef[int]]):
         return "builtins"
 
 
-class ciaddOutput(NamedTuple):
-    a: TKRRef[int]
+class CiaddOutput(NamedTuple):
     value: TKRRef[Literal["CIAddOutInner"]]
+    a: TKRRef[int]
 
     @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "ciaddOutput":
-        return ciaddOutput(
-            value=TKRRef[Literal["CIAddOutInner"]](n, "value"), a=TKRRef[int](n, "a")
+    def from_nodeindex(n: NodeIndex) -> "CiaddOutput":
+        return CiaddOutput(
+            a=TKRRef[int](n, "a"), value=TKRRef[Literal["CIAddOutInner"]](n, "value")
         )
 
 
-class ciadd(Function[ciaddOutput]):
+class ciadd(Function[CiaddOutput]):
     a: TKRRef[int]
     b: TKRRef[int]
 
     @staticmethod
-    def out(idx: NodeIndex) -> ciaddOutput:
-        return ciaddOutput.from_nodeindex(idx)
+    def out(idx: NodeIndex) -> CiaddOutput:
+        return CiaddOutput.from_nodeindex(idx)
 
     @property
     def namespace(self) -> str:
@@ -113,6 +114,18 @@ class concat(Function[TKRRef[str]]):
     @staticmethod
     def out(idx: NodeIndex) -> TKRRef[str]:
         return TKRRef[str].from_nodeindex(idx)
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class mean(Function[TKRRef[float]]):
+    values: TKRRef[typing.Sequence[float]]
+
+    @staticmethod
+    def out(idx: NodeIndex) -> TKRRef[float]:
+        return TKRRef[float].from_nodeindex(idx)
 
     @property
     def namespace(self) -> str:

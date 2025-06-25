@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from logging import getLogger
+import statistics
 from sys import argv
-from typing import Any, Iterator
+from typing import Any, Iterator, Sequence
 
 from pydantic import BaseModel
 
@@ -160,6 +161,11 @@ def untuple[U, V](value: tuple[U, V]) -> Untupled[U, V]:
     logger.info("untuple: %s", value)
     value_a, value_b = value
     return Untupled(a=value_a, b=value_b)
+
+
+@worker.function()
+def mean(values: Sequence[float]) -> Value[float]:
+    return Value(value=statistics.mean(values))
 
 
 if __name__ == "__main__":

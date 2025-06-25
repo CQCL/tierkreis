@@ -1,3 +1,4 @@
+import inspect
 from typing import Any
 from tierkreis.controller.data.core import PortID, TKRType
 from tierkreis.namespace import FunctionSpec, Namespace
@@ -6,7 +7,9 @@ from tierkreis.namespace import FunctionSpec, Namespace
 def format_type(tk_type: type[TKRType] | str) -> str:
     if isinstance(tk_type, str):
         return f'TKRRef[Literal["{tk_type}"]]'
-    return f"TKRRef[{tk_type.__qualname__}]"
+    if inspect.isclass(tk_type):
+        return f"TKRRef[{tk_type.__qualname__}]"
+    return f"TKRRef[{tk_type}]"
 
 
 def format_annotation(
@@ -20,7 +23,7 @@ def format_annotation(
 def format_output(fn_name: str, outputs: dict[str, Any]) -> str:
     if len(outputs) == 1 and "value" in outputs:
         return format_type(outputs["value"])
-    return f"{fn_name}Output"
+    return f"{fn_name.title()}Output"
 
 
 def format_output_class(fn_name: str, outputs: dict[str, Any]) -> str:
@@ -33,12 +36,12 @@ def format_output_class(fn_name: str, outputs: dict[str, Any]) -> str:
     out_constructor = {format_annotation(k, v, True) for k, v in outputs.items()}
     out_constructor_str = ",\n            ".join(out_constructor)
     return f"""
-class {fn_name}Output(NamedTuple):
+class {fn_name.title()}Output(NamedTuple):
     {outs_str}
 
     @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "{fn_name}Output":
-        return {fn_name}Output(
+    def from_nodeindex(n: NodeIndex) -> "{fn_name.title()}Output":
+        return {fn_name.title()}Output(
             {out_constructor_str}
         )
 
@@ -66,9 +69,10 @@ def format_namespace(namespace: Namespace) -> str:
     functions = [format_function(namespace.name, f) for f in namespace.functions]
     functions_str = "\n\n".join(functions)
 
-    return f'''"""Code generated from {namespace.name} namspace. Please do not edit."""
+    return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
 from typing import Literal, NamedTuple
+import typing
 from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
 
 {functions_str}

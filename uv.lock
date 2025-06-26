@@ -1358,7 +1358,7 @@ wheels = [
 
 [[package]]
 name = "qnexus"
-version = "0.20.0"
+version = "0.18.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -1374,9 +1374,9 @@ dependencies = [
     { name = "rich" },
     { name = "websockets" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e8/a4/469a897687dd122c2b7ffe053db006d05c26ce39d78384b35dd0e2c19c7e/qnexus-0.20.0.tar.gz", hash = "sha256:c4f3d3cf22507d40e30f437a4534bf2f234c5896814e85c71629a7e06a58bce8", size = 394291, upload-time = "2025-06-05T13:20:42.775Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/44/27/073abbcbfe28c3a8a0f001309a3965394074c56250fd32f3774af9ce3920/qnexus-0.18.2.tar.gz", hash = "sha256:35ff2cc2c9f82487a84ed9ca33a57b96753b0b66133edc3c8b7cc5cabc27e631", size = 392140, upload-time = "2025-05-15T17:05:08.047Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/14/f7/af7baa4bd3211ace848b81606822d5d9ff575c354d8b40fc7060ec22e08f/qnexus-0.20.0-py3-none-any.whl", hash = "sha256:30d43c6f7abf96c96e4a8d59bfa966435c2a8d19149bec3352adb338cd167125", size = 60610, upload-time = "2025-06-05T13:20:41.682Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/80/845c4c098ac2127ea7ba83f6ef5b56089656585473831b2dd4cd00ff1260/qnexus-0.18.2-py3-none-any.whl", hash = "sha256:a465488b772b95dc43ee95c1453ce91978a027966c1bf14237fe120fa931f45d", size = 59848, upload-time = "2025-05-15T17:05:06.523Z" },
 ]
 
 [[package]]
@@ -1850,7 +1850,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "qnexus" },
+    { name = "qnexus", specifier = "==0.18.2" },
     { name = "tierkreis", editable = "tierkreis" },
 ]
 

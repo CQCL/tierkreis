@@ -6,7 +6,7 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "tierkreis",
-    "qnexus",
+    "qnexus==0.18.2",
 ]
 
 [build-system]

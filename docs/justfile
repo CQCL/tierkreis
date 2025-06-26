@@ -1,0 +1,10 @@
+sphinx_opts  := ""
+sphinx_build := "sphinx-build"
+source_dir   := "source"
+build_dir    := "build"
+
+default:
+  @just --list
+
+build:
+  {{sphinx_build}} -M html "{{source_dir}}" "{{build_dir}}" {{sphinx_opts}}

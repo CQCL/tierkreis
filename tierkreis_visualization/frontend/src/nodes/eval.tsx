@@ -16,14 +16,17 @@ import { URL } from "@/data/constants";
 import useStore from "@/data/store";
 import { parseEdges, parseNodes } from "@/graph/parseGraph";
 import { AppState, type BackendNode } from "./types";
+import { Plus } from "lucide-react";
 
 const selector = (state: AppState) => ({
   replaceEval: state.replaceEval,
-recalculateNodePositions: state.recalculateNodePositions,
+  recalculateNodePositions: state.recalculateNodePositions,
 });
 
 export function EvalNode({ data }: NodeProps<BackendNode>) {
-  const { replaceEval, recalculateNodePositions } = useStore(useShallow(selector));
+  const { replaceEval, recalculateNodePositions } = useStore(
+    useShallow(selector)
+  );
   const loadChildren = async (
     workflowId: string,
     node_location: string,
@@ -36,29 +39,31 @@ export function EvalNode({ data }: NodeProps<BackendNode>) {
         const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
         const edges = parseEdges(data.edges, parentId);
         replaceEval(parentId, nodes, edges);
-      }).then(() => recalculateNodePositions());
+      })
+      .then(() => recalculateNodePositions());
   };
   return (
     <NodeStatusIndicator status={data.status}>
-      <Card className="w-[350px]">
+      <Card className="w-[180px]">
         <CardHeader>
-          <CardTitle>{data.title}</CardTitle>
-          <CardDescription>Name: {data.name} </CardDescription>
+          <CardTitle className="overflow-wrap">{data.title}</CardTitle>
         </CardHeader>
 
         <CardContent>
           <InputHandleArray handles={data.handles.inputs} id={data.id} />
           <OutputHandleArray handles={data.handles.outputs} id={data.id} />
+          <div className="flex items-center justify-center">
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() =>
+                loadChildren(data.workflowId, data.node_location, data.id)
+              }
+            >
+              <Plus />
+            </Button>
+          </div>
         </CardContent>
-        <CardFooter>
-          <Button
-            onClick={() =>
-              loadChildren(data.workflowId, data.node_location, data.id)
-            }
-          >
-            Expand
-          </Button>
-        </CardFooter>
       </Card>
     </NodeStatusIndicator>
   );

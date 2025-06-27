@@ -142,17 +142,7 @@ export function parseGraph(
 ) {
   const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
   const edges = parseEdges(data.edges, parentId);
-  const positions = calculateNodePositions(nodes, edges);
-  // Update each node in nodes with a new position calculated in positions
-  const updatedNodes = nodes.map((node) => ({
-    ...node,
-    position: positions.find((position) => position.id === node.id) || {
-      id: "-",
-      x: 0,
-      y: 0,
-    },
-  }));
-  return { nodes: updatedNodes, edges };
+  return { nodes, edges };
 }
 
 export const calculateNodePositions = (

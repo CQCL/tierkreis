@@ -16,12 +16,14 @@ const selector = (state: AppState) => ({
 export function NodeInfo() {
   const { info } = useStore(useShallow(selector));
   return (
-    <DialogContent className="sm:max-w-7xl min-w-7xl  sm:max-h-[80vh]">
+    <DialogContent className="min-w-7xl  sm:max-h-[80vh]">
       <DialogHeader>
         <DialogTitle>{info.type}</DialogTitle>
         <DialogDescription></DialogDescription>
       </DialogHeader>
-      <pre style={{ height: "70vh", overflow: "auto" }}>{info.content}</pre>
+        <div className="overflow-auto">
+      <pre style={{ maxHeight: "65vh" }}>{info.content}</pre>
+      </div>
     </DialogContent>
   );
 }

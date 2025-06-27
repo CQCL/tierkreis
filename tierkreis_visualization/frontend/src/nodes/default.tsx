@@ -14,7 +14,7 @@ import { getErrors, getLogs } from "@/data/logs";
 import { type NodeProps } from "@xyflow/react";
 import { useShallow } from "zustand/react/shallow";
 import { AppState, type BackendNode } from "./types";
-
+import { OctagonAlert } from "lucide-react";
 import useStore from "@/data/store";
 
 const selector = (state: AppState) => ({
@@ -35,37 +35,40 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
   };
   return (
     <NodeStatusIndicator status={data.status}>
-      <Card className="w-[350px]">
-        <CardHeader>
-          <CardTitle>{data.title}</CardTitle>
-          <CardDescription>
-            Name: {data.title == "Function" ? data.name : data.node_location}{" "}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <InputHandleArray handles={data.handles.inputs} id={data.id} />
-          <OutputHandleArray handles={data.handles.outputs} id={data.id} />
-        </CardContent>
-        <CardFooter className="flex justify-between">
-          <DialogTrigger asChild>
-            <Button
-              onClick={() => updateLogs(data.workflowId, data.node_location)}
-            >
-              Logs
-            </Button>
-          </DialogTrigger>
-          {data.status == "Error" && (
-            <DialogTrigger asChild>
-              <Button
-                onClick={() =>
-                  updateErrors(data.workflowId, data.node_location)
-                }
-              >
-                Errors
-              </Button>
-            </DialogTrigger>
-          )}
-        </CardFooter>
+      <Card className="w-[180px]">
+        <DialogTrigger asChild>
+          <div
+            onClick={(event) => {
+              //workaround to render errors
+              const target = event.target as HTMLElement;
+              if (target.closest("button") === null) {
+                updateLogs(data.workflowId, data.node_location);
+              }
+            }}
+          >
+            <CardHeader>
+              <CardTitle style={{ whiteSpace: "normal", wordBreak: "break-word" }}>{data.title == "Function"? data.name :data.title}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <InputHandleArray handles={data.handles.inputs} id={data.id} />
+              <OutputHandleArray handles={data.handles.outputs} id={data.id} />
+            </CardContent>
+            <CardFooter className="flex items-center justify-center">
+              {data.status == "Error" && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  style={{ zIndex: 5 }}
+                  onClick={() =>
+                    updateErrors(data.workflowId, data.node_location)
+                  }
+                >
+                  <OctagonAlert />
+                </Button>
+              )}
+            </CardFooter>
+          </div>
+        </DialogTrigger>
       </Card>
     </NodeStatusIndicator>
   );

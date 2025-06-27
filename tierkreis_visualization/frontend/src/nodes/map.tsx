@@ -16,7 +16,7 @@ import { URL } from "@/data/constants";
 import useStore from "@/data/store";
 import { parseNodes } from "@/graph/parseGraph";
 import { AppState, type BackendNode } from "@/nodes/types";
-
+import { Plus } from "lucide-react";
 const selector = (state: AppState) => ({
   replaceMap: state.replaceMap,
   recalculateNodePositions: state.recalculateNodePositions,
@@ -35,29 +35,31 @@ export function MapNode({ data }: NodeProps<BackendNode>) {
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
       .then((data) => parseNodes(data.nodes, data.edges, workflowId, parentId))
-      .then((nodes) => replaceMap(parentId, nodes)).then(() => recalculateNodePositions());
+      .then((nodes) => replaceMap(parentId, nodes))
+      .then(() => recalculateNodePositions());
   };
   return (
     <NodeStatusIndicator status={data.status}>
-      <Card className="w-[350px]">
+      <Card className="w-[180px]">
         <CardHeader>
           <CardTitle>{data.title}</CardTitle>
-          <CardDescription>Name: {data.name} </CardDescription>
         </CardHeader>
 
         <CardContent>
+          <div className="flex items-center justify-center">
+            <Button
+              variant="secondary"
+              size="icon"
+              onClick={() =>
+                loadChildren(data.workflowId, data.node_location, data.id)
+              }
+            >
+              <Plus />
+            </Button>
+          </div>
           <InputHandleArray handles={data.handles.inputs} id={data.id} />
           <OutputHandleArray handles={data.handles.outputs} id={data.id} />
         </CardContent>
-        <CardFooter>
-          <Button
-            onClick={() =>
-              loadChildren(data.workflowId, data.node_location, data.id)
-            }
-          >
-            Expand
-          </Button>
-        </CardFooter>
       </Card>
     </NodeStatusIndicator>
   );

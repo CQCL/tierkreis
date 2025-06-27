@@ -29,6 +29,7 @@ export type BackendNode = Node<{
 export type AppNode = BackendNode;
 
 export interface AppState {
+  workflowId: string,
   nodes: AppNode[];
   edges: Edge[];
   info: InfoProps;
@@ -37,11 +38,12 @@ export interface AppState {
   onNodesChange: OnNodesChange<AppNode>;
   onEdgesChange: OnEdgesChange;
   onConnect: OnConnect;
-  setNodes: (nodes: AppNode[]) => void;
+  setWorkflowId: (workflowId: string) => void;
+  setNodes: (nodes: AppNode[], overwritePositions: boolean) => void;
   setEdges: (edges: Edge[]) => void;
   setInfo: (info: InfoProps) => void;
-  getInfo: () => InfoProps;
   replaceEval: (nodeId: string, oldNodes: AppNode[], newEdges: Edge[]) => void;
   replaceMap: (nodeId: string, oldNodes: AppNode[]) => void;
   recalculateNodePositions: () => void;
+  tryFromStorage: (workflowId: string) => boolean;
 }

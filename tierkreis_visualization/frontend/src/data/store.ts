@@ -2,6 +2,9 @@ import { addEdge, applyEdgeChanges, applyNodeChanges } from "@xyflow/react";
 import { temporal, ZundoOptions } from "zundo";
 import { create } from "zustand";
 
+import equal from "fast-deep-equal";
+import throttle from "just-throttle";
+
 import { initialEdges } from "@/edges/index";
 import { calculateNodePositions } from "@/graph/parseGraph";
 import { initialNodes } from "@/nodes/index";
@@ -10,39 +13,47 @@ import { Edge, getOutgoers } from "@xyflow/react";
 import { nodeHeight, nodeWidth } from "@/data/constants";
 import { CSSProperties } from "react";
 
-type PartialState = Pick<AppState, "nodes" | "edges">;
+type PartialState = Pick<AppState, "nodes" | "edges" | "workflowId">;
 // For type annotation I pulled this out
 const options: ZundoOptions<AppState, PartialState> = {
   partialize: (state: AppState): PartialState => ({
+    workflowId: state.workflowId,
     nodes: state.nodes,
     edges: state.edges,
   }),
-  equality: (pastState: PartialState, currentState: PartialState) => {
+  equality: equal,
+  onSave: (_: AppState, newState: AppState) => {
     if (
-      currentState.nodes.length !== pastState.nodes.length ||
-      currentState.edges.length !== pastState.edges.length
+      typeof window !== "undefined" &&
+      newState &&
+      newState.workflowId != "" &&
+      newState.nodes.length > 0
     ) {
-      return false;
+      window.localStorage.setItem(
+        newState.workflowId,
+        JSON.stringify(newState)
+      );
     }
-    const pastNodeIds = new Set(pastState.nodes.map((node) => node.id));
-    const pastEdgeIds = new Set(pastState.edges.map((edge) => edge.id));
-    const allCurrentNodeIdsExistInPast = currentState.nodes.every((node) =>
-      pastNodeIds.has(node.id)
-    );
-    const allCurrentEdgeIdsExistInPast = currentState.edges.every((edge) =>
-      pastEdgeIds.has(edge.id)
+  },
+  handleSet: (handleSet) => {
+    const debouncedHandleSet = throttle(
+      (...args: Parameters<typeof handleSet>) => {
+        handleSet(...args);
+      },
+      500,
+      { trailing: true, leading: false }
     );
 
-    if (allCurrentNodeIdsExistInPast && allCurrentEdgeIdsExistInPast) {
-      return true;
-    }
-    return false;
+    return (...args: Parameters<typeof handleSet>) => {
+      debouncedHandleSet(...args);
+    };
   },
 };
 // this is our useStore hook that we can use in our components to get parts of the store and call actions
 const useStore = create<AppState>()(
   temporal(
     (set, get) => ({
+      workflowId: "",
       nodes: initialNodes,
       edges: initialEdges,
       info: { type: "Logs", content: "" },
@@ -62,8 +73,22 @@ const useStore = create<AppState>()(
           edges: addEdge(connection, get().edges),
         });
       },
-      setNodes: (nodes) => {
-        set({ nodes });
+      setNodes: (nodes, overwritePositions = false) => {
+        const oldNodes = get().nodes;
+        if (!overwritePositions) {
+          const newNodes = nodes.map((node) => ({
+            ...node,
+            position: oldNodes.find((oldNode) => oldNode.id === node.id)
+              ?.position || {
+              id: "-",
+              x: 0,
+              y: 0,
+            },
+          }));
+          set({ nodes: newNodes });
+        } else {
+          set({ nodes });
+        }
       },
       setEdges: (edges) => {
         set({ edges });
@@ -71,11 +96,10 @@ const useStore = create<AppState>()(
       setInfo: (info) => {
         set({ info });
       },
-      getInfo: () => {
-        return get().info;
+      setWorkflowId: (workflowId) => {
+        set({ workflowId });
       },
-
-      replaceEval: (nodeId: string, newNodes: AppNode[], newEdges: Edge[]) => {
+      replaceEval: (nodeId, newNodes, newEdges) => {
         // replaces an eval node with its nested subgraph
         const edges: Edge[] = JSON.parse(JSON.stringify(get().edges)); // is there a better way to do this?
         let oldNodes = get().nodes;
@@ -171,7 +195,7 @@ const useStore = create<AppState>()(
         });
       },
 
-      replaceMap: (nodeId: string, newNodes: AppNode[]) => {
+      replaceMap: (nodeId, newNodes) => {
         // copy over all the inputs and outputs from the map node to its children
         let edges: Edge[] = JSON.parse(JSON.stringify(get().edges));
         let oldNodes = get().nodes;
@@ -243,6 +267,17 @@ const useStore = create<AppState>()(
       },
       clearOldEdges: () => {
         set({ oldEdges: [] });
+      },
+      tryFromStorage: (workflowId) => {
+        const stored = fromStorage(workflowId);
+        if (stored.workflowId === workflowId && stored.nodes.length > 0) {
+          //for some reason this is necessary to correctly render all edges
+          setTimeout(() => {
+            set(stored);
+          }, 0);
+          return true;
+        }
+        return false;
       },
     }),
     options
@@ -326,6 +361,15 @@ function resizeNodes(
       { width: 0, height: 0 }
     );
     node.style = { width: dim.width + padding, height: dim.height + padding };
+  }
+}
+
+function fromStorage(workflowId: string): PartialState {
+  const storedData = localStorage.getItem(workflowId);
+  try {
+    return JSON.parse(storedData || "{}") as PartialState;
+  } catch (error) {
+    return { workflowId: "", nodes: [], edges: [] } as PartialState;
   }
 }
 

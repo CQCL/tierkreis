@@ -19,6 +19,15 @@ import { parseGraph } from "@/graph/parseGraph";
 export function WorkflowSidebar() {
   const [items, setItems] = useState<{ id: string; name: string }[]>([]);
   const { workflowId = "" } = useParams();
+  const {
+    setWorkflowId,
+    setEdges,
+    setNodes,
+    clearOldEdges,
+    recalculateNodePositions,
+    tryFromStorage,
+  } = useStore();
+  const { clear } = useStore.temporal.getState();
   useEffect(() => {
     function getWorkflows(url: string) {
       fetch(`${url}/all`, {
@@ -40,34 +49,44 @@ export function WorkflowSidebar() {
     }
     getWorkflows(URL);
   }, []);
-  const { setEdges, setNodes, clearOldEdges } = useStore();
-  const { clear } = useStore.temporal.getState();
 
   useEffect(() => {
-    if (workflowId === "") {
+    if (!workflowId) {
       return;
     }
     const url = `${URL}/${workflowId}/nodes/-`;
-    fetch(url, { method: "GET", headers: { Accept: "application/json" } })
-      .then((response) => response.json())
-      .then((data) => parseGraph(data, workflowId))
-      .then((graph) => {
-        setNodes(graph.nodes);
-        setEdges(graph.edges);
-      });
+    setNodes([], true);
+    setEdges([]);
+    if (!tryFromStorage(workflowId)) {
+      fetch(url, { method: "GET", headers: { Accept: "application/json" } })
+        .then((response) => response.json())
+        .then((data) => parseGraph(data, workflowId))
+        .then((graph) => {
+          setNodes(graph.nodes, false);
+          setEdges(graph.edges);
+          recalculateNodePositions();
+          setWorkflowId(workflowId);
+        });
+    }
     const ws = new WebSocket(url);
     ws.onmessage = (event) => {
-      //TODO: update status only
       const graph = parseGraph(JSON.parse(event.data), workflowId);
       setEdges(graph.edges);
-      setNodes(graph.nodes);
+      setNodes(graph.nodes, true);
     };
     return () => {
       if (ws.readyState == WebSocket.OPEN) {
         ws.close();
       }
     };
-  }, [setEdges, setNodes, workflowId]);
+  }, [
+    tryFromStorage,
+    recalculateNodePositions,
+    setEdges,
+    setNodes,
+    setWorkflowId,
+    workflowId,
+  ]);
 
   return (
     <Sidebar>
@@ -82,7 +101,7 @@ export function WorkflowSidebar() {
                     asChild
                     isActive={workflowId === item.id}
                     onClick={() => {
-                      clearOldEdges();// not part of the state
+                      clearOldEdges(); // not part of the tracked state
                       clear();
                     }}
                   >

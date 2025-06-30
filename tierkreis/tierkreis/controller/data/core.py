@@ -102,3 +102,16 @@ class Function[Out](BaseModel):
 
     @staticmethod
     def out(idx: NodeIndex) -> Out: ...
+
+
+# core for unwrapped graphbuilder
+
+TType = (
+    # bool
+    int
+    | float
+    | str
+    | bytes
+    | list["TType"]
+)
+TModel = tuple[TType, ...] | TType

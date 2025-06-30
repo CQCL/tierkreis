@@ -21,6 +21,9 @@ fix:
 	{{uvrun}} ruff format
 	{{uvrun}} ruff check --fix
 
+docs:
+	just docs/build	
+
 serve:
 	cd tierkreis_visualization && {{uvrun}} fastapi dev tierkreis_visualization/main.py
 

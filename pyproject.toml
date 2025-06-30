@@ -25,7 +25,11 @@ test = [
     "pytest-cov>=5.0,<6",
     "pydantic>=2.9.2",
 ]
-docs = ["sphinx>=8.2", "quantinuum-sphinx"]
+docs = [
+    "quantinuum-sphinx",
+    "sphinx>=8.2",
+    "myst-parser>=4.0.1",
+]
 examples = ["pyscf>=2.9.0"]
 
 [tool.uv.sources]

@@ -13,7 +13,7 @@ author = "Quantinuum"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["quantinuum_sphinx"]
+extensions = ["quantinuum_sphinx", "myst_parser"]
 
 templates_path = ["_templates"]
 exclude_patterns = []

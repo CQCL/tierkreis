@@ -40,6 +40,19 @@ See the justfile (requires `just`) for common development commands. For example:
 just test
 ```
 
+## Documentation
+
+To build the documentation locally, run the command in the top level justfile.
+
+```sh
+just docs
+```
+
+Documentation will be built in HTML format by default and will be available in the `docs/build/html` folder.
+
+For documentation we use the [MyST](https://myst-parser.readthedocs.io/en/latest/index.html) parser with markdown files.
+
+
 ## License
 
 This project is licensed under Apache License, Version 2.0 ([LICENSE][] or http://www.apache.org/licenses/LICENSE-2.0).

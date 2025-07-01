@@ -29,6 +29,7 @@ docs = [
     "quantinuum-sphinx",
     "sphinx>=8.2",
     "myst-parser>=4.0.1",
+    "sphinx-autodoc2>=0.5.0",
 ]
 examples = ["pyscf>=2.9.0"]
 

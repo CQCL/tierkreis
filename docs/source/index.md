@@ -4,4 +4,5 @@
 :maxdepth: 3
 
 getting_started.md
+apidocs/index
 ```

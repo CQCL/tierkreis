@@ -1,17 +1,24 @@
 """Code generated from builtins namespace. Please do not edit."""
 
+from dataclasses import dataclass
 from typing import Literal, NamedTuple
-import typing
-from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
+from tierkreis.controller.data.core import NodeIndex, PortID
+from tierkreis.controller.data.graph import Function
+from tierkreis.controller.data.refs import (
+    IntRef,
+    StrRef,
+    FloatRef,
+    DictConvertibleRef,
+)
 
 
-class iadd(Function[TKRRef[int]]):
-    a: TKRRef[int]
-    b: TKRRef[int]
+class iadd(NamedTuple):
+    a: int
+    b: int
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[int]:
-        return TKRRef[int].from_nodeindex(idx)
+    def out(idx: NodeIndex) -> int:
+        return IntRef.from_value_ref(idx, "value")
 
     @property
     def namespace(self) -> str:
@@ -19,113 +26,64 @@ class iadd(Function[TKRRef[int]]):
 
 
 class CiaddOutput(NamedTuple):
-    value: TKRRef[Literal["CIAddOutInner"]]
-    a: TKRRef[int]
+    a: int
+    value: DictConvertibleRef[Literal["CIAddOutInner"]]
 
     @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "CiaddOutput":
+    def from_value_ref(n: NodeIndex, p: PortID) -> "CiaddOutput":
         return CiaddOutput(
-            a=TKRRef[int](n, "a"), value=TKRRef[Literal["CIAddOutInner"]](n, "value")
+            a=IntRef.from_value_ref(n, "a"),
+            value=DictConvertibleRef[Literal["CIAddOutInner"]].from_value_ref(
+                n, "value"
+            ),
         )
 
 
-class ciadd(Function[CiaddOutput]):
-    a: TKRRef[int]
-    b: TKRRef[int]
+class ciadd(NamedTuple):
+    a: int
+    b: int
 
     @staticmethod
     def out(idx: NodeIndex) -> CiaddOutput:
-        return CiaddOutput.from_nodeindex(idx)
+        return CiaddOutput.from_value_ref(idx, "value")
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class itimes(Function[TKRRef[int]]):
-    a: TKRRef[int]
-    b: TKRRef[int]
+class itimes(NamedTuple):
+    a: int
+    b: int
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[int]:
-        return TKRRef[int].from_nodeindex(idx)
+    def out(idx: NodeIndex) -> int:
+        return IntRef.from_value_ref(idx, "value")
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class igt(Function[TKRRef[bool]]):
-    a: TKRRef[int]
-    b: TKRRef[int]
+class concat(NamedTuple):
+    lhs: str
+    rhs: str
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
+    def out(idx: NodeIndex) -> str:
+        return StrRef.from_value_ref(idx, "value")
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class impl_and(Function[TKRRef[bool]]):
-    a: TKRRef[bool]
-    b: TKRRef[bool]
+class mean(NamedTuple):
+    values: DictConvertibleRef[Literal["list"]]
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
-
-    @property
-    def namespace(self) -> str:
-        return "builtins"
-
-
-class str_eq(Function[TKRRef[bool]]):
-    a: TKRRef[str]
-    b: TKRRef[str]
-
-    @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
-
-    @property
-    def namespace(self) -> str:
-        return "builtins"
-
-
-class str_neq(Function[TKRRef[bool]]):
-    a: TKRRef[str]
-    b: TKRRef[str]
-
-    @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
-
-    @property
-    def namespace(self) -> str:
-        return "builtins"
-
-
-class concat(Function[TKRRef[str]]):
-    lhs: TKRRef[str]
-    rhs: TKRRef[str]
-
-    @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[str]:
-        return TKRRef[str].from_nodeindex(idx)
-
-    @property
-    def namespace(self) -> str:
-        return "builtins"
-
-
-class mean(Function[TKRRef[float]]):
-    values: TKRRef[typing.Sequence[float]]
-
-    @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[float]:
-        return TKRRef[float].from_nodeindex(idx)
+    def out(idx: NodeIndex) -> float:
+        return FloatRef.from_value_ref(idx, "value")
 
     @property
     def namespace(self) -> str:

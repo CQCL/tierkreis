@@ -1,8 +1,12 @@
-from collections import namedtuple
-from typing import Any, TypeGuard, assert_never
-from uuid import uuid4
-from tierkreis.controller.data.core import NodeIndex, PortID, TModel, TType
-from tierkreis.controller.data.graph import Const, GraphData
+from types import NoneType
+from typing import Any, Self, TypeGuard, assert_never, get_origin
+from tierkreis.controller.data.core import (
+    DictConvertible,
+    NodeIndex,
+    PortID,
+    TType,
+    ValueRef,
+)
 from tierkreis.exceptions import TierkreisError
 
 
@@ -12,6 +16,9 @@ class TRef:
 
     def equal(self, value: "TRef") -> bool:
         return self.node_index == value.node_index and self.port_id == value.port_id
+
+    def value_ref(self) -> tuple[NodeIndex, PortID]:
+        return (self.node_index, self.port_id)
 
 
 # The following doesn't work, which could be a problem...
@@ -63,7 +70,42 @@ class ListRef[T: TType](list[T], TRef):
         return x
 
 
-TypeRef = IntRef | FloatRef | StrRef | BytesRef | ListRef["TypeRef"]
+class DictConvertibleRef[T: str](TRef):
+    def to_dict(self) -> dict[str, Any]:
+        return {}
+
+    @classmethod
+    def from_dict(cls, arg: dict[str, Any]) -> Self:
+        return cls()
+
+    @staticmethod
+    def from_value_ref(
+        node_index: NodeIndex, port_id: PortID = "*"
+    ) -> "DictConvertibleRef[T]":
+        x = DictConvertibleRef[T]()
+        x.node_index = node_index
+        x.port_id = port_id
+        return x
+
+
+class NoneRef(TRef):
+    @staticmethod
+    def from_value_ref(node_index: NodeIndex, port_id: PortID = "*") -> "NoneRef":
+        x = NoneRef()
+        x.node_index = node_index
+        x.port_id = port_id
+        return x
+
+
+TypeRef = (
+    IntRef
+    | FloatRef
+    | StrRef
+    | BytesRef
+    | ListRef["TypeRef"]
+    | DictConvertibleRef[Any]
+    | NoneRef
+)
 ModelRef = tuple[TypeRef, ...] | TypeRef
 
 
@@ -79,42 +121,35 @@ def is_typeref(t: TType) -> TypeGuard[TypeRef]:
             return isinstance(t, BytesRef)
         case list():
             return isinstance(t, ListRef)
+        case DictConvertible():
+            return isinstance(t, DictConvertibleRef)
+        case NoneType():
+            return False
         case _:
             assert_never(t)
 
 
-def typeref_from_ttype(g: GraphData, t: TType) -> TypeRef:
-    if is_typeref(t):
-        return t
-
-    idx, port = g.add(Const(t))("value")
-    match t:
-        case int():
-            return IntRef.from_value_ref(idx, port)
-        case float():
-            return FloatRef.from_value_ref(idx, port)
-        case str():
-            return StrRef.from_value_ref(idx, port)
-        case bytes() | bytearray() | memoryview():
-            return BytesRef.from_value_ref(idx, port)
-        case list():
-            return ListRef[Any].from_value_ref(idx, port)
-        case _:
-            assert_never(t)
-
-
-def modelref_from_tmodel(g: GraphData, t: TModel) -> ModelRef:
-    match t:
-        case tuple():
-            fields: list[str] | None = getattr(t, "_fields", None)
-            if fields is None:
-                raise TierkreisError("TModel must be NamedTuple.")
-
-            NT = namedtuple(f"new_tuple_{uuid4().hex}", fields)  # pyright: ignore
-            return NT(*[typeref_from_ttype(g, x) for x in t])
-
-        case _:
-            return typeref_from_ttype(g, t)
+def reftype_from_ttype(t: type[TType]) -> type[TypeRef]:
+    if issubclass(t, int):
+        return IntRef
+    elif issubclass(t, float):
+        return FloatRef
+    elif issubclass(t, str):
+        return StrRef
+    elif issubclass(t, bytes):
+        return BytesRef
+    elif issubclass(t, bytearray):
+        return BytesRef
+    elif issubclass(t, memoryview):
+        return BytesRef
+    elif issubclass(t, list) or get_origin(t) == list:
+        return ListRef
+    elif issubclass(t, DictConvertible):
+        return DictConvertibleRef
+    elif t is NoneType:
+        return NoneRef
+    else:
+        assert_never(t)
 
 
 def equal(ref1: ModelRef, ref2: ModelRef) -> bool:
@@ -125,3 +160,15 @@ def equal(ref1: ModelRef, ref2: ModelRef) -> bool:
             return False
         case _:
             return ref1.equal(ref2)
+
+
+def inputs_from_modelref(ref: ModelRef) -> dict[PortID, ValueRef]:
+    match ref:
+        case tuple():
+            fields: list[str] | None = getattr(ref, "_fields", None)
+            if fields is None:
+                raise TierkreisError("TModel must be NamedTuple.")
+
+            return {k: ref[i].value_ref() for i, k in enumerate(fields)}
+        case _:
+            return {"value": (ref.node_index, ref.port_id)}

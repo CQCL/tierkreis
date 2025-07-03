@@ -5,7 +5,7 @@ from pathlib import Path
 from sys import argv
 
 from pydantic import BaseModel
-from tierkreis.worker import Worker
+from tierkreis.worker.worker import Worker
 
 import qnexus as qnx
 from dotenv import load_dotenv

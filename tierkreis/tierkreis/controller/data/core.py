@@ -1,104 +1,128 @@
-from dataclasses import dataclass
-from inspect import isclass
+import json
 from types import NoneType
 from typing import (
     Any,
     Callable,
-    Mapping,
     NamedTuple,
     Protocol,
-    Self,
     Sequence,
+    TypeGuard,
+    get_args,
     get_origin,
-    runtime_checkable,
 )
 
-from pydantic import BaseModel
 from tierkreis.exceptions import TierkreisError
 
 
-@runtime_checkable
-class DictConvertible(Protocol):
-    def to_dict(self) -> dict[str, Any]: ...
-    @classmethod
-    def from_dict(cls, arg: dict[str, Any]) -> Self: ...
-
-
-Jsonable = Any
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
-TKRType = (
-    bool
-    | int
-    | float
-    | str
-    | bytes
-    | NoneType
-    | Sequence["TKRType"]
-    | Mapping[str, "TKRType"]
-    | BaseModel
-    | DictConvertible
-)
 
-
-class TKRRef[T: TKRType](NamedTuple):
-    node_index: NodeIndex
-    port: PortID
-
-    @staticmethod
-    def from_nodeindex(idx: NodeIndex, port: PortID = "value") -> "TKRRef[T]":
-        return TKRRef[T](idx, port)
-
-    def _to_dict(self) -> dict[str, Any]:
-        return {"value": self}
-
-
-TKRModel = tuple[TKRRef[TKRType], ...] | TKRRef[TKRType]
-
-
-@dataclass
-class TKRList[T: TKRModel]:
-    t: T
-
-    def map[S: TKRModel](self, f: Callable[[T], S]) -> "TKRList[S]":
-        return TKRList(f(self.t))
+TType = bool | int | float | str | bytes | NoneType | Sequence["TType"]
+TModel = tuple[TType, ...] | TType
+WorkerFunction = Callable[..., TModel]
 
 
 class EmptyModel(NamedTuple): ...
 
 
-def annotations_from_tkrref(ref: TKRModel) -> dict[str, Any]:
-    if hasattr(ref, "_to_dict"):
-        return ref._to_dict()  # type: ignore
-
-    if hasattr(ref, "_asdict"):
-        return ref._asdict()  # type: ignore
-
-    raise TierkreisError("Graph inputs and output types must be NamedTuples.")
-
-
-def ref_from_tkr_type[T: TKRModel](
-    ref: type[T],
-    idx_fn: Callable[[PortID], NodeIndex],
-    name_fn: Callable[[PortID], PortID] = lambda x: x,
-) -> T:
-    if isclass(get_origin(ref)) and issubclass(TKRRef, get_origin(ref)):  # type: ignore
-        return ref.from_nodeindex(idx_fn("value"), name_fn("value"))  # type: ignore
-    if issubclass(TKRRef, ref):
-        return ref.from_nodeindex(idx_fn("value"), name_fn("value"))  # type: ignore
-
-    fields = {
-        name: info.from_nodeindex(idx_fn(name), name_fn(name))
-        for name, info in ref.__annotations__.items()
-    }
-
-    return ref(**fields)
-
-
-class Function[Out](BaseModel):
+class Function[Out: TModel](Protocol):
     @property
     def namespace(self) -> str: ...
 
     @staticmethod
     def out(idx: NodeIndex) -> Out: ...
+
+
+class TierkreisEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, (bytes, bytearray)):
+            return {"__is_bytes__": True, "bytes": o.decode()}
+        return super().default(o)
+
+
+def tierkreis_decoder(o: dict[Any, Any]) -> Any:
+    if "__is_bytes__" in o and "bytes" in o:
+        return str(o["bytes"]).encode()
+    return o
+
+
+def bytes_from_ttype(t: TType) -> bytes:
+    return json.dumps(t, cls=TierkreisEncoder).encode()
+
+
+def ttype_from_bytes(bs: bytes) -> TType:
+    return json.loads(bs, object_hook=tierkreis_decoder)
+
+
+def fields_tmodel(t: type[TModel]) -> list[str]:
+    if issubclass(t, int):
+        return ["value"]
+    elif issubclass(t, str):
+        return ["value"]
+    elif issubclass(t, float):
+        return ["value"]
+    elif issubclass(t, bytes):
+        return ["value"]
+    elif issubclass(t, bytearray):
+        return ["value"]
+    elif issubclass(t, memoryview):
+        return ["value"]
+    elif issubclass(t, list):
+        return ["value"]
+    elif issubclass(t, NoneType):
+        return ["value"]
+    elif issubclass(t, tuple):
+        return getattr(t, "_fields", get_args(t))
+
+
+def is_ttype(annotation: type) -> TypeGuard[type[TType]]:
+    return (
+        annotation is int
+        or annotation is bool
+        or annotation is float
+        or annotation is str
+        or annotation is bytes
+        or annotation is bytearray
+        or annotation is memoryview
+        or get_origin(annotation) == list  # need to take care of recursion
+        or annotation is NoneType
+    )
+
+
+def is_namedtuple_model(annotation: type) -> TypeGuard[tuple[TType, ...]]:
+    if not hasattr(annotation, "_asdict"):
+        return False
+
+    if not hasattr(annotation, "_fields"):
+        return False
+
+    if not hasattr(annotation, "__annotations__"):
+        return False
+
+    for x in annotation.__annotations__.values():
+        if not is_ttype(x):
+            return False
+
+    return True
+
+
+def is_tmodel(annotation: type) -> TypeGuard[type[TModel]]:
+    if is_namedtuple_model(annotation):
+        return True
+
+    if is_ttype(annotation):
+        return True
+
+    return False
+
+
+def dict_from_tmodel(t: TModel) -> dict[PortID, TType]:
+    match t:
+        case tuple():
+            as_dict = getattr(t, "_asdict", None)
+            if as_dict is None:
+                raise TierkreisError("TModel should be NamedTuple.")
+            return as_dict()
+        case _:
+            return {"value": t}

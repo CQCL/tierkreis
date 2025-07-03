@@ -1,4 +1,5 @@
-from types import NoneType
+from types import NoneType, UnionType
+from typing import TypeVar, Union
 import pytest
 from tierkreis.controller.data.types import (
     PType,
@@ -17,7 +18,7 @@ from tierkreis.controller.data.types import (
 )
 
 
-params: list[tuple[type[PType], type[TType]]] = [
+params: list[tuple[type[PType] | UnionType, type[TType] | UnionType]] = [
     (bool, TBool),
     (int, TInt),
     (str, TStr),
@@ -28,6 +29,8 @@ params: list[tuple[type[PType], type[TType]]] = [
     (list[list[list[NoneType]]], TList[TList[TList[TNone]]]),
     (list[str | list[int]], TList[TStr | TList[TInt]]),
     (list[str | list[int | float]], TList[TStr | TList[TInt | TFloat]]),
+    (int | None, TInt | TNone),
+    (int | bytes, TInt | TBytes),
 ]
 
 

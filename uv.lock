@@ -794,15 +794,6 @@ wheels = [
 ]
 
 [[package]]
-name = "ovld"
-version = "0.5.6"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8f/3e/c4cbc932f5ba5cf5091aaaa03cf70adf794486b6966b4564201471a9f74f/ovld-0.5.6.tar.gz", hash = "sha256:f554316d678cc4894ffa69a4394a1ba9930034e731fbe57bc05326224d47e12a", size = 97699 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/22/17/68890c935319e1a551a8672839bfd649bb913a4fd1e1a439b4481ebd5cab/ovld-0.5.6-py3-none-any.whl", hash = "sha256:8e5c355ab9b7d8c1ba0779a0a83a35238b6c03827d286b4892f6a49aa2e20146", size = 38771 },
-]
-
-[[package]]
 name = "packaging"
 version = "25.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1767,7 +1758,6 @@ name = "tierkreis"
 version = "2.0.0"
 source = { editable = "tierkreis" }
 dependencies = [
-    { name = "ovld" },
     { name = "pydantic" },
 ]
 
@@ -1781,10 +1771,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [
-    { name = "ovld", specifier = ">=0.5.6" },
-    { name = "pydantic", specifier = "~=2.5" },
-]
+requires-dist = [{ name = "pydantic", specifier = "~=2.5" }]
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]

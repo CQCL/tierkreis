@@ -11,18 +11,6 @@ class MixedTModel(NamedTuple):
     d: bytes = b"dummy_bytes"
 
 
-# class MixedOutput(NamedTuple):
-#     a: IntRef = (0, "value")
-#     b: FloatRef = (1, "value")
-#     c: StrRef = (2, "value")
-#     d: BytesRef = (3, "value")
-
-#     m: IntRef = (10, "value")
-#     n: FloatRef = (11, "value")
-#     o: StrRef = (12, "value")
-#     p: BytesRef = (13, "value")
-
-
 params: list[tuple[type[TModel], list[ValueRef]]] = [
     (int, [(0, "value")]),
     (float, [(0, "value")]),

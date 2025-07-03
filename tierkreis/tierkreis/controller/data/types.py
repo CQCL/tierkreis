@@ -1,9 +1,18 @@
 from dataclasses import dataclass
-from datetime import datetime
 import json
-import random
 from types import NoneType, UnionType
-from typing import Callable, Sequence, Union, assert_never, get_args, get_origin
+from typing import (
+    Any,
+    Callable,
+    Generic,
+    Sequence,
+    TypeVarTuple,
+    Union,
+    assert_never,
+    get_args,
+    get_origin,
+)
+from typing_extensions import TypeIs
 
 
 @dataclass
@@ -36,12 +45,19 @@ class TList[T](TRef):
     pass
 
 
+TVT = TypeVarTuple("TVT")
+
+
+class TTuple(TRef, Generic[*TVT]):
+    pass
+
+
 class TBytes(TRef):
     pass
 
 
-_PType = bool | int | float | str | NoneType | Sequence["_PType"]
-_TType = TBool | TInt | TFloat | TStr | TNone | TList["_TType"]
+_PType = bool | int | float | str | NoneType | list["_PType"] | tuple["_PType", ...]
+_TType = TBool | TInt | TFloat | TStr | TNone | TList["_TType"] | TTuple["_TType"]
 
 PType = _PType | bytes
 TType = _TType | TBytes
@@ -50,11 +66,35 @@ TType = _TType | TBytes
 WorkerFunction = Callable[..., PType]
 
 
+def is_union(o: object) -> bool:
+    return get_origin(o) == UnionType or get_origin(o) == Union
+
+
+def is_plist(ptype: object) -> TypeIs[type[list[_PType]]]:
+    return get_origin(ptype) == list
+
+
+def is_tlist(ttype: object) -> TypeIs[type[TList]]:
+    return get_origin(ttype) == TList
+
+
+def is_ptuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
+    return get_origin(o) == tuple
+
+
+def is_ttuple(o: object) -> TypeIs[type[TTuple[Any]]]:
+    return get_origin(o) == TTuple
+
+
 def ttype_from_ptype(ptype: type[PType]) -> type[TType]:
     """Runtime conversion from type[PType] to type[TType]."""
-    if get_origin(ptype) == UnionType or get_origin(ptype) == Union:
+    if is_union(ptype):
         args = tuple([ttype_from_ptype(x) for x in get_args(ptype)])
         return Union[args]  # type: ignore
+
+    elif is_ptuple(ptype):
+        args = [ttype_from_ptype(x) for x in get_args(ptype)]
+        return TTuple[*args]
 
     if issubclass(ptype, bool):
         return TBool
@@ -72,18 +112,22 @@ def ttype_from_ptype(ptype: type[PType]) -> type[TType]:
         or issubclass(ptype, memoryview)
     ):
         return TBytes
-    elif get_origin(ptype) == list or issubclass(ptype, Sequence):
+    elif is_plist(ptype):
         return TList[ttype_from_ptype(get_args(ptype)[0])]  # type: ignore
     else:
         assert_never(ptype)
 
 
 def ptype_from_ttype(ttype: type[TType]) -> type[PType]:
-    if get_origin(ttype) == UnionType or get_origin(ttype) == Union:
+    if is_union(ttype):
         args = tuple([ptype_from_ttype(x) for x in get_args(ttype)])
         return Union[args]  # type: ignore
 
-    if get_origin(ttype) == TList or issubclass(ttype, TList):
+    if is_ttuple(ttype):
+        args = [ptype_from_ttype(x) for x in get_args(ttype)]
+        return tuple[*args]
+
+    if is_tlist(ttype):
         return list[ptype_from_ttype(get_args(ttype)[0])]  # type: ignore
 
     if issubclass(ttype, TBool):
@@ -106,7 +150,7 @@ def bytes_from_ptype(ptype: PType) -> bytes:
     match ptype:
         case bytes() | bytearray() | memoryview():
             return bytes(ptype)
-        case bool() | int() | float() | str() | NoneType() | list() | Sequence():
+        case bool() | int() | float() | str() | NoneType() | list() | tuple():
             return json.dumps(ptype).encode()
         case _:
             assert_never(ptype)

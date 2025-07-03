@@ -1,42 +1,64 @@
+from types import NoneType
+from typing import NamedTuple
 import pytest
-
-from tierkreis.controller.data.location import Loc
-
-node_location_1 = Loc()
-node_location_1 = node_location_1.N(0)
-node_location_1 = node_location_1.L(0)
-node_location_1 = node_location_1.N(3)
-node_location_1 = node_location_1.L(2)
-node_location_1 = node_location_1.N(0)
-node_location_1 = node_location_1.M("map_port")
-node_location_1 = node_location_1.N(0)
-
-
-node_location_2 = Loc()
-node_location_2 = node_location_2.N(0)
-node_location_2 = node_location_2.L(0)
-node_location_2 = node_location_2.N(3)
-node_location_2 = node_location_2.N(8)
-node_location_2 = node_location_2.N(0)
-
-node_location_3 = Loc()
-node_location_3 = node_location_3.N(0)
-
-node_location_4 = Loc()
-
-
-@pytest.mark.parametrize(
-    ["node_location", "loc_str"],
-    [
-        (node_location_1, "-.N0.L0.N3.L2.N0.Mmap_port.N0"),
-        (node_location_2, "-.N0.L0.N3.N8.N0"),
-        (node_location_3, "-.N0"),
-        (node_location_4, "-"),
-    ],
+from tierkreis.controller.data.models import (
+    PModel,
+    TModel,
+    model_equal,
+    pmodel_from_tmodel,
+    tmodel_from_pmodel,
 )
-def test_to_from_str(node_location: Loc, loc_str: str):
-    node_location_str = str(node_location)
-    assert node_location_str == loc_str
+from tierkreis.controller.data.types import (
+    TBool,
+    TBytes,
+    TFloat,
+    TInt,
+    TList,
+    TNone,
+    TStr,
+    TTuple,
+)
 
-    new_loc = Loc(node_location_str)
-    assert new_loc == node_location
+
+class NamedPModel(NamedTuple):
+    a: bool
+    b: int
+    c: float
+    d: str
+    e: NoneType
+    f: list[str]
+    g: bytes
+    h: tuple[int, str]
+
+
+class NamedTModel(NamedTuple):
+    a: TBool
+    b: TInt
+    c: TFloat
+    d: TStr
+    e: TNone
+    f: TList[TStr]
+    g: TBytes
+    h: TTuple[TInt, TStr]
+
+
+params: list[tuple[type[PModel], type[TModel]]] = []
+params.append((bool, TBool))
+params.append((int, TInt))
+params.append((float, TFloat))
+params.append((str, TStr))
+params.append((NoneType, TNone))
+params.append((list[str], TList[TStr]))  #  type: ignore
+params.append((bytes, TBytes))
+params.append((tuple[int, str], TTuple[TInt, TStr]))  #  type: ignore
+params.append((NamedPModel, NamedTModel))  #  type: ignore
+
+
+@pytest.mark.parametrize("pmodel,tmodel", params)
+def test_tmodel_from_pmodel(pmodel: type[PModel], tmodel: type[TModel]):
+    assert model_equal(tmodel_from_pmodel(pmodel), tmodel)
+
+
+@pytest.mark.parametrize("pmodel,tmodel", params)
+def test_pmodel_from_tmodel(pmodel: type[PModel], tmodel: type[TModel]):
+    assert model_equal(pmodel_from_tmodel(tmodel), pmodel)

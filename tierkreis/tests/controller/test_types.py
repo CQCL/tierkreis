@@ -1,5 +1,4 @@
 from types import NoneType, UnionType
-from typing import TypeVar, Union
 import pytest
 from tierkreis.controller.data.types import (
     PType,
@@ -10,6 +9,7 @@ from tierkreis.controller.data.types import (
     TList,
     TNone,
     TStr,
+    TTuple,
     TType,
     bytes_from_ptype,
     ptype_from_bytes,
@@ -18,20 +18,23 @@ from tierkreis.controller.data.types import (
 )
 
 
-params: list[tuple[type[PType] | UnionType, type[TType] | UnionType]] = [
-    (bool, TBool),
-    (int, TInt),
-    (str, TStr),
-    (float, TFloat),
-    (NoneType, TNone),
-    (bytes, TBytes),
-    (list[str], TList[TStr]),
-    (list[list[list[NoneType]]], TList[TList[TList[TNone]]]),
-    (list[str | list[int]], TList[TStr | TList[TInt]]),
-    (list[str | list[int | float]], TList[TStr | TList[TInt | TFloat]]),
-    (int | None, TInt | TNone),
-    (int | bytes, TInt | TBytes),
-]
+params: list[tuple[type[PType] | UnionType, type[TType] | UnionType]] = []
+params.append((bool, TBool))
+params.append((int, TInt))
+params.append((str, TStr))
+params.append((float, TFloat))
+params.append((NoneType, TNone))
+params.append((bytes, TBytes))
+params.append((list[str], TList[TStr]))  #  type: ignore
+params.append((list[list[list[NoneType]]], TList[TList[TList[TNone]]]))  #  type: ignore
+params.append((list[str | list[int]], TList[TStr | TList[TInt]]))  #  type: ignore
+params.append(
+    (list[str | list[int | float]], TList[TStr | TList[TInt | TFloat]])  #  type: ignore
+)
+params.append((int | None, TInt | TNone))
+params.append((int | bytes, TInt | TBytes))
+params.append((tuple[int, str], TTuple[TInt, TStr]))  #  type: ignore
+params.append((tuple[int | str], TTuple[TInt | TStr]))  #  type: ignore
 
 
 @pytest.mark.parametrize("ptype, ttype", params)

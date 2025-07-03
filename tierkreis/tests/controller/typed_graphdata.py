@@ -9,10 +9,9 @@ class DoublerInput(NamedTuple):
     intercept: int
 
 
-def typed_doubler_plus() -> GraphBuilder[DoublerInput, int]:
+def typed_doubler_plus():
     g = GraphBuilder(DoublerInput, int)
-    two = 2
-    mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
+    mul = g.fn(itimes(a=g.inputs.doubler_input, b=2))
     out = g.fn(iadd(a=mul, b=g.inputs.intercept))
     g.outputs(out)
     return g

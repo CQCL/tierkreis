@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 from pydantic import BaseModel
-from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.core import PortID, bytes_from_ttype
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
@@ -108,7 +108,7 @@ def start(
         bs = (
             node.value.model_dump_json().encode()
             if isinstance(node.value, BaseModel)
-            else json.dumps(node.value).encode()
+            else bytes_from_ttype(node.value)
         )
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)

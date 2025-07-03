@@ -51,4 +51,4 @@ class Namespace:
             fn.add_outputs(annotations["return"])
             self.functions.append(fn)
         except TierkreisWorkerError as exc:
-            logger.info(f"Error adding {name} to {self.name} namespace.", exc_info=exc)
+            logger.error(f"Error adding {name} to {self.name} namespace.", exc_info=exc)

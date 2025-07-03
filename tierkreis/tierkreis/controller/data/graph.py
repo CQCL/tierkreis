@@ -1,26 +1,21 @@
-from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-import json
 import logging
-from typing import Any, Callable, Generic, Literal, Protocol, Unpack, assert_never
-from uuid import uuid4
-from tierkreis.controller.data.refs import (
-    IntRef,
-    ModelRef,
-    TypeRef,
-    inputs_from_modelref,
-    is_typeref,
-    reftype_from_ttype,
-)
+from typing import Any, Callable, Literal, assert_never
+from tierkreis.controller.data.refs import modelref_from_tmodel
 from typing_extensions import TypeVar
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import EmptyModel, TModel, TType
+from tierkreis.controller.data.core import (
+    EmptyModel,
+    Function,
+    TModel,
+    TType,
+    fields_tmodel,
+)
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
 from tierkreis.controller.data.location import OutputLoc
 from tierkreis.exceptions import TierkreisError
-from collections import namedtuple
 
 logger = logging.getLogger(__name__)
 
@@ -192,51 +187,8 @@ class GraphData(BaseModel):
         return self.graph_inputs - actual_inputs
 
 
-def ref_from_ttype(g: GraphData | NodeIndex, t: TType) -> TypeRef:
-    if is_typeref(t):
-        return t
-
-    match g:
-        case NodeIndex():
-            idx, port = g, "value"
-        case GraphData():
-            idx, port = g.add(Const(t))("value")
-        case _:
-            assert_never(g)
-
-    ref = reftype_from_ttype(type(t))
-    return ref.from_value_ref(idx, port)
-
-
-def modelref_from_tmodel(g: GraphData, t: TModel) -> ModelRef:
-    if hasattr(t, "_asdict"):
-        fields: list[str] | None = getattr(t, "_fields", None)
-        if fields is None:
-            raise TierkreisError("TModel must be NamedTuple.")
-
-        NT = namedtuple(f"new_tuple_{uuid4().hex}", fields)  # type: ignore
-        return NT(*[ref_from_ttype(g, x) for x in t])
-
-    else:
-        return ref_from_ttype(g, t)
-
-
-class Function[Out: TModel](Protocol):
-    @property
-    @abstractmethod
-    def namespace(self) -> str: ...
-
-    @staticmethod
-    @abstractmethod
-    def out(idx: NodeIndex) -> Out: ...
-
-
-Inputs = TypeVar("Inputs", bound=TModel, default=EmptyModel)
-Outputs = TypeVar("Outputs", bound=TModel, default=EmptyModel)
-
-
 @dataclass
-class TypedGraphRef(Generic[Inputs, Outputs]):
+class TypedGraphRef[Inputs: TModel, Outputs: TModel]:
     graph_ref: ValueRef
     inputs_type: type[Inputs]
     outputs_type: type[Outputs]
@@ -245,33 +197,47 @@ class TypedGraphRef(Generic[Inputs, Outputs]):
 In = TypeVar("In", bound=tuple[TType, ...], contravariant=True)
 
 
-class GraphBuilder(Generic[Inputs, Outputs]):
+def ref_from_ttype(g: GraphData, t: TType) -> ValueRef:
+    if isinstance(t, tuple) and not hasattr(t, "_fields"):
+        return t  # type: ignore
+    return g.add(Const(t))("value")
+
+
+def inputs_from_tmodel(g: GraphData, t: TModel) -> dict[PortID, ValueRef]:
+    if isinstance(t, tuple) and not hasattr(t, "_fields"):
+        return {"value": ref_from_ttype(g, t)}
+    match t:
+        case tuple():
+            as_dict = getattr(t, "_asdict", None)
+            if as_dict is None:
+                raise TierkreisError("TModel should be NamedTuple.")
+            return {k: ref_from_ttype(g, v) for k, v in as_dict().items()}
+        case _:
+            return {"value": ref_from_ttype(g, t)}
+
+
+class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     outputs_type: type
     inputs: Inputs
 
-    def __init__(self, inputs_type: type[Inputs] = EmptyModel):
+    def __init__(
+        self,
+        inputs_type: type[Inputs] = EmptyModel,
+        outputs_type: type[Outputs] = EmptyModel,
+    ):
         self.data = GraphData()
         self.inputs_type = inputs_type
-        self.inputs = self.inputs_type(
-            **{
-                k: IntRef.from_value_ref(*self.data.add(Input(k))(k))
-                for k in self.inputs_type._fields
-            }
-        )
-        print(self.inputs)
+        self.outputs_type = outputs_type
+
+        in_refs = [self.data.add(Input(k))(k) for k in fields_tmodel(self.inputs_type)]
+        model_ref = modelref_from_tmodel(inputs_type, in_refs)
+        self.inputs = model_ref  # type: ignore # deliberately wrong
 
     def get_data(self) -> GraphData:
         return self.data
 
-    def outputs[Out: TModel](self, outputs: Out) -> "GraphBuilder[Inputs, Out]":
-        ref = modelref_from_tmodel(self.data, outputs)
-        print(ref)
-        ins = inputs_from_modelref(ref)
-        self.data.add(Output(inputs=ins))
-        builder = GraphBuilder[self.inputs_type, Out](self.inputs_type)
-        builder.data = GraphData(**json.loads(self.data.model_dump_json()))
-        builder.outputs_type = type(outputs)
-        return builder
+    def outputs(self, outputs: Outputs) -> None:
+        self.data.add(Output(inputs=inputs_from_tmodel(self.data, outputs)))
 
     def graph_const[A: TModel, B: TModel](
         self, graph: "GraphBuilder[A, B]"
@@ -284,20 +250,18 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         )
 
     def fn[Out: TModel](self, f: Function[Out]) -> Out:
-        print(self.inputs)
-        print(f.ins_type(*ins).a.node_index)
         name = f"{f.namespace}.{f.__class__.__name__}"
-        ins = {k: v.value_ref() for k, v in f.to_dict(self.data).items()}
+        ins = inputs_from_tmodel(self.data, f)
         idx, _ = self.data.add(Func(name, ins))("dummy")
         return f.out(idx)
 
     def eval[A: TModel, B: TModel](self, body: TypedGraphRef[A, B], a: A) -> B:
-        refs = modelref_from_tmodel(self.data, a)
-        ins = inputs_from_modelref(refs)
+        ins = inputs_from_tmodel(self.data, a)
         g = body.graph_ref
-        Out = body.outputs_type
         idx, _ = self.data.add(Eval(g, ins))("dummy")
-        return Out()
+        Out = body.outputs_type
+        model_ref = modelref_from_tmodel(Out, [(idx, k) for k in fields_tmodel(Out)])
+        return model_ref  # type: ignore # deliberately wrong
 
     # def loop[A: TKRModel, B: TKRModel](
     #     self, body: TypedGraphRef[A, B], a: A, continue_port: PortID

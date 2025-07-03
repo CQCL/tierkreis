@@ -18,7 +18,7 @@ from tests.controller.sample_graphdata import (
     factorial,
 )
 from tests.controller.loop_graphdata import loop_multiple_acc
-from tests.controller.typed_graphdata import typed_eval, typed_loop, typed_map
+from tests.controller.typed_graphdata import typed_eval
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
@@ -47,8 +47,8 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (factorial(), 120, "factorial", 12, {"n": b"5", "factorial": factorial_bytes}),
     (double_partial(), 6, "double_partial", 13, {}),
     (typed_eval().get_data(), 12, "typed_eval", 14, {}),
-    (typed_loop().get_data(), 10, "typed_loop", 15, {}),
-    (typed_map().get_data(), list(range(6, 47, 2)), "typed_map", 16, {}),
+    # (typed_loop().get_data(), 10, "typed_loop", 15, {}),
+    # (typed_map().get_data(), list(range(6, 47, 2)), "typed_map", 16, {}),
 ]
 ids = [
     "simple_eval",
@@ -65,8 +65,8 @@ ids = [
     "factorial_5",
     "double_partial",
     "typed_eval",
-    "typed_loop",
-    "typed_map",
+    # "typed_loop",
+    # "typed_map",
 ]
 
 

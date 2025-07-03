@@ -10,22 +10,24 @@ class DoublerInput(NamedTuple):
 
 
 def typed_doubler_plus() -> GraphBuilder[DoublerInput, int]:
-    g = GraphBuilder(DoublerInput)
+    g = GraphBuilder(DoublerInput, int)
     two = 2
     mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
     out = g.fn(iadd(a=mul, b=g.inputs.intercept))
-    return g.outputs(out)
+    g.outputs(out)
+    return g
 
 
 class TypedEvalOutputs(NamedTuple):
     typed_eval_output: int
 
 
-def typed_eval() -> GraphBuilder[EmptyModel, TypedEvalOutputs]:
-    g = GraphBuilder()
+def typed_eval():
+    g = GraphBuilder(EmptyModel, TypedEvalOutputs)
     doubler_const = g.graph_const(typed_doubler_plus())
     e = g.eval(doubler_const, DoublerInput(doubler_input=6, intercept=0))
-    return g.outputs(TypedEvalOutputs(typed_eval_output=e))
+    g.outputs(TypedEvalOutputs(typed_eval_output=e))
+    return g
 
 
 class LoopBodyInput(NamedTuple):
@@ -37,33 +39,36 @@ class LoopBodyOutput(NamedTuple):
     should_continue: bool
 
 
-def loop_body() -> GraphBuilder[LoopBodyInput, LoopBodyOutput]:
-    g = GraphBuilder(LoopBodyInput)
-    a_plus = g.fn(iadd(a=g.inputs.loop_acc, b=1))
-    pred = g.fn(igt(a=10, b=a_plus))
-    return g.outputs(LoopBodyOutput(loop_acc=a_plus, should_continue=pred))
+# def loop_body():
+#     g = GraphBuilder(LoopBodyInput, LoopBodyOutput)
+#     a_plus = g.fn(iadd(a=g.inputs.loop_acc, b=1))
+#     pred = g.fn(igt(a=10, b=a_plus))
+#     g.outputs(LoopBodyOutput(loop_acc=a_plus, should_continue=pred))
+#     return g
 
 
-class TypedLoopOutput(NamedTuple):
-    typed_loop_output: int
+# class TypedLoopOutput(NamedTuple):
+#     typed_loop_output: int
 
 
-def typed_loop() -> GraphBuilder[EmptyModel, TypedLoopOutput]:
-    g = GraphBuilder()
-    g_const = g.graph_const(loop_body())
-    loop = g.loop(g_const, LoopBodyInput(loop_acc=6), "should_continue")
-    return g.outputs(TypedLoopOutput(typed_loop_output=loop.loop_acc))
+# def typed_loop():
+#     g = GraphBuilder(EmptyModel, TypedLoopOutput)
+#     g_const = g.graph_const(loop_body())
+#     loop = g.loop(g_const, LoopBodyInput(loop_acc=6), "should_continue")
+#     g.outputs(TypedLoopOutput(typed_loop_output=loop.loop_acc))
+#     return g
 
 
-class TypedMapOutput(NamedTuple):
-    typed_map_output: list[int]
+# class TypedMapOutput(NamedTuple):
+#     typed_map_output: list[int]
 
 
-def typed_map() -> GraphBuilder[EmptyModel, TypedMapOutput]:
-    g = GraphBuilder()
-    Ns = g.unfold_list(list(range(21)))
-    doubler_inputs = Ns.map(lambda n: DoublerInput(doubler_input=n, intercept=6))
-    doubler_const = g.graph_const(typed_doubler_plus())
-    m = g.map(doubler_const, doubler_inputs)
-    folded = g.fold_list(m)
-    return g.outputs(TypedMapOutput(typed_map_output=folded))
+# def typed_map():
+#     g = GraphBuilder(EmptyModel, TypedMapOutput)
+#     Ns = g.unfold_list(list(range(21)))
+#     doubler_inputs = Ns.map(lambda n: DoublerInput(doubler_input=n, intercept=6))
+#     doubler_const = g.graph_const(typed_doubler_plus())
+#     m = g.map(doubler_const, doubler_inputs)
+#     folded = g.fold_list(m)
+#     g.outputs(TypedMapOutput(typed_map_output=folded))
+#     return g

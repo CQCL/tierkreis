@@ -5,7 +5,7 @@ from time import time
 from typing import NamedTuple
 
 import pyscrypt  # type: ignore
-from tierkreis.worker import Worker
+from tierkreis.worker.worker import Worker
 
 
 worker = Worker("auth_worker")

@@ -1,9 +1,10 @@
 from types import NoneType
-from tierkreis.controller.data.core import PortID, TModel, TType, is_namedtuple_model
+from tierkreis.controller.data.core import PortID, TModel, TType
 from tierkreis.namespace import FunctionSpec, Namespace
 
 
 def format_ttype(ttype: type[TType], is_constructor: bool = False) -> str:
+    print(ttype)
     if issubclass(ttype, int):
         return "IntRef" if is_constructor else "int"
     elif issubclass(ttype, str):
@@ -22,7 +23,7 @@ def format_ttype(ttype: type[TType], is_constructor: bool = False) -> str:
     elif ttype is NoneType:
         return "None"
     else:
-        return f'DictConvertibleRef[Literal["{ttype.__qualname__}"]]'
+        return f"bytes"
 
 
 def format_annotation(
@@ -34,7 +35,7 @@ def format_annotation(
 
 
 def format_output(fn_name: str, outputs: type[TModel], is_ref: bool = False) -> str:
-    if is_namedtuple_model(outputs):
+    if hasattr(outputs, "_fields"):
         return f"{fn_name.title()}Output"
     if is_ref:
         return format_ttype(outputs, True)  # type:ignore
@@ -42,7 +43,7 @@ def format_output(fn_name: str, outputs: type[TModel], is_ref: bool = False) -> 
 
 
 def format_output_class(fn_name: str, outputs: type[TModel]) -> str:
-    if not is_namedtuple_model(outputs):
+    if not hasattr(outputs, "_fields"):
         return ""
 
     outs = {format_annotation(k, v) for k, v in outputs.__annotations__.items()}
@@ -76,7 +77,7 @@ class {fn.name}(NamedTuple):
 
     @staticmethod
     def out(idx: NodeIndex) -> {class_name}:
-        return {class_name_ref}.from_value_ref(idx, "value")
+        return (idx, "value") # type:ignore # deliberately wrong
 
     @property
     def namespace(self) -> str:

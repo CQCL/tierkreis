@@ -17,8 +17,8 @@ class WorkerFileStorage:
 
     def read_input(self, path: Path) -> bytes:
         with open(path, "rb") as fh:
-            return json.loads(fh.read())
+            return fh.read()
 
     def write_output(self, path: Path, value: bytes) -> None:
-        with open(path, "w+") as fh:
-            fh.write(json.dumps(value))
+        with open(path, "wb+") as fh:
+            fh.write(value)

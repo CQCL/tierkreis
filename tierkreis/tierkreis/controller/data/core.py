@@ -1,4 +1,3 @@
-from abc import abstractmethod
 import json
 from types import NoneType
 from typing import (
@@ -6,53 +5,20 @@ from typing import (
     Callable,
     NamedTuple,
     Protocol,
-    Self,
+    Sequence,
     TypeGuard,
-    assert_never,
     get_args,
     get_origin,
-    runtime_checkable,
 )
 
 from tierkreis.exceptions import TierkreisError
 
 
-@runtime_checkable
-class DictConvertible(Protocol):
-    @abstractmethod
-    def to_dict(self) -> dict[str, Any]: ...
-
-    @classmethod
-    @abstractmethod
-    def from_dict(cls, arg: dict[str, Any]) -> Self: ...
-
-
-class X:
-
-    def to_dict(self) -> dict[str, Any]:
-        return {}
-
-    @classmethod
-    def from_dict(cls, arg: dict[str, Any]) -> "X":
-        return X()
-
-
-x: DictConvertible = X()
-
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
 
-TType = (
-    # bool
-    int
-    | float
-    | str
-    | bytes
-    | NoneType
-    | list["TType"]
-    | DictConvertible
-)
+TType = bool | int | float | str | bytes | NoneType | Sequence["TType"]
 TModel = tuple[TType, ...] | TType
 WorkerFunction = Callable[..., TModel]
 
@@ -60,40 +26,60 @@ WorkerFunction = Callable[..., TModel]
 class EmptyModel(NamedTuple): ...
 
 
+class Function[Out: TModel](Protocol):
+    @property
+    def namespace(self) -> str: ...
+
+    @staticmethod
+    def out(idx: NodeIndex) -> Out: ...
+
+
+class TierkreisEncoder(json.JSONEncoder):
+    def default(self, o: Any) -> Any:
+        if isinstance(o, (bytes, bytearray)):
+            return {"__is_bytes__": True, "bytes": o.decode()}
+        return super().default(o)
+
+
+def tierkreis_decoder(o: dict[Any, Any]) -> Any:
+    if "__is_bytes__" in o and "bytes" in o:
+        return str(o["bytes"]).encode()
+    return o
+
+
 def bytes_from_ttype(t: TType) -> bytes:
-    match t:
-        case int() | float() | str() | NoneType():
-            return json.dumps(t).encode()
-        case bytes() | bytearray() | memoryview():
-            return t
-        case list():
-            return json.dumps([bytes_from_ttype(x) for x in t]).encode()
-        case DictConvertible():
-            return json.dumps(t.to_dict()).encode()
-        case _:
-            assert_never(t)
+    return json.dumps(t, cls=TierkreisEncoder).encode()
 
 
-def dict_from_tmodel(t: TModel) -> dict[str, TType]:
-    match t:
-        case tuple():
-            d = getattr(t, "_asdict", None)
-            if d is None:
-                raise TierkreisError("")
+def ttype_from_bytes(bs: bytes) -> TType:
+    return json.loads(bs, object_hook=tierkreis_decoder)
 
-            out: dict[str, TType] = {}
-            for k, info in t.__annotations__.items():
-                if info not in get_args(TType):
-                    raise TierkreisError(f"Expected TType got {info}")
-                out[k] = ttype_from_bytes(d[k], info)
-            return out
-        case _:
-            return {"value": t}
+
+def fields_tmodel(t: type[TModel]) -> list[str]:
+    if issubclass(t, int):
+        return ["value"]
+    elif issubclass(t, str):
+        return ["value"]
+    elif issubclass(t, float):
+        return ["value"]
+    elif issubclass(t, bytes):
+        return ["value"]
+    elif issubclass(t, bytearray):
+        return ["value"]
+    elif issubclass(t, memoryview):
+        return ["value"]
+    elif issubclass(t, list):
+        return ["value"]
+    elif issubclass(t, NoneType):
+        return ["value"]
+    elif issubclass(t, tuple):
+        return getattr(t, "_fields", get_args(t))
 
 
 def is_ttype(annotation: type) -> TypeGuard[type[TType]]:
     return (
         annotation is int
+        or annotation is bool
         or annotation is float
         or annotation is str
         or annotation is bytes
@@ -101,7 +87,6 @@ def is_ttype(annotation: type) -> TypeGuard[type[TType]]:
         or annotation is memoryview
         or get_origin(annotation) == list  # need to take care of recursion
         or annotation is NoneType
-        or isinstance(annotation, DictConvertible)
     )
 
 
@@ -132,24 +117,12 @@ def is_tmodel(annotation: type) -> TypeGuard[type[TModel]]:
     return False
 
 
-def ttype_from_bytes(bs: bytes, annotation: type[TType]) -> TType:
-    if issubclass(annotation, int):
-        return int(json.loads(bs))
-    elif issubclass(annotation, float):
-        return float(json.loads(bs))
-    elif issubclass(annotation, str):
-        return str(json.loads(bs))
-    elif issubclass(annotation, bytes):
-        return bs
-    elif issubclass(annotation, bytearray):
-        return bs
-    elif issubclass(annotation, memoryview):
-        return bs
-    elif issubclass(annotation, list) or get_origin(annotation) == list:
-        return json.loads(bs)
-    elif issubclass(annotation, DictConvertible):
-        return annotation.from_dict(json.loads(bs))
-    elif annotation is NoneType:
-        return None
-    else:
-        assert_never(annotation)
+def dict_from_tmodel(t: TModel) -> dict[PortID, TType]:
+    match t:
+        case tuple():
+            as_dict = getattr(t, "_asdict", None)
+            if as_dict is None:
+                raise TierkreisError("TModel should be NamedTuple.")
+            return as_dict()
+        case _:
+            return {"value": t}

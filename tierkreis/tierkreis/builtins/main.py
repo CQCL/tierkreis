@@ -6,7 +6,7 @@ from typing import Any, NamedTuple
 
 from pydantic import BaseModel
 
-from tierkreis.worker import Worker
+from tierkreis.worker.worker import Worker
 
 
 logger = getLogger(__name__)
@@ -20,8 +20,7 @@ def iadd(a: int, b: int) -> int:
     return a + b
 
 
-@dataclass
-class CIAddOutInner:
+class CIAddOutInner(NamedTuple):
     x: int
 
     def to_dict(self):

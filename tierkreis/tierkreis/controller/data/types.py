@@ -1,7 +1,9 @@
 from dataclasses import dataclass
+from datetime import datetime
 import json
+import random
 from types import NoneType, UnionType
-from typing import Sequence, Union, assert_never, get_args, get_origin
+from typing import Callable, Sequence, Union, assert_never, get_args, get_origin
 
 
 @dataclass
@@ -43,6 +45,9 @@ _TType = TBool | TInt | TFloat | TStr | TNone | TList["_TType"]
 
 PType = _PType | bytes
 TType = _TType | TBytes
+
+
+WorkerFunction = Callable[..., PType]
 
 
 def ttype_from_ptype(ptype: type[PType]) -> type[TType]:

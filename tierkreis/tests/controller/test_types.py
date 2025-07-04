@@ -12,6 +12,8 @@ from tierkreis.controller.data.types import (
     TTuple,
     TType,
     bytes_from_ptype,
+    format_ttype,
+    ptype_from_annotation,
     ptype_from_bytes,
     ptype_from_ttype,
     ttype_from_ptype,
@@ -74,3 +76,30 @@ def test_bytes_roundtrip(ptype: PType):
     bs = bytes_from_ptype(ptype)
     new_type = ptype_from_bytes(bs, ptype.__class__)
     assert ptype == new_type
+
+
+@pytest.mark.parametrize("ptype, ttype", type_pairs)
+def test_ptype_from_annotation(ptype: type[PType], ttype: type[TType]):
+    assert ptype_from_annotation(ptype) == ptype
+
+
+formats = [
+    (TBool, "TBool"),
+    (TInt, "TInt"),
+    (TFloat, "TFloat"),
+    (TStr, "TStr"),
+    (TBytes, "TBytes"),
+    (TNone, "TNone"),
+    (TList[TStr], "TList[TStr]"),
+    (TList[TStr | TList[TStr | TInt]], "TList[TStr | TList[TStr | TInt]]"),
+    (TTuple[TStr], "TTuple[TStr]"),
+    (
+        TTuple[TStr | TList[TStr | TInt], TNone],
+        "TTuple[TStr | TList[TStr | TInt], TNone]",
+    ),
+]
+
+
+@pytest.mark.parametrize("ttype,expected", formats)
+def test_format_ttype(ttype: type[TType], expected: str):
+    assert format_ttype(ttype) == expected

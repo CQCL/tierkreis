@@ -96,9 +96,9 @@ def ref_from_tkr_type[T: TKRModel](
     return ref(**fields)
 
 
-class Function[Out](BaseModel):
+class Function[Out](Protocol):
     @property
     def namespace(self) -> str: ...
 
     @staticmethod
-    def out(idx: NodeIndex) -> Out: ...
+    def out() -> type[Out]: ...

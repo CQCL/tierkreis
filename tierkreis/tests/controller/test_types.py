@@ -18,31 +18,33 @@ from tierkreis.controller.data.types import (
 )
 
 
-params: list[tuple[type[PType] | UnionType, type[TType] | UnionType]] = []
-params.append((bool, TBool))
-params.append((int, TInt))
-params.append((str, TStr))
-params.append((float, TFloat))
-params.append((NoneType, TNone))
-params.append((bytes, TBytes))
-params.append((list[str], TList[TStr]))  #  type: ignore
-params.append((list[list[list[NoneType]]], TList[TList[TList[TNone]]]))  #  type: ignore
-params.append((list[str | list[int]], TList[TStr | TList[TInt]]))  #  type: ignore
-params.append(
+type_pairs: list[tuple[type[PType] | UnionType, type[TType] | UnionType]] = []
+type_pairs.append((bool, TBool))
+type_pairs.append((int, TInt))
+type_pairs.append((str, TStr))
+type_pairs.append((float, TFloat))
+type_pairs.append((NoneType, TNone))
+type_pairs.append((bytes, TBytes))
+type_pairs.append((list[str], TList[TStr]))  #  type: ignore
+type_pairs.append(
+    (list[list[list[NoneType]]], TList[TList[TList[TNone]]])  #  type: ignore
+)
+type_pairs.append((list[str | list[int]], TList[TStr | TList[TInt]]))  #  type: ignore
+type_pairs.append(
     (list[str | list[int | float]], TList[TStr | TList[TInt | TFloat]])  #  type: ignore
 )
-params.append((int | None, TInt | TNone))
-params.append((int | bytes, TInt | TBytes))
-params.append((tuple[int, str], TTuple[TInt, TStr]))  #  type: ignore
-params.append((tuple[int | str], TTuple[TInt | TStr]))  #  type: ignore
+type_pairs.append((int | None, TInt | TNone))
+type_pairs.append((int | bytes, TInt | TBytes))
+type_pairs.append((tuple[int, str], TTuple[TInt, TStr]))  #  type: ignore
+type_pairs.append((tuple[int | str], TTuple[TInt | TStr]))  #  type: ignore
 
 
-@pytest.mark.parametrize("ptype, ttype", params)
+@pytest.mark.parametrize("ptype, ttype", type_pairs)
 def test_ptype_from_ttype(ptype: type[PType], ttype: type[TType]):
     assert ptype_from_ttype(ttype) == ptype
 
 
-@pytest.mark.parametrize("ptype, ttype", params)
+@pytest.mark.parametrize("ptype, ttype", type_pairs)
 def test_ttype_from_ptype(ptype: type[PType], ttype: type[TType]):
     assert ttype_from_ptype(ptype) == ttype
 

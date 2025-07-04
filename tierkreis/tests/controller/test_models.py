@@ -4,11 +4,13 @@ import pytest
 from tierkreis.controller.data.models import (
     PModel,
     TModel,
+    dict_from_pmodel,
     model_equal,
     pmodel_from_tmodel,
     tmodel_from_pmodel,
 )
 from tierkreis.controller.data.types import (
+    PType,
     TBool,
     TBytes,
     TFloat,
@@ -18,6 +20,7 @@ from tierkreis.controller.data.types import (
     TStr,
     TTuple,
 )
+from tests.controller.test_types import type_pairs, ptypes
 
 
 class NamedPModel(NamedTuple):
@@ -29,6 +32,7 @@ class NamedPModel(NamedTuple):
     f: list[str]
     g: bytes
     h: tuple[int, str]
+    i: list[list[int] | int]
 
 
 class NamedTModel(NamedTuple):
@@ -40,17 +44,11 @@ class NamedTModel(NamedTuple):
     f: TList[TStr]
     g: TBytes
     h: TTuple[TInt, TStr]
+    i: TList[TList[TInt] | TInt]
 
 
 params: list[tuple[type[PModel], type[TModel]]] = []
-params.append((bool, TBool))
-params.append((int, TInt))
-params.append((float, TFloat))
-params.append((str, TStr))
-params.append((NoneType, TNone))
-params.append((list[str], TList[TStr]))  #  type: ignore
-params.append((bytes, TBytes))
-params.append((tuple[int, str], TTuple[TInt, TStr]))  #  type: ignore
+params.extend(type_pairs)  # type: ignore
 params.append((NamedPModel, NamedTModel))  #  type: ignore
 
 
@@ -62,3 +60,39 @@ def test_tmodel_from_pmodel(pmodel: type[PModel], tmodel: type[TModel]):
 @pytest.mark.parametrize("pmodel,tmodel", params)
 def test_pmodel_from_tmodel(pmodel: type[PModel], tmodel: type[TModel]):
     assert model_equal(pmodel_from_tmodel(tmodel), pmodel)
+
+
+@pytest.mark.parametrize("pmodel", ptypes)
+def test_dict_from_pmodel_unnested(pmodel: PModel):
+    assert dict_from_pmodel(pmodel) == {"value": pmodel}
+
+
+named_p_model = NamedPModel(
+    a=True,
+    b=5,
+    c=56.7,
+    d="test",
+    e=None,
+    f=["one", "two", "three"],
+    g=b"test bytes",
+    h=(5, "test"),
+    i=[[], 2],
+)
+named_p_model_expected = {
+    "a": True,
+    "b": 5,
+    "c": 56.7,
+    "d": "test",
+    "e": None,
+    "f": ["one", "two", "three"],
+    "g": b"test bytes",
+    "h": (5, "test"),
+    "i": [[], 2],
+}
+
+pmodels = [(named_p_model, named_p_model_expected)]
+
+
+@pytest.mark.parametrize("pmodel,expected", pmodels)
+def test_dict_from_pmodel_nested(pmodel: PModel, expected: dict[str, PType]):
+    assert dict_from_pmodel(pmodel) == expected

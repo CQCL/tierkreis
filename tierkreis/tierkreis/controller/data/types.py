@@ -12,6 +12,7 @@ from typing import (
     get_args,
     get_origin,
 )
+from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
 
 
@@ -78,7 +79,7 @@ def is_tlist(ttype: object) -> TypeIs[type[TList]]:
     return get_origin(ttype) == TList
 
 
-def is_ptuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
+def is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
     return get_origin(o) == tuple
 
 
@@ -92,7 +93,7 @@ def ttype_from_ptype(ptype: type[PType]) -> type[TType]:
         args = tuple([ttype_from_ptype(x) for x in get_args(ptype)])
         return Union[args]  # type: ignore
 
-    elif is_ptuple(ptype):
+    elif is_tuple(ptype):
         args = [ttype_from_ptype(x) for x in get_args(ptype)]
         return TTuple[*args]
 
@@ -146,6 +147,40 @@ def ptype_from_ttype(ttype: type[TType]) -> type[PType]:
         assert_never(ttype)
 
 
+def ptype_from_annotation(annotation: Any) -> type[PType]:
+    try:
+        if is_union(annotation):
+            args = tuple([ptype_from_annotation(x) for x in get_args(annotation)])
+            return Union[args]  # type: ignore
+
+        elif is_tuple(annotation):
+            args = [ptype_from_annotation(x) for x in get_args(annotation)]
+            return tuple[*args]
+
+        if issubclass(annotation, bool):
+            return bool
+        elif issubclass(annotation, int):
+            return int
+        elif issubclass(annotation, float):
+            return float
+        elif issubclass(annotation, str):
+            return str
+        elif issubclass(annotation, NoneType):
+            return NoneType
+        elif (
+            issubclass(annotation, bytes)
+            or issubclass(annotation, bytearray)
+            or issubclass(annotation, memoryview)
+        ):
+            return bytes
+        elif is_plist(annotation):
+            return list[ptype_from_annotation(get_args(annotation)[0])]  # type: ignore
+        else:
+            raise TierkreisError(f"Expected PType found {annotation}")
+    except TypeError:
+        raise TierkreisError(f"Expected PType found {annotation}")
+
+
 def bytes_from_ptype(ptype: PType) -> bytes:
     match ptype:
         case bytes() | bytearray() | memoryview():
@@ -175,3 +210,29 @@ def ptype_from_bytes(bs: bytes, annotation: type[PType]) -> PType:
         return json.loads(bs)
     else:
         assert_never(annotation)
+
+
+def format_ttype(ttype: type[TType]) -> str:
+    if is_union(ttype):
+        args = tuple([format_ttype(x) for x in get_args(ttype)])
+        return " | ".join(args)
+
+    if is_ttuple(ttype):
+        args = [format_ttype(x) for x in get_args(ttype)]
+        return f"TTuple[{", ".join(args)}]"
+
+    if is_tlist(ttype):
+        args = [format_ttype(x) for x in get_args(ttype)]
+        return f"TList[{", ".join(args)}]"
+
+    if (
+        issubclass(ttype, TBool)
+        or issubclass(ttype, TInt)
+        or issubclass(ttype, TFloat)
+        or issubclass(ttype, TStr)
+        or issubclass(ttype, TBytes)
+        or issubclass(ttype, TNone)
+    ):
+        return ttype.__qualname__
+
+    assert_never(ttype)

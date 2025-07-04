@@ -1,131 +1,112 @@
 """Code generated from builtins namespace. Please do not edit."""
 
-from typing import Literal, NamedTuple
-import typing
-from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
+from typing import NamedTuple
+from tierkreis.controller.data.types import (
+    TBool,
+    TInt,
+    TFloat,
+    TStr,
+    TList,
+)
 
 
-class iadd(Function[TKRRef[int]]):
-    a: TKRRef[int]
-    b: TKRRef[int]
+class iadd(NamedTuple):
+    a: TInt
+    b: TInt
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[int]:
-        return TKRRef[int].from_nodeindex(idx)
+    def out() -> type:
+        return TInt
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class CiaddOutput(NamedTuple):
-    value: TKRRef[Literal["CIAddOutInner"]]
-    a: TKRRef[int]
+class itimes(NamedTuple):
+    a: TInt
+    b: TInt
 
     @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "CiaddOutput":
-        return CiaddOutput(
-            a=TKRRef[int](n, "a"), value=TKRRef[Literal["CIAddOutInner"]](n, "value")
-        )
-
-
-class ciadd(Function[CiaddOutput]):
-    a: TKRRef[int]
-    b: TKRRef[int]
-
-    @staticmethod
-    def out(idx: NodeIndex) -> CiaddOutput:
-        return CiaddOutput.from_nodeindex(idx)
+    def out() -> type:
+        return TInt
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class itimes(Function[TKRRef[int]]):
-    a: TKRRef[int]
-    b: TKRRef[int]
+class igt(NamedTuple):
+    a: TInt
+    b: TInt
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[int]:
-        return TKRRef[int].from_nodeindex(idx)
+    def out() -> type:
+        return TBool
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class igt(Function[TKRRef[bool]]):
-    a: TKRRef[int]
-    b: TKRRef[int]
+class impl_and(NamedTuple):
+    a: TBool
+    b: TBool
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
+    def out() -> type:
+        return TBool
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class impl_and(Function[TKRRef[bool]]):
-    a: TKRRef[bool]
-    b: TKRRef[bool]
+class str_eq(NamedTuple):
+    a: TStr
+    b: TStr
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
+    def out() -> type:
+        return TBool
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class str_eq(Function[TKRRef[bool]]):
-    a: TKRRef[str]
-    b: TKRRef[str]
+class str_neq(NamedTuple):
+    a: TStr
+    b: TStr
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
+    def out() -> type:
+        return TBool
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class str_neq(Function[TKRRef[bool]]):
-    a: TKRRef[str]
-    b: TKRRef[str]
+class concat(NamedTuple):
+    lhs: TStr
+    rhs: TStr
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[bool]:
-        return TKRRef[bool].from_nodeindex(idx)
+    def out() -> type:
+        return TStr
 
     @property
     def namespace(self) -> str:
         return "builtins"
 
 
-class concat(Function[TKRRef[str]]):
-    lhs: TKRRef[str]
-    rhs: TKRRef[str]
+class mean(NamedTuple):
+    values: TList[TFloat]
 
     @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[str]:
-        return TKRRef[str].from_nodeindex(idx)
-
-    @property
-    def namespace(self) -> str:
-        return "builtins"
-
-
-class mean(Function[TKRRef[float]]):
-    values: TKRRef[typing.Sequence[float]]
-
-    @staticmethod
-    def out(idx: NodeIndex) -> TKRRef[float]:
-        return TKRRef[float].from_nodeindex(idx)
+    def out() -> type:
+        return TFloat
 
     @property
     def namespace(self) -> str:

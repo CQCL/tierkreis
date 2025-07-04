@@ -1,4 +1,4 @@
-from typing import NamedTuple
+from typing import Any, NamedTuple
 from tierkreis.controller.data.core import PortID
 from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
@@ -54,7 +54,7 @@ def namedtuple_equal(
     fields1 = getattr(x1, "_fields", None)
     fields2 = getattr(x2, "_fields", None)
     if fields1 is None or fields2 is None:
-        raise TierkreisError("TModel should be NamedTuple.")
+        raise TierkreisError("TModel or PModel should be NamedTuple.")
 
     for k in fields1:
         if k not in fields2:

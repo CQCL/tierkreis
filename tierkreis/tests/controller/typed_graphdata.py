@@ -1,6 +1,6 @@
 from typing import NamedTuple
 from tierkreis.builtins.stubs import iadd, igt, itimes
-from tierkreis.controller.data.core import EmptyModel, TKRRef
+from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.types import TBool, TInt, TList
 

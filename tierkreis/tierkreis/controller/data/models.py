@@ -1,7 +1,6 @@
-from typing import NamedTuple
+from typing import Any, NamedTuple, Protocol, SupportsIndex, runtime_checkable
 from tierkreis.controller.data.core import PortID, ValueRef
 from tierkreis.exceptions import TierkreisError
-from typing_extensions import TypeIs
 from uuid import uuid4
 from tierkreis.controller.data.types import (
     PType,
@@ -10,31 +9,29 @@ from tierkreis.controller.data.types import (
     ttype_from_ptype,
 )
 
-PModel = tuple[PType, ...] | PType
-TModel = tuple[TType, ...] | TType
+
+@runtime_checkable
+class PNamedModel(Protocol):
+    @property
+    def _fields(self) -> tuple[str, ...]: ...
+    def _asdict(self) -> dict[str, PType]: ...
+    def __getitem__(self, key: SupportsIndex, /) -> PType: ...
 
 
-def is_namedmodel(
-    o: object,
-) -> TypeIs[
-    type[tuple[PType, ...]]
-    | tuple[PType, ...]
-    | type[tuple[TType, ...]]
-    | tuple[TType, ...]
-]:
-    fields = getattr(o, "_fields", None)
-    if fields is None:
-        return False
-
-    return True
+@runtime_checkable
+class TNamedModel(Protocol):
+    @property
+    def _fields(self) -> tuple[str, ...]: ...
+    def _asdict(self) -> dict[str, TType]: ...
+    def __getitem__(self, key: SupportsIndex, /) -> TType: ...
 
 
-def is_namedpmodeltype(o: object) -> TypeIs[type[tuple[PType, ...]]]:
-    return is_namedmodel(o)
+PModel = PNamedModel | PType
+TModel = TNamedModel | TType
 
 
 def tmodel_from_pmodel(pmodel: type[PModel]) -> type[TModel]:
-    if is_namedmodel(pmodel):
+    if issubclass(pmodel, PNamedModel):
         types = [(k, ttype_from_ptype(v)) for k, v in pmodel.__annotations__.items()]
         NT = NamedTuple(f"{pmodel.__qualname__}{uuid4()}".replace("-", "_"), types)
         return NT
@@ -43,7 +40,7 @@ def tmodel_from_pmodel(pmodel: type[PModel]) -> type[TModel]:
 
 
 def pmodel_from_tmodel(tmodel: type[TModel]) -> type[PModel]:
-    if is_namedmodel(tmodel):
+    if issubclass(tmodel, TNamedModel):
         types = [(k, ptype_from_ttype(v)) for k, v in tmodel.__annotations__.items()]
         NT = NamedTuple(f"{tmodel.__qualname__}{uuid4()}".replace("-", "_"), types)
         return NT
@@ -70,44 +67,28 @@ def namedtuple_equal(
     return True
 
 
-def model_equal(x1: type[TModel | PModel], x2: type[TModel | PModel]) -> bool:
-    if is_namedmodel(x1) != is_namedmodel(x2):
-        return False
-
-    if is_namedmodel(x1) and is_namedmodel(x2):
-        return namedtuple_equal(x1, x2)
-
-    return x1 == x2
-
-
 def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
-    if is_namedmodel(pmodel):
-        asdict = getattr(pmodel, "_asdict", None)
-        if asdict is None:
-            raise TierkreisError("PModel should be NamedTuple")
-        return asdict()
+    if isinstance(pmodel, PNamedModel):
+        return pmodel._asdict()
 
     return {"value": pmodel}
 
 
 def dict_from_tmodel(tmodel: TModel) -> dict[PortID, ValueRef]:
-    if is_namedmodel(tmodel):
-        asdict = getattr(tmodel, "_asdict", None)
-        if asdict is None:
-            raise TierkreisError("tmodel should be NamedTuple")
-        return {k: (v.node_index, v.port_id) for k, v in asdict().items()}
+    if isinstance(tmodel, TNamedModel):
+        return {k: (v.node_index, v.port_id) for k, v in tmodel._asdict().items()}
 
     return {"value": (tmodel.node_index, tmodel.port_id)}
 
 
-def model_fields(model: type[TModel] | type[PModel]) -> list[str]:
-    if is_namedmodel(model):
+def model_fields(model: type[PModel]) -> list[str]:
+    if isinstance(model, PNamedModel):
         return getattr(model, "_fields")
     return ["value"]
 
 
 def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
-    if is_namedmodel(tmodel):
+    if issubclass(tmodel, TNamedModel):
         args: list[TType] = []
         for ref in refs:
             args.append(tmodel.__annotations__[ref[1]](ref[0], ref[1]))

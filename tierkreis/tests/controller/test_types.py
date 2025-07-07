@@ -1,4 +1,5 @@
 from types import NoneType, UnionType
+from typing import Sequence
 import pytest
 from tierkreis.controller.data.types import (
     PType,
@@ -20,20 +21,28 @@ from tierkreis.controller.data.types import (
 )
 
 
-type_pairs: list[tuple[type[PType] | UnionType, type[TType] | UnionType]] = []
+type_pairs: Sequence[tuple[type[PType] | UnionType, type[TType] | UnionType]] = []
 type_pairs.append((bool, TBool))
 type_pairs.append((int, TInt))
 type_pairs.append((str, TStr))
 type_pairs.append((float, TFloat))
 type_pairs.append((NoneType, TNone))
 type_pairs.append((bytes, TBytes))
-type_pairs.append((list[str], TList[TStr]))  #  type: ignore
+type_pairs.append((Sequence[str], TList[TStr]))  #  type: ignore
 type_pairs.append(
-    (list[list[list[NoneType]]], TList[TList[TList[TNone]]])  #  type: ignore
+    (
+        Sequence[Sequence[Sequence[NoneType]]],
+        TList[TList[TList[TNone]]],
+    )  #  type: ignore
 )
-type_pairs.append((list[str | list[int]], TList[TStr | TList[TInt]]))  #  type: ignore
 type_pairs.append(
-    (list[str | list[int | float]], TList[TStr | TList[TInt | TFloat]])  #  type: ignore
+    (Sequence[str | Sequence[int]], TList[TStr | TList[TInt]])
+)  #  type: ignore
+type_pairs.append(
+    (
+        Sequence[str | Sequence[int | float]],
+        TList[TStr | TList[TInt | TFloat]],
+    )  #  type: ignore
 )
 type_pairs.append((int | None, TInt | TNone))
 type_pairs.append((int | bytes, TInt | TBytes))
@@ -51,7 +60,7 @@ def test_ttype_from_ptype(ptype: type[PType], ttype: type[TType]):
     assert ttype_from_ptype(ptype) == ttype
 
 
-ptypes: list[PType] = [
+ptypes: Sequence[PType] = [
     True,
     False,
     0,

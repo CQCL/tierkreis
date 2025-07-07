@@ -1,6 +1,6 @@
 from typing import NamedTuple
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import PModel, is_namedmodel
+from tierkreis.controller.data.models import PModel, PNamedModel
 from tierkreis.controller.data.types import PType, format_ttype, ttype_from_ptype
 from tierkreis.namespace import FunctionSpec, Namespace
 
@@ -15,14 +15,14 @@ def format_annotation(
 
 
 def format_output(outputs: type[PModel]) -> str:
-    if is_namedmodel(outputs):
+    if issubclass(outputs, PNamedModel):
         return outputs.__qualname__
 
     return format_ttype(ttype_from_ptype(outputs))
 
 
 def format_output_class(fn_name: str, outputs: type[PModel]) -> str:
-    if not is_namedmodel(outputs):
+    if not issubclass(outputs, PNamedModel):
         return ""
 
     outs = {format_annotation(k, v) for k, v in outputs.__annotations__.items()}

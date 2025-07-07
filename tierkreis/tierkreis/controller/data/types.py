@@ -1,3 +1,4 @@
+import collections.abc
 from dataclasses import dataclass
 import json
 from types import NoneType, UnionType
@@ -12,7 +13,7 @@ from typing import (
     get_args,
     get_origin,
 )
-from tierkreis.controller.data.core import ValueRef
+from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
 from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
 
@@ -61,12 +62,21 @@ class TBytes(TRef):
     pass
 
 
-_PType = bool | int | float | str | NoneType | list["_PType"] | tuple["_PType", ...]
+_PType = bool | int | float | str | NoneType | Sequence["_PType"] | tuple["_PType", ...]
 _TType = TBool | TInt | TFloat | TStr | TNone | TList["_TType"] | TTuple["_TType"]
 
 PType = _PType | bytes
-TType = _TType | TBytes
 
+
+@dataclass
+class TType[T: PType]:
+    idx: NodeIndex
+    port: PortID
+    t: type[T] = T
+
+
+x = TType[int](5, "7", int)
+x.t
 
 WorkerFunction = Callable[..., PType]
 
@@ -75,8 +85,8 @@ def is_union(o: object) -> bool:
     return get_origin(o) == UnionType or get_origin(o) == Union
 
 
-def is_plist(ptype: object) -> TypeIs[type[list[_PType]]]:
-    return get_origin(ptype) == list
+def is_plist(ptype: object) -> TypeIs[type[Sequence[_PType]]]:
+    return get_origin(ptype) == collections.abc.Sequence
 
 
 def is_tlist(ttype: object) -> TypeIs[type[TList]]:
@@ -91,7 +101,7 @@ def is_ttuple(o: object) -> TypeIs[type[TTuple[Any]]]:
     return get_origin(o) == TTuple
 
 
-def ttype_from_ptype(ptype: type[PType]) -> type[TType]:
+def ttype_from_ptype(ptype: type[PType]) -> type[TType]:  # Used to format codegen
     """Runtime conversion from type[PType] to type[TType]."""
     if is_union(ptype):
         args = tuple([ttype_from_ptype(x) for x in get_args(ptype)])
@@ -100,6 +110,9 @@ def ttype_from_ptype(ptype: type[PType]) -> type[TType]:
     elif is_tuple(ptype):
         args = [ttype_from_ptype(x) for x in get_args(ptype)]
         return TTuple[*args]
+
+    elif is_plist(ptype):
+        return TList[ttype_from_ptype(get_args(ptype)[0])]  # type: ignore
 
     if issubclass(ptype, bool):
         return TBool
@@ -117,13 +130,12 @@ def ttype_from_ptype(ptype: type[PType]) -> type[TType]:
         or issubclass(ptype, memoryview)
     ):
         return TBytes
-    elif is_plist(ptype):
-        return TList[ttype_from_ptype(get_args(ptype)[0])]  # type: ignore
+
     else:
         assert_never(ptype)
 
 
-def ptype_from_ttype(ttype: type[TType]) -> type[PType]:
+def ptype_from_ttype(ttype: type[TType]) -> type[PType]:  # used in awkward g.const
     if is_union(ttype):
         args = tuple([ptype_from_ttype(x) for x in get_args(ttype)])
         return Union[args]  # type: ignore
@@ -133,7 +145,7 @@ def ptype_from_ttype(ttype: type[TType]) -> type[PType]:
         return tuple[*args]
 
     if is_tlist(ttype):
-        return list[ptype_from_ttype(get_args(ttype)[0])]  # type: ignore
+        return Sequence[ptype_from_ttype(get_args(ttype)[0])]  # type: ignore
 
     if issubclass(ttype, TBool):
         return bool
@@ -161,6 +173,9 @@ def ptype_from_annotation(annotation: Any) -> type[PType]:
             args = [ptype_from_annotation(x) for x in get_args(annotation)]
             return tuple[*args]
 
+        elif is_plist(annotation):
+            return Sequence[ptype_from_annotation(get_args(annotation)[0])]  # type: ignore
+
         if issubclass(annotation, bool):
             return bool
         elif issubclass(annotation, int):
@@ -177,19 +192,26 @@ def ptype_from_annotation(annotation: Any) -> type[PType]:
             or issubclass(annotation, memoryview)
         ):
             return bytes
-        elif is_plist(annotation):
-            return list[ptype_from_annotation(get_args(annotation)[0])]  # type: ignore
+
         else:
             raise TierkreisError(f"Expected PType found {annotation}")
-    except TypeError:
-        raise TierkreisError(f"Expected PType found {annotation}")
+    except TypeError as exc:
+        raise TierkreisError(f"Expected PType found {annotation}") from exc
 
 
 def bytes_from_ptype(ptype: PType) -> bytes:
     match ptype:
         case bytes() | bytearray() | memoryview():
             return bytes(ptype)
-        case bool() | int() | float() | str() | NoneType() | list() | tuple():
+        case (
+            bool()
+            | int()
+            | float()
+            | str()
+            | NoneType()
+            | collections.abc.Sequence()
+            | tuple()
+        ):
             return json.dumps(ptype).encode()
         case _:
             assert_never(ptype)
@@ -210,7 +232,7 @@ def ptype_from_bytes(bs: bytes, annotation: type[PType]) -> PType:
         or issubclass(annotation, memoryview)
     ):
         return bs
-    elif get_origin(annotation) == list or issubclass(annotation, Sequence):
+    elif get_origin(annotation) == Sequence or issubclass(annotation, Sequence):
         return json.loads(bs)
     else:
         assert_never(annotation)

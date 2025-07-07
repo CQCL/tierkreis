@@ -210,5 +210,4 @@ def get_errors(workflow_id: UUID, node_location_str: str):
         return PlainTextResponse("Node has no errors.", status_code=404)
 
     messages = storage.read_errors(node_location)
-    print(messages)
     return PlainTextResponse(messages)

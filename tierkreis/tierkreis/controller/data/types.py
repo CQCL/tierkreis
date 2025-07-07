@@ -12,6 +12,7 @@ from typing import (
     get_args,
     get_origin,
 )
+from tierkreis.controller.data.core import ValueRef
 from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
 
@@ -20,6 +21,9 @@ from typing_extensions import TypeIs
 class TRef:
     node_index: int
     port_id: str
+
+    def to_valueref(self) -> ValueRef:
+        return (self.node_index, self.port_id)
 
 
 class TBool(TRef):

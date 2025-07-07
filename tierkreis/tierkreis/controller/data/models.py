@@ -1,5 +1,5 @@
-from typing import Any, NamedTuple
-from tierkreis.controller.data.core import PortID
+from typing import NamedTuple
+from tierkreis.controller.data.core import PortID, ValueRef
 from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
 from uuid import uuid4
@@ -27,6 +27,10 @@ def is_namedmodel(
         return False
 
     return True
+
+
+def is_namedpmodeltype(o: object) -> TypeIs[type[tuple[PType, ...]]]:
+    return is_namedmodel(o)
 
 
 def tmodel_from_pmodel(pmodel: type[PModel]) -> type[TModel]:
@@ -84,3 +88,28 @@ def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
         return asdict()
 
     return {"value": pmodel}
+
+
+def dict_from_tmodel(tmodel: TModel) -> dict[PortID, ValueRef]:
+    if is_namedmodel(tmodel):
+        asdict = getattr(tmodel, "_asdict", None)
+        if asdict is None:
+            raise TierkreisError("tmodel should be NamedTuple")
+        return {k: (v.node_index, v.port_id) for k, v in asdict().items()}
+
+    return {"value": (tmodel.node_index, tmodel.port_id)}
+
+
+def model_fields(model: type[TModel] | type[PModel]) -> list[str]:
+    if is_namedmodel(model):
+        return getattr(model, "_fields")
+    return ["value"]
+
+
+def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
+    if is_namedmodel(tmodel):
+        args: list[TType] = []
+        for ref in refs:
+            args.append(tmodel.__annotations__[ref[1]](ref[0], ref[1]))
+        return tmodel(*args)  # type: ignore # we know that this is NamedTuple
+    return tmodel(refs[0][0], refs[0][1])

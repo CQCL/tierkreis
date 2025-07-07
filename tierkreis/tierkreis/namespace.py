@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from logging import getLogger
 from types import NoneType
 from typing import Any
-from tierkreis.controller.data.models import PModel, is_namedmodel
+from tierkreis.controller.data.models import PModel, is_namedpmodeltype
 from tierkreis.controller.data.types import PType, ptype_from_annotation
 from tierkreis.exceptions import TierkreisError
 
@@ -29,7 +29,7 @@ class FunctionSpec:
             self.outs = NoneType
             return
 
-        if is_namedmodel(annotation):
+        if is_namedpmodeltype(annotation):
             self.outs = annotation
 
         self.outs = ptype_from_annotation(annotation)

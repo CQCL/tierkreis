@@ -45,7 +45,6 @@ def get_loop_node(
     edges = []
     for port_name in storage.read_worker_call_args(node_location.L(0)).inputs:
         if port_name not in storage.read_output_ports(new_location):
-            print(port_name, node_location)
             continue
         edges.extend(
             [

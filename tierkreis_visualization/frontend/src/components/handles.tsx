@@ -41,7 +41,7 @@ export const InputHandleArray = ({ handles, id }: HandleProps) => {
                     position={Position.Top}
                     style={{
                       position: "initial",
-                      //transform: "initial",
+                      transform: "translateY(-50%)",
                       height: "0.875rem",
                       width: "0.875rem",
                       border: "none",
@@ -95,7 +95,7 @@ export const OutputHandleArray = ({ handles, id }: HandleProps) => {
                     position={Position.Bottom}
                     style={{
                       position: "initial",
-                      //transform: "initial",
+                      transform: "translateY(50%)",
                       height: "0.875rem",
                       width: "0.875rem",
                       border: "none",

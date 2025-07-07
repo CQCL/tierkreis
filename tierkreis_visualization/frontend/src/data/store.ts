@@ -22,7 +22,7 @@ const options: ZundoOptions<AppState, PartialState> = {
     edges: state.edges,
   }),
   equality: equal,
-  onSave: (_: AppState, newState: AppState) => {
+  onSave: (_: PartialState, newState: PartialState) => {
     if (
       typeof window !== "undefined" &&
       newState &&

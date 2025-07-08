@@ -15,7 +15,6 @@ import useStore from "@/data/store";
 import { edgeTypes } from "@/edges";
 import { nodeTypes } from "@/nodes";
 import { AppState } from "@/nodes/types";
-import { stat } from "fs";
 
 const selector = (state: AppState) => ({
   nodes: state.nodes,

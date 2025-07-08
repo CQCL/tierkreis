@@ -12,13 +12,11 @@ from tierkreis.controller.data.graph import (
 )
 from tierkreis.controller.data.models import (
     TModel,
-    dict_from_pmodel,
     dict_from_tmodel,
     model_fields,
     init_tmodel,
 )
-from tierkreis.controller.data.types import PType, TType, ptype_from_ttype
-from tierkreis.exceptions import TierkreisError
+from tierkreis.controller.data.types import PType, TKR
 
 
 @dataclass
@@ -48,14 +46,9 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     def outputs(self, outputs: Outputs):
         self.data.add(Output(inputs=dict_from_tmodel(outputs)))
 
-    def const[T: TType](self, value: PType, t: type[T]) -> T:
-        # Not very nice if we aren't using generics!
-        ptype = ptype_from_ttype(t)
-        # print(ptype)
-        # if not isinstance(value, ptype):
-        #     raise TierkreisError(f"Expected {t} found {value}")
+    def const[T: PType](self, value: T) -> TKR[T]:
         idx, port = self.data.add(Const(value))("value")
-        return t(idx, port)
+        return TKR[T](idx, port)
 
     def graph_const[A: TModel, B: TModel](
         self, graph: "GraphBuilder[A, B]"

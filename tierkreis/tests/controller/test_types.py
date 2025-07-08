@@ -11,7 +11,7 @@ from tierkreis.controller.data.types import (
     TNone,
     TStr,
     TTuple,
-    TType,
+    TKR,
     bytes_from_ptype,
     format_ttype,
     ptype_from_annotation,
@@ -21,7 +21,7 @@ from tierkreis.controller.data.types import (
 )
 
 
-type_pairs: Sequence[tuple[type[PType] | UnionType, type[TType] | UnionType]] = []
+type_pairs: Sequence[tuple[type[PType] | UnionType, type[TKR] | UnionType]] = []
 type_pairs.append((bool, TBool))
 type_pairs.append((int, TInt))
 type_pairs.append((str, TStr))
@@ -51,12 +51,12 @@ type_pairs.append((tuple[int | str], TTuple[TInt | TStr]))  #  type: ignore
 
 
 @pytest.mark.parametrize("ptype, ttype", type_pairs)
-def test_ptype_from_ttype(ptype: type[PType], ttype: type[TType]):
+def test_ptype_from_ttype(ptype: type[PType], ttype: type[TKR]):
     assert ptype_from_ttype(ttype) == ptype
 
 
 @pytest.mark.parametrize("ptype, ttype", type_pairs)
-def test_ttype_from_ptype(ptype: type[PType], ttype: type[TType]):
+def test_ttype_from_ptype(ptype: type[PType], ttype: type[TKR]):
     assert ttype_from_ptype(ptype) == ttype
 
 
@@ -88,7 +88,7 @@ def test_bytes_roundtrip(ptype: PType):
 
 
 @pytest.mark.parametrize("ptype, ttype", type_pairs)
-def test_ptype_from_annotation(ptype: type[PType], ttype: type[TType]):
+def test_ptype_from_annotation(ptype: type[PType], ttype: type[TKR]):
     assert ptype_from_annotation(ptype) == ptype
 
 
@@ -110,5 +110,5 @@ formats = [
 
 
 @pytest.mark.parametrize("ttype,expected", formats)
-def test_format_ttype(ttype: type[TType], expected: str):
+def test_format_ttype(ttype: type[TKR], expected: str):
     assert format_ttype(ttype) == expected

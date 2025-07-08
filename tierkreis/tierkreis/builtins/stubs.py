@@ -1,22 +1,16 @@
 """Code generated from builtins namespace. Please do not edit."""
 
-from typing import NamedTuple
-from tierkreis.controller.data.types import (
-    TBool,
-    TInt,
-    TFloat,
-    TStr,
-    TList,
-)
+from typing import NamedTuple, Sequence
+from tierkreis.controller.data.types import TKR
 
 
 class iadd(NamedTuple):
-    a: TInt
-    b: TInt
+    a: TKR[int]
+    b: TKR[int]
 
     @staticmethod
     def out() -> type:
-        return TInt
+        return TKR[int]
 
     @property
     def namespace(self) -> str:
@@ -24,12 +18,12 @@ class iadd(NamedTuple):
 
 
 class itimes(NamedTuple):
-    a: TInt
-    b: TInt
+    a: TKR[int]
+    b: TKR[int]
 
     @staticmethod
     def out() -> type:
-        return TInt
+        return TKR[int]
 
     @property
     def namespace(self) -> str:
@@ -37,12 +31,12 @@ class itimes(NamedTuple):
 
 
 class igt(NamedTuple):
-    a: TInt
-    b: TInt
+    a: TKR[int]
+    b: TKR[int]
 
     @staticmethod
     def out() -> type:
-        return TBool
+        return TKR[bool]
 
     @property
     def namespace(self) -> str:
@@ -50,12 +44,12 @@ class igt(NamedTuple):
 
 
 class impl_and(NamedTuple):
-    a: TBool
-    b: TBool
+    a: TKR[bool]
+    b: TKR[bool]
 
     @staticmethod
     def out() -> type:
-        return TBool
+        return TKR[bool]
 
     @property
     def namespace(self) -> str:
@@ -63,12 +57,12 @@ class impl_and(NamedTuple):
 
 
 class str_eq(NamedTuple):
-    a: TStr
-    b: TStr
+    a: TKR[str]
+    b: TKR[str]
 
     @staticmethod
     def out() -> type:
-        return TBool
+        return TKR[bool]
 
     @property
     def namespace(self) -> str:
@@ -76,12 +70,12 @@ class str_eq(NamedTuple):
 
 
 class str_neq(NamedTuple):
-    a: TStr
-    b: TStr
+    a: TKR[str]
+    b: TKR[str]
 
     @staticmethod
     def out() -> type:
-        return TBool
+        return TKR[bool]
 
     @property
     def namespace(self) -> str:
@@ -89,12 +83,12 @@ class str_neq(NamedTuple):
 
 
 class concat(NamedTuple):
-    lhs: TStr
-    rhs: TStr
+    lhs: TKR[str]
+    rhs: TKR[str]
 
     @staticmethod
     def out() -> type:
-        return TStr
+        return TKR[str]
 
     @property
     def namespace(self) -> str:
@@ -102,11 +96,11 @@ class concat(NamedTuple):
 
 
 class mean(NamedTuple):
-    values: TList[TFloat]
+    values: TKR[Sequence[float]]
 
     @staticmethod
     def out() -> type:
-        return TFloat
+        return TKR[float]
 
     @property
     def namespace(self) -> str:

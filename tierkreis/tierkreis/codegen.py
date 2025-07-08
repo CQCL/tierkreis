@@ -1,7 +1,7 @@
 from typing import NamedTuple
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, PNamedModel
-from tierkreis.controller.data.types import PType, format_ttype, ttype_from_ptype
+from tierkreis.controller.data.types import PType, format_ptype
 from tierkreis.namespace import FunctionSpec, Namespace
 
 
@@ -10,15 +10,14 @@ def format_annotation(
 ) -> str:
     sep = "=" if is_constructor else ":"
     constructor = f'(n, "{port_id}")' if is_constructor else ""
-    ttype = ttype_from_ptype(ptype)
-    return f"{port_id}{sep} {format_ttype(ttype)}{constructor}"
+    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor}"
 
 
 def format_output(outputs: type[PModel]) -> str:
     if issubclass(outputs, PNamedModel):
         return outputs.__qualname__
 
-    return format_ttype(ttype_from_ptype(outputs))
+    return f"TKR[{format_ptype(outputs)}]"
 
 
 def format_output_class(fn_name: str, outputs: type[PModel]) -> str:
@@ -70,9 +69,9 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
-from typing import Literal, NamedTuple
+from typing import Literal, NamedTuple, Sequence
 import typing
-from tierkreis.controller.data.types import TBool, TInt, TFloat, TStr, TNone, TBytes, TList, TTuple
+from tierkreis.controller.data.types import TKR
 
 {functions_str}
     '''

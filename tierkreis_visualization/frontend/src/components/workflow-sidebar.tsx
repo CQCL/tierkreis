@@ -15,7 +15,7 @@ import { Link, useParams } from "react-router";
 import { URL } from "@/data/constants";
 import useStore from "@/data/store";
 import { parseGraph } from "@/graph/parseGraph";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 interface Workflow {
   id: string;
   name: string;
@@ -42,7 +42,6 @@ function useWorkflows(url: string) {
   });
 }
 
-
 export function WorkflowSidebar() {
   const { data: items = [] } = useWorkflows(URL);
   const { workflowId = "" } = useParams();
@@ -55,44 +54,57 @@ export function WorkflowSidebar() {
     tryFromStorage,
   } = useStore();
   const { clear } = useStore.temporal.getState();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    if (!workflowId) {
-      return;
-    }
-    const url = `${URL}/${workflowId}/nodes/-`;
-    setNodes([], true);
-    setEdges([]);
-    if (!tryFromStorage(workflowId)) {
-      fetch(url, { method: "GET", headers: { Accept: "application/json" } })
-        .then((response) => response.json())
-        .then((data) => parseGraph(data, workflowId))
-        .then((graph) => {
-          setNodes(graph.nodes, false);
-          setEdges(graph.edges);
-          recalculateNodePositions();
-          setWorkflowId(workflowId);
-        });
-    }
-    const ws = new WebSocket(url);
-    ws.onmessage = (event) => {
-      const graph = parseGraph(JSON.parse(event.data), workflowId);
-      setEdges(graph.edges);
-      setNodes(graph.nodes, true);
-    };
-    return () => {
-      if (ws.readyState == WebSocket.OPEN) {
-        ws.close();
+  const { data: graph } = useQuery({
+    queryKey: ["workflowGraph", workflowId],
+    queryFn: async () => {
+      console.log("Fetching graph for workflowId:", workflowId);
+      const response = await fetch(`${URL}/${workflowId}/nodes/-`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
       }
-    };
+      return response.json();
+    },
+    enabled: !!workflowId,
+    select: (data) => parseGraph(data, workflowId),
+  });
+  useEffect(() => {
+    setNodes([], false);
+    setEdges([]);
+    if (!tryFromStorage(workflowId) && graph) {
+      setNodes(graph.nodes, false);
+      setEdges(graph.edges);
+      recalculateNodePositions();
+    }
   }, [
-    tryFromStorage,
+    graph,
+    workflowId,
     recalculateNodePositions,
     setEdges,
     setNodes,
-    setWorkflowId,
-    workflowId,
+    tryFromStorage,
   ]);
+  useEffect(() => {
+    if (workflowId) {
+      setWorkflowId(workflowId);
+      const ws = new WebSocket(`${URL}/${workflowId}/nodes/-`);
+      ws.onmessage = (event) => {
+        const graph = parseGraph(JSON.parse(event.data), workflowId);
+        queryClient.setQueryData(["workflowGraph", workflowId], graph);
+        setNodes(graph.nodes, false);
+        setEdges(graph.edges);
+      };
+      return () => {
+        if (ws.readyState == WebSocket.OPEN) {
+          ws.close();
+        }
+      };
+    }
+  }, [workflowId, queryClient, setWorkflowId, setEdges, setNodes]);
 
   return (
     <Sidebar>

@@ -1,23 +1,35 @@
+import { useQuery } from "@tanstack/react-query";
+
 import { URL } from "./constants";
 
-export async function getLogs(workflowId: string, node_location: string) {
-  const url = `${URL}/${workflowId}/nodes/${node_location}/logs`;
-  const data = await fetch(url, {
+const fetchText = async (
+  workflowId: string,
+  node_location: string,
+  type: "errors" | "logs"
+) => {
+  const url = `${URL}/${workflowId}/nodes/${node_location}/${type}`;
+  const response = await fetch(url, {
     method: "GET",
     headers: { Accept: "application/text" },
-  })
-    .then((res) => res.text())
-    .catch(() => "");
-  return data;
-}
+  });
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+  return response.text();
+};
 
-export async function getErrors(workflowId: string, node_location: string) {
-  const url = `${URL}/${workflowId}/nodes/${node_location}/errors`;
-  const data = await fetch(url, {
-    method: "GET",
-    headers: { Accept: "application/text" },
-  })
-    .then((res) => res.text())
-    .catch(() => "");
-  return data;
-}
+export const useLogs = (workflowId: string, node_location: string) => {
+  return useQuery({
+    queryKey: ["logs", workflowId, node_location],
+    queryFn: () => fetchText(workflowId, node_location, "logs"),
+    enabled: !!workflowId && !!node_location,
+  });
+};
+
+export const useErrors = (workflowId: string, node_location: string) => {
+  return useQuery({
+    queryKey: ["errors", workflowId, node_location],
+    queryFn: () => fetchText(workflowId, node_location, "errors"),
+    enabled: !!workflowId && !!node_location,
+  });
+};

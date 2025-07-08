@@ -1,16 +1,16 @@
+import { useEffect, useState } from "react";
 import { InputHandleArray, OutputHandleArray } from "@/components/handles";
 import { NodeStatusIndicator } from "@/components/StatusIndicator";
 import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
 import { DialogTrigger } from "@/components/ui/dialog";
-import { getErrors, getLogs } from "@/data/logs";
+import { useErrors, useLogs } from "@/data/logs";
 import { type NodeProps } from "@xyflow/react";
 import { useShallow } from "zustand/react/shallow";
 import { AppState, type BackendNode } from "./types";
@@ -23,16 +23,28 @@ const selector = (state: AppState) => ({
 
 export function DefaultNode({ data }: NodeProps<BackendNode>) {
   const { setInfo } = useStore(useShallow(selector));
-  const updateErrors = (workflowId: string, node_location: string) => {
-    getErrors(workflowId, node_location).then((errors) =>
-      setInfo({ type: "Errors", content: errors })
-    );
-  };
-  const updateLogs = (workflowId: string, node_location: string) => {
-    getLogs(workflowId, node_location).then((logs) => {
-      setInfo({ type: "Logs", content: logs });
-    });
-  };
+  const [infoState, setInfoState] = useState<{
+    workflowId: string;
+    node_location: string;
+    error: boolean;
+  }>({
+    workflowId: "",
+    node_location: "",
+    error: false,
+  });
+  const { data: logs } = useLogs(infoState.workflowId, infoState.node_location);
+  const { data: errors } = useErrors(
+    infoState.workflowId,
+    infoState.node_location
+  );
+  useEffect(() => {
+    if (infoState.error) {
+      setInfo({ type: "Errors", content: errors ? errors : "" });
+    } else {
+      setInfo({ type: "Logs", content: logs ? logs : "" });
+    }
+  }, [infoState, logs, errors, setInfo]);
+
   return (
     <NodeStatusIndicator status={data.status}>
       <Card className="w-[180px]">
@@ -42,12 +54,20 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               //workaround to render errors
               const target = event.target as HTMLElement;
               if (target.closest("button") === null) {
-                updateLogs(data.workflowId, data.node_location);
+                setInfoState({
+                  workflowId: data.workflowId,
+                  node_location: data.node_location,
+                  error: false,
+                });
               }
             }}
           >
             <CardHeader>
-              <CardTitle style={{ whiteSpace: "normal", wordBreak: "break-word" }}>{data.title == "Function"? data.name :data.title}</CardTitle>
+              <CardTitle
+                style={{ whiteSpace: "normal", wordBreak: "break-word" }}
+              >
+                {data.title == "Function" ? data.name : data.title}
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <InputHandleArray handles={data.handles.inputs} id={data.id} />
@@ -60,7 +80,11 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
                   variant="destructive"
                   style={{ zIndex: 5 }}
                   onClick={() =>
-                    updateErrors(data.workflowId, data.node_location)
+                    setInfoState({
+                      workflowId: data.workflowId,
+                      node_location: data.node_location,
+                      error: true,
+                    })
                   }
                 >
                   <OctagonAlert />

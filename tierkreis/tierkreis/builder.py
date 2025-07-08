@@ -1,6 +1,7 @@
 from dataclasses import dataclass
+from typing import Protocol
 
-from tierkreis.controller.data.core import EmptyModel, Function, PortID, ValueRef
+from tierkreis.controller.data.core import EmptyModel, PortID, ValueRef
 from tierkreis.controller.data.graph import (
     Const,
     Eval,
@@ -12,11 +13,20 @@ from tierkreis.controller.data.graph import (
 )
 from tierkreis.controller.data.models import (
     TModel,
+    TNamedModel,
     dict_from_tmodel,
     model_fields,
     init_tmodel,
 )
 from tierkreis.controller.data.types import PType, TKR
+
+
+class Function[Out](TNamedModel, Protocol):
+    @property
+    def namespace(self) -> str: ...
+
+    @staticmethod
+    def out() -> type[Out]: ...
 
 
 @dataclass
@@ -60,7 +70,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
 
     def fn[Out: TModel](self, f: Function[Out]) -> Out:
         name = f"{f.namespace}.{f.__class__.__name__}"
-        ins = dict_from_tmodel(f)  # type: ignore # we already know f is a NamedTuple
+        ins = dict_from_tmodel(f)
         idx, _ = self.data.add(Func(name, ins))("dummy")
         OutModel = f.out()
         outputs = [(idx, x) for x in model_fields(OutModel)]

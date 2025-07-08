@@ -1,26 +1,9 @@
 from types import NoneType
 from typing import NamedTuple
 import pytest
-from tierkreis.controller.data.models import (
-    PModel,
-    TModel,
-    dict_from_pmodel,
-    model_equal,
-    pmodel_from_tmodel,
-    tmodel_from_pmodel,
-)
-from tierkreis.controller.data.types import (
-    PType,
-    TBool,
-    TBytes,
-    TFloat,
-    TInt,
-    TList,
-    TNone,
-    TStr,
-    TTuple,
-)
-from tests.controller.test_types import type_pairs, ptypes
+from tierkreis.controller.data.models import PModel, TModel, dict_from_pmodel
+from tierkreis.controller.data.types import PType
+from tests.controller.test_types import type_list, ptypes
 
 
 class NamedPModel(NamedTuple):
@@ -33,33 +16,6 @@ class NamedPModel(NamedTuple):
     g: bytes
     h: tuple[int, str]
     i: list[list[int] | int]
-
-
-class NamedTModel(NamedTuple):
-    a: TBool
-    b: TInt
-    c: TFloat
-    d: TStr
-    e: TNone
-    f: TList[TStr]
-    g: TBytes
-    h: TTuple[TInt, TStr]
-    i: TList[TList[TInt] | TInt]
-
-
-params: list[tuple[type[PModel], type[TModel]]] = []
-params.extend(type_pairs)  # type: ignore
-params.append((NamedPModel, NamedTModel))  #  type: ignore
-
-
-@pytest.mark.parametrize("pmodel,tmodel", params)
-def test_tmodel_from_pmodel(pmodel: type[PModel], tmodel: type[TModel]):
-    assert model_equal(tmodel_from_pmodel(pmodel), tmodel)
-
-
-@pytest.mark.parametrize("pmodel,tmodel", params)
-def test_pmodel_from_tmodel(pmodel: type[PModel], tmodel: type[TModel]):
-    assert model_equal(pmodel_from_tmodel(tmodel), pmodel)
 
 
 @pytest.mark.parametrize("pmodel", ptypes)

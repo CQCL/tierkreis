@@ -3,7 +3,7 @@ from logging import getLogger
 from types import NoneType
 from typing import Any
 from tierkreis.controller.data.models import PModel, PNamedModel
-from tierkreis.controller.data.types import PType, ptype_from_annotation
+from tierkreis.controller.data.types import PType, is_ptype
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -22,17 +22,19 @@ class FunctionSpec:
 
     def add_inputs(self, annotations: dict[str, Any]) -> None:
         for name, annotation in annotations.items():
-            self.ins[name] = ptype_from_annotation(annotation)
+            if not is_ptype(annotation):
+                raise TierkreisError(f"Expected PType found {annotation} {annotations}")
+            self.ins[name] = annotation
 
     def add_outputs(self, annotation: Any) -> None:
         if annotation is None:
             self.outs = NoneType
             return
 
-        if issubclass(annotation, PNamedModel):
-            self.outs = annotation
+        if not is_ptype(annotation):
+            raise TierkreisError(f"Expected PType found {annotation}")
 
-        self.outs = ptype_from_annotation(annotation)
+        self.outs = annotation
 
 
 @dataclass
@@ -45,7 +47,6 @@ class Namespace:
             fn = FunctionSpec(name=name, namespace=self.name, ins={}, outs=NoneType)
             fn.add_inputs({k: v for k, v in annotations.items() if k != "return"})
             fn.add_outputs(annotations["return"])
-            print(annotations["return"])
             self.functions[fn.name] = fn
         except TierkreisError as exc:
             logger.warning(

@@ -52,8 +52,10 @@ export default function CustomEdge({
     targetY,
   });
 
-  let content = <></>;
-  if (label === "Graph Body") {
+  let content;
+  if (label === undefined || label === null) {
+    content = <></>;
+  } else if (label === "Graph Body") {
     content = (
       <LabelButton labelX={labelX} labelY={labelY}>
         <GitGraph />

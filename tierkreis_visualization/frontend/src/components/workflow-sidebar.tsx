@@ -71,6 +71,7 @@ export function WorkflowSidebar() {
     },
     enabled: !!workflowId,
     select: (data) => parseGraph(data, workflowId),
+    // initialData
   });
   useEffect(() => {
     setNodes([], false);

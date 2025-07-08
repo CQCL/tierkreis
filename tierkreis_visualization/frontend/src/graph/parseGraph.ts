@@ -106,7 +106,7 @@ function replacer(_: string, value: unknown): unknown {
   return value;
 }
 
-export function parseEdges(edges: [PyEdge], parentId?: string): Edge[] {
+export function parseEdges(edges: PyEdge[], parentId?: string): Edge[] {
   const uniqueCount: Map<string, number> = new Map();
   const prefix = parentId ? `${parentId}:` : "";
   return edges.map((edge) => {
@@ -136,7 +136,7 @@ export function parseEdges(edges: [PyEdge], parentId?: string): Edge[] {
 }
 
 export function parseGraph(
-  data: { nodes: [PyNode]; edges: [PyEdge] },
+  data: { nodes: PyNode[]; edges: PyEdge[] },
   workflowId: string,
   parentId?: string
 ) {

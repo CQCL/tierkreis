@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from inspect import isclass
-from typing import Protocol, SupportsIndex, runtime_checkable
+from typing import Callable, Protocol, SupportsIndex, runtime_checkable
 from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
 from tierkreis.controller.data.types import PType
 
@@ -9,7 +9,6 @@ from tierkreis.controller.data.types import PType
 class PNamedModel(Protocol):
     def _asdict(self) -> dict[str, PType]: ...
     def __getitem__(self, key: SupportsIndex, /) -> PType: ...
-    def __hash__(self) -> int: ...
 
 
 PModel = PNamedModel | PType
@@ -25,7 +24,6 @@ class TKR[T: PModel]:
 class TNamedModel(Protocol):
     def _asdict(self) -> dict[str, TKR[PType]]: ...
     def __getitem__(self, key: SupportsIndex, /) -> TKR[PType]: ...
-    def __hash__(self) -> int: ...
 
 
 TModel = TNamedModel | TKR

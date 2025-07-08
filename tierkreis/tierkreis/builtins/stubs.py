@@ -1,7 +1,7 @@
 """Code generated from builtins namespace. Please do not edit."""
 
 from typing import NamedTuple, Sequence
-from tierkreis.controller.data.types import TKR
+from tierkreis.controller.data.models import TKR
 
 
 class iadd(NamedTuple):

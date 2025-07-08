@@ -12,13 +12,14 @@ from tierkreis.controller.data.graph import (
     Output,
 )
 from tierkreis.controller.data.models import (
+    TKR,
     TModel,
     TNamedModel,
     dict_from_tmodel,
     model_fields,
     init_tmodel,
 )
-from tierkreis.controller.data.types import PType, TKR
+from tierkreis.controller.data.types import PType
 
 
 class Function[Out](TNamedModel, Protocol):

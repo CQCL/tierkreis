@@ -2,20 +2,12 @@ import collections.abc
 from dataclasses import dataclass
 import json
 from types import NoneType, UnionType
-from typing import Any, Callable, Sequence, Union, assert_never, get_args, get_origin
-from tierkreis.controller.data.core import NodeIndex, PortID
-from tierkreis.controller.data.models import PModel
+from typing import Any, Sequence, Union, assert_never, get_args, get_origin
 from typing_extensions import TypeIs
 
 
 _PType = bool | int | float | str | NoneType | Sequence["_PType"] | tuple["_PType", ...]
 PType = _PType | bytes
-
-
-@dataclass
-class TKR[T: PType]:
-    node_index: NodeIndex
-    port_id: PortID
 
 
 def _is_union(o: object) -> bool:

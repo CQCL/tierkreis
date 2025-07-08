@@ -71,7 +71,7 @@ def format_namespace(namespace: Namespace) -> str:
 
 from typing import Literal, NamedTuple, Sequence
 import typing
-from tierkreis.controller.data.types import TKR
+from tierkreis.controller.data.models import TKR
 
 {functions_str}
     '''

@@ -3,7 +3,6 @@ from typing import Sequence
 import pytest
 from tierkreis.controller.data.types import (
     PType,
-    TKR,
     bytes_from_ptype,
     format_ptype,
     is_ptype,

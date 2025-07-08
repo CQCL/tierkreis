@@ -6,32 +6,45 @@ import {
   type LoaderFunction,
   type Params,
 } from "react-router";
+
+import {
+  QueryClient,
+  QueryClientProvider,
+} from "@tanstack/react-query";
+
 import App from "./App";
 
 import "./index.css";
+
+const queryClient = new QueryClient();
 
 const workflowId: LoaderFunction = ({ params }: { params: Params }) => {
   return { params };
 };
 
+const element = (
+  <QueryClientProvider client={queryClient}>
+    <App />
+  </QueryClientProvider>
+);
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <App />,
+    element: element,
   },
   {
     path: "/:workflowId",
-    element: <App />,
+    element: element,
     loader: workflowId,
   },
   {
     path: "*/:workflowId",
-    element: <App />,
+    element: element,
     loader: workflowId,
   },
-    {
+  {
     path: "*",
-    element: <App />,
+    element: element,
   },
 ]);
 

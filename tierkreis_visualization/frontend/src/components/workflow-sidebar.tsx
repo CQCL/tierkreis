@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import {
   Sidebar,
@@ -15,9 +15,36 @@ import { Link, useParams } from "react-router";
 import { URL } from "@/data/constants";
 import useStore from "@/data/store";
 import { parseGraph } from "@/graph/parseGraph";
+import { useQuery } from "@tanstack/react-query";
+interface Workflow {
+  id: string;
+  name: string;
+}
+
+function useWorkflows(url: string) {
+  return useQuery<Workflow[]>({
+    queryKey: ["workflows", url],
+    queryFn: async () => {
+      const response = await fetch(`${url}/all`);
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.json();
+    },
+    select: (data) =>
+      data.map(
+        (workflow): Workflow => ({
+          id: workflow.id,
+          name: workflow.name,
+        })
+      ),
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+}
+
 
 export function WorkflowSidebar() {
-  const [items, setItems] = useState<{ id: string; name: string }[]>([]);
+  const { data: items = [] } = useWorkflows(URL);
   const { workflowId = "" } = useParams();
   const {
     setWorkflowId,
@@ -28,27 +55,6 @@ export function WorkflowSidebar() {
     tryFromStorage,
   } = useStore();
   const { clear } = useStore.temporal.getState();
-  useEffect(() => {
-    function getWorkflows(url: string) {
-      fetch(`${url}/all`, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      })
-        .then((response) => response.json())
-        .then((data) =>
-          data.map((workflow: { id: string; name: string }) => {
-            return {
-              id: workflow.id,
-              name: workflow.name,
-            };
-          })
-        )
-        .then((items) => {
-          setItems(items);
-        });
-    }
-    getWorkflows(URL);
-  }, []);
 
   useEffect(() => {
     if (!workflowId) {

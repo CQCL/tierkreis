@@ -54,7 +54,7 @@ export default function CustomEdge({
 
   let content;
   if (label === undefined || label === null) {
-    content = <></>;
+    return <BaseEdge id={id} path={edgePath} />;
   } else if (label === "Graph Body") {
     content = (
       <LabelButton labelX={labelX} labelY={labelY}>

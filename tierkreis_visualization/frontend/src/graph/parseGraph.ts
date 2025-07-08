@@ -92,6 +92,9 @@ export function parseNodes(
 }
 
 function replacer(_: string, value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return;
+  }
   if (typeof value === "number") {
     const highThreshold = 1_000;
     const lowThreshold = 0.0001;

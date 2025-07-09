@@ -2,7 +2,7 @@ from typing import NamedTuple
 from tierkreis.builtins.stubs import iadd, igt, itimes
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder
-from tierkreis.controller.data.models import TKR
+from tierkreis.controller.data.models import TKR, TList
 
 
 class DoublerInput(NamedTuple):
@@ -72,11 +72,9 @@ class TypedMapOutput(NamedTuple):
 def typed_map():
     g = GraphBuilder(EmptyModel, TypedMapOutput)
     six = g.const(6)
-    Ns_const = g.const(list(range(21)))
-    # Ns = g.unfold_list(Ns_const)
-    # doubler_inputs = Ns.map(lambda n: DoublerInput(doubler_input=n, intercept=six))
-    # doubler_const = g.graph_const(typed_doubler_plus())
-    # m = g.map(doubler_const, doubler_inputs)
-    # folded = g.fold_list(m)
-    g.outputs(TypedMapOutput(typed_map_output=Ns_const))
+    Ns = g.const(list(range(21)))
+    ins = TList.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
+    doubler_const = g.graph_const(typed_doubler_plus())
+    m = g.map_little(doubler_const, ins)
+    g.outputs(TypedMapOutput(typed_map_output=m))
     return g

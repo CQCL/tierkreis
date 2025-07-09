@@ -18,6 +18,7 @@ from tierkreis.worker.storage.protocol import WorkerStorage
 
 logger = getLogger(__name__)
 WorkerFunction = Callable[..., PModel]
+PrimitiveTask = Callable[[WorkerCallArgs, WorkerStorage], None]
 
 
 def handle_unhandled_exception(
@@ -52,13 +53,28 @@ class Worker:
 
         args = {}
         for k, b in bs.items():
-            args[k] = ptype_from_bytes(b, types[k])
+            args[k] = ptype_from_bytes(b)
         return args
 
     def _save_results(self, outputs: dict[PortID, Path], results: PModel):
         d = dict_from_pmodel(results)
         for result_name, path in outputs.items():
             self.storage.write_output(path, bytes_from_ptype(d[result_name]))
+
+    def primitive_task(
+        self, name: str | None = None
+    ) -> Callable[[PrimitiveTask], None]:
+        """Register a primitive task with the worker."""
+
+        def function_decorator(func: PrimitiveTask) -> None:
+            func_name = name if name is not None else func.__name__
+
+            def wrapper(args: WorkerCallArgs):
+                func(args, self.storage)
+
+            self.functions[func_name] = wrapper
+
+        return function_decorator
 
     def function(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
         """Register a function with the worker."""
@@ -79,6 +95,7 @@ class Worker:
     def run(self, worker_definition_path: Path) -> None:
         """Run a function."""
         node_definition = self.storage.read_call_args(worker_definition_path)
+        print(self.namespace)
 
         logging.basicConfig(
             format="%(asctime)s: %(message)s",

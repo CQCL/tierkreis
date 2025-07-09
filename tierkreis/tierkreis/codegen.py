@@ -53,7 +53,7 @@ class {fn.name}(NamedTuple):
     {ins_str}
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[{class_name}]:
         return {class_name}
 
     @property

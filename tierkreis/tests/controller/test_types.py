@@ -49,7 +49,7 @@ ptypes: Sequence[PType] = [
 @pytest.mark.parametrize("ptype", ptypes)
 def test_bytes_roundtrip(ptype: PType):
     bs = bytes_from_ptype(ptype)
-    new_type = ptype_from_bytes(bs, ptype.__class__)
+    new_type = ptype_from_bytes(bs)
     assert ptype == new_type
 
 

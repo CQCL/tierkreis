@@ -57,7 +57,11 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             assert_never(ptype)
 
 
-def ptype_from_bytes(bs: bytes, annotation: type[PType]) -> PType:
+def ptype_from_bytes(bs: bytes) -> PType:
+    try:
+        return json.loads(bs)
+    except json.JSONDecodeError:
+        return bs
     if (
         issubclass(annotation, bool)
         or issubclass(annotation, int)

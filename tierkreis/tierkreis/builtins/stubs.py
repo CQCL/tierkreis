@@ -9,7 +9,7 @@ class iadd(NamedTuple):
     b: TKR[int]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[int]]:
         return TKR[int]
 
     @property
@@ -22,7 +22,7 @@ class itimes(NamedTuple):
     b: TKR[int]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[int]]:
         return TKR[int]
 
     @property
@@ -35,7 +35,7 @@ class igt(NamedTuple):
     b: TKR[int]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[bool]]:
         return TKR[bool]
 
     @property
@@ -48,7 +48,7 @@ class impl_and(NamedTuple):
     b: TKR[bool]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[bool]]:
         return TKR[bool]
 
     @property
@@ -61,7 +61,7 @@ class str_eq(NamedTuple):
     b: TKR[str]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[bool]]:
         return TKR[bool]
 
     @property
@@ -74,7 +74,7 @@ class str_neq(NamedTuple):
     b: TKR[str]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[bool]]:
         return TKR[bool]
 
     @property
@@ -87,7 +87,7 @@ class concat(NamedTuple):
     rhs: TKR[str]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[str]]:
         return TKR[str]
 
     @property
@@ -99,7 +99,7 @@ class mean(NamedTuple):
     values: TKR[Sequence[float]]
 
     @staticmethod
-    def out() -> type:
+    def out() -> type[TKR[float]]:
         return TKR[float]
 
     @property

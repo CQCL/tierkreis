@@ -29,6 +29,22 @@ class TNamedModel(Protocol):
 TModel = TNamedModel | TKR
 
 
+@dataclass
+class TList[T: TModel]:
+    """A list of models."""
+
+    _value: T
+
+    def apply[B: TModel](self, f: Callable[[T], B]) -> "TList[B]":
+        return TList(f(self._value))
+
+    @staticmethod
+    def map[A: PType, B: TModel](
+        aes: TKR[list[A]], f: Callable[[TKR[A]], B]
+    ) -> "TList[B]":
+        return TList(f(TKR(aes.node_index, aes.port_id + "-%")))
+
+
 def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
     if isinstance(pmodel, PNamedModel):
         return pmodel._asdict()

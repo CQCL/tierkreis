@@ -1,12 +1,17 @@
 from dataclasses import dataclass
+from glob import glob
 from logging import getLogger
+from pathlib import Path
 import statistics
 from sys import argv
 from typing import Any, Iterator, NamedTuple, Sequence
 
 from pydantic import BaseModel
 
+from tierkreis.controller.data.location import WorkerCallArgs
+from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
 from tierkreis.value import Value
+from tierkreis.worker.storage.protocol import WorkerStorage
 from tierkreis.worker.worker import Worker
 
 
@@ -93,10 +98,12 @@ def str_neq(a: str, b: str) -> bool:
     return a != b
 
 
-# @worker.function()
-# def fold_values[T](values_glob: Iterator[tuple[str, T]]) -> list[T]:
-#     values = [1 for value in values_glob]
-#     return values
+@worker.primitive_task()
+def fold_values[T](args: WorkerCallArgs, storage: WorkerStorage) -> None:
+    values_glob = glob(str(args.inputs["value"]))
+    bs = [storage.read_input(Path(value)) for value in values_glob]
+    values = [ptype_from_bytes(b) for b in bs]
+    storage.write_output(Path(args.outputs["value"]), bytes_from_ptype(values))
 
 
 # @worker.function()

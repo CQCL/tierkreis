@@ -9,10 +9,12 @@ from tierkreis.controller.data.graph import (
     GraphData,
     Input,
     Loop,
+    Map,
     Output,
 )
 from tierkreis.controller.data.models import (
     TKR,
+    TList,
     TModel,
     TNamedModel,
     dict_from_tmodel,
@@ -94,23 +96,30 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     #     idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ref}))("dummy")
     #     return TKRList(TKRRef[T](idx, "*"))
 
-    # def fold_list[T: TKRType](self, refs: TKRList[TKRRef[T]]) -> TKRRef[list[T]]:
-    #     idx, port = refs.t
-    #     idx, _ = self.data.add(
-    #         Func("builtins.fold_values", {"values_glob": (idx, port)})
-    #     )("dummy")
-    #     return TKRRef[list[T]](idx, "value")
+    def _fold_list[T: PType](self, refs: TList[TKR[T]]) -> TKR[list[T]]:
+        value_ref = refs._value.node_index, refs._value.port_id
+        idx, _ = self.data.add(
+            Func("builtins.fold_values", {"values_glob": value_ref})
+        )("dummy")
+        return TKR[list[T]](idx, "value")
 
-    # def map[A: TKRModel, B: TKRModel](
-    #     self, body: TypedGraphRef[A, B], aes: TKRList[A]
-    # ) -> TKRList[B]:
-    #     a = aes.t
-    #     ins = {k: (v[0], v[1]) for k, v in annotations_from_tkrref(a).items()}
-    #     g = body.graph_ref
-    #     first_ref = cast(TKRRef[Any], next(x for x in ins.values() if x[1] == "*"))
-    #     idx, _ = self.data.add(Map(g, first_ref[0], "dummy", "dummy", ins))("dummy")
+    def map[A: TModel, B: TModel](
+        self, body: TypedGraphRef[A, B], aes: TList[A]
+    ) -> TList[B]:
+        ins = dict_from_tmodel(aes._value)
+        first_ref = next(x for x in ins.values() if x[1] == "*")
+        idx, _ = self.data.add(Map(body.graph_ref, first_ref[0], "x", "x", ins))("x")
 
-    #     Out = body.outputs_type
-    #     return TKRList(
-    #         ref_from_tkr_type(Out, lambda _: idx, name_fn=lambda s: s + "-*")
-    #     )
+        refs = [(idx, s + "-*") for s in model_fields(body.outputs_type)]
+        return TList(init_tmodel(body.outputs_type, refs))
+
+    def map_little[A: TModel, B: PType](
+        self, body: TypedGraphRef[A, TKR[B]], aes: TList[A]
+    ) -> TKR[list[B]]:
+        ins = dict_from_tmodel(aes._value)
+        # first_ref = next(x for x in ins.values() if "*" in x[1])
+        idx, _ = self.data.add(Map(body.graph_ref, -5, "x", "x", ins))("x")
+
+        refs = [(idx, s + "-*") for s in model_fields(body.outputs_type)]
+        b = TList(init_tmodel(body.outputs_type, refs))
+        return self._fold_list(b)

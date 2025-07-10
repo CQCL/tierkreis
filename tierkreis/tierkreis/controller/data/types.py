@@ -1,5 +1,4 @@
 import collections.abc
-from dataclasses import dataclass
 import json
 from types import NoneType, UnionType
 from typing import Any, Sequence, Union, assert_never, get_args, get_origin
@@ -89,11 +88,11 @@ def format_ptype(ptype: type[PType]) -> str:
 
     if _is_tuple(ptype):
         args = [format_ptype(x) for x in get_args(ptype)]
-        return f"tuple[{", ".join(args)}]"
+        return f"tuple[{', '.join(args)}]"
 
     if _is_plist(ptype):
         args = [format_ptype(x) for x in get_args(ptype)]
-        return f"Sequence[{", ".join(args)}]"
+        return f"Sequence[{', '.join(args)}]"
 
     if (
         issubclass(ptype, bool)

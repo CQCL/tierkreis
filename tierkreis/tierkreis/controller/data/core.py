@@ -1,4 +1,4 @@
-from typing import Any, NamedTuple, Protocol
+from typing import Any, NamedTuple
 
 
 Jsonable = Any

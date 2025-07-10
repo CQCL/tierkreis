@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from inspect import isclass
-from typing import Callable, Protocol, SupportsIndex, runtime_checkable
+from typing import Protocol, SupportsIndex, runtime_checkable
 from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
 from tierkreis.controller.data.types import PType
 

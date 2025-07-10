@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from logging import getLogger
 from types import NoneType
 from typing import Any
-from tierkreis.controller.data.models import PModel, PNamedModel
+from tierkreis.controller.data.models import PModel
 from tierkreis.controller.data.types import PType, is_ptype
 from tierkreis.exceptions import TierkreisError
 

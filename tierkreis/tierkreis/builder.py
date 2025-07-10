@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Callable, Generic, Protocol, TypeVar, overload
 
-from tierkreis.controller.data.core import EmptyModel, PortID, ValueRef
+from tierkreis.controller.data.core import EmptyModel, ValueRef
 from tierkreis.controller.data.graph import (
     Const,
     Eval,

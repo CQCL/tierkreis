@@ -1,9 +1,9 @@
 from types import NoneType
 from typing import NamedTuple
 import pytest
-from tierkreis.controller.data.models import PModel, TModel, dict_from_pmodel
+from tierkreis.controller.data.models import PModel, dict_from_pmodel
 from tierkreis.controller.data.types import PType
-from tests.controller.test_types import type_list, ptypes
+from tests.controller.test_types import ptypes
 
 
 class NamedPModel(NamedTuple):

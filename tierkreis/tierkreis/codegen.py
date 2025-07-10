@@ -1,4 +1,3 @@
-from typing import NamedTuple
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, PNamedModel
 from tierkreis.controller.data.types import PType, format_ptype

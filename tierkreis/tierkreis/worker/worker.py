@@ -7,7 +7,6 @@ from typing import Callable
 
 from tierkreis.codegen import format_namespace
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes

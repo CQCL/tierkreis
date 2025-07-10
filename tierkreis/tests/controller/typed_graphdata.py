@@ -18,8 +18,8 @@ class CDoublerOutput(NamedTuple):
 def ctyped_doubler_plus():
     g = GraphBuilder(DoublerInput, CDoublerOutput)
     two = g.const(2)
-    mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
-    out = g.fn(iadd(a=mul, b=g.inputs.intercept))
+    mul = g.task(itimes(a=g.inputs.doubler_input, b=two))
+    out = g.task(iadd(a=mul, b=g.inputs.intercept))
     g.outputs(CDoublerOutput(a=g.inputs.doubler_input, value=out))
     return g
 
@@ -27,8 +27,8 @@ def ctyped_doubler_plus():
 def typed_doubler_plus():
     g = GraphBuilder(DoublerInput, TKR[int])
     two = g.const(2)
-    mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
-    out = g.fn(iadd(a=mul, b=g.inputs.intercept))
+    mul = g.task(itimes(a=g.inputs.doubler_input, b=two))
+    out = g.task(iadd(a=mul, b=g.inputs.intercept))
     g.outputs(out)
     return g
 
@@ -60,8 +60,8 @@ def loop_body():
     g = GraphBuilder(LoopBodyInput, LoopBodyOutput)
     one = g.const(1)
     N = g.const(10)
-    a_plus = g.fn(iadd(a=g.inputs.loop_acc, b=one))
-    pred = g.fn(igt(a=N, b=a_plus))
+    a_plus = g.task(iadd(a=g.inputs.loop_acc, b=one))
+    pred = g.task(igt(a=N, b=a_plus))
     g.outputs(LoopBodyOutput(loop_acc=a_plus, should_continue=pred))
     return g
 

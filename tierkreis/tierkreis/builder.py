@@ -77,7 +77,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
             graph_ref=(idx, port), outputs_type=graph.outputs_type
         )
 
-    def fn[Out: TModel](self, f: Function[Out]) -> Out:
+    def task[Out: TModel](self, f: Function[Out]) -> Out:
         name = f"{f.namespace}.{f.__class__.__name__}"
         ins = dict_from_tmodel(f)
         idx, _ = self.data.add(Func(name, ins))("dummy")
@@ -110,23 +110,23 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         )("dummy")
         return TKR[list[T]](idx, "value")
 
-    def map_fn_single_in[A: PType, B: TModel](
+    def _map_fn_single_in[A: PType, B: TModel](
         self, aes: TKR[list[A]], body: Callable[[TKR[A]], B]
     ) -> "TList[B]":
         tlist = self._unfold_list(aes)
         return TList(body(TKR(tlist._value.node_index, "*")))
 
-    def map_fn_single_out[A: TModel, B: PType](
+    def _map_fn_single_out[A: TModel, B: PType](
         self, aes: TList[A], body: Callable[[A], TKR[B]]
     ) -> TKR[list[B]]:
         return self._fold_list(TList(body(aes._value)))
 
-    def map_graph_single_out[A: TModel, B: PType](
+    def _map_graph_single_out[A: TModel, B: PType](
         self, aes: TList[A], body: TypedGraphRef[A, TKR[B]]
     ) -> TKR[list[B]]:
-        return self._fold_list(self.map_graph_full(aes, body))
+        return self._fold_list(self._map_graph_full(aes, body))
 
-    def map_graph_full[A: TModel, B: TModel](
+    def _map_graph_full[A: TModel, B: TModel](
         self, aes: TList[A], body: TypedGraphRef[A, B]
     ) -> TList[B]:
         ins = dict_from_tmodel(aes._value)
@@ -160,10 +160,10 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         if isinstance(body, TypedGraphRef) and isinstance(
             body.outputs_type, TNamedModel
         ):
-            return self.map_graph_full(aes, body)
+            return self._map_graph_full(aes, body)
         elif isinstance(body, TypedGraphRef):
-            return self.map_graph_single_out(aes, body)
+            return self._map_graph_single_out(aes, body)
         elif isinstance(aes, TList):
-            return self.map_fn_single_out(aes, body)
+            return self._map_fn_single_out(aes, body)
         elif isinstance(aes, TKR):
-            return self.map_fn_single_in(aes, body)
+            return self._map_fn_single_in(aes, body)

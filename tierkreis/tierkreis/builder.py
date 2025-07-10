@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Protocol, overload
+from typing import Any, Callable, Generic, Protocol, TypeVar, overload
 
 from tierkreis.controller.data.core import EmptyModel, PortID, ValueRef
 from tierkreis.controller.data.graph import (
@@ -38,10 +38,19 @@ class Function[Out](TNamedModel, Protocol):
     def out() -> type[Out]: ...
 
 
+Inputs = TypeVar("Inputs", bound=TModel, contravariant=True)
+Outputs = TypeVar("Outputs", bound=TModel, covariant=True)
+
+
 @dataclass
-class TypedGraphRef[Inputs: TModel, Outputs: TModel]:
+class TypedGraphRef(Generic[Inputs, Outputs]):
     graph_ref: ValueRef
     outputs_type: type[Outputs]
+
+
+class LoopOutput(TNamedModel, Protocol):
+    @property
+    def should_continue(self) -> TKR[bool]: ...
 
 
 class GraphBuilder[Inputs: TModel, Outputs: TModel]:
@@ -69,7 +78,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         idx, port = self.data.add(Const(value))("value")
         return TKR[T](idx, port)
 
-    def graph_const[A: TModel, B: TModel](
+    def _graph_const[A: TModel, B: TModel](
         self, graph: "GraphBuilder[A, B]"
     ) -> TypedGraphRef[A, B]:
         idx, port = self.data.add(Const(graph.data))("value")
@@ -85,16 +94,32 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         outputs = [(idx, x) for x in model_fields(OutModel)]
         return init_tmodel(OutModel, outputs)
 
-    def eval[A: TModel, B: TModel](self, body: TypedGraphRef[A, B], a: A) -> B:
+    @overload
+    def eval[A: TModel, B: TModel](self, body: TypedGraphRef[A, B], a: A) -> B: ...
+    @overload
+    def eval[A: TModel, B: TModel](self, body: "GraphBuilder[A, B]", a: A) -> B: ...
+    def eval[A: TModel, B: TModel](
+        self, body: "GraphBuilder[A,B] | TypedGraphRef", a: Any
+    ) -> Any:
+        if isinstance(body, GraphBuilder):
+            body = self._graph_const(body)
+
         idx, _ = self.data.add(Eval(body.graph_ref, dict_from_tmodel(a)))("dummy")
         outputs = [(idx, x) for x in model_fields(body.outputs_type)]
         return init_tmodel(body.outputs_type, outputs)
 
-    def loop[A: TModel, B: TModel](
-        self, body: TypedGraphRef[A, B], a: A, continue_port: PortID
+    @overload
+    def loop[A: TModel, B: LoopOutput](self, body: TypedGraphRef[A, B], a: A) -> B: ...
+    @overload
+    def loop[A: TModel, B: LoopOutput](self, body: "GraphBuilder[A, B]", a: A) -> B: ...
+    def loop[A: TModel, B: LoopOutput](
+        self, body: "TypedGraphRef[A, B] |GraphBuilder[A, B]", a: A
     ) -> B:
+        if isinstance(body, GraphBuilder):
+            body = self._graph_const(body)
+
         g = body.graph_ref
-        idx, _ = self.data.add(Loop(g, dict_from_tmodel(a), continue_port))("dummy")
+        idx, _ = self.data.add(Loop(g, dict_from_tmodel(a), "should_continue"))("dummy")
         outputs = [(idx, x) for x in model_fields(body.outputs_type)]
         return init_tmodel(body.outputs_type, outputs)
 
@@ -152,11 +177,24 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     ) -> TKR[list[B]]: ...
 
     @overload
+    def map[A: TModel, B: PType](  # type: ignore # overlapping overload warning
+        self, aes: TList[A], body: "GraphBuilder[A, TKR[B]]"
+    ) -> TKR[list[B]]: ...
+
+    @overload
     def map[A: TModel, B: TModel](
         self, aes: TList[A], body: TypedGraphRef[A, B]
     ) -> TList[B]: ...
 
+    @overload
+    def map[A: TModel, B: TModel](
+        self, aes: TList[A], body: "GraphBuilder[A, B]"
+    ) -> TList[B]: ...
+
     def map(self, aes: Any, body: Any) -> Any:
+        if isinstance(body, GraphBuilder):
+            body = self._graph_const(body)
+
         if isinstance(body, TypedGraphRef) and isinstance(
             body.outputs_type, TNamedModel
         ):

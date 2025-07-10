@@ -10,17 +10,17 @@ class DoublerInput(NamedTuple):
     intercept: TKR[int]
 
 
-class CDoublerOutput(NamedTuple):
+class DoublerOutput(NamedTuple):
     a: TKR[int]
     value: TKR[int]
 
 
-def ctyped_doubler_plus():
-    g = GraphBuilder(DoublerInput, CDoublerOutput)
+def typed_doubler_plus_multi():
+    g = GraphBuilder(DoublerInput, DoublerOutput)
     two = g.const(2)
     mul = g.task(itimes(a=g.inputs.doubler_input, b=two))
     out = g.task(iadd(a=mul, b=g.inputs.intercept))
-    g.outputs(CDoublerOutput(a=g.inputs.doubler_input, value=out))
+    g.outputs(DoublerOutput(a=g.inputs.doubler_input, value=out))
     return g
 
 
@@ -41,8 +41,7 @@ def typed_eval():
     g = GraphBuilder(EmptyModel, TypedEvalOutputs)
     zero = g.const(0)
     six = g.const(6)
-    doubler_const = g.graph_const(typed_doubler_plus())
-    e = g.eval(doubler_const, DoublerInput(doubler_input=six, intercept=zero))
+    e = g.eval(typed_doubler_plus(), DoublerInput(doubler_input=six, intercept=zero))
     g.outputs(TypedEvalOutputs(typed_eval_output=e))
     return g
 
@@ -73,8 +72,7 @@ class TypedLoopOutput(NamedTuple):
 def typed_loop():
     g = GraphBuilder(EmptyModel, TypedLoopOutput)
     six = g.const(6)
-    g_const = g.graph_const(loop_body())
-    loop = g.loop(g_const, LoopBodyInput(loop_acc=six), "should_continue")
+    loop = g.loop(loop_body(), LoopBodyInput(loop_acc=six))
     g.outputs(TypedLoopOutput(typed_loop_output=loop.loop_acc))
     return g
 
@@ -88,8 +86,7 @@ def typed_map():
     six = g.const(6)
     Ns = g.const(list(range(21)))
     ins = g.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
-    doubler_const = g.graph_const(typed_doubler_plus())
-    m = g.map(ins, doubler_const)
+    m = g.map(ins, typed_doubler_plus())
     g.outputs(TypedMapOutput(typed_map_output=m))
     return g
 
@@ -99,8 +96,7 @@ def typed_destructuring():
     six = g.const(6)
     Ns = g.const(list(range(21)))
     ins = g.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
-    doubler_const = g.graph_const(ctyped_doubler_plus())
-    m = g.map(ins, doubler_const)
+    m = g.map(ins, typed_doubler_plus_multi())
     mout = g.map(m, lambda x: x.value)
     g.outputs(TypedMapOutput(typed_map_output=mout))
     return g

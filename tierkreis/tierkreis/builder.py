@@ -153,7 +153,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     ) -> TKR[list[B]]: ...
 
     @overload
-    def map[A: TModel, B: PType](  # type: ignore
+    def map[A: TModel, B: PType](  # type: ignore # overlapping overload warning
         self, aes: TList[A], body: TypedGraphRef[A, TKR[B]]
     ) -> TKR[list[B]]: ...
 

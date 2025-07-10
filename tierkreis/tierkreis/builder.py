@@ -119,18 +119,12 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     def map_fn_single_out[A: TModel, B: PType](
         self, aes: TList[A], body: Callable[[A], TKR[B]]
     ) -> TKR[list[B]]:
-        raise NotImplementedError()
+        return self._fold_list(TList(body(aes._value)))
 
     def map_graph_single_out[A: TModel, B: PType](
         self, aes: TList[A], body: TypedGraphRef[A, TKR[B]]
     ) -> TKR[list[B]]:
-        ins = dict_from_tmodel(aes._value)
-        first_ref = next(x for x in ins.values() if "*" in x[1])
-        idx, _ = self.data.add(Map(body.graph_ref, first_ref[0], "x", "x", ins))("x")
-
-        refs = [(idx, s + "-*") for s in model_fields(body.outputs_type)]
-        b = TList(init_tmodel(body.outputs_type, refs))
-        return self._fold_list(b)
+        return self._fold_list(self.map_graph_full(aes, body))
 
     def map_graph_full[A: TModel, B: TModel](
         self, aes: TList[A], body: TypedGraphRef[A, B]

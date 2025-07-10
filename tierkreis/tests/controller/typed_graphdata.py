@@ -10,9 +10,18 @@ class DoublerInput(NamedTuple):
     intercept: TKR[int]
 
 
-class DoublerOutput(NamedTuple):
+class CDoublerOutput(NamedTuple):
     a: TKR[int]
     value: TKR[int]
+
+
+def ctyped_doubler_plus():
+    g = GraphBuilder(DoublerInput, CDoublerOutput)
+    two = g.const(2)
+    mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
+    out = g.fn(iadd(a=mul, b=g.inputs.intercept))
+    g.outputs(CDoublerOutput(a=g.inputs.doubler_input, value=out))
+    return g
 
 
 def typed_doubler_plus():
@@ -82,4 +91,16 @@ def typed_map():
     doubler_const = g.graph_const(typed_doubler_plus())
     m = g.map(ins, doubler_const)
     g.outputs(TypedMapOutput(typed_map_output=m))
+    return g
+
+
+def typed_destructuring():
+    g = GraphBuilder(EmptyModel, TypedMapOutput)
+    six = g.const(6)
+    Ns = g.const(list(range(21)))
+    ins = g.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
+    doubler_const = g.graph_const(ctyped_doubler_plus())
+    m = g.map(ins, doubler_const)
+    mout = g.map(m, lambda x: x.value)
+    g.outputs(TypedMapOutput(typed_map_output=mout))
     return g

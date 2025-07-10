@@ -57,6 +57,7 @@ def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
     if isclass(tmodel) and issubclass(tmodel, TNamedModel):
         args: list[TKR] = []
         for ref in refs:
-            args.append(tmodel.__annotations__[ref[1]](ref[0], ref[1]))
+            key = ref[1].replace("-*", "")
+            args.append(tmodel.__annotations__[key](ref[0], ref[1]))
         return tmodel(*args)
     return tmodel(refs[0][0], refs[0][1])

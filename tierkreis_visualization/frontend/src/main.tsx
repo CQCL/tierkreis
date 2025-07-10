@@ -1,4 +1,6 @@
-import React from "react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import {
   createBrowserRouter,
@@ -7,13 +9,11 @@ import {
   type Params,
 } from "react-router";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-
 import App from "./App";
 
-import "./index.css";
 import { ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
+import "./index.css";
 
 const queryClient = new QueryClient();
 
@@ -23,9 +23,12 @@ const workflowId: LoaderFunction = ({ params }: { params: Params }) => {
 
 const element = (
   <QueryClientProvider client={queryClient}>
+    <Suspense fallback="Loading...">
+        <ReactQueryDevtools initialIsOpen />
     <ReactFlowProvider>
       <App />
     </ReactFlowProvider>
+    </Suspense>
   </QueryClientProvider>
 );
 const router = createBrowserRouter([

@@ -1,50 +1,129 @@
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useParams } from "react-router";
-import { useEffect } from "react";
-import { useReactFlow } from "@xyflow/react";
+import {useSuspenseQuery} from "@tanstack/react-query";
+import {
+  applyEdgeChanges,
+  applyNodeChanges,
+  Edge,
+  OnEdgesChange,
+  OnNodesChange,
+  ReactFlow,
+  useReactFlow,
+} from "@xyflow/react";
+import {useParams} from "react-router";
 
 import Layout from "@/components/layout";
-import Flow from "@/components/flow";
-import { URL } from "@/data/constants";
-import { Workflow } from "@/components/types";
-import { parseGraph } from "@/graph/parseGraph";
-import { PartialState } from "@/data/store";
-import { bottomUpLayout } from "./graph/layoutGraph";
+import {Workflow} from "@/components/types";
+import {URL} from "@/data/constants";
+import {parseGraph} from "@/graph/parseGraph";
+import {Background, ControlButton, Controls} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import {Network} from "lucide-react";
+import React, {useCallback, useState} from "react";
 
-function fromStorage(workflowId: string): PartialState {
-  const storedData = localStorage.getItem(workflowId);
+import {SidebarTrigger} from "@/components/ui/sidebar";
+import {edgeTypes} from "@/edges";
+import {bottomUpLayout} from "@/graph/layoutGraph";
+import {nodeTypes} from "@/nodes";
+import {BackendNode} from "./nodes/types";
+// function fromStorage(workflow_id: string): PartialState {
+//   const storedData = localStorage.getItem(workflow_id);
+//   try {
+//     return JSON.parse(storedData || "{}") as PartialState;
+//   } catch (error) {
+//     return { workflow_id: "", nodes: [], edges: [] } as PartialState;
+//   }
+// }
+
+const saveGraph = ({
+  key,
+  ...graph
+}: {
+  key: string;
+  nodes: BackendNode[];
+  edges: Edge[];
+}) => {
   try {
-    return JSON.parse(storedData || "{}") as PartialState;
-  } catch (error) {
-    return { workflowId: "", nodes: [], edges: [] } as PartialState;
+    localStorage.setItem(key, JSON.stringify(graph));
+  } catch {
+    return null;
   }
-}
+};
 
-function useGraph(workflowId: string) {
-  // get graphData from backend
-  return useQuery({
-    queryKey: ["workflowGraph", workflowId],
-    queryFn: async () => {
-      const response = await fetch(`${URL}/${workflowId}/nodes/-`, {
-        method: "GET",
-        headers: { Accept: "application/json" },
-      });
-      if (!response.ok) {
-        throw new Error("Network response was not ok");
-      }
-      return response.json();
-    },
-    enabled: !!workflowId,
-    select: (data) => parseGraph(data, workflowId),
-  });
-}
+const loadGraph = (props: {
+  key: string;
+}): {nodes: BackendNode[]; edges: Edge[]} | null => {
+  try {
+    const item = localStorage.getItem(props.key);
+    if (item !== null)
+      return JSON.parse(item) as {nodes: BackendNode[]; edges: Edge[]};
+    return null;
+  } catch {
+    return null;
+  }
+};
 
-function useWorkflows(url: string) {
-  // get workflow ids from backend
-  return useQuery<Workflow[]>({
-    queryKey: ["workflows", url],
+const Main = (props: {
+  initialNodes: BackendNode[];
+  initialEdges: Edge[];
+  workflow_id: string;
+  workflows: Workflow[];
+}) => {
+  // Client node state (not definition)
+  const [nodes, setNodes] = useState(props.initialNodes);
+  const [edges, setEdges] = useState(props.initialEdges);
+
+  React.useEffect(() => {
+    saveGraph({key: props.workflow_id, nodes, edges});
+  }, [edges, nodes, props.workflow_id]);
+
+  const onNodesChange: OnNodesChange<BackendNode> = useCallback(
+    (changes) =>
+      setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
+    []
+  );
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) =>
+      setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
+    []
+  );
+
+  const reactFlowInstance = useReactFlow();
+
+  return (
+    <Layout workflows={props.workflows} workflowId={props.workflow_id}>
+      <ReactFlow<BackendNode, Edge>
+        defaultNodes={nodes}
+        defaultEdges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onEdgesChange={onEdgesChange}
+        onNodesChange={onNodesChange}
+        fitView
+      >
+        <Background />
+        <Controls showZoom={false} showInteractive={false}>
+          <SidebarTrigger style={{fill: "none"}} />
+          <ControlButton
+            onClick={() => {
+              setNodes(bottomUpLayout(nodes, edges));
+              setEdges(edges);
+              reactFlowInstance.fitView({padding: 0.1});
+            }}
+          >
+            <Network style={{fill: "none"}} />
+          </ControlButton>
+        </Controls>
+      </ReactFlow>
+    </Layout>
+  );
+};
+
+export default function App() {
+  const {workflowId: workflow_id_url} = useParams();
+
+  const workflowsQuery = useSuspenseQuery<Workflow[]>({
+    queryKey: ["workflows", URL],
     queryFn: async () => {
-      const response = await fetch(`${url}/all`);
+      const response = await fetch(`${URL}/all`);
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
@@ -59,72 +138,63 @@ function useWorkflows(url: string) {
       ),
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
-}
+  const workflow_id = workflow_id_url || workflowsQuery.data[0].id;
+  const graphQuery = useSuspenseQuery({
+    queryKey: ["workflowGraph", workflow_id],
+    queryFn: async () => {
+      const response = await fetch(`${URL}/${workflow_id}/nodes/-`, {
+        method: "GET",
+        headers: {Accept: "application/json"},
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.json();
+    },
+    select: (data) => parseGraph(data, workflow_id),
+  });
 
-export default function App() {
-  const { data: items = [] } = useWorkflows(URL);
-  const { workflowId = "" } = useParams();
-  const { data: graph, ...graphQuery } = useGraph(workflowId);
-  const queryClient = useQueryClient();
+  const remoteGraph = graphQuery.data;
+  const localGraph = loadGraph({key: workflow_id});
+  // console.log(remoteGraph, localGraph)
 
-  const { nodes: storedNodes, edges: storedEdges } = fromStorage(workflowId);
-  let nodes = [], edges = [];
-  const reactFlowInstance = useReactFlow();
-  if (graphQuery.isPending || graphQuery.isError || !graph) {
-    console.log("Using stored state or empty graph");
-    // use the stored state, if not available, should be empty
-    if (storedNodes && storedEdges) {
-      nodes = storedNodes;
-      edges = storedEdges;
-    }
-  } else if (!storedNodes && !storedEdges) {
-    console.log("No stored state found, using backend graph");
-    // if no stored state, use the graph from the backend
-    nodes = bottomUpLayout(graph.nodes, graph.edges);
-    edges = graph.edges;
-    // here we don't have position info -> calculate
-  } else {
-    // merge the stored state with the graph from the backend
-    const mergedNodes = graph.nodes.map((node) => ({
-      ...node,
-      position: storedNodes.find((oldNode) => oldNode.id === node.id)
-        ?.position || {
-        id: "-",
-        x: 0,
-        y: 0,
-      },
-    }));
+  const mergedGraph = (() => {
+    const default_node_positions = bottomUpLayout(
+      remoteGraph.nodes,
+      remoteGraph.edges
+    );
+    if (localGraph === null)
+      return {
+        nodes: default_node_positions,
+        edges: remoteGraph.edges,
+      };
+
+    const mergedNodes = default_node_positions.map((node) => {
+      return {
+        ...node,
+        position:
+          localGraph.nodes.find((oldNode) => oldNode.id === node.id)
+            ?.position || node.position,
+      };
+    });
     const edgesMap = new Map();
-    storedEdges.forEach((edge) => edgesMap.set(edge.id, edge));
-    graph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
+    localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
+    localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
     const mergedEdges = [...edgesMap.values()];
-    console.log("Merging", mergedNodes, mergedEdges);
-    nodes = storedNodes;
-    edges = mergedEdges;
-  }
 
-  useEffect(() => {
-    if (workflowId) {
-      const ws = new WebSocket(`${URL}/${workflowId}/nodes/-`);
-      ws.onmessage = (event) => {
-        const graph = parseGraph(JSON.parse(event.data), workflowId);
-        queryClient.setQueryData(["workflowGraph", workflowId], graph);
-        // do merging too
-        reactFlowInstance.setNodes(graph.nodes);
-        reactFlowInstance.setEdges(graph.edges);
-      };
-      return () => {
-        if (ws.readyState == WebSocket.OPEN) {
-          ws.close();
-        }
-      };
-    }
-  }, [workflowId, queryClient, reactFlowInstance]);
-  reactFlowInstance.setNodes(nodes);
-  reactFlowInstance.setEdges(edges);
+    return {
+      nodes: mergedNodes,
+      edges: mergedEdges,
+    };
+  })();
+
   return (
-    <Layout workflows={items} workflowId={workflowId}>
-      <Flow workflowId={workflowId} />
-    </Layout>
+    <Main
+      key={workflow_id}
+      initialNodes={mergedGraph.nodes}
+      initialEdges={mergedGraph.edges}
+      workflows={workflowsQuery.data}
+      workflow_id={workflow_id}
+    />
   );
 }

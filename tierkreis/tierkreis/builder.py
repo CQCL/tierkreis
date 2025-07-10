@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Any, Protocol, overload
 
 from tierkreis.controller.data.core import EmptyModel, PortID, ValueRef
 from tierkreis.controller.data.graph import (
@@ -103,7 +103,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         )("dummy")
         return TKR[list[T]](idx, "value")
 
-    def map[A: TModel, B: TModel](
+    def map_multi[A: TModel, B: TModel](
         self, body: TypedGraphRef[A, B], aes: TList[A]
     ) -> TList[B]:
         ins = dict_from_tmodel(aes._value)
@@ -113,7 +113,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         refs = [(idx, s + "-*") for s in model_fields(body.outputs_type)]
         return TList(init_tmodel(body.outputs_type, refs))
 
-    def map_little[A: TModel, B: PType](
+    def map_single[A: TModel, B: PType](
         self, body: TypedGraphRef[A, TKR[B]], aes: TList[A]
     ) -> TKR[list[B]]:
         ins = dict_from_tmodel(aes._value)
@@ -123,3 +123,19 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         refs = [(idx, s + "-*") for s in model_fields(body.outputs_type)]
         b = TList(init_tmodel(body.outputs_type, refs))
         return self._fold_list(b)
+
+    @overload
+    def map[A: TModel, B: PType](  # type: ignore
+        self, body: TypedGraphRef[A, TKR[B]], aes: TList[A]
+    ) -> TKR[list[B]]: ...
+
+    @overload
+    def map[A: TModel, B: TModel](
+        self, body: TypedGraphRef[A, B], aes: TList[A]
+    ) -> TList[B]: ...
+
+    def map(self, body: TypedGraphRef, aes: Any) -> Any:
+        if isinstance(body.outputs_type, TNamedModel):
+            return self.map_multi(body, aes)
+        else:
+            return self.map_single(body, aes)

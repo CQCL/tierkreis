@@ -10,12 +10,17 @@ class DoublerInput(NamedTuple):
     intercept: TKR[int]
 
 
+class DoublerOutput(NamedTuple):
+    a: TKR[int]
+    value: TKR[int]
+
+
 def typed_doubler_plus():
-    g = GraphBuilder(DoublerInput, TKR[int])
+    g = GraphBuilder(DoublerInput, DoublerOutput)
     two = g.const(2)
     mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
     out = g.fn(iadd(a=mul, b=g.inputs.intercept))
-    g.outputs(out)
+    g.outputs(DoublerOutput(a=g.inputs.doubler_input, value=out))
     return g
 
 
@@ -29,7 +34,7 @@ def typed_eval():
     six = g.const(6)
     doubler_const = g.graph_const(typed_doubler_plus())
     e = g.eval(doubler_const, DoublerInput(doubler_input=six, intercept=zero))
-    g.outputs(TypedEvalOutputs(typed_eval_output=e))
+    g.outputs(TypedEvalOutputs(typed_eval_output=e.value))
     return g
 
 
@@ -75,6 +80,6 @@ def typed_map():
     Ns = g.const(list(range(21)))
     ins = TList.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
     doubler_const = g.graph_const(typed_doubler_plus())
-    m = g.map_little(doubler_const, ins)
+    m = g.map(doubler_const, ins)
     g.outputs(TypedMapOutput(typed_map_output=m))
     return g

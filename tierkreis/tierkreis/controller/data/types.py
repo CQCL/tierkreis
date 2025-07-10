@@ -14,11 +14,11 @@ def _is_union(o: object) -> bool:
 
 
 def _is_plist(ptype: object) -> TypeIs[type[Sequence[_PType]]]:
-    return get_origin(ptype) == collections.abc.Sequence or get_origin(ptype) == list
+    return get_origin(ptype) == collections.abc.Sequence or get_origin(ptype) is list
 
 
 def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
-    return get_origin(o) == tuple
+    return get_origin(o) is tuple
 
 
 def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
@@ -61,24 +61,6 @@ def ptype_from_bytes(bs: bytes) -> PType:
         return json.loads(bs)
     except json.JSONDecodeError:
         return bs
-    if (
-        issubclass(annotation, bool)
-        or issubclass(annotation, int)
-        or issubclass(annotation, float)
-        or issubclass(annotation, str)
-        or issubclass(annotation, NoneType)
-    ):
-        return json.loads(bs)
-    elif (
-        issubclass(annotation, bytes)
-        or issubclass(annotation, bytearray)
-        or issubclass(annotation, memoryview)
-    ):
-        return bs
-    elif get_origin(annotation) == Sequence or issubclass(annotation, Sequence):
-        return json.loads(bs)
-    else:
-        assert_never(annotation)
 
 
 def format_ptype(ptype: type[PType]) -> str:

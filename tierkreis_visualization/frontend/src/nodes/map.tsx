@@ -1,31 +1,82 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { type NodeProps } from "@xyflow/react";
-import { useShallow } from "zustand/react/shallow";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Edge, useReactFlow, type NodeProps } from "@xyflow/react";
 
 import { InputHandleArray, OutputHandleArray } from "@/components/handles";
 import { NodeStatusIndicator } from "@/components/StatusIndicator";
 import { Button } from "@/components/ui/button";
 import { URL } from "@/data/constants";
-import useStore from "@/data/store";
 import { parseNodes } from "@/graph/parseGraph";
-import { AppState, type BackendNode } from "@/nodes/types";
+import { type BackendNode } from "@/nodes/types";
 import { Plus } from "lucide-react";
-const selector = (state: AppState) => ({
-  replaceMap: state.replaceMap,
-  recalculateNodePositions: state.recalculateNodePositions,
-});
+import { bottomUpLayout } from "@/graph/layoutGraph";
+
+function replaceMap(
+  nodeId: string,
+  newNodes: BackendNode[],
+  oldNodes: BackendNode[],
+  oldEdges: Edge[]
+) {
+  // copy over all the inputs and outputs from the map node to its children
+  let edges: Edge[] = JSON.parse(JSON.stringify(oldEdges));
+  const nodesToRemove = [nodeId];
+  const edgesToRemove: string[] = [];
+  const newEdges: Edge[] = [];
+  edges.forEach((edge) => {
+    if (edge.target == nodeId) {
+      edgesToRemove.push(edge.id);
+      newNodes.forEach((node) => {
+        if (typeof edge.targetHandle === "string") {
+          node.data.handles.inputs.push(
+            edge.targetHandle.replace(`${nodeId}_`, "")
+          );
+        }
+        const newEdge = {
+          ...edge,
+          target: node.id,
+          targetHandle:
+            node.id + "_" + edge.targetHandle?.replace(`${nodeId}_`, ""),
+          id: edge.id.replace(`${nodeId}`, `${node.id}`),
+        };
+        newEdges.push(newEdge);
+      });
+    }
+    if (edge.source == nodeId) {
+      edgesToRemove.push(edge.id);
+      newNodes.forEach((node) => {
+        if (typeof edge.sourceHandle === "string") {
+          node.data.handles.outputs.push(
+            edge.sourceHandle.replace(`${nodeId}_`, "")
+          );
+        }
+        const newEdge = {
+          ...edge,
+          source: node.id,
+          sourceHandle:
+            node.id + "_" + edge.sourceHandle?.replace(`${nodeId}_`, ""),
+          id: edge.id.replace(`${nodeId}`, `${node.id}`),
+        };
+        newEdges.push(newEdge);
+      });
+    }
+  });
+  const groupNode = {
+    id: nodeId,
+    type: "group",
+    position: { x: 0, y: 0 },
+    data: {},
+    parentId: oldNodes.find((node) => node.id === nodeId)?.parentId,
+  };
+  oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
+  edges = edges.filter((edge) => !edgesToRemove.includes(edge.id));
+  // there are no edges between the newNodes
+  return {
+    nodes: [groupNode, ...oldNodes, ...newNodes],
+    edges: [...edges, ...newEdges],
+  };
+}
 
 export function MapNode({ data }: NodeProps<BackendNode>) {
-  const { replaceMap, recalculateNodePositions } = useStore(
-    useShallow(selector)
-  );
+  const reactFlowInstance = useReactFlow();
   const loadChildren = async (
     workflowId: string,
     node_location: string,
@@ -34,9 +85,20 @@ export function MapNode({ data }: NodeProps<BackendNode>) {
     const url = `${URL}/${workflowId}/nodes/${node_location}`;
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
-      .then((data) => parseNodes(data.nodes, data.edges, workflowId, parentId))
-      .then((nodes) => replaceMap(parentId, nodes))
-      .then(() => recalculateNodePositions());
+      .then((data) => {
+        const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
+        const oldEdges = reactFlowInstance.getEdges();
+        const oldNodes = reactFlowInstance.getNodes();
+        let { nodes: newNodes, edges: newEdges } = replaceMap(
+          parentId,
+          nodes,
+          oldNodes,
+          oldEdges
+        );
+        newNodes = bottomUpLayout(newNodes, [...newEdges, ...oldEdges]);
+        reactFlowInstance.setNodes(newNodes);
+        reactFlowInstance.setEdges(newEdges);
+      });
   };
   return (
     <NodeStatusIndicator status={data.status}>

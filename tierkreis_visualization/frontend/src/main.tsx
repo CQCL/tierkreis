@@ -7,14 +7,13 @@ import {
   type Params,
 } from "react-router";
 
-import {
-  QueryClient,
-  QueryClientProvider,
-} from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import App from "./App";
 
 import "./index.css";
+import { ReactFlowProvider } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
 
 const queryClient = new QueryClient();
 
@@ -24,7 +23,9 @@ const workflowId: LoaderFunction = ({ params }: { params: Params }) => {
 
 const element = (
   <QueryClientProvider client={queryClient}>
-    <App />
+    <ReactFlowProvider>
+      <App />
+    </ReactFlowProvider>
   </QueryClientProvider>
 );
 const router = createBrowserRouter([

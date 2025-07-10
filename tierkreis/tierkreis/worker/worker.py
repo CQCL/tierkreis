@@ -95,7 +95,6 @@ class Worker:
     def run(self, worker_definition_path: Path) -> None:
         """Run a function."""
         node_definition = self.storage.read_call_args(worker_definition_path)
-        print(self.namespace)
 
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
@@ -118,7 +117,7 @@ class Worker:
 
             node_definition.done_path.touch()
         except Exception as err:
-            logger.error("encountered error: %s", err)
+            logger.error("encountered error", exc_info=err)
             with open(node_definition.error_path, "w+") as f:
                 f.write(str(err))
 

@@ -4,12 +4,13 @@ from logging import getLogger
 from pathlib import Path
 import statistics
 from sys import argv
-from typing import Any, Iterator, NamedTuple, Sequence
+from typing import Any, Iterator, NamedTuple, Sequence, get_origin
 
 from pydantic import BaseModel
 
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
+from tierkreis.namespace import TierkreisWorkerError
 from tierkreis.value import Value
 from tierkreis.worker.storage.protocol import WorkerStorage
 from tierkreis.worker.worker import Worker
@@ -99,17 +100,23 @@ def str_neq(a: str, b: str) -> bool:
 
 
 @worker.primitive_task()
-def fold_values[T](args: WorkerCallArgs, storage: WorkerStorage) -> None:
-    values_glob = glob(str(args.inputs["value"]))
+def fold_values(args: WorkerCallArgs, storage: WorkerStorage) -> None:
+    values_glob = glob(str(args.inputs["values_glob"]))
+    values_glob.sort(key=lambda x: int(Path(x).name.split("-")[-1]))
     bs = [storage.read_input(Path(value)) for value in values_glob]
     values = [ptype_from_bytes(b) for b in bs]
     storage.write_output(Path(args.outputs["value"]), bytes_from_ptype(values))
 
 
-# @worker.function()
-# def unfold_values[T](value: list[T]) -> Iterator[tuple[str, T]]:
-#     for i, v in enumerate(value):
-#         yield str(i), v
+@worker.primitive_task()
+def unfold_values(args: WorkerCallArgs, storage: WorkerStorage) -> None:
+    value_list = ptype_from_bytes(storage.read_input(args.inputs["value"]))
+    match value_list:
+        case list() | Sequence():
+            for i, v in enumerate(value_list):
+                storage.write_output(args.output_dir / str(i), bytes_from_ptype(v))
+        case _:
+            raise TierkreisWorkerError(f"Expected list found {value_list}")
 
 
 # @worker.function()

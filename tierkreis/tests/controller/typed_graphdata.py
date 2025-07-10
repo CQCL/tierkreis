@@ -2,7 +2,7 @@ from typing import NamedTuple
 from tierkreis.builtins.stubs import iadd, igt, itimes
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder
-from tierkreis.controller.data.models import TKR, TList
+from tierkreis.controller.data.models import TKR
 
 
 class DoublerInput(NamedTuple):
@@ -16,11 +16,11 @@ class DoublerOutput(NamedTuple):
 
 
 def typed_doubler_plus():
-    g = GraphBuilder(DoublerInput, DoublerOutput)
+    g = GraphBuilder(DoublerInput, TKR[int])
     two = g.const(2)
     mul = g.fn(itimes(a=g.inputs.doubler_input, b=two))
     out = g.fn(iadd(a=mul, b=g.inputs.intercept))
-    g.outputs(DoublerOutput(a=g.inputs.doubler_input, value=out))
+    g.outputs(out)
     return g
 
 
@@ -34,7 +34,7 @@ def typed_eval():
     six = g.const(6)
     doubler_const = g.graph_const(typed_doubler_plus())
     e = g.eval(doubler_const, DoublerInput(doubler_input=six, intercept=zero))
-    g.outputs(TypedEvalOutputs(typed_eval_output=e.value))
+    g.outputs(TypedEvalOutputs(typed_eval_output=e))
     return g
 
 
@@ -78,8 +78,8 @@ def typed_map():
     g = GraphBuilder(EmptyModel, TypedMapOutput)
     six = g.const(6)
     Ns = g.const(list(range(21)))
-    ins = TList.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
+    ins = g.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
     doubler_const = g.graph_const(typed_doubler_plus())
-    m = g.map(doubler_const, ins)
+    m = g.map(ins, doubler_const)
     g.outputs(TypedMapOutput(typed_map_output=m))
     return g

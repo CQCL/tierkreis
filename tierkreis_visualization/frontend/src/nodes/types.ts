@@ -1,10 +1,6 @@
 import { InfoProps } from "@/components/types";
 import {
-  type Edge,
   type Node,
-  type OnConnect,
-  type OnEdgesChange,
-  type OnNodesChange,
 } from "@xyflow/react";
 
 export type PyNode = {
@@ -24,20 +20,7 @@ export type BackendNode = Node<{
   node_location: string;
   id: string;
   title: string;
+  setInfo: (arg: InfoProps) => void;
   label?: string;
 }>;
 export type AppNode = BackendNode;
-
-export interface AppState {
-  workflowId: string;
-  nodes: AppNode[];
-  edges: Edge[];
-  info: InfoProps;
-  oldEdges: Edge[];
-  onNodesChange: OnNodesChange<AppNode>;
-  onEdgesChange: OnEdgesChange;
-  onConnect: OnConnect;
-  setNodes: (nodes: AppNode[]) => void;
-  setEdges: (edges: Edge[]) => void;
-  setInfo: (info: InfoProps) => void;
-}

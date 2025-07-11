@@ -1,4 +1,4 @@
-import {useSuspenseQuery} from "@tanstack/react-query";
+import { useSuspenseQuery } from "@tanstack/react-query";
 import {
   applyEdgeChanges,
   applyNodeChanges,
@@ -8,30 +8,22 @@ import {
   ReactFlow,
   useReactFlow,
 } from "@xyflow/react";
-import {useParams} from "react-router";
+import { useParams } from "react-router";
 
 import Layout from "@/components/layout";
-import {Workflow} from "@/components/types";
-import {URL} from "@/data/constants";
-import {parseGraph} from "@/graph/parseGraph";
-import {Background, ControlButton, Controls} from "@xyflow/react";
+import { InfoProps, Workflow } from "@/components/types";
+import { URL } from "@/data/constants";
+import { parseGraph } from "@/graph/parseGraph";
+import { Background, ControlButton, Controls } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import {Network} from "lucide-react";
-import React, {useCallback, useState} from "react";
+import { Network } from "lucide-react";
+import React, { useCallback, useState } from "react";
 
-import {SidebarTrigger} from "@/components/ui/sidebar";
-import {edgeTypes} from "@/edges";
-import {bottomUpLayout} from "@/graph/layoutGraph";
-import {nodeTypes} from "@/nodes";
-import {BackendNode} from "./nodes/types";
-// function fromStorage(workflow_id: string): PartialState {
-//   const storedData = localStorage.getItem(workflow_id);
-//   try {
-//     return JSON.parse(storedData || "{}") as PartialState;
-//   } catch (error) {
-//     return { workflow_id: "", nodes: [], edges: [] } as PartialState;
-//   }
-// }
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { edgeTypes } from "@/edges";
+import { bottomUpLayout } from "@/graph/layoutGraph";
+import { nodeTypes } from "@/nodes";
+import { BackendNode } from "./nodes/types";
 
 const saveGraph = ({
   key,
@@ -50,11 +42,11 @@ const saveGraph = ({
 
 const loadGraph = (props: {
   key: string;
-}): {nodes: BackendNode[]; edges: Edge[]} | null => {
+}): { nodes: BackendNode[]; edges: Edge[] } | null => {
   try {
     const item = localStorage.getItem(props.key);
     if (item !== null)
-      return JSON.parse(item) as {nodes: BackendNode[]; edges: Edge[]};
+      return JSON.parse(item) as { nodes: BackendNode[]; edges: Edge[] };
     return null;
   } catch {
     return null;
@@ -66,13 +58,14 @@ const Main = (props: {
   initialEdges: Edge[];
   workflow_id: string;
   workflows: Workflow[];
+  infoProps: InfoProps;
 }) => {
   // Client node state (not definition)
   const [nodes, setNodes] = useState(props.initialNodes);
   const [edges, setEdges] = useState(props.initialEdges);
 
   React.useEffect(() => {
-    saveGraph({key: props.workflow_id, nodes, edges});
+    saveGraph({ key: props.workflow_id, nodes, edges });
   }, [edges, nodes, props.workflow_id]);
 
   const onNodesChange: OnNodesChange<BackendNode> = useCallback(
@@ -87,9 +80,12 @@ const Main = (props: {
   );
 
   const reactFlowInstance = useReactFlow();
-
   return (
-    <Layout workflows={props.workflows} workflowId={props.workflow_id}>
+    <Layout
+      workflows={props.workflows}
+      workflowId={props.workflow_id}
+      info={props.infoProps}
+    >
       <ReactFlow<BackendNode, Edge>
         defaultNodes={nodes}
         defaultEdges={edges}
@@ -101,15 +97,15 @@ const Main = (props: {
       >
         <Background />
         <Controls showZoom={false} showInteractive={false}>
-          <SidebarTrigger style={{fill: "none"}} />
+          <SidebarTrigger style={{ fill: "none" }} />
           <ControlButton
             onClick={() => {
               setNodes(bottomUpLayout(nodes, edges));
               setEdges(edges);
-              reactFlowInstance.fitView({padding: 0.1});
+              reactFlowInstance.fitView({ padding: 0.1 });
             }}
           >
-            <Network style={{fill: "none"}} />
+            <Network style={{ fill: "none" }} />
           </ControlButton>
         </Controls>
       </ReactFlow>
@@ -118,7 +114,8 @@ const Main = (props: {
 };
 
 export default function App() {
-  const {workflowId: workflow_id_url} = useParams();
+  const { workflowId: workflow_id_url } = useParams();
+  const [info, setInfo] = useState<InfoProps>({ type: "Logs", content: "" });
 
   const workflowsQuery = useSuspenseQuery<Workflow[]>({
     queryKey: ["workflows", URL],
@@ -144,19 +141,18 @@ export default function App() {
     queryFn: async () => {
       const response = await fetch(`${URL}/${workflow_id}/nodes/-`, {
         method: "GET",
-        headers: {Accept: "application/json"},
+        headers: { Accept: "application/json" },
       });
       if (!response.ok) {
         throw new Error("Network response was not ok");
       }
       return response.json();
     },
-    select: (data) => parseGraph(data, workflow_id),
+    select: (data) => parseGraph(data, workflow_id, setInfo),
   });
 
   const remoteGraph = graphQuery.data;
-  const localGraph = loadGraph({key: workflow_id});
-  // console.log(remoteGraph, localGraph)
+  const localGraph = loadGraph({ key: workflow_id });
 
   const mergedGraph = (() => {
     const default_node_positions = bottomUpLayout(
@@ -195,6 +191,7 @@ export default function App() {
       initialEdges={mergedGraph.edges}
       workflows={workflowsQuery.data}
       workflow_id={workflow_id}
+      infoProps={info}
     />
   );
 }

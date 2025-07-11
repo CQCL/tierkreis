@@ -22,7 +22,7 @@ import json
 
 
 class TierkreisEncoder(json.JSONEncoder):
-    """Encode base64 encoded bytes also."""
+    """Encode bytes also."""
 
     def default(self, o):
         if isinstance(o, bytes):
@@ -32,7 +32,7 @@ class TierkreisEncoder(json.JSONEncoder):
 
 
 class TierkreisDecoder(json.JSONDecoder):
-    """Encode base64 encoded bytes also."""
+    """Decode bytes also."""
 
     def __init__(self, **kwargs):
         kwargs.setdefault("object_hook", self._object_hook)

@@ -3,6 +3,7 @@ import { calculateNodePositions } from "@/graph/parseGraph";
 import { AppNode, BackendNode } from "@/nodes/types";
 import { nodeHeight, nodeWidth } from "@/data/constants";
 import { Edge } from "@xyflow/react";
+import { Tag } from "lucide-react";
 
 interface ShallowNode {
   id: string;
@@ -37,11 +38,12 @@ export function bottomUpLayout(nodes: BackendNode[], edges: Edge[]) {
     if (!currentNodes) continue;
     const idsInLevel = new Set(currentNodes.map((nodeInfo) => nodeInfo.id));
     const levelNodes = nodes.filter((node) => idsInLevel.has(node.id));
+    const oldEdges = restoreEdges(level, edges);
     const levelEdges = edges.filter(
       (edge) => idsInLevel.has(edge.source) && idsInLevel.has(edge.target)
     );
     resizeNodes(levelNodes, previousNodes, 20);
-    const data = calculateNodePositions(levelNodes, levelEdges, padding);
+    const data = calculateNodePositions(levelNodes, [...levelEdges,...oldEdges], padding);
     const tmpNodes = levelNodes.map((node) => ({
       ...node,
       position: data.find((position) => position.id === node.id) || {
@@ -82,4 +84,27 @@ function resizeNodes(
     );
     node.style = { width: dim.width + padding, height: dim.height + padding };
   }
+}
+
+
+function restoreEdges(level: number, edges: Edge[]){
+  const levelEdges = edges.filter((edge)=> edge.source.split(":").length <= level + 1 || edge.target.split(":").length <= level + 1);
+  const newEdges = new Set<Edge>();
+  for (const edge of levelEdges) {
+    const source = edge.source.split(":");
+    const target = edge.target.split(":");
+    if (source.length === target.length) continue; // don't need to update
+    if (source.length <= level + 1) {
+      newEdges.add({
+        ...edge,
+        target: target.slice(0,level+1).join(":"),
+      })
+    } else {
+      newEdges.add({
+        ...edge,
+        source: source.slice(0,level+1).join(":"),
+      })
+    }
+  }
+  return newEdges;
 }

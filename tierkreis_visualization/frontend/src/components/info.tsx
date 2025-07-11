@@ -4,25 +4,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useShallow } from "zustand/react/shallow";
+import { InfoProps } from "./types";
 
-import useStore from "@/data/store";
-import { AppState } from "@/nodes/types";
-
-const selector = (state: AppState) => ({
-  info: state.info,
-});
-
-export function NodeInfo() {
-  const { info } = useStore(useShallow(selector));
+export function NodeInfo(props: { info: InfoProps }) {
   return (
     <DialogContent className="min-w-7xl  sm:max-h-[80vh]">
       <DialogHeader>
-        <DialogTitle>{info.type}</DialogTitle>
+        <DialogTitle>{props.info.type}</DialogTitle>
         <DialogDescription></DialogDescription>
       </DialogHeader>
-        <div className="overflow-auto">
-      <pre style={{ maxHeight: "65vh" }}>{info.content}</pre>
+      <div className="overflow-auto">
+        <pre style={{ maxHeight: "65vh" }}>{props.info.content}</pre>
       </div>
     </DialogContent>
   );

@@ -1,4 +1,3 @@
-import { useEffect, useState } from "react";
 import { InputHandleArray, OutputHandleArray } from "@/components/handles";
 import { NodeStatusIndicator } from "@/components/StatusIndicator";
 import { Button } from "@/components/ui/button";
@@ -12,39 +11,12 @@ import {
 import { DialogTrigger } from "@/components/ui/dialog";
 import { useErrors, useLogs } from "@/data/logs";
 import { type NodeProps } from "@xyflow/react";
-import { useShallow } from "zustand/react/shallow";
-import { AppState, type BackendNode } from "./types";
+import { type BackendNode } from "./types";
 import { OctagonAlert } from "lucide-react";
-import useStore from "@/data/store";
-
-const selector = (state: AppState) => ({
-  setInfo: state.setInfo,
-});
 
 export function DefaultNode({ data }: NodeProps<BackendNode>) {
-  const { setInfo } = useStore(useShallow(selector));
-  const [infoState, setInfoState] = useState<{
-    workflowId: string;
-    node_location: string;
-    error: boolean;
-  }>({
-    workflowId: "",
-    node_location: "",
-    error: false,
-  });
-  const { data: logs } = useLogs(infoState.workflowId, infoState.node_location);
-  const { data: errors } = useErrors(
-    infoState.workflowId,
-    infoState.node_location
-  );
-  useEffect(() => {
-    if (infoState.error) {
-      setInfo({ type: "Errors", content: errors ? errors : "" });
-    } else {
-      setInfo({ type: "Logs", content: logs ? logs : "" });
-    }
-  }, [infoState, logs, errors, setInfo]);
-
+  const { data: logs } = useLogs(data.workflowId, data.node_location);
+  const { data: errors } = useErrors(data.workflowId, data.node_location);
   return (
     <NodeStatusIndicator status={data.status}>
       <Card className="w-[180px]">
@@ -54,11 +26,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               //workaround to render errors
               const target = event.target as HTMLElement;
               if (target.closest("button") === null) {
-                setInfoState({
-                  workflowId: data.workflowId,
-                  node_location: data.node_location,
-                  error: false,
-                });
+                data.setInfo({ type: "Logs", content: logs ? logs : "" });
               }
             }}
           >
@@ -80,10 +48,9 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
                   variant="destructive"
                   style={{ zIndex: 5 }}
                   onClick={() =>
-                    setInfoState({
-                      workflowId: data.workflowId,
-                      node_location: data.node_location,
-                      error: true,
+                    data.setInfo({
+                      type: "Errors",
+                      content: errors ? errors : "",
                     })
                   }
                 >

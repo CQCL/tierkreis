@@ -57,7 +57,6 @@ export function bottomUpLayout(nodes: BackendNode[], edges: Edge[]) {
     );
     const data: ReturnType<typeof calculateNodePositions> = []
     for (const group of Object.values(groups)) {
-      console.log("group")
       const tmp = calculateNodePositions(
           group,
           [...levelEdges, ...oldEdges],

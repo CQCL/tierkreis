@@ -117,7 +117,13 @@ export function EvalNode({ data }: NodeProps<BackendNode>) {
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
       .then((data) => {
-        const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
+        const nodes = parseNodes(
+          data.nodes,
+          data.edges,
+          workflowId,
+          data.setInfo,
+          parentId
+        );
         const edges = parseEdges(data.edges, parentId);
         const oldEdges = reactFlowInstance.getEdges();
         const oldNodes = reactFlowInstance.getNodes();

@@ -9,9 +9,7 @@
 # tierkreis = { path = "../tierkreis", editable = true }
 # ///
 import json
-import os
 from pathlib import Path
-import sys
 from typing import NamedTuple
 from uuid import UUID
 
@@ -79,7 +77,7 @@ def symbolic_execution() -> GraphBuilder:
     ansatz = g.inputs.ansatz
     n_shots = g.const(100)
 
-    substituted_circuit = g.task(substitute(a=a, b=b, c=c, circuit=ansatz))
+    substituted_circuit = g.task(substitute(a=a, b=b, c=c, circuit=ansatz))  # type: ignore
     measurement_circuit = g.task(add_measure_all(circuit=substituted_circuit))
 
     # TODO: A better compilation pass

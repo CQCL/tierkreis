@@ -10,9 +10,9 @@ class submit(NamedTuple):
     n_shots: TKR[int]
 
     @staticmethod
-    def out() -> (
-        type[TKR[Sequence[OpaqueType["pytket.backends.backendresult.BackendResult"]]]]
-    ):
+    def out() -> type[
+        TKR[Sequence[OpaqueType["pytket.backends.backendresult.BackendResult"]]]
+    ]:
         return TKR[Sequence[OpaqueType["pytket.backends.backendresult.BackendResult"]]]
 
     @property

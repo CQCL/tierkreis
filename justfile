@@ -43,6 +43,7 @@ examples:
 
 [working-directory: 'tierkreis/tierkreis/builtins']
 generate-builtins:
+	touch stubs.py
 	{{uvrun}} main.py --stubs-path ./stubs.py
 	{{uvrun}} ruff format stubs.py
 	{{uvrun}} ruff check --fix stubs.py
@@ -54,5 +55,11 @@ generate-pytket_worker:
 	{{uvrun}} ruff format stubs.py
 	{{uvrun}} ruff check --fix stubs.py
 
+[working-directory: 'examples/example_workers/hello_world_worker']
+generate-hello-types:
+	touch stubs.py
+	{{uvrun}} main.py --stubs-path ./stubs.py
+	{{uvrun}} ruff format stubs.py
+	{{uvrun}} ruff check --fix stubs.py
 
-generate: generate-builtins generate-pytket_worker
+generate: generate-builtins generate-pytket_worker generate-hello-types

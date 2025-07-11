@@ -41,7 +41,7 @@ ptypes: Sequence[PType] = [
     None,
     ["one", 1],
     [1, 2, 3],
-    [[[]], 1, ["45", "test"]],
+    [[[]], 1, ["45", "test", b"test bytes"]],
     b"these are some test bytes",
 ]
 

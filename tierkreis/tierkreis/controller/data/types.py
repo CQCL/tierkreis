@@ -1,3 +1,4 @@
+from base64 import b64decode, b64encode
 import collections.abc
 import json
 from types import NoneType, UnionType
@@ -7,6 +8,32 @@ from typing_extensions import TypeIs
 
 _PType = bool | int | float | str | NoneType | Sequence["_PType"] | tuple["_PType", ...]
 PType = _PType | bytes
+
+import json
+
+
+class TierkreisEncoder(json.JSONEncoder):
+    """Encode base64 encoded bytes also."""
+
+    def default(self, o):
+        if isinstance(o, bytes):
+            return {"__tkr_bytes__": True, "bytes": b64encode(o).decode()}
+
+        return super().default(o)
+
+
+class TierkreisDecoder(json.JSONDecoder):
+    """Encode base64 encoded bytes also."""
+
+    def __init__(self, **kwargs):
+        kwargs.setdefault("object_hook", self._object_hook)
+        super().__init__(**kwargs)
+
+    def _object_hook(self, d):
+        """Try to decode a complex number."""
+        if "__tkr_bytes__" in d and "bytes" in d:
+            return b64decode(d["bytes"])
+        return d
 
 
 def _is_union(o: object) -> bool:
@@ -51,14 +78,14 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             | collections.abc.Sequence()
             | tuple()
         ):
-            return json.dumps(ptype).encode()
+            return json.dumps(ptype, cls=TierkreisEncoder).encode()
         case _:
             assert_never(ptype)
 
 
 def ptype_from_bytes(bs: bytes) -> PType:
     try:
-        return json.loads(bs)
+        return json.loads(bs, cls=TierkreisDecoder)
     except json.JSONDecodeError:
         return bs
 

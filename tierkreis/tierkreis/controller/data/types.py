@@ -15,6 +15,7 @@ from typing import (
     get_origin,
     runtime_checkable,
 )
+from pydantic import BaseModel
 from typing_extensions import TypeIs
 
 
@@ -44,6 +45,7 @@ type PType = (
     | bytes
     | DictConvertible
     | ListConvertible
+    | BaseModel
 )
 
 
@@ -98,7 +100,7 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return all(is_ptype(x) for x in get_args(annotation))
 
     elif isclass(annotation) and issubclass(
-        annotation, (DictConvertible, ListConvertible)
+        annotation, (DictConvertible, ListConvertible, BaseModel)
     ):
         return True
 
@@ -130,6 +132,8 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             return json.dumps(ptype.to_dict()).encode()
         case ListConvertible():
             return json.dumps(ptype.to_list()).encode()
+        case BaseModel():
+            return ptype.model_dump_json().encode()
         case _:
             assert_never(ptype)
 
@@ -143,6 +147,8 @@ def ptype_from_bytes(bs: bytes, annotation: type[PType] | None = None) -> PType:
             return annotation.from_dict(j)
         if isclass(annotation) and issubclass(annotation, ListConvertible):
             return annotation.from_list(j)
+        if isclass(annotation) and issubclass(annotation, BaseModel):
+            return annotation(**j)
 
         return j
 
@@ -170,7 +176,7 @@ def format_ptype(ptype: type[PType]) -> str:
     if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
         return ptype.__qualname__
 
-    if issubclass(ptype, (DictConvertible, ListConvertible)):
+    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
         return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 
     assert_never(ptype)

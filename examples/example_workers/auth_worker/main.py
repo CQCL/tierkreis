@@ -4,7 +4,7 @@ from sys import argv
 from time import time
 from typing import NamedTuple
 import pyscrypt  # type: ignore
-from tierkreis.worker import Worker
+from tierkreis import Worker
 
 worker = Worker("auth_worker")
 logger = logging.getLogger(__name__)

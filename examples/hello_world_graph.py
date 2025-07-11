@@ -10,7 +10,6 @@ from pathlib import Path
 
 from tierkreis import Labels
 from tierkreis.builder import GraphBuilder
-from tierkreis.controller.data.graph import Output
 from tierkreis.controller.data.location import Loc
 from tierkreis.cli.run_workflow import run_workflow
 from tierkreis.controller.data.models import TKR

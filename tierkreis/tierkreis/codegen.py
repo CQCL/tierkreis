@@ -27,10 +27,6 @@ def format_output_class(fn_name: str, class_name: str, outputs: type[PModel]) ->
     outs = {format_annotation(k, v) for k, v in outputs.__annotations__.items()}
     outs_str = "\n    ".join(outs)
 
-    out_constructor = {
-        format_annotation(k, v, True) for k, v in outputs.__annotations__.items()
-    }
-    out_constructor_str = ",\n            ".join(out_constructor)
     return f"""
 class {class_name}(NamedTuple):
     {outs_str}
@@ -41,7 +37,7 @@ def format_function(namespace_name: str, fn: FunctionSpec) -> str:
     ins = [format_annotation(k, v) for k, v in fn.ins.items()]
     ins_str = "\n    ".join(ins)
     class_name = format_output(fn.outs)
-    return f"""{format_output_class(fn.name,class_name, fn.outs)}
+    return f"""{format_output_class(fn.name, class_name, fn.outs)}
 class {fn.name}(NamedTuple):
     {ins_str}
 

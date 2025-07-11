@@ -7,7 +7,7 @@
 # ///
 import logging
 from sys import argv
-from tierkreis import Worker, Value
+from tierkreis import Worker
 
 logger = logging.getLogger(__name__)
 worker = Worker("error_worker")

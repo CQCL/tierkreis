@@ -1,28 +1,22 @@
 """Code generated from auth_worker namespace. Please do not edit."""
 
+# ruff: noqa: F821
 from typing import NamedTuple
-from tierkreis.controller.data.core import TKRRef, Function, NodeIndex
+from tierkreis.controller.data.models import TKR
 
 
-class EncryptOutput(NamedTuple):
-    time_taken: TKRRef[float]
-    ciphertext: TKRRef[str]
-
-    @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "EncryptOutput":
-        return EncryptOutput(
-            ciphertext=TKRRef[str](n, "ciphertext"),
-            time_taken=TKRRef[float](n, "time_taken"),
-        )
+class EncryptionResult(NamedTuple):
+    ciphertext: TKR[str]
+    time_taken: TKR[float]
 
 
-class encrypt(Function[EncryptOutput]):
-    plaintext: TKRRef[str]
-    work_factor: TKRRef[int]
+class encrypt(NamedTuple):
+    plaintext: TKR[str]
+    work_factor: TKR[int]
 
     @staticmethod
-    def out(idx: NodeIndex) -> EncryptOutput:
-        return EncryptOutput.from_nodeindex(idx)
+    def out() -> type[EncryptionResult]:
+        return EncryptionResult
 
     @property
     def namespace(self) -> str:

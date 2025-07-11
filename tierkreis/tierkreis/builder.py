@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, Callable, Generic, Protocol, TypeVar, overload
+from inspect import isclass
+from typing import Any, Callable, Generic, Protocol, TypeVar, get_args, overload
 
 from tierkreis.controller.data.core import EmptyModel, ValueRef
 from tierkreis.controller.data.graph import (
@@ -151,6 +152,11 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     ) -> TKR[list[B]]:
         return self._fold_list(self._map_graph_full(aes, body))
 
+    def _map_graph_single_in[A: PType, B: TModel](
+        self, aes: TKR[list[A]], body: TypedGraphRef[TKR[A], B]
+    ) -> TList[B]:
+        return self._map_graph_full(self._unfold_list(aes), body)
+
     def _map_graph_full[A: TModel, B: TModel](
         self, aes: TList[A], body: TypedGraphRef[A, B]
     ) -> TList[B]:
@@ -187,21 +193,40 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     ) -> TList[B]: ...
 
     @overload
+    def map[A: PType, B: TModel](
+        self, aes: TKR[list[A]], body: "GraphBuilder[TKR[A], B]"
+    ) -> TList[B]: ...
+
+    @overload
+    def map[A: PType, B: TModel](
+        self, aes: TKR[list[A]], body: TypedGraphRef[TKR[A], B]
+    ) -> TList[B]: ...
+
+    @overload
     def map[A: TModel, B: TModel](
         self, aes: TList[A], body: "GraphBuilder[A, B]"
     ) -> TList[B]: ...
 
-    def map(self, aes: Any, body: Any) -> Any:
+    def map(
+        self, aes: TKR | TList, body: TypedGraphRef | Callable | "GraphBuilder"
+    ) -> Any:
         if isinstance(body, GraphBuilder):
             body = self._graph_const(body)
 
-        if isinstance(body, TypedGraphRef) and isinstance(
+        if isinstance(body, Callable):
+            if isinstance(aes, TList):
+                return self._map_fn_single_out(aes, body)
+            elif isinstance(aes, TKR):
+                return self._map_fn_single_in(aes, body)
+
+        if isinstance(aes, TKR):
+            aes = self._unfold_list(aes)
+
+        out = self._map_graph_full(aes, body)
+
+        if not isclass(body.outputs_type) or not issubclass(
             body.outputs_type, TNamedModel
         ):
-            return self._map_graph_full(aes, body)
-        elif isinstance(body, TypedGraphRef):
-            return self._map_graph_single_out(aes, body)
-        elif isinstance(aes, TList):
-            return self._map_fn_single_out(aes, body)
-        elif isinstance(aes, TKR):
-            return self._map_fn_single_in(aes, body)
+            out = self._fold_list(out)
+
+        return out

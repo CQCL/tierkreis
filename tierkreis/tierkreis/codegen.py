@@ -20,7 +20,7 @@ def format_output(outputs: type[PModel]) -> str:
     return f"TKR[{format_ptype(outputs)}]"
 
 
-def format_output_class(fn_name: str, outputs: type[PModel]) -> str:
+def format_output_class(fn_name: str, class_name: str, outputs: type[PModel]) -> str:
     if not isclass(outputs) or not issubclass(outputs, PNamedModel):
         return ""
 
@@ -32,15 +32,8 @@ def format_output_class(fn_name: str, outputs: type[PModel]) -> str:
     }
     out_constructor_str = ",\n            ".join(out_constructor)
     return f"""
-class {fn_name.title()}Output(NamedTuple):
+class {class_name}(NamedTuple):
     {outs_str}
-
-    @staticmethod
-    def from_nodeindex(n: NodeIndex) -> "{fn_name.title()}Output":
-        return {fn_name.title()}Output(
-            {out_constructor_str}
-        )
-
 """
 
 
@@ -48,7 +41,7 @@ def format_function(namespace_name: str, fn: FunctionSpec) -> str:
     ins = [format_annotation(k, v) for k, v in fn.ins.items()]
     ins_str = "\n    ".join(ins)
     class_name = format_output(fn.outs)
-    return f"""{format_output_class(fn.name, fn.outs)}
+    return f"""{format_output_class(fn.name,class_name, fn.outs)}
 class {fn.name}(NamedTuple):
     {ins_str}
 

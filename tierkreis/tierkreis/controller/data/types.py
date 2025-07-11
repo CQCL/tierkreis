@@ -139,9 +139,9 @@ def ptype_from_bytes(bs: bytes, annotation: type[PType] | None = None) -> PType:
         j = json.loads(bs, cls=TierkreisDecoder)
         if annotation is None:
             return j
-        if issubclass(annotation, DictConvertible):
+        if isclass(annotation) and issubclass(annotation, DictConvertible):
             return annotation.from_dict(j)
-        if issubclass(annotation, ListConvertible):
+        if isclass(annotation) and issubclass(annotation, ListConvertible):
             return annotation.from_list(j)
 
         return j

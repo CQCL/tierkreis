@@ -10,19 +10,19 @@ test:
     {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term
 
 test-slow:
-		{{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term --runslow
+    {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term --runslow
 
 lint:
-	{{uvrun}} ruff format --check
-	{{uvrun}} ruff check
-	{{uvrun}} pyright .
+  {{uvrun}} ruff format --check
+  {{uvrun}} ruff check
+  {{uvrun}} pyright .
 
 fix:
-	{{uvrun}} ruff format
-	{{uvrun}} ruff check --fix
+  {{uvrun}} ruff format
+  {{uvrun}} ruff check --fix
 
 docs:
-	just docs/build	
+  just docs/build	
 
 [working-directory:'tierkreis_visualization']
 serve:
@@ -35,31 +35,21 @@ prod:
 
 
 examples:
-	{{uvrun}} examples/hello_world_graph.py
-	{{uvrun}} examples/error_handling_graph.py
-	{{uvrun}} examples/symbolic_circuits.py
-	{{uvrun}} examples/hamiltonian_graph.py
-	{{uvrun}} examples/qsci_graph.py
+  {{uvrun}} examples/hello_world_graph.py
+  {{uvrun}} examples/error_handling_graph.py
+  {{uvrun}} examples/symbolic_circuits.py
+  {{uvrun}} examples/hamiltonian_graph.py
+  {{uvrun}} examples/qsci_graph.py
 
-[working-directory: 'tierkreis/tierkreis/builtins']
-generate-builtins:
-	touch stubs.py
-	{{uvrun}} main.py --stubs-path ./stubs.py
-	{{uvrun}} ruff format stubs.py
-	{{uvrun}} ruff check --fix stubs.py
+stubs-generate dir:
+  #!/usr/bin/env bash
+  cd {{dir}}
+  uv run main.py --stubs-path ./stubs.py
+  uv run ruff format stubs.py
+  uv run ruff check --fix stubs.py
 
-[working-directory: 'tierkreis_workers/pytket_worker']
-generate-pytket_worker:
-	touch stubs.py
-	{{uvrun}} main.py --stubs-path ./stubs.py
-	{{uvrun}} ruff format stubs.py
-	{{uvrun}} ruff check --fix stubs.py
-
-[working-directory: 'examples/example_workers/hello_world_worker']
-generate-hello-types:
-	touch stubs.py
-	{{uvrun}} main.py --stubs-path ./stubs.py
-	{{uvrun}} ruff format stubs.py
-	{{uvrun}} ruff check --fix stubs.py
-
-generate: generate-builtins generate-pytket_worker generate-hello-types
+generate: 
+  just stubs-generate 'tierkreis/tierkreis/builtins'
+  just stubs-generate 'tierkreis_workers/pytket_worker'
+  just stubs-generate 'examples/example_workers/hello_world_worker'
+  just stubs-generate 'examples/example_workers/error_worker'

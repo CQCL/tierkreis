@@ -30,10 +30,10 @@ def hello_graph() -> GraphBuilder:
     # We add a constant that yields the string "hello ".
     hello = g.const("hello ")
 
-    # We import and call the "greet" function from our worker.
+    # We import and call the "greet" task from our worker.
     output = g.task(greet(greeting=hello, subject=g.inputs))
 
-    # We assign the output to the "value" label.
+    # We assign the output of the greet task to the output of the whole graph.
     g.outputs(output)
 
     return g

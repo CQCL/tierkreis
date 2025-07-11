@@ -125,7 +125,7 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             | collections.abc.Sequence()
             | tuple()
             | dict()
-            | Mapping()
+            | collections.abc.Mapping()
         ):
             return json.dumps(ptype, cls=TierkreisEncoder).encode()
         case DictConvertible():

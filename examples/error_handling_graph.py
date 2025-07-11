@@ -18,7 +18,7 @@ from tierkreis.controller.data.models import TKR
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
 
-from example_workers.error_worker.stubs import fail
+from tierkreis.examples.example_workers.error_worker.stubs import fail
 
 root_loc = Loc()
 

@@ -86,15 +86,13 @@ def submit(circuits: list[Circuit], n_shots: int) -> ExecuteJobRef:
 
 
 @worker.function()
-def check_status(execute_ref: dict) -> str:
-    ref = ExecuteJobRef(**execute_ref)
-    return _check_status(ref, 30).name
+def check_status(execute_ref: ExecuteJobRef) -> str:
+    return _check_status(execute_ref, 30).name
 
 
 @worker.function()
-def get_results(execute_ref: dict) -> list[BackendResult]:
-    ref = ExecuteJobRef(**execute_ref)
-    return get_backend_results(ref)
+def get_results(execute_ref: ExecuteJobRef) -> list[BackendResult]:
+    return get_backend_results(execute_ref)
 
 
 if __name__ == "__main__":

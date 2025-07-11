@@ -1,21 +1,26 @@
-# /// script
-# requires-python = ">=3.12"
-# dependencies = ["tierkreis", "pytket"]
-#
-# [tool.uv.sources]
-# tierkreis = { path = "../tierkreis", editable = true }
-# ///
 import json
+import os
 from pathlib import Path
+import sys
+from typing import NamedTuple
 from uuid import UUID
 
 from pytket._tket.circuit import Circuit, fresh_symbol
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData, Const, Func, Output, Input
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.models import TKR
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
+
+from example_workers.substitution_worker.stubs import substitute
+from example_workers.pytket_worker.stubs import (
+    add_measure_all,
+    optimise_phase_gadgets,
+    expectation,
+)
+from example_workers.aer_worker.stubs import submit_single
 
 root_loc = Loc()
 
@@ -44,47 +49,31 @@ def build_ansatz() -> Circuit:
     return circ
 
 
-def symbolic_execution() -> GraphData:
+class SymbolicCircuitsInputs(NamedTuple):
+    a: TKR[float]
+    b: TKR[float]
+    c: TKR[float]
+    ansatz: TKR[Circuit]
+
+
+def symbolic_execution() -> GraphBuilder:
     """A graph that substitutes 3 parameters into a circuit and gets an expectation value."""
-    g = GraphData()
-    a = g.add(Input("a"))("a")
-    b = g.add(Input("b"))("b")
-    c = g.add(Input("c"))("c")
-    ansatz = g.add(Input("ansatz"))("ansatz")
-    n_shots = g.add(Const(100))("value")
+    g = GraphBuilder(SymbolicCircuitsInputs, TKR[float])
+    a = g.inputs.a
+    b = g.inputs.b
+    c = g.inputs.c
+    ansatz = g.inputs.ansatz
+    n_shots = g.const(100)
 
-    substituted_circuit = g.add(
-        Func(
-            "substitution_worker.substitute",
-            {"a": a, "b": b, "c": c, "circuit": ansatz},
-        )
-    )("circuit")
-
-    measurement_circuit = g.add(
-        Func("pytket_worker.add_measure_all", {"circuit": substituted_circuit})
-    )("circuit")
+    substituted_circuit = g.task(substitute(a=a, b=b, c=c, circuit=ansatz))
+    measurement_circuit = g.task(add_measure_all(circuit=substituted_circuit))
 
     # TODO: A better compilation pass
-    compiled_circuit = g.add(
-        Func("pytket_worker.optimise_phase_gadgets", {"circuit": measurement_circuit})
-    )("circuit")
+    compiled_circuit = g.task(optimise_phase_gadgets(circuit=measurement_circuit))
+    backend_result = g.task(submit_single(circuit=compiled_circuit, n_shots=n_shots))
+    av = g.task(expectation(backend_result=backend_result))
 
-    backend_result = g.add(
-        Func(
-            "aer_worker.submit_single",
-            {"circuit": compiled_circuit, "n_shots": n_shots},
-        )
-    )("backend_result")
-
-    expectation = g.add(
-        Func(
-            "pytket_worker.expectation",
-            {"backend_result": backend_result},
-        )
-    )("expectation")
-
-    g.add(Output({"expectation": expectation}))
-
+    g.outputs(av)
     return g
 
 
@@ -117,7 +106,7 @@ def main() -> None:
     run_graph(
         storage,
         multi_executor,
-        symbolic_execution(),
+        symbolic_execution().data,
         {
             "ansatz": json.dumps(ansatz.to_dict()).encode(),
             "a": json.dumps(0.2).encode(),

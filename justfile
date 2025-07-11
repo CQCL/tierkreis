@@ -50,6 +50,16 @@ stubs-generate dir:
 
 generate: 
   just stubs-generate 'tierkreis/tierkreis/builtins'
+  just stubs-generate 'tierkreis_workers/aer_worker'
+  just stubs-generate 'tierkreis_workers/nexus_worker'
   just stubs-generate 'tierkreis_workers/pytket_worker'
-  just stubs-generate 'examples/example_workers/hello_world_worker'
   just stubs-generate 'examples/example_workers/error_worker'
+  just stubs-generate 'examples/example_workers/hello_world_worker'
+  just stubs-generate 'examples/example_workers/substitution_worker'
+
+  mkdir -p examples/example_workers/aer_worker
+  mkdir -p examples/example_workers/nexus_worker
+  mkdir -p examples/example_workers/pytket_worker
+  cp 'tierkreis_workers/aer_worker/stubs.py' examples/example_workers/aer_worker/stubs.py
+  cp 'tierkreis_workers/nexus_worker/stubs.py' examples/example_workers/nexus_worker/stubs.py
+  cp 'tierkreis_workers/pytket_worker/stubs.py' examples/example_workers/pytket_worker/stubs.py

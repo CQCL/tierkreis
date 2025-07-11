@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from inspect import isclass
 from logging import getLogger
 from types import NoneType
 from typing import Any
@@ -31,7 +32,7 @@ class FunctionSpec:
             self.outs = NoneType
             return
 
-        if issubclass(annotation, PNamedModel):
+        if isclass(annotation) and issubclass(annotation, PNamedModel):
             self.outs = annotation
             return
 

@@ -3,7 +3,6 @@ import { calculateNodePositions } from "@/graph/parseGraph";
 import { AppNode, BackendNode } from "@/nodes/types";
 import { nodeHeight, nodeWidth } from "@/data/constants";
 import { Edge } from "@xyflow/react";
-import { Tag } from "lucide-react";
 
 interface ShallowNode {
   id: string;
@@ -36,6 +35,7 @@ export function bottomUpLayout(nodes: BackendNode[], edges: Edge[]) {
     const padding = level == 0 ? 1 : 20;
     const currentNodes = nodeLevels.get(level);
     if (!currentNodes) continue;
+
     const idsInLevel = new Set(currentNodes.map((nodeInfo) => nodeInfo.id));
     const levelNodes = nodes.filter((node) => idsInLevel.has(node.id));
     const oldEdges = restoreEdges(level, edges);
@@ -43,7 +43,28 @@ export function bottomUpLayout(nodes: BackendNode[], edges: Edge[]) {
       (edge) => idsInLevel.has(edge.source) && idsInLevel.has(edge.target)
     );
     resizeNodes(levelNodes, previousNodes, 20);
-    const data = calculateNodePositions(levelNodes, [...levelEdges,...oldEdges], padding);
+    // if we don't do this groups wise dagre puts them all on the same plane
+    const groups = levelNodes.reduce<{ [key: string]: BackendNode[] }>(
+      (acc, currentNode) => {
+        const key = currentNode.parentId ? currentNode.parentId : "-";
+        if (!acc[key]) {
+          acc[key] = [];
+        }
+        acc[key].push(currentNode);
+        return acc;
+      },
+      {}
+    );
+    const data: ReturnType<typeof calculateNodePositions> = []
+    for (const group of Object.values(groups)) {
+      console.log("group")
+      const tmp = calculateNodePositions(
+          group,
+          [...levelEdges, ...oldEdges],
+          padding
+        );
+      data.push(...tmp);
+      } 
     const tmpNodes = levelNodes.map((node) => ({
       ...node,
       position: data.find((position) => position.id === node.id) || {
@@ -67,16 +88,16 @@ function resizeNodes(
   if (!childNodes.length) return;
   for (const node of nodesToResize) {
     const children = childNodes.filter((child) => child.parentId === node.id);
-    if (!children.length) continue;
+    if (!children.length) continue;  
     const dim = children.reduce(
-      (acc, node) => {
+      (acc, child) => {
         acc.width = Math.max(
           acc.width,
-          node.position.x + (Number(node.style?.width) || nodeWidth)
+          child.position.x + (Number(child.style?.width) || nodeWidth)
         );
         acc.height = Math.max(
           acc.height,
-          node.position.y + (Number(node.style?.height) || nodeHeight)
+          child.position.y + (Number(child.style?.height) || nodeHeight)
         );
         return acc;
       },
@@ -86,9 +107,12 @@ function resizeNodes(
   }
 }
 
-
-function restoreEdges(level: number, edges: Edge[]){
-  const levelEdges = edges.filter((edge)=> edge.source.split(":").length <= level + 1 || edge.target.split(":").length <= level + 1);
+function restoreEdges(level: number, edges: Edge[]) {
+  const levelEdges = edges.filter(
+    (edge) =>
+      edge.source.split(":").length <= level + 1 ||
+      edge.target.split(":").length <= level + 1
+  );
   const newEdges = new Set<Edge>();
   for (const edge of levelEdges) {
     const source = edge.source.split(":");
@@ -97,13 +121,13 @@ function restoreEdges(level: number, edges: Edge[]){
     if (source.length <= level + 1) {
       newEdges.add({
         ...edge,
-        target: target.slice(0,level+1).join(":"),
-      })
+        target: target.slice(0, level + 1).join(":"),
+      });
     } else {
       newEdges.add({
         ...edge,
-        source: source.slice(0,level+1).join(":"),
-      })
+        source: source.slice(0, level + 1).join(":"),
+      });
     }
   }
   return newEdges;

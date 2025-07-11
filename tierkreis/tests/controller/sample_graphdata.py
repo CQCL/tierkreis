@@ -28,7 +28,7 @@ def simple_eval() -> GraphData:
     g = GraphData()
     zero = g.add(Const(0))(Labels.VALUE)
     six = g.add(Const(6))(Labels.VALUE)
-    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus().model_dump()))(Labels.VALUE)
     e = g.add(Eval(doubler_const, {"doubler_input": six, "intercept": zero}))
     g.add(Output({"simple_eval_output": e("doubler_output")}))
     return g
@@ -38,7 +38,7 @@ def simple_partial() -> GraphData:
     g = GraphData()
     zero = g.add(Const(0))(Labels.VALUE)
     six = g.add(Const(6))(Labels.VALUE)
-    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus().model_dump()))(Labels.VALUE)
     partial = g.add(Eval(doubler_const, {"intercept": zero}))("body")
     e = g.add(Eval(partial, {"doubler_input": six}))
     g.add(Output({"simple_partial_output": e("doubler_output")}))
@@ -60,7 +60,7 @@ def loop_body() -> GraphData:
 def simple_loop() -> GraphData:
     g = GraphData()
     six = g.add(Const(6))(Labels.VALUE)
-    g_const = g.add(Const(loop_body()))(Labels.VALUE)
+    g_const = g.add(Const(loop_body().model_dump()))(Labels.VALUE)
     loop = g.add(Loop(g_const, {"loop_acc": six}, "should_continue"))
     g.add(Output({"simple_loop_output": loop("loop_acc")}))
     return g
@@ -71,7 +71,7 @@ def simple_map() -> GraphData:
     six = g.add(Const(6))(Labels.VALUE)
     Ns_const = g.add(Const(list(range(21))))(Labels.VALUE)
     Ns = g.add(Func("builtins.unfold_values", {Labels.VALUE: Ns_const}))
-    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus().model_dump()))(Labels.VALUE)
 
     map_def = Map(
         doubler_const, Ns("")[0], "doubler_input", "doubler_output", {"intercept": six}
@@ -97,7 +97,7 @@ def maps_in_series() -> GraphData:
     zero = g.add(Const(0))(Labels.VALUE)
     Ns_const = g.add(Const(list(range(21))))(Labels.VALUE)
     Ns = g.add(Func("builtins.unfold_values", {Labels.VALUE: Ns_const}))
-    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus().model_dump()))(Labels.VALUE)
 
     map_def = Map(
         doubler_const, Ns("")[0], "doubler_input", "doubler_output", {"intercept": zero}
@@ -118,7 +118,7 @@ def map_with_str_keys() -> GraphData:
     zero = g.add(Const(0))(Labels.VALUE)
     Ns_const = g.add(Const({"one": 1, "two": 2, "three": 3}))(Labels.VALUE)
     Ns = g.add(Func("builtins.unfold_dict", {Labels.VALUE: Ns_const}))
-    doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
+    doubler_const = g.add(Const(doubler_plus().model_dump()))(Labels.VALUE)
 
     map_def = Map(
         doubler_const, Ns("")[0], "doubler_input", "doubler_output", {"intercept": zero}

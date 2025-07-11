@@ -2,11 +2,11 @@ from dataclasses import dataclass, field
 import logging
 from typing import Callable, Literal, assert_never
 from pydantic import BaseModel, RootModel
-from tierkreis.controller.data.core import Jsonable
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
 from tierkreis.controller.data.location import OutputLoc
+from tierkreis.controller.data.types import PType
 from tierkreis.exceptions import TierkreisError
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class Map:
 
 @dataclass
 class Const:
-    value: Jsonable
+    value: PType
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default="const")
 
@@ -96,7 +96,7 @@ class GraphData(BaseModel):
     def input(self, name: str) -> ValueRef:
         return self.add(Input(name))(name)
 
-    def const(self, value: Jsonable) -> ValueRef:
+    def const(self, value: PType) -> ValueRef:
         return self.add(Const(value))("value")
 
     def func(

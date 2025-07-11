@@ -8,6 +8,7 @@ import sys
 
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.types import bytes_from_ptype
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
@@ -105,11 +106,7 @@ def start(
         storage.mark_node_finished(parent)
 
     elif node.type == "const":
-        bs = (
-            node.value.model_dump_json().encode()
-            if isinstance(node.value, BaseModel)
-            else json.dumps(node.value).encode()
-        )
+        bs = bytes_from_ptype(node.value)
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)
 

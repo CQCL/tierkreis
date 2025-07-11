@@ -2,11 +2,20 @@ from base64 import b64decode, b64encode
 import collections.abc
 import json
 from types import NoneType, UnionType
-from typing import Any, Sequence, Union, assert_never, get_args, get_origin
+from typing import Any, Mapping, Sequence, Union, assert_never, get_args, get_origin
 from typing_extensions import TypeIs
 
 
-_PType = bool | int | float | str | NoneType | Sequence["_PType"] | tuple["_PType", ...]
+type _PType = (
+    bool
+    | int
+    | float
+    | str
+    | NoneType
+    | Sequence["_PType"]
+    | tuple["_PType", ...]
+    | Mapping[str, "_PType"]
+)
 PType = _PType | bytes
 
 import json
@@ -40,8 +49,12 @@ def _is_union(o: object) -> bool:
     return get_origin(o) == UnionType or get_origin(o) == Union
 
 
-def _is_plist(ptype: object) -> TypeIs[type[Sequence[_PType]]]:
+def _is_list(ptype: object) -> TypeIs[type[Sequence[_PType]]]:
     return get_origin(ptype) == collections.abc.Sequence or get_origin(ptype) is list
+
+
+def _is_mapping(ptype: object) -> TypeIs[type[Mapping[str, _PType]]]:
+    return get_origin(ptype) == Mapping or get_origin(ptype) is dict
 
 
 def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
@@ -55,7 +68,7 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     elif _is_tuple(annotation):
         return all(is_ptype(x) for x in get_args(annotation))
 
-    elif _is_plist(annotation):
+    elif _is_list(annotation):
         return all(is_ptype(x) for x in get_args(annotation))
 
     elif annotation in get_args(PType):
@@ -77,6 +90,8 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             | NoneType()
             | collections.abc.Sequence()
             | tuple()
+            | dict()
+            | Mapping()
         ):
             return json.dumps(ptype, cls=TierkreisEncoder).encode()
         case _:
@@ -99,9 +114,13 @@ def format_ptype(ptype: type[PType]) -> str:
         args = [format_ptype(x) for x in get_args(ptype)]
         return f"tuple[{', '.join(args)}]"
 
-    if _is_plist(ptype):
+    if _is_list(ptype):
         args = [format_ptype(x) for x in get_args(ptype)]
         return f"Sequence[{', '.join(args)}]"
+
+    if _is_mapping(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"Mapping[{', '.join(args)}]"
 
     if (
         issubclass(ptype, bool)

@@ -81,7 +81,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     def _graph_const[A: TModel, B: TModel](
         self, graph: "GraphBuilder[A, B]"
     ) -> TypedGraphRef[A, B]:
-        idx, port = self.data.add(Const(graph.data))("value")
+        idx, port = self.data.add(Const(graph.data.model_dump()))("value")
         return TypedGraphRef[A, B](
             graph_ref=(idx, port), outputs_type=graph.outputs_type
         )

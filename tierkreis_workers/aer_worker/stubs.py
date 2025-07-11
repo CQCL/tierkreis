@@ -1,4 +1,4 @@
-"""Code generated from aer-worker namespace. Please do not edit."""
+"""Code generated from aer_worker namespace. Please do not edit."""
 
 # ruff: noqa: F821
 from typing import NamedTuple, Sequence
@@ -17,7 +17,7 @@ class submit(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "aer-worker"
+        return "aer_worker"
 
 
 class submit_single(NamedTuple):
@@ -30,4 +30,4 @@ class submit_single(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "aer-worker"
+        return "aer_worker"

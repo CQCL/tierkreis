@@ -8,7 +8,7 @@ from pytket.extensions.qiskit.backends.aer import AerBackend
 
 logger = logging.getLogger(__name__)
 
-worker = Worker("aer-worker")
+worker = Worker("aer_worker")
 
 
 @worker.function()

@@ -1,3 +1,13 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#  "pytket",
+#  "tierkreis",
+# ]
+#
+# [tool.uv.sources]
+# tierkreis = { path = "../tierkreis", editable = true }
+# ///
 import json
 import os
 from pathlib import Path
@@ -56,9 +66,13 @@ class SymbolicCircuitsInputs(NamedTuple):
     ansatz: TKR[Circuit]
 
 
+class SymbolicCircuitsOutputs(NamedTuple):
+    expectation: TKR[float]
+
+
 def symbolic_execution() -> GraphBuilder:
     """A graph that substitutes 3 parameters into a circuit and gets an expectation value."""
-    g = GraphBuilder(SymbolicCircuitsInputs, TKR[float])
+    g = GraphBuilder(SymbolicCircuitsInputs, SymbolicCircuitsOutputs)
     a = g.inputs.a
     b = g.inputs.b
     c = g.inputs.c
@@ -73,7 +87,7 @@ def symbolic_execution() -> GraphBuilder:
     backend_result = g.task(submit_single(circuit=compiled_circuit, n_shots=n_shots))
     av = g.task(expectation(backend_result=backend_result))
 
-    g.outputs(av)
+    g.outputs(SymbolicCircuitsOutputs(expectation=av))
     return g
 
 

@@ -6,7 +6,6 @@ from pathlib import Path
 import subprocess
 import sys
 
-from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import bytes_from_ptype
 from typing_extensions import assert_never

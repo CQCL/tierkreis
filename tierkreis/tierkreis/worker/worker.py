@@ -48,7 +48,11 @@ class Worker:
         self, f: WorkerFunction, inputs: dict[str, Path]
     ) -> dict[str, PType]:
         bs = {k: self.storage.read_input(p) for k, p in inputs.items()}
-        return {k: ptype_from_bytes(b) for k, b in bs.items()}
+        types = self.namespace.functions[f.__name__].ins
+        args = {}
+        for k, b in bs.items():
+            args[k] = ptype_from_bytes(b, types[k])
+        return args
 
     def _save_results(self, outputs: dict[PortID, Path], results: PModel):
         d = dict_from_pmodel(results)

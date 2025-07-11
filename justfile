@@ -42,7 +42,17 @@ examples:
 	{{uvrun}} examples/qsci_graph.py
 
 [working-directory: 'tierkreis/tierkreis/builtins']
-generate:
+generate-builtins:
 	{{uvrun}} main.py --stubs-path ./stubs.py
 	{{uvrun}} ruff format stubs.py
 	{{uvrun}} ruff check --fix stubs.py
+
+[working-directory: 'tierkreis_workers/pytket_worker']
+generate-pytket_worker:
+	touch stubs.py
+	{{uvrun}} main.py --stubs-path ./stubs.py
+	{{uvrun}} ruff format stubs.py
+	{{uvrun}} ruff check --fix stubs.py
+
+
+generate: generate-builtins generate-pytket_worker

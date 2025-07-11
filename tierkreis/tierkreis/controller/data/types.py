@@ -1,24 +1,50 @@
 from base64 import b64decode, b64encode
 import collections.abc
+from inspect import isclass
 import json
 from types import NoneType, UnionType
-from typing import Any, Mapping, Sequence, Union, assert_never, get_args, get_origin
+from typing import (
+    Any,
+    Mapping,
+    Protocol,
+    Self,
+    Sequence,
+    Union,
+    assert_never,
+    get_args,
+    get_origin,
+    runtime_checkable,
+)
 from typing_extensions import TypeIs
 
 
-type _PType = (
+@runtime_checkable
+class DictConvertible(Protocol):
+    def to_dict(self) -> dict: ...
+    @classmethod
+    def from_dict(cls, arg: dict, /) -> "Self": ...
+
+
+@runtime_checkable
+class ListConvertible(Protocol):
+    def to_list(self) -> dict: ...
+    @classmethod
+    def from_list(cls, arg: dict, /) -> "Self": ...
+
+
+type PType = (
     bool
     | int
     | float
     | str
     | NoneType
-    | Sequence["_PType"]
-    | tuple["_PType", ...]
-    | Mapping[str, "_PType"]
+    | Sequence["PType"]
+    | tuple["PType", ...]
+    | Mapping[str, "PType"]
+    | bytes
+    | DictConvertible
+    | ListConvertible
 )
-PType = _PType | bytes
-
-import json
 
 
 class TierkreisEncoder(json.JSONEncoder):
@@ -49,11 +75,11 @@ def _is_union(o: object) -> bool:
     return get_origin(o) == UnionType or get_origin(o) == Union
 
 
-def _is_list(ptype: object) -> TypeIs[type[Sequence[_PType]]]:
+def _is_list(ptype: object) -> TypeIs[type[Sequence[PType]]]:
     return get_origin(ptype) == collections.abc.Sequence or get_origin(ptype) is list
 
 
-def _is_mapping(ptype: object) -> TypeIs[type[Mapping[str, _PType]]]:
+def _is_mapping(ptype: object) -> TypeIs[type[Mapping[str, PType]]]:
     return get_origin(ptype) == Mapping or get_origin(ptype) is dict
 
 
@@ -71,7 +97,12 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     elif _is_list(annotation):
         return all(is_ptype(x) for x in get_args(annotation))
 
-    elif annotation in get_args(PType):
+    elif isclass(annotation) and issubclass(
+        annotation, (DictConvertible, ListConvertible)
+    ):
+        return True
+
+    elif annotation in get_args(PType.__value__):
         return True
 
     else:
@@ -81,6 +112,7 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
 def bytes_from_ptype(ptype: PType) -> bytes:
     match ptype:
         case bytes() | bytearray() | memoryview():
+            # Top level bytes should be a clean pass-through.
             return bytes(ptype)
         case (
             bool()
@@ -94,13 +126,26 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             | Mapping()
         ):
             return json.dumps(ptype, cls=TierkreisEncoder).encode()
+        case DictConvertible():
+            return json.dumps(ptype.to_dict()).encode()
+        case ListConvertible():
+            return json.dumps(ptype.to_list()).encode()
         case _:
             assert_never(ptype)
 
 
-def ptype_from_bytes(bs: bytes) -> PType:
+def ptype_from_bytes(bs: bytes, annotation: type[PType] | None = None) -> PType:
     try:
-        return json.loads(bs, cls=TierkreisDecoder)
+        j = json.loads(bs, cls=TierkreisDecoder)
+        if annotation is None:
+            return j
+        if issubclass(annotation, DictConvertible):
+            return annotation.from_dict(j)
+        if issubclass(annotation, ListConvertible):
+            return annotation.from_list(j)
+
+        return j
+
     except json.JSONDecodeError:
         return bs
 
@@ -122,14 +167,10 @@ def format_ptype(ptype: type[PType]) -> str:
         args = [format_ptype(x) for x in get_args(ptype)]
         return f"Mapping[{', '.join(args)}]"
 
-    if (
-        issubclass(ptype, bool)
-        or issubclass(ptype, int)
-        or issubclass(ptype, float)
-        or issubclass(ptype, str)
-        or issubclass(ptype, bytes)
-        or issubclass(ptype, NoneType)
-    ):
+    if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
         return ptype.__qualname__
+
+    if issubclass(ptype, (DictConvertible, ListConvertible)):
+        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 
     assert_never(ptype)

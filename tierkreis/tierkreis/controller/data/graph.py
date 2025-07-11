@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import logging
-from typing import Callable, Literal, assert_never
+from typing import Any, Callable, Literal, assert_never
 from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
@@ -46,7 +46,7 @@ class Map:
 
 @dataclass
 class Const:
-    value: PType
+    value: Any
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default="const")
 

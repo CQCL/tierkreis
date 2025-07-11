@@ -1,3 +1,4 @@
+from inspect import isclass
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, PNamedModel
 from tierkreis.controller.data.types import PType, format_ptype
@@ -13,14 +14,14 @@ def format_annotation(
 
 
 def format_output(outputs: type[PModel]) -> str:
-    if issubclass(outputs, PNamedModel):
+    if isclass(outputs) and issubclass(outputs, PNamedModel):
         return outputs.__qualname__
 
     return f"TKR[{format_ptype(outputs)}]"
 
 
 def format_output_class(fn_name: str, outputs: type[PModel]) -> str:
-    if not issubclass(outputs, PNamedModel):
+    if not isclass(outputs) or not issubclass(outputs, PNamedModel):
         return ""
 
     outs = {format_annotation(k, v) for k, v in outputs.__annotations__.items()}
@@ -67,10 +68,10 @@ def format_namespace(namespace: Namespace) -> str:
     functions_str = "\n\n".join(functions)
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
-
+# ruff: noqa: F821
 from typing import Literal, NamedTuple, Sequence
 import typing
-from tierkreis.controller.data.models import TKR
+from tierkreis.controller.data.models import TKR, OpaqueType
 
 {functions_str}
     '''

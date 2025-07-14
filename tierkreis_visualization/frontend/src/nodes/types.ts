@@ -1,7 +1,5 @@
 import { InfoProps } from "@/components/types";
-import {
-  type Node,
-} from "@xyflow/react";
+import { type Node } from "@xyflow/react";
 
 export type PyNode = {
   id: string | number;

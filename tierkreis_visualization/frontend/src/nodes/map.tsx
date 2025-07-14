@@ -65,7 +65,7 @@ function replaceMap(
     position: { x: 0, y: 0 },
     data: {},
     parentId: oldNodes.find((node) => node.id === nodeId)?.parentId,
-  };
+  } as BackendNode;
   oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
   edges = edges.filter((edge) => !edgesToRemove.includes(edge.id));
   // there are no edges between the newNodes
@@ -76,7 +76,7 @@ function replaceMap(
 }
 
 export function MapNode({ data }: NodeProps<BackendNode>) {
-  const reactFlowInstance = useReactFlow();
+  const reactFlowInstance = useReactFlow<BackendNode, Edge>();
   const loadChildren = async (
     workflowId: string,
     node_location: string,
@@ -95,14 +95,17 @@ export function MapNode({ data }: NodeProps<BackendNode>) {
         );
         const oldEdges = reactFlowInstance.getEdges();
         const oldNodes = reactFlowInstance.getNodes();
-        let { nodes: newNodes, edges: newEdges } = replaceMap(
+        const { nodes: newNodes, edges: newEdges } = replaceMap(
           parentId,
           nodes,
           oldNodes,
           oldEdges
         );
-        newNodes = bottomUpLayout(newNodes, [...newEdges, ...oldEdges]);
-        reactFlowInstance.setNodes(newNodes);
+        const positionedNodes = bottomUpLayout(newNodes, [
+          ...newEdges,
+          ...oldEdges,
+        ]);
+        reactFlowInstance.setNodes(positionedNodes);
         reactFlowInstance.setEdges(newEdges);
       });
   };

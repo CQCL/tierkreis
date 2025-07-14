@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import React, { Suspense } from "react";
 import ReactDOM from "react-dom/client";
 import {
@@ -24,10 +23,9 @@ const workflowId: LoaderFunction = ({ params }: { params: Params }) => {
 const element = (
   <QueryClientProvider client={queryClient}>
     <Suspense fallback="Loading...">
-        <ReactQueryDevtools initialIsOpen />
-    <ReactFlowProvider>
-      <App />
-    </ReactFlowProvider>
+      <ReactFlowProvider>
+        <App />
+      </ReactFlowProvider>
     </Suspense>
   </QueryClientProvider>
 );

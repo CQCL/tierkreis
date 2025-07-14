@@ -39,10 +39,7 @@ export function bottomUpLayout(nodes: BackendNode[], edges: Edge[]) {
     const idsInLevel = new Set(currentNodes.map((nodeInfo) => nodeInfo.id));
     const levelNodes = nodes.filter((node) => idsInLevel.has(node.id));
     const oldEdges = restoreEdges(level, edges);
-    const levelEdges = edges.filter(
-      (edge) => idsInLevel.has(edge.source) && idsInLevel.has(edge.target)
-    );
-    resizeNodes(levelNodes, previousNodes, 20);
+    resizeGroupNodesToFitChildren(levelNodes, previousNodes, 20);
     // if we don't do this groups wise dagre puts them all on the same plane
     const groups = levelNodes.reduce<{ [key: string]: BackendNode[] }>(
       (acc, currentNode) => {
@@ -55,22 +52,19 @@ export function bottomUpLayout(nodes: BackendNode[], edges: Edge[]) {
       },
       {}
     );
-    const data: ReturnType<typeof calculateNodePositions> = []
+    const data: ReturnType<typeof calculateNodePositions> = [];
     for (const group of Object.values(groups)) {
       const tmp = calculateNodePositions(
-          group,
-          [...levelEdges, ...oldEdges],
-          padding
-        );
+        group,
+        [...edges, ...oldEdges],
+        padding
+      );
       data.push(...tmp);
-      } 
+    }
     const tmpNodes = levelNodes.map((node) => ({
       ...node,
-      position: data.find((position) => position.id === node.id) || {
-        id: "-",
-        x: 0,
-        y: 0,
-      },
+      position:
+        data.find((position) => position.id === node.id) || node.position,
     }));
     newNodes.push(...tmpNodes);
     previousNodes = tmpNodes;
@@ -78,31 +72,27 @@ export function bottomUpLayout(nodes: BackendNode[], edges: Edge[]) {
   return newNodes.reverse();
 }
 
-function resizeNodes(
+function resizeGroupNodesToFitChildren(
   nodesToResize: ShallowNode[],
   childNodes: ShallowNode[],
   padding: number
 ) {
   // resizes all the nodes in nodesToResize to fit their children
   if (!childNodes.length) return;
+  // only groups have children
   for (const node of nodesToResize) {
     const children = childNodes.filter((child) => child.parentId === node.id);
-    if (!children.length) continue;  
-    const dim = children.reduce(
-      (acc, child) => {
-        acc.width = Math.max(
-          acc.width,
-          child.position.x + (Number(child.style?.width) || nodeWidth)
-        );
-        acc.height = Math.max(
-          acc.height,
-          child.position.y + (Number(child.style?.height) || nodeHeight)
-        );
-        return acc;
-      },
-      { width: 0, height: 0 }
+    if (!children.length) continue;
+    const xPositions = children.map(
+      (child) => child.position.x + Number(child.style?.width ?? nodeWidth)
     );
-    node.style = { width: dim.width + padding, height: dim.height + padding };
+    const yPositions = children.map(
+      (child) => child.position.y + Number(child.style?.height ?? nodeHeight)
+    );
+    node.style = {
+      width: Math.max(...xPositions) + padding,
+      height: Math.max(...yPositions) + padding,
+    };
   }
 }
 

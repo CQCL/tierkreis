@@ -1,8 +1,45 @@
 from inspect import isclass
+from types import NoneType
+from typing import get_args
+from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, PNamedModel
-from tierkreis.controller.data.types import PType, format_ptype
+from tierkreis.controller.data.types import (
+    DictConvertible,
+    ListConvertible,
+    PType,
+    _is_list,
+    _is_mapping,
+    _is_tuple,
+    _is_union,
+)
 from tierkreis.namespace import FunctionSpec, Namespace
+
+
+def format_ptype(ptype: type[PType]) -> str:
+    if _is_union(ptype):
+        args = tuple([format_ptype(x) for x in get_args(ptype)])
+        return " | ".join(args)
+
+    if _is_tuple(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"tuple[{', '.join(args)}]"
+
+    if _is_list(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"Sequence[{', '.join(args)}]"
+
+    if _is_mapping(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"Mapping[{', '.join(args)}]"
+
+    if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
+        return ptype.__qualname__
+
+    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
+        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
+
+    assert_never(ptype)
 
 
 def format_annotation(

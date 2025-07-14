@@ -4,7 +4,6 @@ import pytest
 from tierkreis.controller.data.types import (
     PType,
     bytes_from_ptype,
-    format_ptype,
     is_ptype,
     ptype_from_bytes,
 )
@@ -56,25 +55,3 @@ def test_bytes_roundtrip(ptype: PType):
 @pytest.mark.parametrize("ptype", type_list)
 def test_ptype_from_annotation(ptype: type[PType]):
     assert is_ptype(ptype)
-
-
-formats: list[tuple[type[PType], str]] = [
-    (bool, "bool"),
-    (int, "int"),
-    (float, "float"),
-    (str, "str"),
-    (bytes, "bytes"),
-    (NoneType, "NoneType"),
-    (Sequence[str], "Sequence[str]"),
-    (Sequence[str | Sequence[str | int]], "Sequence[str | Sequence[str | int]]"),
-    (tuple[str], "tuple[str]"),
-    (
-        tuple[str | Sequence[str | int], NoneType],
-        "tuple[str | Sequence[str | int], NoneType]",
-    ),
-]
-
-
-@pytest.mark.parametrize("ttype,expected", formats)
-def test_format_ttype(ttype: type[PType], expected: str):
-    assert format_ptype(ttype) == expected

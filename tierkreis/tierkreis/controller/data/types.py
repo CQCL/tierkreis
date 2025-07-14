@@ -154,29 +154,3 @@ def ptype_from_bytes(bs: bytes, annotation: type[PType] | None = None) -> PType:
 
     except json.JSONDecodeError:
         return bs
-
-
-def format_ptype(ptype: type[PType]) -> str:
-    if _is_union(ptype):
-        args = tuple([format_ptype(x) for x in get_args(ptype)])
-        return " | ".join(args)
-
-    if _is_tuple(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"tuple[{', '.join(args)}]"
-
-    if _is_list(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"Sequence[{', '.join(args)}]"
-
-    if _is_mapping(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"Mapping[{', '.join(args)}]"
-
-    if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
-        return ptype.__qualname__
-
-    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
-        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
-
-    assert_never(ptype)

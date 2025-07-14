@@ -47,6 +47,8 @@ type PType = (
     | ListConvertible
     | BaseModel
 )
+"""A restricted subset of Python types that the user can use to annotate
+worker functions when working with the Tierkreis Python library."""
 
 
 class TierkreisEncoder(json.JSONEncoder):
@@ -129,9 +131,9 @@ def bytes_from_ptype(ptype: PType) -> bytes:
         ):
             return json.dumps(ptype, cls=TierkreisEncoder).encode()
         case DictConvertible():
-            return json.dumps(ptype.to_dict()).encode()
+            return json.dumps(ptype.to_dict(), cls=TierkreisEncoder).encode()
         case ListConvertible():
-            return json.dumps(ptype.to_list()).encode()
+            return json.dumps(ptype.to_list(), cls=TierkreisEncoder).encode()
         case BaseModel():
             return ptype.model_dump_json().encode()
         case _:

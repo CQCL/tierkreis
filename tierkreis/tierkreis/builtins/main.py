@@ -25,21 +25,6 @@ def iadd(a: int, b: int) -> int:
     return a + b
 
 
-# class CIAddOutInner(NamedTuple):
-#     x: int
-
-
-# class CIAddOut(NamedTuple):
-#     a: int
-#     value: CIAddOutInner
-
-
-# @worker.function()
-# def ciadd(a: int, b: int) -> CIAddOut:
-#     logger.debug(f"ciadd {a} {b}")
-#     return CIAddOut(a=a, value=CIAddOutInner(x=a + b))
-
-
 @worker.function()
 def itimes(a: int, b: int) -> int:
     logger.debug(f"itimes {a} {b}")
@@ -115,18 +100,6 @@ def unfold_values(args: WorkerCallArgs, storage: WorkerStorage) -> None:
                 storage.write_output(args.output_dir / str(i), bytes_from_ptype(v))
         case _:
             raise TierkreisWorkerError(f"Expected list found {value_list}")
-
-
-# @worker.function()
-# def fold_dict[T](values_glob: Iterator[tuple[str, T]]) -> dictstr, T]]:
-#     values = {k: v for k, v in values_glob}
-#     return values
-
-
-# @worker.function()
-# def unfold_dict[T](value: dict[str, T]) -> Iterator[tuple[str, T]]:
-#     for k, v in value.items():
-#         yield k, v
 
 
 @worker.function()

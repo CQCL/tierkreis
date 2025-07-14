@@ -87,8 +87,8 @@ const Main = (props: {
       info={props.infoProps}
     >
       <ReactFlow<BackendNode, Edge>
-        defaultNodes={nodes}
-        defaultEdges={edges}
+        nodes={nodes}
+        edges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onEdgesChange={onEdgesChange}
@@ -169,7 +169,7 @@ export default function App() {
       return {
         ...node,
         position:
-          localGraph.nodes.find((oldNode) => oldNode.id === node.id)
+          localGraph.nodes.find((oldNode) => oldNode.id === node.id && oldNode.type != "group")
             ?.position || node.position,
       };
     });

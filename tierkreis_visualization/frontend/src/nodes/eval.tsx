@@ -95,7 +95,7 @@ function replaceEval(
     position: { x: 0, y: 0 },
     data: {},
     parentId: oldNodes.find((node) => node.id === nodeId)?.parentId,
-  };
+  } as BackendNode;
   oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
   const tmpEdges = oldEdgesCopy.filter(
     (edge) => edge.target !== nodeId && edge.source !== nodeId
@@ -107,7 +107,7 @@ function replaceEval(
 }
 
 export function EvalNode({ data }: NodeProps<BackendNode>) {
-  const reactFlowInstance = useReactFlow();
+  const reactFlowInstance = useReactFlow<BackendNode, Edge>();
   const loadChildren = async (
     workflowId: string,
     node_location: string,
@@ -127,15 +127,15 @@ export function EvalNode({ data }: NodeProps<BackendNode>) {
         const edges = parseEdges(data.edges, parentId);
         const oldEdges = reactFlowInstance.getEdges();
         const oldNodes = reactFlowInstance.getNodes();
-        let { nodes: newNodes, edges: newEdges } = replaceEval(
+        const { nodes: newNodes, edges: newEdges } = replaceEval(
           parentId,
           nodes,
           edges,
           oldNodes,
           oldEdges
         );
-        newNodes = bottomUpLayout(newNodes, [...newEdges, ...oldEdges]);
-        reactFlowInstance.setNodes(newNodes);
+        const positionedNodes = bottomUpLayout(newNodes, [...newEdges, ...oldEdges]);
+        reactFlowInstance.setNodes(positionedNodes);
         reactFlowInstance.setEdges(newEdges);
       });
   };

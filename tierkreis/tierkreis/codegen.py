@@ -10,7 +10,7 @@ def format_annotation(
 ) -> str:
     sep = "=" if is_constructor else ":"
     constructor = f'(n, "{port_id}")' if is_constructor else ""
-    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor}"
+    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} # noqa: F821 # fmt: skip"
 
 
 def format_output(outputs: type[PModel]) -> str:
@@ -42,8 +42,8 @@ class {fn.name}(NamedTuple):
     {ins_str}
 
     @staticmethod
-    def out() -> type[{class_name}]:
-        return {class_name}
+    def out() -> type[{class_name}]: # noqa: F821 # fmt: skip
+        return {class_name} # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -57,7 +57,7 @@ def format_namespace(namespace: Namespace) -> str:
     functions_str = "\n\n".join(functions)
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
-# ruff: noqa: F821
+
 from typing import Literal, NamedTuple, Sequence
 import typing
 from tierkreis.controller.data.models import TKR, OpaqueType

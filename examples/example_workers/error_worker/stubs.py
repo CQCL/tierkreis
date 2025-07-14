@@ -1,14 +1,13 @@
 """Code generated from error_worker namespace. Please do not edit."""
 
-# ruff: noqa: F821
 from typing import NamedTuple
 from tierkreis.controller.data.models import TKR
 
 
 class fail(NamedTuple):
     @staticmethod
-    def out() -> type[TKR[str]]:
-        return TKR[str]
+    def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip
+        return TKR[str]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

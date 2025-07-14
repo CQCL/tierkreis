@@ -1,17 +1,16 @@
 """Code generated from builtins namespace. Please do not edit."""
 
-# ruff: noqa: F821
 from typing import NamedTuple, Sequence
 from tierkreis.controller.data.models import TKR
 
 
 class iadd(NamedTuple):
-    a: TKR[int]
-    b: TKR[int]
+    a: TKR[int]  # noqa: F821 # fmt: skip
+    b: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[int]]:
-        return TKR[int]
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -19,12 +18,12 @@ class iadd(NamedTuple):
 
 
 class itimes(NamedTuple):
-    a: TKR[int]
-    b: TKR[int]
+    a: TKR[int]  # noqa: F821 # fmt: skip
+    b: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[int]]:
-        return TKR[int]
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -32,12 +31,12 @@ class itimes(NamedTuple):
 
 
 class igt(NamedTuple):
-    a: TKR[int]
-    b: TKR[int]
+    a: TKR[int]  # noqa: F821 # fmt: skip
+    b: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[bool]]:
-        return TKR[bool]
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -45,12 +44,12 @@ class igt(NamedTuple):
 
 
 class impl_and(NamedTuple):
-    a: TKR[bool]
-    b: TKR[bool]
+    a: TKR[bool]  # noqa: F821 # fmt: skip
+    b: TKR[bool]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[bool]]:
-        return TKR[bool]
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -58,12 +57,12 @@ class impl_and(NamedTuple):
 
 
 class str_eq(NamedTuple):
-    a: TKR[str]
-    b: TKR[str]
+    a: TKR[str]  # noqa: F821 # fmt: skip
+    b: TKR[str]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[bool]]:
-        return TKR[bool]
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -71,12 +70,12 @@ class str_eq(NamedTuple):
 
 
 class str_neq(NamedTuple):
-    a: TKR[str]
-    b: TKR[str]
+    a: TKR[str]  # noqa: F821 # fmt: skip
+    b: TKR[str]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[bool]]:
-        return TKR[bool]
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -84,12 +83,12 @@ class str_neq(NamedTuple):
 
 
 class concat(NamedTuple):
-    lhs: TKR[str]
-    rhs: TKR[str]
+    lhs: TKR[str]  # noqa: F821 # fmt: skip
+    rhs: TKR[str]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[str]]:
-        return TKR[str]
+    def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip
+        return TKR[str]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -97,11 +96,11 @@ class concat(NamedTuple):
 
 
 class mean(NamedTuple):
-    values: TKR[Sequence[float]]
+    values: TKR[Sequence[float]]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[float]]:
-        return TKR[float]
+    def out() -> type[TKR[float]]:  # noqa: F821 # fmt: skip
+        return TKR[float]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

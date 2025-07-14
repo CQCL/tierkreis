@@ -47,8 +47,8 @@ type PType = (
     | ListConvertible
     | BaseModel
 )
-"""A restricted subset of Python types that the user can use to annotate
-worker functions when working with the Tierkreis Python library."""
+"""A restricted subset of Python types that can be used to annotate
+worker functions for automatic codegen of graph builder stubs."""
 
 
 class TierkreisEncoder(json.JSONEncoder):

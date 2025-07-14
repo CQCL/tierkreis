@@ -12,6 +12,11 @@ from tierkreis.controller.data.types import PType
 
 @runtime_checkable
 class PNamedModel(Protocol):
+    """A struct whose members are restricted to being PTypes.
+
+    E.g. used to specify multiple outputs in Python worker code.
+    """
+
     def _asdict(self) -> dict[str, PType]: ...
     def __getitem__(self, key: SupportsIndex, /) -> PType: ...
 
@@ -28,6 +33,10 @@ class TKR[T: PModel]:
 
 @runtime_checkable
 class TNamedModel(Protocol):
+    """A struct whose members are restricted to being references to PTypes.
+
+    E.g. in graph builder code these are outputs of tasks."""
+
     def _asdict(self) -> dict[str, TKR[PType]]: ...
     def __getitem__(self, key: SupportsIndex, /) -> TKR[PType]: ...
 

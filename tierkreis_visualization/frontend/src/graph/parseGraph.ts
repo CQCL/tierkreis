@@ -175,8 +175,8 @@ export const calculateNodePositions = (
     });
   });
   edges.forEach((edge) => {
-    if (nodeIds.has(edge.source)&&nodeIds.has(edge.target))
-    dagreGraph.setEdge(edge.source, edge.target);
+    if (nodeIds.has(edge.source) && nodeIds.has(edge.target))
+      dagreGraph.setEdge(edge.source, edge.target);
   });
   dagre.layout(dagreGraph);
   return nodes.map((node) => {

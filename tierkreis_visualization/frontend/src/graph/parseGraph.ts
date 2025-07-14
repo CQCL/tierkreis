@@ -165,6 +165,7 @@ export const calculateNodePositions = (
   padding: number = 0
 ) => {
   const dagreGraph = new dagre.graphlib.Graph();
+  const nodeIds = new Set(nodes.map((node) => node.id));
   dagreGraph.setDefaultEdgeLabel(() => ({}));
   dagreGraph.setGraph({ rankdir: "TB", ranker: "longest-path" });
   nodes.forEach((node) => {
@@ -174,9 +175,9 @@ export const calculateNodePositions = (
     });
   });
   edges.forEach((edge) => {
+    if (nodeIds.has(edge.source)&&nodeIds.has(edge.target))
     dagreGraph.setEdge(edge.source, edge.target);
   });
-
   dagre.layout(dagreGraph);
   return nodes.map((node) => {
     const { x, y, width, height } = dagreGraph.node(node.id);

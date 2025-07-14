@@ -64,7 +64,6 @@ const Main = (props: {
   // Client node state (not definition)
   const [nodes, setNodes] = useState(props.initialNodes);
   const [edges, setEdges] = useState(props.initialEdges);
-
   React.useEffect(() => {
     saveGraph({ key: props.workflow_id, nodes, edges });
   }, [edges, nodes, props.workflow_id]);
@@ -81,7 +80,7 @@ const Main = (props: {
   );
   const onNodeDrag: OnNodeDrag = useCallback((_, node) => {
     node.data.pinned = true;
-  },[]);
+  }, []);
   const reactFlowInstance = useReactFlow();
   return (
     <Layout
@@ -106,8 +105,8 @@ const Main = (props: {
           <SidebarTrigger style={{ fill: "none" }} />
           <ControlButton
             onClick={() => {
-              setNodes(bottomUpLayout(nodes, edges));
               setEdges(edges);
+              setNodes(bottomUpLayout(nodes, reactFlowInstance.getEdges()));
               reactFlowInstance.fitView({ padding: 0.1 });
             }}
           >
@@ -177,7 +176,7 @@ export default function App() {
         position:
           localGraph.nodes.find(
             (oldNode) => oldNode.id === node.id && oldNode.data.pinned
-          )?.position || node.position,
+          )?.position ?? node.position,
       };
     });
     const edgesMap = new Map();

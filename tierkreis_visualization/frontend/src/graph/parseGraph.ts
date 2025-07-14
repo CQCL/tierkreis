@@ -88,6 +88,7 @@ export function parseNodes(
       id: (parentId ? `${parentId}:` : "") + node.id.toString(),
       label: node.function_name,
       setInfo: setInfo,
+      pinned: false,
     },
     parentId: parentId ? `${parentId}` : undefined,
   }));

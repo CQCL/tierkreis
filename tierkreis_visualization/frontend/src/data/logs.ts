@@ -26,10 +26,10 @@ export const useLogs = (workflowId: string, node_location: string) => {
   });
 };
 
-export const useErrors = (workflowId: string, node_location: string) => {
+export const useErrors = (workflowId: string, node_location: string, status: "Not started" | "Started" | "Error" | "Finished") => {
   return useQuery({
     queryKey: ["errors", workflowId, node_location],
     queryFn: () => fetchText(workflowId, node_location, "errors"),
-    enabled: !!workflowId && !!node_location,
+    enabled: !!workflowId && !!node_location && status === "Error"
   });
 };

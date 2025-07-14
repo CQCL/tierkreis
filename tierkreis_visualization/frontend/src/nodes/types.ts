@@ -20,5 +20,6 @@ export type BackendNode = Node<{
   title: string;
   setInfo: (arg: InfoProps) => void;
   label?: string;
+  pinned: boolean;
 }>;
 export type AppNode = BackendNode;

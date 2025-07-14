@@ -67,7 +67,7 @@ class TierkreisDecoder(json.JSONDecoder):
         super().__init__(**kwargs)
 
     def _object_hook(self, d):
-        """Try to decode a complex number."""
+        """Try to decode an object containing bytes."""
         if "__tkr_bytes__" in d and "bytes" in d:
             return b64decode(d["bytes"])
         return d

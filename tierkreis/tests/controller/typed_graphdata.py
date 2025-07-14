@@ -6,7 +6,7 @@ from tierkreis.controller.data.models import TKR
 
 
 class DoublerInput(NamedTuple):
-    doubler_input: TKR[int]
+    x: TKR[int]
     intercept: TKR[int]
 
 
@@ -17,17 +17,15 @@ class DoublerOutput(NamedTuple):
 
 def typed_doubler_plus_multi():
     g = GraphBuilder(DoublerInput, DoublerOutput)
-    two = g.const(2)
-    mul = g.task(itimes(a=g.inputs.doubler_input, b=two))
+    mul = g.task(itimes(a=g.inputs.x, b=g.const(2)))
     out = g.task(iadd(a=mul, b=g.inputs.intercept))
-    g.outputs(DoublerOutput(a=g.inputs.doubler_input, value=out))
+    g.outputs(DoublerOutput(a=g.inputs.x, value=out))
     return g
 
 
 def typed_doubler_plus():
     g = GraphBuilder(DoublerInput, TKR[int])
-    two = g.const(2)
-    mul = g.task(itimes(a=g.inputs.doubler_input, b=two))
+    mul = g.task(itimes(a=g.inputs.x, b=g.const(2)))
     out = g.task(iadd(a=mul, b=g.inputs.intercept))
     g.outputs(out)
     return g
@@ -39,9 +37,7 @@ class TypedEvalOutputs(NamedTuple):
 
 def typed_eval():
     g = GraphBuilder(EmptyModel, TypedEvalOutputs)
-    zero = g.const(0)
-    six = g.const(6)
-    e = g.eval(typed_doubler_plus(), DoublerInput(doubler_input=six, intercept=zero))
+    e = g.eval(typed_doubler_plus(), DoublerInput(x=g.const(6), intercept=g.const(0)))
     g.outputs(TypedEvalOutputs(typed_eval_output=e))
     return g
 
@@ -57,10 +53,8 @@ class LoopBodyOutput(NamedTuple):
 
 def loop_body():
     g = GraphBuilder(LoopBodyInput, LoopBodyOutput)
-    one = g.const(1)
-    N = g.const(10)
-    a_plus = g.task(iadd(a=g.inputs.loop_acc, b=one))
-    pred = g.task(igt(a=N, b=a_plus))
+    a_plus = g.task(iadd(a=g.inputs.loop_acc, b=g.const(1)))
+    pred = g.task(igt(a=g.const(10), b=a_plus))
     g.outputs(LoopBodyOutput(loop_acc=a_plus, should_continue=pred))
     return g
 
@@ -71,8 +65,7 @@ class TypedLoopOutput(NamedTuple):
 
 def typed_loop():
     g = GraphBuilder(EmptyModel, TypedLoopOutput)
-    six = g.const(6)
-    loop = g.loop(loop_body(), LoopBodyInput(loop_acc=six))
+    loop = g.loop(loop_body(), LoopBodyInput(loop_acc=g.const(6)))
     g.outputs(TypedLoopOutput(typed_loop_output=loop.loop_acc))
     return g
 
@@ -83,9 +76,8 @@ class TypedMapOutput(NamedTuple):
 
 def typed_map():
     g = GraphBuilder(EmptyModel, TypedMapOutput)
-    six = g.const(6)
     Ns = g.const(list(range(21)))
-    ins = g.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
+    ins = g.map(Ns, lambda n: DoublerInput(x=n, intercept=g.const(6)))
     m = g.map(ins, typed_doubler_plus())
     g.outputs(TypedMapOutput(typed_map_output=m))
     return g
@@ -93,9 +85,8 @@ def typed_map():
 
 def typed_destructuring():
     g = GraphBuilder(EmptyModel, TypedMapOutput)
-    six = g.const(6)
     Ns = g.const(list(range(21)))
-    ins = g.map(Ns, lambda n: DoublerInput(doubler_input=n, intercept=six))
+    ins = g.map(Ns, lambda n: DoublerInput(x=n, intercept=g.const(6)))
     m = g.map(ins, typed_doubler_plus_multi())
     mout = g.map(m, lambda x: x.value)
     g.outputs(TypedMapOutput(typed_map_output=mout))

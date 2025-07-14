@@ -7,6 +7,7 @@ import {
   OnNodesChange,
   ReactFlow,
   useReactFlow,
+  OnNodeDrag,
 } from "@xyflow/react";
 import { useParams } from "react-router";
 
@@ -78,7 +79,9 @@ const Main = (props: {
       setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
     []
   );
-
+  const onNodeDrag: OnNodeDrag = useCallback((_, node) => {
+    node.data.pinned = true;
+  },[]);
   const reactFlowInstance = useReactFlow();
   return (
     <Layout
@@ -89,10 +92,13 @@ const Main = (props: {
       <ReactFlow<BackendNode, Edge>
         nodes={nodes}
         edges={edges}
+        defaultNodes={nodes}
+        defaultEdges={edges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onEdgesChange={onEdgesChange}
         onNodesChange={onNodesChange}
+        onNodeDrag={onNodeDrag}
         fitView
       >
         <Background />
@@ -169,8 +175,9 @@ export default function App() {
       return {
         ...node,
         position:
-          localGraph.nodes.find((oldNode) => oldNode.id === node.id && oldNode.type != "group")
-            ?.position || node.position,
+          localGraph.nodes.find(
+            (oldNode) => oldNode.id === node.id && oldNode.data.pinned
+          )?.position || node.position,
       };
     });
     const edgesMap = new Map();

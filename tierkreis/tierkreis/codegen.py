@@ -1,6 +1,6 @@
 from inspect import isclass
 from types import NoneType
-from typing import get_args
+from typing import assert_never, get_args
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, PNamedModel

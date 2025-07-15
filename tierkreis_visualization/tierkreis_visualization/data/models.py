@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, Any
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
 
@@ -9,6 +9,7 @@ class PyNode(BaseModel):
     id: int | PortID
     status: NodeStatus
     function_name: str
+    node_location: str = ""
 
 
 class PyEdge(BaseModel):
@@ -16,4 +17,5 @@ class PyEdge(BaseModel):
     from_port: str
     to_node: int
     to_port: str
+    value: Any | None = None
     conditional: bool = False

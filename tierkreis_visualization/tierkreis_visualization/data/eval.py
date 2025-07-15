@@ -47,13 +47,19 @@ def add_conditional_edges(
         pred = None
 
     refs = {True: node.if_true, False: node.if_false}
+
     for branch, (idx, p) in refs.items():
+        if p in storage.read_output_ports(loc.N(idx)):
+            value = json.loads(storage.read_output(loc.N(idx), p))
+        else:
+            value = None
         edge = PyEdge(
             from_node=idx,
             from_port=p,
             to_node=i,
             to_port=f"If{branch}",
             conditional=pred is None or pred != branch,
+            value=value,
         )
         py_edges.append(edge)
 
@@ -89,11 +95,19 @@ def get_eval_node(
             case _:
                 assert_never(node)
 
-        pynode = PyNode(id=i, status=status, function_name=name)
+        pynode = PyNode(
+            id=i, status=status, function_name=name, node_location=new_location
+        )
         pynodes.append(pynode)
 
         for p0, (idx, p1) in in_edges(node).items():
-            py_edge = PyEdge(from_node=idx, from_port=p1, to_node=i, to_port=p0)
+            value = None
+            if p1 in storage.read_output_ports(node_location.N(idx)):
+                value = json.loads(storage.read_output(node_location.N(idx), p1))
+
+            py_edge = PyEdge(
+                from_node=idx, from_port=p1, to_node=i, to_port=p0, value=value
+            )
             py_edges.append(py_edge)
 
     return EvalNodeData(nodes=pynodes, edges=py_edges)

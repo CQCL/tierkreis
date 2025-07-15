@@ -1,0 +1,203 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
+import {
+  applyEdgeChanges,
+  applyNodeChanges,
+  Edge,
+  OnEdgesChange,
+  OnNodesChange,
+  ReactFlow,
+  useReactFlow,
+  OnNodeDrag,
+} from "@xyflow/react";
+import { useParams } from "react-router";
+
+import Layout from "@/components/layout";
+import { InfoProps, Workflow } from "@/components/types";
+import { URL } from "@/data/constants";
+import { parseGraph } from "@/graph/parseGraph";
+import { Background, ControlButton, Controls } from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import { Network } from "lucide-react";
+import React, { useCallback, useState } from "react";
+
+import { SidebarTrigger } from "@/components/ui/sidebar";
+import { edgeTypes } from "@/edges";
+import { bottomUpLayout } from "@/graph/layoutGraph";
+import { nodeTypes } from "@/nodes";
+import { BackendNode } from "./nodes/types";
+
+const saveGraph = ({
+  key,
+  ...graph
+}: {
+  key: string;
+  nodes: BackendNode[];
+  edges: Edge[];
+}) => {
+  try {
+    localStorage.setItem(key, JSON.stringify(graph));
+  } catch {
+    return null;
+  }
+};
+
+const loadGraph = (props: {
+  key: string;
+}): { nodes: BackendNode[]; edges: Edge[] } | null => {
+  try {
+    const item = localStorage.getItem(props.key);
+    if (item !== null)
+      return JSON.parse(item) as { nodes: BackendNode[]; edges: Edge[] };
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const Main = (props: {
+  initialNodes: BackendNode[];
+  initialEdges: Edge[];
+  workflow_id: string;
+  workflows: Workflow[];
+  infoProps: InfoProps;
+}) => {
+  // Client node state (not definition)
+  const [nodes, setNodes] = useState(props.initialNodes);
+  const [edges, setEdges] = useState(props.initialEdges);
+  React.useEffect(() => {
+    saveGraph({ key: props.workflow_id, nodes, edges });
+  }, [edges, nodes, props.workflow_id]);
+
+  const onNodesChange: OnNodesChange<BackendNode> = useCallback(
+    (changes) =>
+      setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
+    []
+  );
+  const onEdgesChange: OnEdgesChange = useCallback(
+    (changes) =>
+      setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
+    []
+  );
+  const onNodeDrag: OnNodeDrag = useCallback((_, node) => {
+    node.data.pinned = true;
+  }, []);
+  const reactFlowInstance = useReactFlow();
+  return (
+    <Layout
+      workflows={props.workflows}
+      workflowId={props.workflow_id}
+      info={props.infoProps}
+    >
+      <ReactFlow<BackendNode, Edge>
+        nodes={nodes}
+        edges={edges}
+        defaultNodes={nodes}
+        defaultEdges={edges}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        onEdgesChange={onEdgesChange}
+        onNodesChange={onNodesChange}
+        onNodeDrag={onNodeDrag}
+        fitView
+      >
+        <Background />
+        <Controls showZoom={false} showInteractive={false}>
+          <SidebarTrigger style={{ fill: "none" }} />
+          <ControlButton
+            onClick={() => {
+              setEdges(edges);
+              setNodes(bottomUpLayout(nodes, reactFlowInstance.getEdges()));
+              reactFlowInstance.fitView({ padding: 0.1 });
+            }}
+          >
+            <Network style={{ fill: "none" }} />
+          </ControlButton>
+        </Controls>
+      </ReactFlow>
+    </Layout>
+  );
+};
+
+export default function App() {
+  const { workflowId: workflow_id_url } = useParams();
+  const [info, setInfo] = useState<InfoProps>({ type: "Logs", content: "" });
+
+  const workflowsQuery = useSuspenseQuery<Workflow[]>({
+    queryKey: ["workflows", URL],
+    queryFn: async () => {
+      const response = await fetch(`${URL}/all`);
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.json();
+    },
+    select: (data) =>
+      data.map(
+        (workflow): Workflow => ({
+          id: workflow.id,
+          name: workflow.name,
+        })
+      ),
+    staleTime: 1000 * 60 * 5, // Cache for 5 minutes
+  });
+  const workflow_id = workflow_id_url || workflowsQuery.data[0].id;
+  const graphQuery = useSuspenseQuery({
+    queryKey: ["workflowGraph", workflow_id],
+    queryFn: async () => {
+      const response = await fetch(`${URL}/${workflow_id}/nodes/-`, {
+        method: "GET",
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.json();
+    },
+    select: (data) => parseGraph(data, workflow_id, setInfo),
+  });
+
+  const remoteGraph = graphQuery.data;
+  const localGraph = loadGraph({ key: workflow_id });
+
+  const mergedGraph = (() => {
+    const default_node_positions = bottomUpLayout(
+      remoteGraph.nodes,
+      remoteGraph.edges
+    );
+    if (localGraph === null)
+      return {
+        nodes: default_node_positions,
+        edges: remoteGraph.edges,
+      };
+
+    const mergedNodes = default_node_positions.map((node) => {
+      return {
+        ...node,
+        position:
+          localGraph.nodes.find(
+            (oldNode) => oldNode.id === node.id && oldNode.data.pinned
+          )?.position ?? node.position,
+      };
+    });
+    const edgesMap = new Map();
+    localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
+    localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
+    const mergedEdges = [...edgesMap.values()];
+
+    return {
+      nodes: mergedNodes,
+      edges: mergedEdges,
+    };
+  })();
+
+  return (
+    <Main
+      key={workflow_id}
+      initialNodes={mergedGraph.nodes}
+      initialEdges={mergedGraph.edges}
+      workflows={workflowsQuery.data}
+      workflow_id={workflow_id}
+      infoProps={info}
+    />
+  );
+}

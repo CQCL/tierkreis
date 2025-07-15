@@ -1,7 +1,8 @@
+import json
 from pydantic import BaseModel
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.storage.protocol import ControllerStorage
-from tierkreis import Labels
+
 
 from tierkreis_visualization.data.eval import check_error
 from tierkreis_visualization.data.models import PyNode, PyEdge
@@ -20,7 +21,15 @@ def get_loop_node(
         i += 1
     new_location = node_location.L(i)
 
-    nodes = [PyNode(id=n, status="Finished", function_name=f"L{n}") for n in range(i)]
+    nodes = [
+        PyNode(
+            id=n,
+            status="Finished",
+            function_name=f"L{n}",
+            node_location=node_location.L(n),
+        )
+        for n in range(i)
+    ]
 
     if check_error(node_location, errored_nodes):
         last_status = "Error"
@@ -28,11 +37,27 @@ def get_loop_node(
         last_status = "Finished"
     else:
         last_status = "Started"
-    nodes.append(PyNode(id=i, status=last_status, function_name=f"L{i}"))
-
-    edges = [
-        PyEdge(from_node=n, from_port=Labels.VALUE, to_node=n + 1, to_port=Labels.VALUE)
-        for n in range(i)
-    ]
-
+    nodes.append(
+        PyNode(
+            id=i, status=last_status, function_name=f"L{i}", node_location=new_location
+        )
+    )
+    edges = []
+    for port_name in storage.read_worker_call_args(node_location.L(0)).inputs:
+        if port_name not in storage.read_output_ports(new_location):
+            continue
+        edges.extend(
+            [
+                PyEdge(
+                    from_node=n,
+                    from_port=port_name,
+                    to_node=n + 1,
+                    to_port=port_name,
+                    value=json.loads(
+                        storage.read_output(node_location.L(n), port_name)
+                    ),
+                )
+                for n in range(i)
+            ]
+        )
     return LoopNodeData(nodes=nodes, edges=edges)

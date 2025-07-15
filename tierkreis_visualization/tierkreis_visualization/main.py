@@ -1,4 +1,5 @@
 from pathlib import Path
+from fastapi.middleware.cors import CORSMiddleware
 
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,15 @@ from tierkreis_visualization.routers.workflows import router as workflows_router
 
 app = FastAPI()
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+    ],  # Adjust as necessary
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(workflows_router)
 app.mount(
     "/static",
@@ -20,7 +30,7 @@ app.mount(
 
 @app.get("/")
 def read_root(request: Request):
-    return RedirectResponse(url="/workflows")
+    return RedirectResponse(url="/static/dist/index.html")
 
 
 def start():

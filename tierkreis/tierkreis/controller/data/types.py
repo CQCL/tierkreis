@@ -11,6 +11,7 @@ from typing import (
     Sequence,
     Union,
     assert_never,
+    cast,
     get_args,
     get_origin,
     runtime_checkable,
@@ -138,12 +139,12 @@ def bytes_from_ptype(ptype: PType) -> bytes:
         case ListConvertible():
             return json.dumps(ptype.to_list(), cls=TierkreisEncoder).encode()
         case BaseModel():
-            return json.dumps(ptype.model_dump(), cls=TierkreisEncoder).encode()
+            return ptype.model_dump_json().encode()
         case _:
             assert_never(ptype)
 
 
-def ptype_from_bytes(bs: bytes, annotation: type[PType] | None = None) -> PType:
+def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
     try:
         j = json.loads(bs, cls=TierkreisDecoder)
         if annotation is None:
@@ -158,4 +159,4 @@ def ptype_from_bytes(bs: bytes, annotation: type[PType] | None = None) -> PType:
         return j
 
     except json.JSONDecodeError:
-        return bs
+        return cast(T, bs)

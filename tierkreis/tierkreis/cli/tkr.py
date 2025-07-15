@@ -8,6 +8,7 @@ from typing import Any, Callable
 
 from tierkreis.cli.run_workflow import run_workflow
 from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
 
 
@@ -130,7 +131,7 @@ def run_workflow_args(args: argparse.Namespace):
         graph = load_graph(args.graph_location)
     else:
         with open(args.from_file, "r") as fh:
-            graph = GraphData(**json.loads(fh.read()))
+            graph = ptype_from_bytes(fh.read().encode(), GraphData)
     if args.input_files is not None:
         inputs = _load_inputs(args.input_files)
     else:

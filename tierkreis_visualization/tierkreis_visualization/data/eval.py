@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.location import WorkerCallArgs, Loc
 from tierkreis.controller.data.graph import GraphData, IfElse
+from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
 
@@ -68,7 +69,7 @@ def get_eval_node(
     storage: ControllerStorage, node_location: Loc, errored_nodes: list[Loc]
 ) -> EvalNodeData:
     thunk = storage.read_output(node_location.N(-1), "body")
-    graph = GraphData(**json.loads(thunk))
+    graph = ptype_from_bytes(thunk, GraphData)
 
     pynodes: list[PyNode] = []
     py_edges: list[PyEdge] = []

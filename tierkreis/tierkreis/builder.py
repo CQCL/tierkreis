@@ -161,7 +161,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         self, aes: TList[A], body: TypedGraphRef[A, B]
     ) -> TList[B]:
         ins = dict_from_tmodel(aes._value)
-        idx, _ = self.data.add(Map(body.graph_ref, "x", "x", ins))("x")
+        idx, _ = self.data.add(Map(body.graph_ref, "x", ins))("x")
 
         refs = [(idx, s + "-*") for s in model_fields(body.outputs_type)]
         return TList(init_tmodel(body.outputs_type, refs))

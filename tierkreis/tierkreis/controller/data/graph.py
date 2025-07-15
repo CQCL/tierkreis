@@ -37,7 +37,6 @@ class Loop:
 @dataclass
 class Map:
     body: ValueRef
-    in_port: PortID  # Input port for the Map.body
     out_port: PortID  # Output port for the Map.body
     inputs: dict[PortID, ValueRef]
     type: Literal["map"] = field(default="map")

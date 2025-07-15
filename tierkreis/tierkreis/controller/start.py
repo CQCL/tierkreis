@@ -138,7 +138,8 @@ def start(
         )
 
     elif node.type == "map":
-        map_eles = storage.read_output_ports(parent.N(node.input_idx))
+        first_ref = next(x for x in ins.values() if x[1] == "*")
+        map_eles = storage.read_output_ports(first_ref[0])
         for p in map_eles:
             eval_inputs: dict[PortID, tuple[Loc, PortID]] = {}
             eval_inputs["body"] = (parent.N(node.body[0]), node.body[1])
@@ -147,7 +148,6 @@ def start(
                     eval_inputs[k] = (i, p)
                 else:
                     eval_inputs[k] = (i, port)
-            eval_inputs[node.in_port] = (parent.N(node.input_idx), p)
             pipe_inputs_to_output_location(
                 storage, node_location.M(p).N(-1), eval_inputs
             )

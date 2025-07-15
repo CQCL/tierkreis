@@ -84,7 +84,7 @@ def _is_list(ptype: object) -> TypeIs[type[Sequence[PType]]]:
 
 
 def _is_mapping(ptype: object) -> TypeIs[type[Mapping[str, PType]]]:
-    return get_origin(ptype) == Mapping or get_origin(ptype) is dict
+    return get_origin(ptype) is collections.abc.Mapping or get_origin(ptype) is dict
 
 
 def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
@@ -99,6 +99,9 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return all(is_ptype(x) for x in get_args(annotation))
 
     elif _is_list(annotation):
+        return all(is_ptype(x) for x in get_args(annotation))
+
+    elif _is_mapping(annotation):
         return all(is_ptype(x) for x in get_args(annotation))
 
     elif isclass(annotation) and issubclass(

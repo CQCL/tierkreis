@@ -1,6 +1,8 @@
 from dataclasses import dataclass
+from datetime import datetime
 from types import NoneType, UnionType
-from typing import Sequence
+from typing import Mapping, Sequence
+from uuid import UUID
 from pydantic import BaseModel
 import pytest
 from tierkreis.controller.data.types import (
@@ -55,6 +57,13 @@ type_list.append(int | None)
 type_list.append(int | bytes)
 type_list.append(tuple[int, str])
 type_list.append(tuple[int | str])
+type_list.append(Mapping[str, dict[str, bytes]])
+
+fail_list: Sequence[type] = []
+fail_list.append(UUID)
+fail_list.append(datetime)
+fail_list.append(list[datetime])
+fail_list.append(Mapping[str, dict[str, datetime]])
 
 ptypes: Sequence[PType] = [
     True,
@@ -90,3 +99,8 @@ def test_bytes_roundtrip(ptype: PType):
 @pytest.mark.parametrize("ptype", type_list)
 def test_ptype_from_annotation(ptype: type[PType]):
     assert is_ptype(ptype)
+
+
+@pytest.mark.parametrize("ptype", fail_list)
+def test_ptype_from_annotation_fails(ptype: type[PType]):
+    assert not is_ptype(ptype)

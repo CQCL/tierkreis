@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import json
 from logging import getLogger
 import logging
 from pathlib import Path
@@ -7,7 +6,7 @@ import subprocess
 import sys
 
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.types import bytes_from_ptype
+from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
@@ -111,7 +110,7 @@ def start(
 
     elif node.type == "eval":
         message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
-        g = GraphData(**json.loads(message))
+        g = ptype_from_bytes(message, GraphData)
 
         if g.remaining_inputs(set(ins.keys())):
             g.fixed_inputs.update(ins)

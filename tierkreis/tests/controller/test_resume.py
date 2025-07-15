@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -26,6 +25,7 @@ from tests.controller.typed_graphdata import (
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
@@ -83,7 +83,7 @@ def test_resume_eval(
     output_ports = g.nodes[g.output_idx()].inputs.keys()
     actual_output = {}
     for port in output_ports:
-        actual_output[port] = json.loads(storage.read_output(Loc(), port))
+        actual_output[port] = ptype_from_bytes(storage.read_output(Loc(), port))
 
     if f"{name}_output" in actual_output:
         assert actual_output[f"{name}_output"] == output

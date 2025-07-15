@@ -15,6 +15,8 @@ from tierkreis.controller.data.types import (
 )
 from tierkreis.namespace import FunctionSpec, Namespace
 
+NO_QA_STR = " # noqa: F821 # fmt: skip"
+
 
 def format_ptype(ptype: type[PType]) -> str:
     if _is_union(ptype):
@@ -47,7 +49,7 @@ def format_annotation(
 ) -> str:
     sep = "=" if is_constructor else ":"
     constructor = f'(n, "{port_id}")' if is_constructor else ""
-    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} # noqa: F821 # fmt: skip"
+    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} {NO_QA_STR}"
 
 
 def format_output(outputs: type[PModel]) -> str:
@@ -79,8 +81,8 @@ class {fn.name}(NamedTuple):
     {ins_str}
 
     @staticmethod
-    def out() -> type[{class_name}]: # noqa: F821 # fmt: skip
-        return {class_name} # noqa: F821 # fmt: skip
+    def out() -> type[{class_name}]:{NO_QA_STR}
+        return {class_name}{NO_QA_STR}
 
     @property
     def namespace(self) -> str:

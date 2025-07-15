@@ -207,7 +207,6 @@ def symbolic_execution() -> GraphData:
     m = g.add(
         Map(
             pauli_expectation,
-            "expectation",
             {
                 "pauli_string": unfolded_pauli_strings("*"),
                 "circuit": substituted_circuit,

@@ -168,7 +168,8 @@ class Worker:
             node_definition.done_path.touch()
         except Exception as err:
             logger.error("encountered error: %s", err)
-            with open(node_definition.error_path, "w+") as f:
+            node_definition.error_path.touch()
+            with open(node_definition.error_path.parent / "errors", "w+") as f:
                 f.write(str(err))
 
     def write_stubs(self, stubs_path: Path) -> None:

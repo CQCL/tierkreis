@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from types import NoneType, UnionType
-from typing import Self, Sequence
+from typing import Sequence
 from pydantic import BaseModel
 import pytest
 from tierkreis.controller.data.types import (

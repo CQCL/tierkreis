@@ -96,7 +96,7 @@ def format_namespace(namespace: Namespace) -> str:
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
 from typing import Literal, NamedTuple, Sequence
-import typing
+from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 
 {functions_str}

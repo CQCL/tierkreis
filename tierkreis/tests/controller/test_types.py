@@ -1,5 +1,7 @@
+from dataclasses import dataclass
 from types import NoneType, UnionType
-from typing import Sequence
+from typing import Self, Sequence
+from pydantic import BaseModel
 import pytest
 from tierkreis.controller.data.types import (
     PType,
@@ -7,6 +9,35 @@ from tierkreis.controller.data.types import (
     is_ptype,
     ptype_from_bytes,
 )
+
+
+class DummyBaseModel(BaseModel):
+    a: int
+    b: bytes
+
+
+@dataclass
+class DummyDictConvertible:
+    a: int
+
+    def to_dict(self) -> dict:
+        return {"a": self.a}
+
+    @classmethod
+    def from_dict(cls, args: dict) -> "DummyDictConvertible":
+        return DummyDictConvertible(a=args["a"])
+
+
+@dataclass
+class DummyListConvertible:
+    a: int
+
+    def to_list(self) -> list:
+        return list(range(self.a))
+
+    @classmethod
+    def from_list(cls, args: list) -> "DummyListConvertible":
+        return DummyListConvertible(a=len(args))
 
 
 type_list: Sequence[type[PType] | UnionType] = []
@@ -42,13 +73,17 @@ ptypes: Sequence[PType] = [
     [1, 2, 3],
     [[[]], 1, ["45", "test", b"test bytes"]],
     b"these are some test bytes",
+    {"one": 1, "two": "two", "bytes": b"asdf"},
+    DummyDictConvertible(a=11),
+    DummyListConvertible(a=5),
+    DummyBaseModel(a=5, b=b"some bytes"),
 ]
 
 
 @pytest.mark.parametrize("ptype", ptypes)
 def test_bytes_roundtrip(ptype: PType):
     bs = bytes_from_ptype(ptype)
-    new_type = ptype_from_bytes(bs)
+    new_type = ptype_from_bytes(bs, type(ptype))
     assert ptype == new_type
 
 

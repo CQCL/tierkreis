@@ -28,9 +28,9 @@ class DictConvertible(Protocol):
 
 @runtime_checkable
 class ListConvertible(Protocol):
-    def to_list(self) -> dict: ...
+    def to_list(self) -> list: ...
     @classmethod
-    def from_list(cls, arg: dict, /) -> "Self": ...
+    def from_list(cls, arg: list, /) -> "Self": ...
 
 
 type PType = (
@@ -135,7 +135,7 @@ def bytes_from_ptype(ptype: PType) -> bytes:
         case ListConvertible():
             return json.dumps(ptype.to_list(), cls=TierkreisEncoder).encode()
         case BaseModel():
-            return ptype.model_dump_json().encode()
+            return json.dumps(ptype.model_dump(), cls=TierkreisEncoder).encode()
         case _:
             assert_never(ptype)
 

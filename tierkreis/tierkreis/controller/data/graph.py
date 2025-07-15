@@ -37,7 +37,6 @@ class Loop:
 @dataclass
 class Map:
     body: ValueRef
-    input_idx: NodeIndex
     in_port: PortID  # Input port for the Map.body
     out_port: PortID  # Output port for the Map.body
     inputs: dict[PortID, ValueRef]
@@ -122,7 +121,7 @@ class GraphData(BaseModel):
         out_port: PortID,
         inputs: dict[PortID, ValueRef],
     ) -> Callable[[PortID], ValueRef]:
-        return self.add(Map(body, input_idx, in_port, out_port, inputs))
+        return self.add(Map(body, in_port, out_port, inputs))
 
     def output(self, inputs: dict[PortID, ValueRef]) -> None:
         self.add(Output(inputs))

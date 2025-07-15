@@ -73,9 +73,7 @@ def simple_map() -> GraphData:
     Ns = g.add(Func("builtins.unfold_values", {Labels.VALUE: Ns_const}))
     doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
-    map_def = Map(
-        doubler_const, -5, "x", "x", {"doubler_input": Ns("*"), "intercept": six}
-    )
+    map_def = Map(doubler_const, "x", "x", {"doubler_input": Ns("*"), "intercept": six})
     m = g.add(map_def)
     folded = g.add(Func("builtins.fold_values", {"values_glob": m("*")}))
     g.add(Output({"simple_map_output": folded(Labels.VALUE)}))
@@ -100,12 +98,12 @@ def maps_in_series() -> GraphData:
     doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
     map_def = Map(
-        doubler_const, -5, "x", "x", {"doubler_input": Ns("*"), "intercept": zero}
+        doubler_const, "x", "x", {"doubler_input": Ns("*"), "intercept": zero}
     )
     m = g.add(map_def)
 
     map_def2 = Map(
-        doubler_const, -5, "x", "x", {"doubler_input": m("*"), "intercept": zero}
+        doubler_const, "x", "x", {"doubler_input": m("*"), "intercept": zero}
     )
     m2 = g.add(map_def2)
     folded = g.add(Func("builtins.fold_values", {"values_glob": m2("*")}))
@@ -121,7 +119,7 @@ def map_with_str_keys() -> GraphData:
     doubler_const = g.add(Const(doubler_plus()))(Labels.VALUE)
 
     map_def = Map(
-        doubler_const, -5, "x", "x", {"doubler_input": Ns("*"), "intercept": zero}
+        doubler_const, "x", "x", {"doubler_input": Ns("*"), "intercept": zero}
     )
     m = g.add(map_def)
     folded = g.add(Func("builtins.fold_dict", {"values_glob": m("*")}))

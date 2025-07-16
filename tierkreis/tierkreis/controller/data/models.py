@@ -1,13 +1,17 @@
 from dataclasses import dataclass
 from inspect import isclass
+from itertools import chain
 from typing import (
     Literal,
     Protocol,
     SupportsIndex,
+    cast,
+    get_origin,
     runtime_checkable,
 )
+from typing_extensions import TypeIs
 from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
-from tierkreis.controller.data.types import PType
+from tierkreis.controller.data.types import PType, generics_in_ptype
 
 
 @runtime_checkable
@@ -44,6 +48,20 @@ class TNamedModel(Protocol):
 TModel = TNamedModel | TKR
 
 
+def is_pnamedmodel(o) -> TypeIs[type[PNamedModel]]:
+    origin = get_origin(o)
+    if origin is not None:
+        return is_pnamedmodel(origin)
+    return isclass(o) and issubclass(o, PNamedModel)
+
+
+def is_tnamedmodel(o) -> TypeIs[type[TNamedModel]]:
+    origin = get_origin(o)
+    if origin is not None:
+        return is_tnamedmodel(origin)
+    return isclass(o) and issubclass(o, TNamedModel)
+
+
 def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
     if isinstance(pmodel, PNamedModel):
         return pmodel._asdict()
@@ -59,20 +77,34 @@ def dict_from_tmodel(tmodel: TModel) -> dict[PortID, ValueRef]:
 
 
 def model_fields(model: type[PModel] | type[TModel]) -> list[str]:
-    if isclass(model) and isinstance(model, PNamedModel):
+    if is_pnamedmodel(model):
         return getattr(model, "_fields")
 
-    if isclass(model) and isinstance(model, TNamedModel):
+    if is_tnamedmodel(model):
         return getattr(model, "_fields")
 
     return ["value"]
 
 
 def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
-    if isclass(tmodel) and issubclass(tmodel, TNamedModel):
+    if is_tnamedmodel(tmodel):
+        o = get_origin(tmodel)
+        model = tmodel if not is_tnamedmodel(o) else o
         args: list[TKR] = []
         for ref in refs:
             key = ref[1].replace("-*", "")
-            args.append(tmodel.__annotations__[key](ref[0], ref[1]))
-        return tmodel(*args)
+            args.append(model.__annotations__[key](ref[0], ref[1]))
+        return cast(T, model(*args))
     return tmodel(refs[0][0], refs[0][1])
+
+
+def generics_in_pmodel(pmodel: type[PModel]) -> set[str]:
+    if is_pnamedmodel(pmodel):
+        origin = get_origin(pmodel)
+        if origin is not None:
+            return generics_in_pmodel(origin)
+
+        x = [generics_in_ptype(pmodel.__annotations__[t]) for t in model_fields(pmodel)]
+        return set(chain(*x))
+
+    return generics_in_ptype(pmodel)

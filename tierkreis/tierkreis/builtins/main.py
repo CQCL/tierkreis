@@ -3,12 +3,10 @@ from logging import getLogger
 from pathlib import Path
 import statistics
 from sys import argv
-from typing import Sequence
-
-from pydantic import BaseModel
+from typing import NamedTuple, Sequence
 
 from tierkreis.controller.data.location import WorkerCallArgs
-from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.namespace import TierkreisWorkerError
 from tierkreis.worker.storage.protocol import WorkerStorage
 from tierkreis.worker.worker import Worker
@@ -43,33 +41,33 @@ def impl_and(a: bool, b: bool) -> bool:
     return a and b
 
 
-# @worker.function(name="id")
-# def impl_id[T](value: T) -> T:
-#     logger.debug(f"id {value}")
-#     return value
+@worker.function(name="id")
+def impl_id[T: PType](value: T) -> T:
+    logger.debug(f"id {value}")
+    return value
 
 
 @worker.function()
-def append[T](l: list[T], a: T) -> list[T]:  # noqa: E741
-    l.append(a)
-    return l
+def append[T](v: list[T], a: T) -> list[T]:  # noqa: E741
+    v.append(a)
+    return v
 
 
-class Headed[T](BaseModel):
+class Headed[T: PType](NamedTuple):
     head: T
     rest: list[T]
 
 
-# @worker.function()
-# def head[T](l: list[T]) -> Headed[T]:  # noqa: E741
-#     head, rest = l[0], l[1:]
-#     return Headed(head=head, rest=rest)
+@worker.function()
+def head[T: PType](v: list[T]) -> Headed[T]:  # noqa: E741
+    head, rest = v[0], v[1:]
+    return Headed(head=head, rest=rest)
 
 
 @worker.function(name="len")
-def impl_len(l: list) -> int:  # noqa: E741
-    logger.info("len: %s", l)
-    return len(l)
+def impl_len[A](v: list[A]) -> int:
+    logger.info("len: %s", v)
+    return len(v)
 
 
 @worker.function()
@@ -107,37 +105,37 @@ def concat(lhs: str, rhs: str) -> str:
     return lhs + rhs
 
 
-# @worker.function(name="zip")
-# def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]]:
-#     return list(zip(a, b))
+@worker.function(name="zip")
+def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
+    return list(zip(a, b))
 
 
-# class Unzipped[U, V](BaseModel):
-#     a: list[U]
-#     b: list[V]
+class Unzipped[U: PType, V: PType](NamedTuple):
+    a: list[U]
+    b: list[V]
 
 
-# @worker.function()
-# def unzip[U, V](value: list[tuple[U, V]]) -> Unzipped[U, V]:
-#     value_a, value_b = map(list, zip(*value))
-#     return Unzipped(a=value_a, b=value_b)
+@worker.function()
+def unzip[U: PType, V: PType](value: list[tuple[U, V]]) -> Unzipped[U, V]:
+    value_a, value_b = map(list, zip(*value))
+    return Unzipped(a=value_a, b=value_b)
 
 
-# @worker.function(name="tuple")
-# def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
-#     return (a, b)
+@worker.function(name="tuple")
+def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
+    return (a, b)
 
 
-# class Untupled[U, V](BaseModel):
-#     a: U
-#     b: V
+class Untupled[U: PType, V: PType](NamedTuple):
+    a: U
+    b: V
 
 
-# @worker.function()
-# def untuple[U, V](value: tuple[U, V]) -> Untupled[U, V]:
-#     logger.info("untuple: %s", value)
-#     value_a, value_b = value
-#     return Untupled(a=value_a, b=value_b)
+@worker.function()
+def untuple[U: PType, V: PType](value: tuple[U, V]) -> Untupled[U, V]:
+    logger.info("untuple: %s", value)
+    value_a, value_b = value
+    return Untupled(a=value_a, b=value_b)
 
 
 @worker.function()

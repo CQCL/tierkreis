@@ -17,6 +17,7 @@ from tests.controller.sample_graphdata import (
 )
 from tests.controller.loop_graphdata import loop_multiple_acc
 from tests.controller.typed_graphdata import (
+    tuple_untuple,
     typed_destructuring,
     typed_eval,
     typed_loop,
@@ -46,7 +47,8 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (typed_eval().get_data(), 12, "typed_eval", 14, {}),
     (typed_loop().get_data(), 10, "typed_loop", 15, {}),
     (typed_map().get_data(), list(range(6, 47, 2)), "typed_map", 16, {}),
-    (typed_destructuring().get_data(), list(range(6, 47, 2)), "typed_map", 16, {}),
+    (typed_destructuring().get_data(), list(range(6, 47, 2)), "typed_map", 17, {}),
+    (tuple_untuple().get_data(), 3, "tuple_untuple", 18, {}),
 ]
 ids = [
     "simple_eval",
@@ -65,6 +67,7 @@ ids = [
     "typed_loop",
     "typed_map",
     "typed_destructuring",
+    "tuple_untuple",
 ]
 
 
@@ -87,5 +90,7 @@ def test_resume_eval(
 
     if f"{name}_output" in actual_output:
         assert actual_output[f"{name}_output"] == output
+    elif "value" in actual_output:
+        assert actual_output["value"] == output
     else:
         assert actual_output == output

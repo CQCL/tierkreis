@@ -192,8 +192,8 @@ class untuple[U: PType, V: PType](NamedTuple):
     value: TKR[tuple[U, V]]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[Untupled]:  # noqa: F821 # fmt: skip
-        return Untupled  # noqa: F821 # fmt: skip
+    def out() -> type[Untupled[U, V]]:  # noqa: F821 # fmt: skip
+        return Untupled[U, V]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

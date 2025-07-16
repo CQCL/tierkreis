@@ -47,8 +47,9 @@ def format_ptype(ptype: type[PType]) -> str:
     assert_never(ptype)
 
 
-def format_generics(generics: set[str]) -> str:
-    generics_strs = [str(x) + ": PType" for x in generics]
+def format_generics(generics: set[str], include_ptype: bool = True) -> str:
+    ptype_annotation = ": PType" if include_ptype else ""
+    generics_strs = [str(x) + ptype_annotation for x in generics]
     return f"[{', '.join(generics_strs)}]" if generics else ""
 
 
@@ -60,18 +61,18 @@ def format_annotation(
     return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} {NO_QA_STR}"
 
 
-def format_output(outputs: type[PModel]) -> str:
+def format_output(outputs: type[PModel], include_ptype: bool = True) -> str:
+    generics = format_generics(generics_in_pmodel(outputs), include_ptype)
     if is_pnamedmodel(outputs):
-        return outputs.__qualname__
+        return f"{outputs.__qualname__}{generics}"
 
     return f"TKR[{format_ptype(outputs)}]"
 
 
-def format_output_class(fn_name: str, class_name: str, outputs: type[PModel]) -> str:
+def format_output_class(outputs: type[PModel]) -> str:
+    class_name = format_output(outputs)
     if not is_pnamedmodel(outputs):
         return ""
-
-    generics = format_generics(generics_in_pmodel(outputs))
 
     origin = get_origin(outputs)
     if origin is not None:
@@ -81,7 +82,7 @@ def format_output_class(fn_name: str, class_name: str, outputs: type[PModel]) ->
     outs_str = "\n    ".join(outs)
 
     return f"""
-class {class_name}{generics}(NamedTuple):
+class {class_name}(NamedTuple):
     {outs_str}
 """
 
@@ -89,10 +90,10 @@ class {class_name}{generics}(NamedTuple):
 def format_function(namespace_name: str, fn: FunctionSpec) -> str:
     ins = [format_annotation(k, v) for k, v in fn.ins.items()]
     ins_str = "\n    ".join(ins)
-    class_name = format_output(fn.outs)
-    generics = format_generics(fn.generics)
-    return f"""{format_output_class(fn.name, class_name, fn.outs)}
-class {fn.name}{generics}(NamedTuple):
+    class_name = format_output(fn.outs, False)
+
+    return f"""{format_output_class(fn.outs)}
+class {fn.name}{format_generics(fn.generics)}(NamedTuple):
     {ins_str}
 
     @staticmethod

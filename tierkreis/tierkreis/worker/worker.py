@@ -78,7 +78,7 @@ class Worker:
         """Register a function with the worker."""
 
         def function_decorator(func: WorkerFunction) -> None:
-            func_name = name if name is not None else func.__name__
+            func_name = func.__name__
             self.namespace.add_from_annotations(func.__name__, func.__annotations__)
 
             def wrapper(node_definition: WorkerCallArgs):

@@ -54,6 +54,13 @@ def is_pnamedmodel(o) -> TypeIs[type[PNamedModel]]:
     return isclass(o) and issubclass(o, PNamedModel)
 
 
+def is_tnamedmodel(o) -> TypeIs[type[TNamedModel] | TNamedModel]:
+    origin = get_origin(o)
+    if origin is not None:
+        return is_tnamedmodel(origin)
+    return (isclass(o) and issubclass(o, TNamedModel)) or (isinstance(o, TNamedModel))
+
+
 def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
     if isinstance(pmodel, PNamedModel):
         return pmodel._asdict()
@@ -62,7 +69,7 @@ def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
 
 
 def dict_from_tmodel(tmodel: TModel) -> dict[PortID, ValueRef]:
-    if isinstance(tmodel, TNamedModel):
+    if is_tnamedmodel(tmodel):
         return {k: (v.node_index, v.port_id) for k, v in tmodel._asdict().items()}
 
     return {"value": (tmodel.node_index, tmodel.port_id)}
@@ -72,14 +79,17 @@ def model_fields(model: type[PModel] | type[TModel]) -> list[str]:
     if is_pnamedmodel(model):
         return getattr(model, "_fields")
 
-    if isclass(model) and isinstance(model, TNamedModel):
+    if is_tnamedmodel(model):
         return getattr(model, "_fields")
 
     return ["value"]
 
 
 def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
-    if isclass(tmodel) and issubclass(tmodel, TNamedModel):
+    if is_tnamedmodel(tmodel):
+        origin = get_origin(tmodel)
+        if origin is not None:
+            tmodel = origin
         args: list[TKR] = []
         for ref in refs:
             key = ref[1].replace("-*", "")

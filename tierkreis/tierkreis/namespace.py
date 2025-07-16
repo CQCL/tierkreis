@@ -1,11 +1,9 @@
 from dataclasses import dataclass, field
-from inspect import isclass
 from logging import getLogger
 from types import NoneType
-from typing import Any, TypeVar
+from typing import Any
 from tierkreis.controller.data.models import (
     PModel,
-    PNamedModel,
     generics_in_pmodel,
     is_pnamedmodel,
 )

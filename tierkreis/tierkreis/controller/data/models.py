@@ -5,7 +5,6 @@ from typing import (
     Literal,
     Protocol,
     SupportsIndex,
-    TypeVar,
     get_origin,
     runtime_checkable,
 )

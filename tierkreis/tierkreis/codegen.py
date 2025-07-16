@@ -1,7 +1,5 @@
-from inspect import isclass
-from types import GenericAlias, NoneType
-from typing import TypeAliasType, TypeVar, assert_never, get_args, get_origin
-import typing
+from types import NoneType
+from typing import assert_never, get_args, get_origin
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, generics_in_pmodel, is_pnamedmodel
@@ -51,7 +49,7 @@ def format_ptype(ptype: type[PType]) -> str:
 
 def format_generics(generics: set[str]) -> str:
     generics_strs = [str(x) + ": PType" for x in generics]
-    return f"[{", ".join(generics_strs)}]" if generics else ""
+    return f"[{', '.join(generics_strs)}]" if generics else ""
 
 
 def format_annotation(

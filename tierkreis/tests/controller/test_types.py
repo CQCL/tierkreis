@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime
 from types import NoneType, UnionType
-from typing import Mapping, NamedTuple, Sequence, TypeVar
+from typing import Mapping, Sequence, TypeVar
 from uuid import UUID
 from pydantic import BaseModel
 import pytest

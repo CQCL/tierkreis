@@ -2,6 +2,7 @@
 
 from typing import NamedTuple, Sequence
 from tierkreis.controller.data.models import TKR
+from tierkreis.controller.data.types import PType
 
 
 class iadd(NamedTuple):
@@ -56,6 +57,31 @@ class impl_and(NamedTuple):
         return "builtins"
 
 
+class append[T: PType](NamedTuple):
+    v: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+    a: TKR[T]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Sequence[T]]]:  # noqa: F821 # fmt: skip
+        return TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class impl_len[A: PType](NamedTuple):
+    v: TKR[Sequence[A]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
 class str_eq(NamedTuple):
     a: TKR[str]  # noqa: F821 # fmt: skip
     b: TKR[str]  # noqa: F821 # fmt: skip
@@ -89,6 +115,23 @@ class concat(NamedTuple):
     @staticmethod
     def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip
         return TKR[str]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class Untupled[V: PType, U: PType](NamedTuple):
+    b: TKR[V]  # noqa: F821 # fmt: skip
+    a: TKR[U]  # noqa: F821 # fmt: skip
+
+
+class untuple[V: PType, U: PType](NamedTuple):
+    value: TKR[tuple[U, V]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[Untupled]:  # noqa: F821 # fmt: skip
+        return Untupled  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

@@ -1,13 +1,15 @@
 from inspect import isclass
-from types import NoneType
-from typing import assert_never, get_args
+from types import GenericAlias, NoneType
+from typing import TypeAliasType, TypeVar, assert_never, get_args, get_origin
+import typing
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import PModel, PNamedModel
+from tierkreis.controller.data.models import PModel, generics_in_pmodel, is_pnamedmodel
 from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
     PType,
+    _is_generic,
     _is_list,
     _is_mapping,
     _is_tuple,
@@ -19,6 +21,9 @@ NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
 def format_ptype(ptype: type[PType]) -> str:
+    if _is_generic(ptype):
+        return str(ptype)
+
     if _is_union(ptype):
         args = tuple([format_ptype(x) for x in get_args(ptype)])
         return " | ".join(args)
@@ -44,6 +49,11 @@ def format_ptype(ptype: type[PType]) -> str:
     assert_never(ptype)
 
 
+def format_generics(generics: set[str]) -> str:
+    generics_strs = [str(x) + ": PType" for x in generics]
+    return f"[{", ".join(generics_strs)}]" if generics else ""
+
+
 def format_annotation(
     port_id: PortID, ptype: type[PType], is_constructor: bool = False
 ) -> str:
@@ -53,21 +63,27 @@ def format_annotation(
 
 
 def format_output(outputs: type[PModel]) -> str:
-    if isclass(outputs) and issubclass(outputs, PNamedModel):
+    if is_pnamedmodel(outputs):
         return outputs.__qualname__
 
     return f"TKR[{format_ptype(outputs)}]"
 
 
 def format_output_class(fn_name: str, class_name: str, outputs: type[PModel]) -> str:
-    if not isclass(outputs) or not issubclass(outputs, PNamedModel):
+    if not is_pnamedmodel(outputs):
         return ""
+
+    generics = format_generics(generics_in_pmodel(outputs))
+
+    origin = get_origin(outputs)
+    if origin is not None:
+        outputs = origin
 
     outs = {format_annotation(k, v) for k, v in outputs.__annotations__.items()}
     outs_str = "\n    ".join(outs)
 
     return f"""
-class {class_name}(NamedTuple):
+class {class_name}{generics}(NamedTuple):
     {outs_str}
 """
 
@@ -76,8 +92,9 @@ def format_function(namespace_name: str, fn: FunctionSpec) -> str:
     ins = [format_annotation(k, v) for k, v in fn.ins.items()]
     ins_str = "\n    ".join(ins)
     class_name = format_output(fn.outs)
+    generics = format_generics(fn.generics)
     return f"""{format_output_class(fn.name, class_name, fn.outs)}
-class {fn.name}(NamedTuple):
+class {fn.name}{generics}(NamedTuple):
     {ins_str}
 
     @staticmethod
@@ -100,6 +117,7 @@ def format_namespace(namespace: Namespace) -> str:
 from typing import Literal, NamedTuple, Sequence
 from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.data.types import PType
 
 {functions_str}
     '''

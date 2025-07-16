@@ -1,16 +1,22 @@
 from dataclasses import dataclass
 from datetime import datetime
 from types import NoneType, UnionType
-from typing import Mapping, Sequence
+from typing import Mapping, NamedTuple, Sequence, TypeVar
 from uuid import UUID
 from pydantic import BaseModel
 import pytest
 from tierkreis.controller.data.types import (
     PType,
     bytes_from_ptype,
+    generics_in_ptype,
     is_ptype,
     ptype_from_bytes,
 )
+
+
+class UntupledModel[U, V](BaseModel):
+    a: U
+    b: V
 
 
 class DummyBaseModel(BaseModel):
@@ -104,3 +110,19 @@ def test_ptype_from_annotation(ptype: type[PType]):
 @pytest.mark.parametrize("ptype", fail_list)
 def test_ptype_from_annotation_fails(ptype: type[PType]):
     assert not is_ptype(ptype)
+
+
+S = TypeVar("S")
+T = TypeVar("T")
+
+generic_types = []
+generic_types.append((list[T], {T}))  # type: ignore
+generic_types.append((list[S | T], {S, T}))  # type: ignore
+generic_types.append((list[list[list[T]]], {T}))  # type: ignore
+generic_types.append((tuple[S, T], {S, T}))  # type: ignore
+generic_types.append((UntupledModel[S, T], {S, T}))  # type: ignore
+
+
+@pytest.mark.parametrize("ptype,generics", generic_types)
+def test_generic_types(ptype: type[PType], generics: set[type[PType]]):
+    assert generics_in_ptype(ptype) == generics

@@ -3,12 +3,12 @@ from logging import getLogger
 from pathlib import Path
 import statistics
 from sys import argv
-from typing import Sequence
+from typing import Any, NamedTuple, Sequence
 
 from pydantic import BaseModel
 
 from tierkreis.controller.data.location import WorkerCallArgs
-from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.namespace import TierkreisWorkerError
 from tierkreis.worker.storage.protocol import WorkerStorage
 from tierkreis.worker.worker import Worker
@@ -50,9 +50,9 @@ def impl_and(a: bool, b: bool) -> bool:
 
 
 @worker.function()
-def append[T](l: list[T], a: T) -> list[T]:  # noqa: E741
-    l.append(a)
-    return l
+def append[T](v: list[T], a: T) -> list[T]:  # noqa: E741
+    v.append(a)
+    return v
 
 
 class Headed[T](BaseModel):
@@ -67,9 +67,9 @@ class Headed[T](BaseModel):
 
 
 @worker.function(name="len")
-def impl_len(l: list) -> int:  # noqa: E741
-    logger.info("len: %s", l)
-    return len(l)
+def impl_len[A](v: list[A]) -> int:
+    logger.info("len: %s", v)
+    return len(v)
 
 
 @worker.function()
@@ -128,16 +128,16 @@ def concat(lhs: str, rhs: str) -> str:
 #     return (a, b)
 
 
-# class Untupled[U, V](BaseModel):
-#     a: U
-#     b: V
+class Untupled[U: PType, V: PType](NamedTuple):
+    a: U
+    b: V
 
 
-# @worker.function()
-# def untuple[U, V](value: tuple[U, V]) -> Untupled[U, V]:
-#     logger.info("untuple: %s", value)
-#     value_a, value_b = value
-#     return Untupled(a=value_a, b=value_b)
+@worker.function()
+def untuple[U: PType, V: PType](value: tuple[U, V]) -> Untupled[U, V]:
+    logger.info("untuple: %s", value)
+    value_a, value_b = value
+    return Untupled(a=value_a, b=value_b)
 
 
 @worker.function()

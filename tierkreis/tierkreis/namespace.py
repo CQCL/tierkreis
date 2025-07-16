@@ -2,9 +2,14 @@ from dataclasses import dataclass, field
 from inspect import isclass
 from logging import getLogger
 from types import NoneType
-from typing import Any
-from tierkreis.controller.data.models import PModel, PNamedModel
-from tierkreis.controller.data.types import PType, is_ptype
+from typing import Any, TypeVar
+from tierkreis.controller.data.models import (
+    PModel,
+    PNamedModel,
+    generics_in_pmodel,
+    is_pnamedmodel,
+)
+from tierkreis.controller.data.types import PType, generics_in_ptype, is_ptype
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -20,26 +25,27 @@ class FunctionSpec:
     namespace: str
     ins: dict[str, type[PType]]
     outs: type[PModel]
+    generics: set[str] = field(default_factory=lambda: set())
 
     def add_inputs(self, annotations: dict[str, Any]) -> None:
         for name, annotation in annotations.items():
             if not is_ptype(annotation):
                 raise TierkreisError(f"Expected PType found {annotation} {annotations}")
             self.ins[name] = annotation
+            self.generics.update(generics_in_ptype(annotation))
 
-    def add_outputs(self, annotation: Any) -> None:
+    def add_outputs(self, annotation: type | None) -> None:
         if annotation is None:
             self.outs = NoneType
             return
-
-        if isclass(annotation) and issubclass(annotation, PNamedModel):
+        elif is_pnamedmodel(annotation):
             self.outs = annotation
-            return
-
-        if not is_ptype(annotation):
+        elif not is_ptype(annotation):
             raise TierkreisError(f"Expected PModel found {annotation}")
+        else:
+            self.outs = annotation
 
-        self.outs = annotation
+        self.generics.update(generics_in_pmodel(annotation))
 
 
 @dataclass

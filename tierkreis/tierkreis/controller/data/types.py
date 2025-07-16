@@ -1,6 +1,7 @@
 from base64 import b64decode, b64encode
 import collections.abc
 from inspect import isclass
+from itertools import chain
 import json
 from types import NoneType, UnionType
 from typing import (
@@ -9,6 +10,7 @@ from typing import (
     Protocol,
     Self,
     Sequence,
+    TypeVar,
     Union,
     assert_never,
     cast,
@@ -17,6 +19,7 @@ from typing import (
     runtime_checkable,
 )
 from pydantic import BaseModel
+from pydantic._internal._generics import get_args as pydantic_get_args
 from typing_extensions import TypeIs
 
 
@@ -47,6 +50,7 @@ type PType = (
     | DictConvertible
     | ListConvertible
     | BaseModel
+    | TypeVar
 )
 """A restricted subset of Python types that can be used to annotate
 worker functions for automatic codegen of graph builder stubs."""
@@ -80,6 +84,10 @@ def _is_union(o: object) -> bool:
     return get_origin(o) == UnionType or get_origin(o) == Union
 
 
+def _is_generic(o) -> TypeIs[type[TypeVar]]:
+    return isinstance(o, TypeVar)
+
+
 def _is_list(ptype: object) -> TypeIs[type[Sequence[PType]]]:
     return get_origin(ptype) == collections.abc.Sequence or get_origin(ptype) is list
 
@@ -93,16 +101,15 @@ def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
 
 
 def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
-    if _is_union(annotation):
-        return all(is_ptype(x) for x in get_args(annotation))
+    if _is_generic(annotation):
+        return True
 
-    elif _is_tuple(annotation):
-        return all(is_ptype(x) for x in get_args(annotation))
-
-    elif _is_list(annotation):
-        return all(is_ptype(x) for x in get_args(annotation))
-
-    elif _is_mapping(annotation):
+    if (
+        _is_union(annotation)
+        or _is_tuple(annotation)
+        or _is_list(annotation)
+        or _is_mapping(annotation)
+    ):
         return all(is_ptype(x) for x in get_args(annotation))
 
     elif isclass(annotation) and issubclass(
@@ -132,6 +139,7 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             | tuple()
             | dict()
             | collections.abc.Mapping()
+            | TypeVar()
         ):
             return json.dumps(ptype, cls=TierkreisEncoder).encode()
         case DictConvertible():
@@ -160,3 +168,26 @@ def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> 
 
     except json.JSONDecodeError:
         return cast(T, bs)
+
+
+def generics_in_ptype(ptype: type[PType]) -> set[str]:
+    if _is_generic(ptype):
+        return {str(ptype)}
+
+    if _is_union(ptype) or _is_tuple(ptype) or _is_list(ptype) or _is_mapping(ptype):
+        return set(chain(*[generics_in_ptype(x) for x in get_args(ptype)]))
+
+    origin = get_origin(ptype)
+    if origin is not None:
+        return generics_in_ptype(origin)
+
+    if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
+        return set()
+
+    if issubclass(ptype, (DictConvertible, ListConvertible)):
+        return set()
+
+    if issubclass(ptype, BaseModel):
+        return set(pydantic_get_args(ptype))
+
+    assert_never(ptype)

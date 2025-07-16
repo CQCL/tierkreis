@@ -3,7 +3,7 @@ from logging import getLogger
 from pathlib import Path
 import statistics
 from sys import argv
-from typing import Any, NamedTuple, Sequence
+from typing import NamedTuple, Sequence
 
 from pydantic import BaseModel
 
@@ -43,10 +43,10 @@ def impl_and(a: bool, b: bool) -> bool:
     return a and b
 
 
-# @worker.function(name="id")
-# def impl_id[T](value: T) -> T:
-#     logger.debug(f"id {value}")
-#     return value
+@worker.function(name="id")
+def impl_id[T: PType](value: T) -> T:
+    logger.debug(f"id {value}")
+    return value
 
 
 @worker.function()
@@ -60,10 +60,10 @@ class Headed[T](BaseModel):
     rest: list[T]
 
 
-# @worker.function()
-# def head[T](l: list[T]) -> Headed[T]:  # noqa: E741
-#     head, rest = l[0], l[1:]
-#     return Headed(head=head, rest=rest)
+@worker.function()
+def head[T](v: list[T]) -> Headed[T]:  # noqa: E741
+    head, rest = v[0], v[1:]
+    return Headed(head=head, rest=rest)
 
 
 @worker.function(name="len")
@@ -107,25 +107,25 @@ def concat(lhs: str, rhs: str) -> str:
     return lhs + rhs
 
 
-# @worker.function(name="zip")
-# def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]]:
-#     return list(zip(a, b))
+@worker.function(name="zip")
+def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
+    return list(zip(a, b))
 
 
-# class Unzipped[U, V](BaseModel):
-#     a: list[U]
-#     b: list[V]
+class Unzipped[U, V](BaseModel):
+    a: list[U]
+    b: list[V]
 
 
-# @worker.function()
-# def unzip[U, V](value: list[tuple[U, V]]) -> Unzipped[U, V]:
-#     value_a, value_b = map(list, zip(*value))
-#     return Unzipped(a=value_a, b=value_b)
+@worker.function()
+def unzip[U, V](value: list[tuple[U, V]]) -> Unzipped[U, V]:
+    value_a, value_b = map(list, zip(*value))
+    return Unzipped(a=value_a, b=value_b)
 
 
-# @worker.function(name="tuple")
-# def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
-#     return (a, b)
+@worker.function(name="tuple")
+def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
+    return (a, b)
 
 
 class Untupled[U: PType, V: PType](NamedTuple):

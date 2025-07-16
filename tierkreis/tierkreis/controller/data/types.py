@@ -188,6 +188,6 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
         return set()
 
     if issubclass(ptype, BaseModel):
-        return set(pydantic_get_args(ptype))
+        return set((str(x) for x in pydantic_get_args(ptype)))
 
     assert_never(ptype)

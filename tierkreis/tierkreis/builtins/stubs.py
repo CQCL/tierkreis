@@ -1,7 +1,7 @@
 """Code generated from builtins namespace. Please do not edit."""
 
 from typing import NamedTuple, Sequence
-from tierkreis.controller.data.models import TKR
+from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType
 
 
@@ -57,6 +57,18 @@ class impl_and(NamedTuple):
         return "builtins"
 
 
+class impl_id[T: PType](NamedTuple):
+    value: TKR[T]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[T]]:  # noqa: F821 # fmt: skip
+        return TKR[T]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
 class append[T: PType](NamedTuple):
     v: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
     a: TKR[T]  # noqa: F821 # fmt: skip
@@ -64,6 +76,18 @@ class append[T: PType](NamedTuple):
     @staticmethod
     def out() -> type[TKR[Sequence[T]]]:  # noqa: F821 # fmt: skip
         return TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class head[T: PType](NamedTuple):
+    v: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["__main__.Headed[TypeVar]"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["__main__.Headed[TypeVar]"]]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -121,12 +145,50 @@ class concat(NamedTuple):
         return "builtins"
 
 
-class Untupled[V: PType, U: PType](NamedTuple):
+class zip_impl[U: PType, V: PType](NamedTuple):
+    a: TKR[Sequence[U]]  # noqa: F821 # fmt: skip
+    b: TKR[Sequence[V]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Sequence[tuple[U, V]]]]:  # noqa: F821 # fmt: skip
+        return TKR[Sequence[tuple[U, V]]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class unzip[U: PType, V: PType](NamedTuple):
+    value: TKR[Sequence[tuple[U, V]]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["__main__.Unzipped[TypeVar, TypeVar]"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["__main__.Unzipped[TypeVar, TypeVar]"]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tuple_impl[U: PType, V: PType](NamedTuple):
+    a: TKR[U]  # noqa: F821 # fmt: skip
+    b: TKR[V]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[tuple[U, V]]]:  # noqa: F821 # fmt: skip
+        return TKR[tuple[U, V]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class Untupled[U: PType, V: PType](NamedTuple):
     b: TKR[V]  # noqa: F821 # fmt: skip
     a: TKR[U]  # noqa: F821 # fmt: skip
 
 
-class untuple[V: PType, U: PType](NamedTuple):
+class untuple[U: PType, V: PType](NamedTuple):
     value: TKR[tuple[U, V]]  # noqa: F821 # fmt: skip
 
     @staticmethod

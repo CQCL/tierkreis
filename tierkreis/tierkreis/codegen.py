@@ -2,7 +2,12 @@ from types import NoneType
 from typing import assert_never, get_args, get_origin
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import PModel, generics_in_pmodel, is_pnamedmodel
+from tierkreis.controller.data.models import (
+    PModel,
+    PNamedModel,
+    generics_in_pmodel,
+    is_pnamedmodel,
+)
 from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
@@ -47,10 +52,15 @@ def format_ptype(ptype: type[PType]) -> str:
     assert_never(ptype)
 
 
-def format_generics(generics: set[str], include_ptype: bool = True) -> str:
-    ptype_annotation = ": PType" if include_ptype else ""
-    generics_strs = [str(x) + ptype_annotation for x in generics]
-    return f"[{', '.join(generics_strs)}]" if generics else ""
+def format_generics(generics: set[str]) -> str:
+    return f", Generic[{', '.join(generics)}]" if generics else ""
+
+
+def format_tmodel_type(outputs: type[PModel]) -> str:
+    if is_pnamedmodel(outputs):
+        return str(outputs).split(".")[-1]
+
+    return f"TKR[{format_ptype(outputs)}]"
 
 
 def format_annotation(
@@ -58,42 +68,15 @@ def format_annotation(
 ) -> str:
     sep = "=" if is_constructor else ":"
     constructor = f'(n, "{port_id}")' if is_constructor else ""
-    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} {NO_QA_STR}"
-
-
-def format_output(outputs: type[PModel], include_ptype: bool = True) -> str:
-    generics = format_generics(generics_in_pmodel(outputs), include_ptype)
-    if is_pnamedmodel(outputs):
-        return f"{outputs.__qualname__}{generics}"
-
-    return f"TKR[{format_ptype(outputs)}]"
-
-
-def format_output_class(outputs: type[PModel]) -> str:
-    class_name = format_output(outputs)
-    if not is_pnamedmodel(outputs):
-        return ""
-
-    origin = get_origin(outputs)
-    if origin is not None:
-        outputs = origin
-
-    outs = {format_annotation(k, v) for k, v in outputs.__annotations__.items()}
-    outs_str = "\n    ".join(outs)
-
-    return f"""
-class {class_name}(NamedTuple):
-    {outs_str}
-"""
+    return f"{port_id}{sep} {format_tmodel_type(ptype)}{constructor} {NO_QA_STR}"
 
 
 def format_function(namespace_name: str, fn: FunctionSpec) -> str:
     ins = [format_annotation(k, v) for k, v in fn.ins.items()]
     ins_str = "\n    ".join(ins)
-    class_name = format_output(fn.outs, False)
+    class_name = format_tmodel_type(fn.outs)
 
-    return f"""{format_output_class(fn.outs)}
-class {fn.name}{format_generics(fn.generics)}(NamedTuple):
+    return f"""class {fn.name}(NamedTuple{format_generics(fn.generics)}):
     {ins_str}
 
     @staticmethod
@@ -105,6 +88,35 @@ class {fn.name}{format_generics(fn.generics)}(NamedTuple):
         return "{namespace_name}" """
 
 
+def format_typevar(name: str) -> str:
+    return f'{name} = TypeVar("{name}", bound=PType)'
+
+
+def format_typevars(generics: set[str]) -> str:
+    return "\n".join([format_typevar(x) for x in generics])
+
+
+def format_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
+    origin = get_origin(pnamedmodel)
+    if origin is not None:
+        pnamedmodel = origin
+
+    outs = {format_annotation(k, v) for k, v in pnamedmodel.__annotations__.items()}
+    outs_str = "\n    ".join(outs)
+
+    generics = generics_in_pmodel(pnamedmodel)
+    generics_str = f", Generic[{", ".join(generics)}]" if generics else ""
+
+    return f"""
+class {pnamedmodel.__qualname__}(NamedTuple{generics_str}):
+    {outs_str}
+"""
+
+
+def format_pnamedmodels(models: set[type[PNamedModel]]) -> str:
+    return "\n\n".join([format_pnamedmodel(x) for x in models])
+
+
 def format_namespace(namespace: Namespace) -> str:
     functions = [
         format_function(namespace.name, f) for f in namespace.functions.values()
@@ -113,10 +125,14 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
-from typing import Literal, NamedTuple, Sequence
+from typing import Literal, NamedTuple, Sequence, TypeVar, Generic
 from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType
+
+{format_typevars(namespace.generics)}
+
+{format_pnamedmodels(namespace.refs)}
 
 {functions_str}
     '''

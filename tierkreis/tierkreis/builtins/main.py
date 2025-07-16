@@ -5,8 +5,6 @@ import statistics
 from sys import argv
 from typing import NamedTuple, Sequence
 
-from pydantic import BaseModel
-
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.namespace import TierkreisWorkerError
@@ -55,13 +53,13 @@ def append[T](v: list[T], a: T) -> list[T]:  # noqa: E741
     return v
 
 
-class Headed[T](BaseModel):
+class Headed[T: PType](NamedTuple):
     head: T
     rest: list[T]
 
 
 @worker.function()
-def head[T](v: list[T]) -> Headed[T]:  # noqa: E741
+def head[T: PType](v: list[T]) -> Headed[T]:  # noqa: E741
     head, rest = v[0], v[1:]
     return Headed(head=head, rest=rest)
 
@@ -112,13 +110,13 @@ def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
     return list(zip(a, b))
 
 
-class Unzipped[U, V](BaseModel):
+class Unzipped[U: PType, V: PType](NamedTuple):
     a: list[U]
     b: list[V]
 
 
 @worker.function()
-def unzip[U, V](value: list[tuple[U, V]]) -> Unzipped[U, V]:
+def unzip[U: PType, V: PType](value: list[tuple[U, V]]) -> Unzipped[U, V]:
     value_a, value_b = map(list, zip(*value))
     return Unzipped(a=value_a, b=value_b)
 

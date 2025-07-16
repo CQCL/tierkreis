@@ -4,6 +4,7 @@ from types import NoneType
 from typing import Any
 from tierkreis.controller.data.models import (
     PModel,
+    PNamedModel,
     generics_in_pmodel,
     is_pnamedmodel,
 )
@@ -50,13 +51,17 @@ class FunctionSpec:
 class Namespace:
     name: str
     functions: dict[str, FunctionSpec] = field(default_factory=lambda: {})
+    generics: set[str] = field(default_factory=lambda: set())
+    refs: set[type[PNamedModel]] = field(default_factory=lambda: set())
 
     def add_from_annotations(self, name: str, annotations: dict[str, Any]) -> None:
         try:
             fn = FunctionSpec(name=name, namespace=self.name, ins={}, outs=NoneType)
+            [self.refs.add(v) for k, v in annotations.items() if is_pnamedmodel(v)]
             fn.add_inputs({k: v for k, v in annotations.items() if k != "return"})
             fn.add_outputs(annotations["return"])
             self.functions[fn.name] = fn
+            self.generics.update(fn.generics)
         except TierkreisError as exc:
             logger.error(
                 f"Error adding function {name} to {self.name} namespace.", exc_info=exc

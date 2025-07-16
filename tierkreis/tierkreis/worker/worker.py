@@ -120,6 +120,7 @@ class Worker:
                 f.write(str(err))
 
     def write_stubs(self, stubs_path: Path) -> None:
+        print(stubs_path)
         with open(stubs_path, "w+") as fh:
             fh.write(format_namespace(self.namespace))
 

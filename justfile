@@ -10,19 +10,19 @@ test:
     {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term
 
 test-slow:
-		{{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term --runslow
+    {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term --runslow
 
 lint:
-	{{uvrun}} ruff format --check
-	{{uvrun}} ruff check
-	{{uvrun}} pyright .
+  {{uvrun}} ruff format --check
+  {{uvrun}} ruff check
+  {{uvrun}} pyright .
 
 fix:
-	{{uvrun}} ruff format
-	{{uvrun}} ruff check --fix
+  {{uvrun}} ruff format
+  {{uvrun}} ruff check --fix
 
 docs:
-	just docs/build	
+  just docs/build	
 
 [working-directory:'tierkreis_visualization']
 serve:
@@ -35,14 +35,31 @@ prod:
 
 
 examples:
-	{{uvrun}} examples/hello_world_graph.py
-	{{uvrun}} examples/error_handling_graph.py
-	{{uvrun}} examples/symbolic_circuits.py
-	{{uvrun}} examples/hamiltonian_graph.py
-	{{uvrun}} examples/qsci_graph.py
+  {{uvrun}} examples/hello_world_graph.py
+  {{uvrun}} examples/error_handling_graph.py
+  {{uvrun}} examples/symbolic_circuits.py
+  {{uvrun}} examples/hamiltonian_graph.py
+  {{uvrun}} examples/qsci_graph.py
 
-[working-directory: 'tierkreis/tierkreis/builtins']
-generate:
-	{{uvrun}} main.py --stubs-path ./stubs.py
-	{{uvrun}} ruff format stubs.py
-	{{uvrun}} ruff check --fix stubs.py
+stubs-generate dir:
+  #!/usr/bin/env bash
+  cd {{dir}}
+  uv run main.py --stubs-path ./stubs.py
+  uv run ruff format stubs.py
+  uv run ruff check --fix stubs.py
+
+generate: 
+  just stubs-generate 'tierkreis/tierkreis/builtins'
+  just stubs-generate 'tierkreis_workers/aer_worker'
+  just stubs-generate 'tierkreis_workers/nexus_worker'
+  just stubs-generate 'tierkreis_workers/pytket_worker'
+  just stubs-generate 'examples/example_workers/error_worker'
+  just stubs-generate 'examples/example_workers/hello_world_worker'
+  just stubs-generate 'examples/example_workers/substitution_worker'
+
+  mkdir -p examples/example_workers/aer_worker
+  mkdir -p examples/example_workers/nexus_worker
+  mkdir -p examples/example_workers/pytket_worker
+  cp 'tierkreis_workers/aer_worker/stubs.py' examples/example_workers/aer_worker/stubs.py
+  cp 'tierkreis_workers/nexus_worker/stubs.py' examples/example_workers/nexus_worker/stubs.py
+  cp 'tierkreis_workers/pytket_worker/stubs.py' examples/example_workers/pytket_worker/stubs.py

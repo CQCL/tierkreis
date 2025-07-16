@@ -9,30 +9,31 @@ import json
 from pathlib import Path
 
 from tierkreis import Labels
-from tierkreis.controller.data.graph import GraphData, Const, Func, Output, Input
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.location import Loc
 from tierkreis.cli.run_workflow import run_workflow
+from tierkreis.controller.data.models import TKR
+
+from example_workers.hello_world_worker.stubs import greet
 
 root_loc = Loc()
 
 
-def hello_graph() -> GraphData:
+def hello_graph() -> GraphBuilder:
     """A graph that greets the subject."""
-    g = GraphData()
+
+    # We build a graph that takes a single string as input
+    # and produces a single string as output.
+    g = GraphBuilder(TKR[str], TKR[str])
 
     # We add a constant that yields the string "hello ".
-    hello = g.add(Const("hello "))("value")
+    hello = g.const("hello ")
 
-    # We add an input to the graph called "value".
-    subject = g.add(Input("value"))("value")
+    # We import and call the "greet" task from our worker.
+    output = g.task(greet(greeting=hello, subject=g.inputs))
 
-    # We call the "concat" function from our worker.
-    output = g.add(
-        Func("hello_world_worker.greet", {"greeting": hello, "subject": subject})
-    )("value")
-
-    # We assign the output to the "value" label.
-    g.add(Output({"value": output}))
+    # We assign the output of the greet task to the output of the whole graph.
+    g.outputs(output)
 
     return g
 
@@ -40,7 +41,7 @@ def hello_graph() -> GraphData:
 def main() -> None:
     """Configure our workflow execution and run it to completion."""
     run_workflow(
-        hello_graph(),
+        hello_graph().data,
         {Labels.VALUE: json.dumps("world!").encode()},
         name="hello_world",
         run_id=100,  # Assign a fixed uuid for our workflow.

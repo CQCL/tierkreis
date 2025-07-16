@@ -1,42 +1,54 @@
+from types import NoneType
+from typing import NamedTuple
 import pytest
-
-from tierkreis.controller.data.location import Loc
-
-node_location_1 = Loc()
-node_location_1 = node_location_1.N(0)
-node_location_1 = node_location_1.L(0)
-node_location_1 = node_location_1.N(3)
-node_location_1 = node_location_1.L(2)
-node_location_1 = node_location_1.N(0)
-node_location_1 = node_location_1.M("map_port")
-node_location_1 = node_location_1.N(0)
+from tierkreis.controller.data.models import PModel, dict_from_pmodel
+from tierkreis.controller.data.types import PType
+from tests.controller.test_types import ptypes
 
 
-node_location_2 = Loc()
-node_location_2 = node_location_2.N(0)
-node_location_2 = node_location_2.L(0)
-node_location_2 = node_location_2.N(3)
-node_location_2 = node_location_2.N(8)
-node_location_2 = node_location_2.N(0)
+class NamedPModel(NamedTuple):
+    a: bool
+    b: int
+    c: float
+    d: str
+    e: NoneType
+    f: list[str]
+    g: bytes
+    h: tuple[int, str]
+    i: list[list[int] | int]
 
-node_location_3 = Loc()
-node_location_3 = node_location_3.N(0)
 
-node_location_4 = Loc()
+@pytest.mark.parametrize("pmodel", ptypes)
+def test_dict_from_pmodel_unnested(pmodel: PModel):
+    assert dict_from_pmodel(pmodel) == {"value": pmodel}
 
 
-@pytest.mark.parametrize(
-    ["node_location", "loc_str"],
-    [
-        (node_location_1, "-.N0.L0.N3.L2.N0.Mmap_port.N0"),
-        (node_location_2, "-.N0.L0.N3.N8.N0"),
-        (node_location_3, "-.N0"),
-        (node_location_4, "-"),
-    ],
+named_p_model = NamedPModel(
+    a=True,
+    b=5,
+    c=56.7,
+    d="test",
+    e=None,
+    f=["one", "two", "three"],
+    g=b"test bytes",
+    h=(5, "test"),
+    i=[[], 2],
 )
-def test_to_from_str(node_location: Loc, loc_str: str):
-    node_location_str = str(node_location)
-    assert node_location_str == loc_str
+named_p_model_expected = {
+    "a": True,
+    "b": 5,
+    "c": 56.7,
+    "d": "test",
+    "e": None,
+    "f": ["one", "two", "three"],
+    "g": b"test bytes",
+    "h": (5, "test"),
+    "i": [[], 2],
+}
 
-    new_loc = Loc(node_location_str)
-    assert new_loc == node_location
+pmodels = [(named_p_model, named_p_model_expected)]
+
+
+@pytest.mark.parametrize("pmodel,expected", pmodels)
+def test_dict_from_pmodel_nested(pmodel: PModel, expected: dict[str, PType]):
+    assert dict_from_pmodel(pmodel) == expected

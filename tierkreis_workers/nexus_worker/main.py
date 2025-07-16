@@ -1,11 +1,9 @@
 import logging
 import os
 from datetime import datetime
-from pathlib import Path
 from sys import argv
 
-from pydantic import BaseModel
-from tierkreis.worker import Worker
+from tierkreis import Worker
 
 import qnexus as qnx
 from dotenv import load_dotenv
@@ -80,50 +78,22 @@ def get_backend_results(execute_job_ref: ExecuteJobRef) -> list[BackendResult]:
     return backend_results
 
 
-class SubmitResult(BaseModel):
-    execute_ref: dict
-
-
 @worker.function()
-def submit(circuits: dict, n_shots: int) -> SubmitResult:
-    pytket_circuits = [Circuit.from_dict(x) for x in circuits]
-
-    execute_ref = execute_circuits(
-        pytket_circuits,
-        n_shots=n_shots,
-        backend_name="H1-1LE",
-        project_name="Riken-Test",
+def submit(circuits: list[Circuit], n_shots: int) -> ExecuteJobRef:
+    return execute_circuits(
+        circuits, n_shots=n_shots, backend_name="H1-1LE", project_name="Riken-Test"
     )
 
-    return SubmitResult(execute_ref=execute_ref.model_dump())
 
-
-class StatusResult(BaseModel):
-    status_enum: str
+@worker.function()
+def check_status(execute_ref: ExecuteJobRef) -> str:
+    return _check_status(execute_ref, 30).name
 
 
 @worker.function()
-def check_status(execute_ref: dict) -> StatusResult:
-    ref = ExecuteJobRef(**execute_ref)
-    status_enum = _check_status(ref, 30)
-    return StatusResult(status_enum=status_enum.name)
-
-
-class BackendResults(BaseModel):
-    backend_results: list[dict]
-
-
-@worker.function()
-def get_results(execute_ref: dict) -> BackendResults:
-    ref = ExecuteJobRef(**execute_ref)
-    results = get_backend_results(ref)
-    return BackendResults(backend_results=[x.to_dict() for x in results])
-
-
-def main() -> None:
-    node_definition_path = argv[1]
-    worker.run(Path(node_definition_path))
+def get_results(execute_ref: ExecuteJobRef) -> list[BackendResult]:
+    return get_backend_results(execute_ref)
 
 
 if __name__ == "__main__":
-    main()
+    worker.app(argv)

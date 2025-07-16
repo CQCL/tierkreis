@@ -9,6 +9,7 @@ from unittest import mock
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.cli.run_workflow import run_workflow
 from tests.controller.sample_graphdata import simple_eval
+from tierkreis.controller.data.types import ptype_from_bytes
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +30,7 @@ def test_run_workflow(graph: GraphData) -> None:
         / "-/outputs/simple_eval_output",
         "rb",
     ) as fh:
-        c = json.loads(fh.read())
+        c = ptype_from_bytes(fh.read())
 
     assert c == 12
 

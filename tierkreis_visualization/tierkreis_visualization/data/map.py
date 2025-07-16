@@ -19,7 +19,8 @@ def get_map_node(
     if parent is None:
         raise TierkreisError("MAP node must have parent.")
 
-    map_eles = storage.read_output_ports(parent.N(map.input_idx))
+    first_ref = next(x for x in map.inputs.values() if x[1] == "*")
+    map_eles = storage.read_output_ports(parent.N(first_ref[0]))
     nodes: list[PyNode] = []
     for ele in map_eles:
         node = PyNode(

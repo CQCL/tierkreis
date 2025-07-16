@@ -1,4 +1,3 @@
-import json
 from dataclasses import dataclass, field
 from logging import getLogger
 from typing import assert_never
@@ -14,6 +13,7 @@ from tierkreis.controller.data.graph import (
     NodeDef,
 )
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.start import NodeRunData
 from tierkreis.controller.storage.adjacency import unfinished_inputs
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -69,7 +69,7 @@ def walk_node(
     match node.type:
         case "eval":
             message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
-            g = GraphData(**json.loads(message))
+            g = ptype_from_bytes(message, GraphData)
 
             if g.remaining_inputs(set(node.inputs.keys())):
                 return WalkResult([node_run_data], [])
@@ -124,14 +124,16 @@ def walk_loop(
     new_location = loc.L(i)
 
     message = storage.read_output(loc.N(-1), BODY_PORT)
-    g = GraphData(**json.loads(message))
+    g = ptype_from_bytes(message, GraphData)
     loop_outputs = g.nodes[g.output_idx()].inputs
 
     if not storage.is_node_finished(new_location):
         return walk_node(storage, new_location, g.output_idx(), g)
 
     # Latest iteration is finished. Do we BREAK or CONTINUE?
-    should_continue = json.loads(storage.read_output(new_location, loop.continue_port))
+    should_continue = ptype_from_bytes(
+        storage.read_output(new_location, loop.continue_port), bool
+    )
     if should_continue is False:
         for k in loop_outputs:
             storage.link_outputs(loc, k, new_location, k)
@@ -156,10 +158,11 @@ def walk_map(
     if storage.is_node_finished(loc):
         return result
 
-    map_eles = storage.read_output_ports(parent.N(map.input_idx))
+    first_ref = next(x for x in map.inputs.values() if x[1] == "*")
+    map_eles = storage.read_output_ports(parent.N(first_ref[0]))
     unfinished = [p for p in map_eles if not storage.is_node_finished(loc.M(p))]
     message = storage.read_output(loc.M(map_eles[0]).N(-1), BODY_PORT)
-    g = GraphData(**json.loads(message))
+    g = ptype_from_bytes(message, GraphData)
     [result.extend(walk_node(storage, loc.M(p), g.output_idx(), g)) for p in unfinished]
 
     if len(unfinished) > 0:

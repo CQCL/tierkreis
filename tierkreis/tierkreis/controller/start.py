@@ -1,13 +1,12 @@
 from dataclasses import dataclass
-import json
 from logging import getLogger
 import logging
 from pathlib import Path
 import subprocess
 import sys
 
-from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
@@ -105,17 +104,13 @@ def start(
         storage.mark_node_finished(parent)
 
     elif node.type == "const":
-        bs = (
-            node.value.model_dump_json().encode()
-            if isinstance(node.value, BaseModel)
-            else json.dumps(node.value).encode()
-        )
+        bs = bytes_from_ptype(node.value)
         storage.write_output(node_location, Labels.VALUE, bs)
         storage.mark_node_finished(node_location)
 
     elif node.type == "eval":
         message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
-        g = GraphData(**json.loads(message))
+        g = ptype_from_bytes(message, GraphData)
 
         if g.remaining_inputs(set(ins.keys())):
             g.fixed_inputs.update(ins)
@@ -142,16 +137,16 @@ def start(
         )
 
     elif node.type == "map":
-        ins["body"] = (parent.N(node.body[0]), node.body[1])
-        map_eles = storage.read_output_ports(parent.N(node.input_idx))
+        first_ref = next(x for x in ins.values() if x[1] == "*")
+        map_eles = storage.read_output_ports(first_ref[0])
         for p in map_eles:
             eval_inputs: dict[PortID, tuple[Loc, PortID]] = {}
+            eval_inputs["body"] = (parent.N(node.body[0]), node.body[1])
             for k, (i, port) in ins.items():
                 if port == "*":
                     eval_inputs[k] = (i, p)
                 else:
                     eval_inputs[k] = (i, port)
-            eval_inputs[node.in_port] = (parent.N(node.input_idx), p)
             pipe_inputs_to_output_location(
                 storage, node_location.M(p).N(-1), eval_inputs
             )

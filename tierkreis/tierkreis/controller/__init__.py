@@ -1,9 +1,9 @@
-import json
 import logging
 from time import sleep
 
 from tierkreis.controller.data.graph import Eval, GraphData
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -26,7 +26,7 @@ def run_graph(
     for name, value in graph_inputs.items():
         storage.write_output(root_loc.N(-1), name, value)
 
-    storage.write_output(root_loc.N(-1), "body", g.model_dump_json().encode())
+    storage.write_output(root_loc.N(-1), "body", bytes_from_ptype(g))
 
     inputs: dict[PortID, ValueRef] = {
         k: (-1, k) for k, _ in graph_inputs.items() if k != "body"
@@ -43,7 +43,7 @@ def resume_graph(
     polling_interval_seconds: float = 0.01,
 ) -> None:
     message = storage.read_output(Loc().N(-1), "body")
-    graph = GraphData(**json.loads(message))
+    graph = ptype_from_bytes(message, GraphData)
 
     for _ in range(n_iterations):
         walk_results = walk_node(storage, Loc(), graph.output_idx(), graph)

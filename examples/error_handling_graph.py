@@ -10,23 +10,25 @@ from pathlib import Path
 from uuid import UUID
 
 from tierkreis import Labels
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData, Func, Output
+from tierkreis.controller.data.core import EmptyModel
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.models import TKR
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
+
+from example_workers.error_worker.stubs import fail
 
 root_loc = Loc()
 
 
-def error_graph() -> GraphData:
+def error_graph() -> GraphBuilder:
     """A graph that errors."""
-    g = GraphData()
 
-    output = g.add(Func("error_worker.fail", {}))("value")
-
-    g.add(Output({"value": output}))
-
+    g = GraphBuilder(EmptyModel, TKR[str])
+    output = g.task(fail())
+    g.outputs(output)
     return g
 
 
@@ -43,7 +45,7 @@ def main() -> None:
     run_graph(
         storage,
         executor,
-        error_graph(),
+        error_graph().data,
         {Labels.VALUE: json.dumps("world!").encode()},
         polling_interval_seconds=0.1,
     )

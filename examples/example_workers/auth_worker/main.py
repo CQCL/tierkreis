@@ -2,17 +2,15 @@ import logging
 import secrets
 from sys import argv
 from time import time
-from pydantic import BaseModel
-
+from typing import NamedTuple
 import pyscrypt  # type: ignore
-from tierkreis.worker import Worker
-
+from tierkreis import Worker
 
 worker = Worker("auth_worker")
 logger = logging.getLogger(__name__)
 
 
-class EncryptionResult(BaseModel):
+class EncryptionResult(NamedTuple):
     ciphertext: str
     time_taken: float
 

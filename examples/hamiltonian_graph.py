@@ -207,10 +207,11 @@ def symbolic_execution() -> GraphData:
     m = g.add(
         Map(
             pauli_expectation,
-            unfolded_pauli_strings("*")[0],
-            "pauli_string",
-            "expectation",
-            {"circuit": substituted_circuit, "n_shots": n_shots},
+            {
+                "pauli_string": unfolded_pauli_strings("*"),
+                "circuit": substituted_circuit,
+                "n_shots": n_shots,
+            },
         )
     )
     folded_expectations = g.add(Func("builtins.fold_values", {"values_glob": m("*")}))(

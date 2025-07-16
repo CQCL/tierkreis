@@ -4,25 +4,25 @@ from typing import NamedTuple, Sequence, TypeVar, Generic
 from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import PType
 
-A = TypeVar("A", bound=PType)
-V = TypeVar("V", bound=PType)
 U = TypeVar("U", bound=PType)
+A = TypeVar("A", bound=PType)
 T = TypeVar("T", bound=PType)
-
-
-class Headed(NamedTuple, Generic[T]):
-    head: TKR[T]  # noqa: F821 # fmt: skip
-    rest: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+V = TypeVar("V", bound=PType)
 
 
 class Unzipped(NamedTuple, Generic[U, V]):
-    b: TKR[Sequence[V]]  # noqa: F821 # fmt: skip
     a: TKR[Sequence[U]]  # noqa: F821 # fmt: skip
+    b: TKR[Sequence[V]]  # noqa: F821 # fmt: skip
 
 
 class Untupled(NamedTuple, Generic[U, V]):
     a: TKR[U]  # noqa: F821 # fmt: skip
     b: TKR[V]  # noqa: F821 # fmt: skip
+
+
+class Headed(NamedTuple, Generic[T]):
+    head: TKR[T]  # noqa: F821 # fmt: skip
+    rest: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
 
 
 class iadd(NamedTuple):

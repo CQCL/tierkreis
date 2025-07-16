@@ -50,7 +50,6 @@ type PType = (
     | DictConvertible
     | ListConvertible
     | BaseModel
-    | TypeVar
 )
 """A restricted subset of Python types that can be used to annotate
 worker functions for automatic codegen of graph builder stubs."""

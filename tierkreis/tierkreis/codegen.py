@@ -58,7 +58,7 @@ def format_generics(generics: set[str]) -> str:
 
 def format_tmodel_type(outputs: type[PModel]) -> str:
     if is_pnamedmodel(outputs):
-        return str(outputs).split(".")[-1]
+        return str(outputs).split(".")[-1]  # unqualified type
 
     return f"TKR[{format_ptype(outputs)}]"
 
@@ -105,7 +105,7 @@ def format_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
     outs_str = "\n    ".join(outs)
 
     generics = generics_in_pmodel(pnamedmodel)
-    generics_str = f", Generic[{", ".join(generics)}]" if generics else ""
+    generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
 
     return f"""
 class {pnamedmodel.__qualname__}(NamedTuple{generics_str}):

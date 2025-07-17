@@ -136,9 +136,8 @@ def symbolic_execution():
     zipped = g.task(zip_impl(m, parameters_list))
     # (\(x,y) \z --> x*y+z) and 0
     # TODO: This needs a better name
-    compute_graph = fold_graph(_compute_terms())
     computed = g.eval(
-        compute_graph,
+        fold_graph(_compute_terms()),
         FoldGraphInputs[float, float](g.const(0.0), zipped),
     )
     g.outputs(computed)

@@ -137,8 +137,7 @@ def symbolic_execution():
     # (\(x,y) \z --> x*y+z) and 0
     # TODO: This needs a better name
     computed = g.eval(
-        fold_graph(_compute_terms()),
-        FoldGraphInputs[float, float](g.const(0.0), zipped),
+        fold_graph(_compute_terms()), FoldGraphInputs(g.const(0.0), zipped)
     )
     g.outputs(computed)
     return g

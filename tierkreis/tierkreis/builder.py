@@ -41,8 +41,8 @@ class Function[Out](TNamedModel, Protocol):
     def out() -> type[Out]: ...
 
 
-Inputs = TypeVar("Inputs", bound=TModel, contravariant=True)
-Outputs = TypeVar("Outputs", bound=TModel, covariant=True)
+Inputs = TypeVar("Inputs", bound=TModel, covariant=True)
+Outputs = TypeVar("Outputs", bound=TModel)
 
 
 @dataclass
@@ -56,7 +56,7 @@ class LoopOutput(TNamedModel, Protocol):
     def should_continue(self) -> TKR[bool]: ...
 
 
-class GraphBuilder[Inputs: TModel, Outputs: TModel]:
+class GraphBuilder(Generic[Inputs, Outputs]):
     outputs_type: type
     inputs: Inputs
 

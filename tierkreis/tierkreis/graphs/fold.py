@@ -1,8 +1,8 @@
-from typing import NamedTuple, Sequence
+from typing import NamedTuple, Protocol, Sequence
 from tierkreis.builder import GraphBuilder, TypedGraphRef
 from tierkreis.builtins.stubs import head, igt, impl_len
 from tierkreis.controller.data.graph import GraphData
-from tierkreis.controller.data.models import TKR
+from tierkreis.controller.data.models import TKR, TNamedModel
 from tierkreis.controller.data.types import PType
 
 
@@ -48,16 +48,26 @@ def _fold_graph_outer[A: PType, B: PType]():
 
 
 class FoldGraphInputs[A: PType, B: PType](NamedTuple):
-    func: TKR[GraphData]
     initial: TKR[B]
     values: TKR[Sequence[tuple[A, B]]]
 
 
+class FoldFunctionInput[A: PType, B: PType](TNamedModel, Protocol):
+    @property
+    def accum(self) -> TKR[B]: ...
+
+    @property
+    def value(self) -> TKR[A]: ...
+
+
 # fold : {func: (b -> a -> b)} -> {initial: b} -> {values: list[a]} -> {value: b}
-def fold_graph[A: PType, B: PType]():
+def fold_graph[A: PType, B: PType](func: GraphBuilder[FoldFunctionInput[A, B], TKR[B]]):
     g = GraphBuilder(FoldGraphInputs[A, B], TKR[B])
+    foldfunc = g._graph_const(func)
     # TODO: include the computation inside the fold
-    ins = FoldGraphOuterInputs(g.inputs.func, g.inputs.initial, g.inputs.values)
+    ins = FoldGraphOuterInputs(
+        TKR(*foldfunc.graph_ref), g.inputs.initial, g.inputs.values
+    )
     loop = g.loop(_fold_graph_outer(), ins)
     g.outputs(loop.accum)
     return g

@@ -7,32 +7,22 @@
 # ///
 import json
 from pathlib import Path
-from typing import NamedTuple, Sequence
+from typing import NamedTuple
 from uuid import UUID
 
 from pytket._tket.unit_id import Qubit
 from pytket.pauli import Pauli, QubitPauliString
 from pytket._tket.circuit import Circuit, fresh_symbol
-from tierkreis.builder import GraphBuilder, TypedGraphRef
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis.controller.data.types import PType
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
 
-from tierkreis.builtins.stubs import (
-    untuple,
-    itimes,
-    iadd,
-    impl_len,
-    igt,
-    head,
-    unzip,
-    zip_impl,
-)
+from tierkreis.builtins.stubs import untuple, itimes, iadd, unzip, zip_impl
+from tierkreis.graphs.fold import FoldGraphInputs, fold_graph
 from example_workers.pytket_worker.stubs import (
     append_pauli_measurement_impl,
     optimise_phase_gadgets,
@@ -87,63 +77,6 @@ def _compute_terms():
     sum = g.task(iadd(g.inputs.accum, prod))
 
     g.outputs(sum)
-    return g
-
-
-class FoldGraphOuterInputs[A: PType, B: PType](NamedTuple):
-    func: TKR[GraphData]
-    accum: TKR[B]
-    values: TKR[Sequence[A]]
-
-
-class FoldGraphOuterOutputs[A: PType, B: PType](NamedTuple):
-    accum: TKR[B]
-    values: TKR[Sequence[A]]
-    should_continue: TKR[bool]
-
-
-class InnerFuncInput[A: PType, B: PType](NamedTuple):
-    accum: TKR[B]
-    value: TKR[A]
-
-
-def _fold_graph_outer[A: PType, B: PType]():
-    g = GraphBuilder(FoldGraphOuterInputs[A, B], FoldGraphOuterOutputs[A, B])
-
-    func = g.inputs.func
-    accum = g.inputs.accum
-    values = g.inputs.values
-
-    values_len = g.task(impl_len(values))
-    # True if there is more than one value in the list.
-    non_empty = g.task(igt(values_len, g.const(0)))
-
-    # Will only succeed if values is non-empty.
-    headed = g.task(head(values))
-
-    # Apply the function if we were able to pop off a value.
-    tgd = TypedGraphRef[InnerFuncInput, TKR[B]](func.value_ref(), TKR[B])
-    applied_next = g.eval(tgd, InnerFuncInput(accum, headed.head))
-
-    next_accum = g.ifelse(non_empty, applied_next, accum)
-    next_values = g.ifelse(non_empty, headed.rest, values)
-    g.outputs(FoldGraphOuterOutputs(next_accum, next_values, non_empty))
-    return g
-
-
-class FoldGraphInputs[A: PType, B: PType](NamedTuple):
-    func: TKR[GraphData]
-    initial: TKR[B]
-    values: TKR[Sequence[tuple[A, B]]]
-
-
-# fold : {func: (b -> a -> b)} -> {initial: b} -> {values: list[a]} -> {value: b}
-def _fold_graph[A: PType, B: PType]():
-    g = GraphBuilder(FoldGraphInputs[A, B], TKR[B])
-    # TODO: include the computation inside the fold
-    ins = FoldGraphOuterInputs(g.inputs.func, g.inputs.initial, g.inputs.values)
-    loop = g.loop(_fold_graph_outer(), ins)
-    g.outputs(loop.accum)
     return g
 
 
@@ -205,7 +138,7 @@ def symbolic_execution():
     # (\(x,y) \z --> x*y+z) and 0
     # TODO: This needs a better name
     computed = g.eval(
-        _fold_graph(),
+        fold_graph(),
         FoldGraphInputs[float, float](compute_graph, g.const(0.0), zipped),
     )
     g.outputs(computed)

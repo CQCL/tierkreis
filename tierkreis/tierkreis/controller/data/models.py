@@ -34,6 +34,9 @@ class TKR[T: PModel]:
     node_index: NodeIndex
     port_id: PortID
 
+    def value_ref(self) -> ValueRef:
+        return (self.node_index, self.port_id)
+
 
 @runtime_checkable
 class TNamedModel(Protocol):

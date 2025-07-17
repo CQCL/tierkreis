@@ -15,7 +15,7 @@ from pytket.pauli import Pauli, QubitPauliString
 from pytket._tket.circuit import Circuit, fresh_symbol
 from tierkreis.builder import GraphBuilder, TypedGraphRef
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData, IfElse, Input
+from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType
@@ -98,7 +98,7 @@ class FoldGraphOuterInputs[A: PType, B: PType](NamedTuple):
 
 class FoldGraphOuterOutputs[A: PType, B: PType](NamedTuple):
     accum: TKR[B]
-    values: TKR[list[A]]
+    values: TKR[Sequence[A]]
     should_continue: TKR[bool]
 
 
@@ -125,13 +125,9 @@ def _fold_graph_outer[A: PType, B: PType]():
     tgd = TypedGraphRef[InnerFuncInput, TKR[B]](func.value_ref(), TKR[B])
     applied_next = g.eval(tgd, InnerFuncInput(accum, headed.head))
 
-    next_accum = g.get_data().add(
-        IfElse(non_empty.value_ref(), applied_next.value_ref(), accum.value_ref())
-    )("value")
-    next_values = g.get_data().add(
-        IfElse(non_empty.value_ref(), headed.rest.value_ref(), values.value_ref())
-    )("value")
-    g.outputs(FoldGraphOuterOutputs(TKR(*next_accum), TKR(*next_values), non_empty))
+    next_accum = g.ifelse(non_empty, applied_next, accum)
+    next_values = g.ifelse(non_empty, headed.rest, values)
+    g.outputs(FoldGraphOuterOutputs(next_accum, next_values, non_empty))
     return g
 
 

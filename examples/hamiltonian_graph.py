@@ -7,7 +7,7 @@
 # ///
 import json
 from pathlib import Path
-from typing import NamedTuple
+from typing import NamedTuple, Literal
 from uuid import UUID
 
 from pytket._tket.unit_id import Qubit
@@ -16,7 +16,7 @@ from pytket._tket.circuit import Circuit, fresh_symbol
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.data.models import TKR
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
@@ -81,8 +81,8 @@ def _compute_terms():
 
 
 class SubgraphInputs(NamedTuple):
-    circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]
-    pauli_string: TKR[OpaqueType["pytket._tket.pauli.QubitPauliString"]]
+    circuit: TKR[Literal["pytket._tket.circuit.Circuit"]]
+    pauli_string: TKR[Literal["pytket._tket.pauli.QubitPauliString"]]
     n_shots: TKR[int]
 
 
@@ -108,7 +108,7 @@ class SymbolicExecutionInputs(NamedTuple):
     a: TKR[float]
     b: TKR[float]
     c: TKR[float]
-    ham: TKR[list[tuple[OpaqueType["pytket._tket.pauli.QubitPauliString"], float]]]
+    ham: TKR[list[tuple[Literal["pytket._tket.pauli.QubitPauliString"], float]]]
     ansatz: TKR
 
 
@@ -123,7 +123,7 @@ def symbolic_execution():
 
     substituted_circuit = g.task(substitute(ansatz, a, b, c))
     unzipped = g.task(unzip(hamiltonian))
-    pauli_strings_list: TKR[list[OpaqueType["pytket._tket.pauli.QubitPauliString"]]] = (
+    pauli_strings_list: TKR[list[Literal["pytket._tket.pauli.QubitPauliString"]]] = (
         unzipped.a  # type: ignore
     )
     parameters_list = unzipped.b

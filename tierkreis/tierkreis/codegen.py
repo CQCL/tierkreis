@@ -37,7 +37,7 @@ def format_ptype(ptype: type[PType]) -> str:
 
     if _is_list(ptype):
         args = [format_ptype(x) for x in get_args(ptype)]
-        return f"Sequence[{', '.join(args)}]"
+        return f"list[{', '.join(args)}]"
 
     if _is_mapping(ptype):
         args = [format_ptype(x) for x in get_args(ptype)]

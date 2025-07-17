@@ -11,13 +11,10 @@ formats: list[tuple[type[PType], str]] = [
     (str, "str"),
     (bytes, "bytes"),
     (NoneType, "NoneType"),
-    (Sequence[str], "Sequence[str]"),
-    (Sequence[str | Sequence[str | int]], "Sequence[str | Sequence[str | int]]"),
+    (Sequence[str], "list[str]"),
+    (list[str | list[str | int]], "list[str | list[str | int]]"),
     (tuple[str], "tuple[str]"),
-    (
-        tuple[str | Sequence[str | int], NoneType],
-        "tuple[str | Sequence[str | int], NoneType]",
-    ),
+    (tuple[str | list[str | int], NoneType], "tuple[str | list[str | int], NoneType]"),
 ]
 
 

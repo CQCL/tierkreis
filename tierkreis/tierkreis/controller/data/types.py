@@ -43,6 +43,7 @@ type PType = (
     | float
     | str
     | NoneType
+    | list["PType"]
     | Sequence["PType"]
     | tuple["PType", ...]
     | Mapping[str, "PType"]
@@ -134,11 +135,12 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             | float()
             | str()
             | NoneType()
-            | collections.abc.Sequence()
+            | list()
             | tuple()
             | dict()
             | collections.abc.Mapping()
             | TypeVar()
+            | collections.abc.Sequence()
         ):
             return json.dumps(ptype, cls=TierkreisEncoder).encode()
         case DictConvertible():

@@ -5,9 +5,9 @@ from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import PType
 
 A = TypeVar("A", bound=PType)
-T = TypeVar("T", bound=PType)
-U = TypeVar("U", bound=PType)
 V = TypeVar("V", bound=PType)
+U = TypeVar("U", bound=PType)
+T = TypeVar("T", bound=PType)
 
 
 class Unzipped(NamedTuple, Generic[U, V]):
@@ -21,8 +21,8 @@ class Untupled(NamedTuple, Generic[U, V]):
 
 
 class Headed(NamedTuple, Generic[T]):
-    head: TKR[T]  # noqa: F821 # fmt: skip
     rest: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+    head: TKR[T]  # noqa: F821 # fmt: skip
 
 
 class iadd(NamedTuple):
@@ -165,7 +165,7 @@ class concat(NamedTuple):
         return "builtins"
 
 
-class zip_impl(NamedTuple, Generic[U, V]):
+class zip_impl(NamedTuple, Generic[V, U]):
     a: TKR[Sequence[U]]  # noqa: F821 # fmt: skip
     b: TKR[Sequence[V]]  # noqa: F821 # fmt: skip
 
@@ -178,7 +178,7 @@ class zip_impl(NamedTuple, Generic[U, V]):
         return "builtins"
 
 
-class unzip(NamedTuple, Generic[U, V]):
+class unzip(NamedTuple, Generic[V, U]):
     value: TKR[Sequence[tuple[U, V]]]  # noqa: F821 # fmt: skip
 
     @staticmethod
@@ -190,7 +190,7 @@ class unzip(NamedTuple, Generic[U, V]):
         return "builtins"
 
 
-class tuple_impl(NamedTuple, Generic[U, V]):
+class tuple_impl(NamedTuple, Generic[V, U]):
     a: TKR[U]  # noqa: F821 # fmt: skip
     b: TKR[V]  # noqa: F821 # fmt: skip
 
@@ -203,7 +203,7 @@ class tuple_impl(NamedTuple, Generic[U, V]):
         return "builtins"
 
 
-class untuple(NamedTuple, Generic[U, V]):
+class untuple(NamedTuple, Generic[V, U]):
     value: TKR[tuple[U, V]]  # noqa: F821 # fmt: skip
 
     @staticmethod

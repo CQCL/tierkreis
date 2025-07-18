@@ -1,4 +1,4 @@
-from typing import Optional, cast
+from typing import Optional, Sequence, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -6,7 +6,7 @@ from pyscf import ao2mo, gto, scf
 
 
 def _extract_hamiltonian_rhf(
-    mol: gto.Mole, frozen: Optional[list[int]] = None
+    mol: gto.Mole, frozen: Optional[Sequence[int]] = None
 ) -> tuple[float, np.ndarray, np.ndarray]:
     """Extract the fermionic Hamiltonian from a mean-field calculation.
 
@@ -51,11 +51,11 @@ def _extract_hamiltonian_rhf(
 
 
 def extract_hamiltonian_rhf(
-    atom: str,
+    atom: Sequence[tuple[str, Sequence[float]]],
     basis: str,
     charge: int = 0,
     spin: int = 0,
-    frozen: Optional[list[int]] = None,
+    frozen: Optional[Sequence[int]] = None,
 ) -> tuple[float, np.ndarray, np.ndarray]:
     """Generate the Hamiltonian in a qubit representation.
 

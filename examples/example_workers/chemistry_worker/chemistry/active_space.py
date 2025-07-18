@@ -1,8 +1,11 @@
+from typing import Sequence
+
+
 def get_frozen(
-    mo_occ: list[int],
+    mo_occ: Sequence[int],
     n_cas: int,
     n_elecas: int,
-) -> list[int]:
+) -> Sequence[int]:
     frozen = []
     n_orbs = len(mo_occ)
     n_core = get_n_core(mo_occ, n_elecas)
@@ -16,7 +19,7 @@ def get_frozen(
 
 
 def get_n_core(
-    mo_occ: list[int],
+    mo_occ: Sequence[int],
     n_elecas: int,
 ) -> int:
     n_elec = int(sum(mo_occ))
@@ -25,7 +28,7 @@ def get_n_core(
 
 
 def get_n_active(
-    mo_occ: list[int],
+    mo_occ: Sequence[int],
     n_cas: int,
     n_elecas: int,
 ) -> int:
@@ -35,7 +38,7 @@ def get_n_active(
 
 
 def get_n_virtual(
-    mo_occ: list[int],
+    mo_occ: Sequence[int],
     n_cas: int,
     n_elecas: int,
 ) -> int:

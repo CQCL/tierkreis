@@ -4,14 +4,13 @@ from itertools import chain
 from typing import (
     Literal,
     Protocol,
-    SupportsIndex,
     cast,
     get_origin,
     runtime_checkable,
 )
 from typing_extensions import TypeIs
 from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
-from tierkreis.controller.data.types import PType, generics_in_ptype
+from tierkreis.controller.data.types import PType, generics_in_ptype, is_named_tuple
 
 
 @runtime_checkable
@@ -22,10 +21,11 @@ class PNamedModel(Protocol):
     """
 
     def _asdict(self) -> dict[str, PType]: ...
-    def __getitem__(self, key: SupportsIndex, /) -> PType: ...
+
+    # def __getitem__(self, key: SupportsIndex, /) -> PType: ...
 
 
-PModel = PNamedModel | PType
+PModel = PNamedModel | Protocol | PType
 OpaqueType = Literal
 
 
@@ -45,13 +45,17 @@ class TNamedModel(Protocol):
     E.g. in graph builder code these are outputs of tasks."""
 
     def _asdict(self) -> dict[str, TKR[PType]]: ...
-    def __getitem__(self, key: SupportsIndex, /) -> TKR[PType]: ...
+
+    # def __getitem__(self, key: SupportsIndex, /) -> TKR[PType]: ...
 
 
 TModel = TNamedModel | TKR
 
 
 def is_pnamedmodel(o) -> TypeIs[type[PNamedModel]]:
+    if is_named_tuple(o):
+        return True
+
     origin = get_origin(o)
     if origin is not None:
         return is_pnamedmodel(origin)

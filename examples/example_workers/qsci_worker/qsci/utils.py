@@ -1,5 +1,5 @@
 import itertools
-from typing import cast
+from typing import Sequence, cast
 
 import numpy as np
 from numpy.typing import NDArray
@@ -41,7 +41,7 @@ def get_configs(
 
 
 def get_config_from_cas_init(
-    mo_occ: list[int],
+    mo_occ: Sequence[int],
     n_cas_init: int,
     n_elecas_init: int,
     n_cas_hsim: int,
@@ -66,7 +66,7 @@ def get_config_from_cas_init(
 
 
 def make_time_evolution_circuits(
-    t_step_list: list[float],
+    t_step_list: Sequence[float],
     prepared_circuit: Circuit,
     h_hsim: QubitPauliOperator,
     h_init: QubitPauliOperator,

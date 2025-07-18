@@ -1,23 +1,24 @@
 from base64 import b64decode, b64encode
 import collections.abc
-from inspect import isclass
+from inspect import get_annotations, isclass
 from itertools import chain
 import json
 from types import NoneType, UnionType
 from typing import (
     Any,
     Mapping,
+    NamedTuple,
     Protocol,
     Self,
     Sequence,
     TypeVar,
     Union,
     assert_never,
-    cast,
     get_args,
     get_origin,
     runtime_checkable,
 )
+
 from pydantic import BaseModel
 from pydantic._internal._generics import get_args as pydantic_get_args
 from typing_extensions import TypeIs
@@ -49,6 +50,7 @@ type PType = (
     | bytes
     | DictConvertible
     | ListConvertible
+    | NamedTuple
     | BaseModel
 )
 """A restricted subset of Python types that can be used to annotate
@@ -99,6 +101,16 @@ def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
     return get_origin(o) is tuple
 
 
+def is_named_tuple(o: object) -> TypeIs[type[tuple]]:
+    if not isclass(o):
+        return False
+    # If it looks like a NamedTuple it is probably a NamedTuple
+    # (no way to check if it actually is in Python currently).
+    if issubclass(o, tuple) and hasattr(o, "_asdict") and hasattr(o, "_fields"):
+        return True
+    return False
+
+
 def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     if _is_generic(annotation):
         return True
@@ -110,6 +122,9 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         or _is_mapping(annotation)
     ):
         return all(is_ptype(x) for x in get_args(annotation))
+
+    elif is_named_tuple(annotation):
+        return True
 
     elif isclass(annotation) and issubclass(
         annotation, (DictConvertible, ListConvertible, BaseModel)
@@ -123,50 +138,95 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return False
 
 
-def bytes_from_ptype(ptype: PType) -> bytes:
+def ser_from_ptype(ptype: PType) -> Any | bytes:
     match ptype:
         case bytes() | bytearray() | memoryview():
             # Top level bytes should be a clean pass-through.
             return bytes(ptype)
-        case (
-            bool()
-            | int()
-            | float()
-            | str()
-            | NoneType()
-            | collections.abc.Sequence()
-            | tuple()
-            | dict()
-            | collections.abc.Mapping()
-            | TypeVar()
-        ):
-            return json.dumps(ptype, cls=TierkreisEncoder).encode()
+        case bool() | int() | float() | str() | NoneType() | TypeVar():
+            return ptype
+        case collections.abc.Sequence():
+            return [ser_from_ptype(p) for p in ptype]
+        case collections.abc.Mapping():
+            return {k: ser_from_ptype(p) for k, p in ptype.items()}
+        case tuple():
+            return tuple(ser_from_ptype(p) for p in ptype)
         case DictConvertible():
-            return json.dumps(ptype.to_dict(), cls=TierkreisEncoder).encode()
+            return ser_from_ptype(ptype.to_dict())
         case ListConvertible():
-            return json.dumps(ptype.to_list(), cls=TierkreisEncoder).encode()
+            return ser_from_ptype(ptype.to_list())
         case BaseModel():
-            return ptype.model_dump_json().encode()
+            return ptype.model_dump(mode="json")
         case _:
             assert_never(ptype)
 
 
-def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
-    try:
-        j = json.loads(bs, cls=TierkreisDecoder)
-        if annotation is None:
-            return j
-        if isclass(annotation) and issubclass(annotation, DictConvertible):
-            return annotation.from_dict(j)
-        if isclass(annotation) and issubclass(annotation, ListConvertible):
-            return annotation.from_list(j)
-        if isclass(annotation) and issubclass(annotation, BaseModel):
-            return annotation(**j)
+def bytes_from_ptype(ptype: PType) -> bytes:
+    ser = ser_from_ptype(ptype)
+    match ptype:
+        case bytes():
+            # Top level bytes should be a clean pass-through.
+            return ptype
+        case _:
+            return json.dumps(ser, cls=TierkreisEncoder).encode()
 
+
+def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
+    origin = get_origin(annotation)
+    if origin is None:
+        origin = annotation
+
+    if isinstance(origin, TypeVar):
+        # TODO: Can we do anything about this? Probably not :'(
+        return ser
+
+    if issubclass(origin, (bool, int, float, str, bytes, NoneType)):
+        return ser
+
+    if issubclass(origin, DictConvertible):
+        assert issubclass(annotation, origin)
+        return annotation.from_dict(ser)
+
+    if issubclass(origin, ListConvertible):
+        assert issubclass(annotation, origin)
+        return annotation.from_list(ser)
+
+    if is_named_tuple(origin):
+        sub_annotations = get_annotations(annotation)
+        return annotation(
+            **{k: coerce_from_annotation(v, sub_annotations[k]) for k, v in ser.items()}
+        )
+
+    if issubclass(origin, BaseModel):
+        assert issubclass(annotation, origin)
+        return annotation(**ser)
+
+    if issubclass(origin, collections.abc.Sequence):
+        args = get_args(annotation)
+        if len(args) == 0:
+            return ser
+
+        return [coerce_from_annotation(x, args[0]) for x in ser]
+
+    if issubclass(origin, collections.abc.Mapping):
+        args = get_args(annotation)
+        if len(args) == 0:
+            return ser
+
+        return {k: coerce_from_annotation(v, args[1]) for k, v in ser.items()}
+
+    assert_never(ser)
+
+
+def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
+    if isclass(annotation) and issubclass(annotation, bytes):
+        return bs
+
+    j = json.loads(bs, cls=TierkreisDecoder)
+    if annotation is None:
         return j
 
-    except json.JSONDecodeError:
-        return cast(T, bs)
+    return coerce_from_annotation(j, annotation)
 
 
 def generics_in_ptype(ptype: type[PType]) -> set[str]:
@@ -184,6 +244,9 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
         return set()
 
     if issubclass(ptype, (DictConvertible, ListConvertible)):
+        return set()
+
+    if is_named_tuple(ptype):
         return set()
 
     if issubclass(ptype, BaseModel):

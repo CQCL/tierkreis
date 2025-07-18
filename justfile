@@ -44,9 +44,9 @@ examples:
 stubs-generate dir:
   #!/usr/bin/env bash
   cd {{dir}}
-  uv run main.py --stubs-path ./stubs.py
-  uv run ruff format stubs.py
-  uv run ruff check --fix stubs.py
+  python main.py --stubs-path ./stubs.py
+  ruff format stubs.py
+  ruff check --fix stubs.py
 
 generate: 
   just stubs-generate 'tierkreis/tierkreis/builtins'
@@ -56,6 +56,8 @@ generate:
   just stubs-generate 'examples/example_workers/error_worker'
   just stubs-generate 'examples/example_workers/hello_world_worker'
   just stubs-generate 'examples/example_workers/substitution_worker'
+  just stubs-generate 'examples/example_workers/chemistry_worker'
+  just stubs-generate 'examples/example_workers/qsci_worker'
 
   mkdir -p examples/example_workers/aer_worker
   mkdir -p examples/example_workers/nexus_worker

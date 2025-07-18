@@ -1,4 +1,5 @@
 import itertools
+from typing import Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -166,7 +167,7 @@ def state_preparation(
 
 
 def perform_state_preparation(
-    reference_state: list[int],
+    reference_state: Sequence[int],
     ham_init: QubitPauliOperator,
     n_cas_init: int,
     max_iteration: int,

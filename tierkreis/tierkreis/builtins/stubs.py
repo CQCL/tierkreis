@@ -1,18 +1,19 @@
 """Code generated from builtins namespace. Please do not edit."""
 
-from typing import NamedTuple, Sequence, TypeVar, Generic
+from typing import NamedTuple, TypeVar, Generic
 from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import PType
 
-A = TypeVar("A", bound=PType)
 T = TypeVar("T", bound=PType)
 U = TypeVar("U", bound=PType)
 V = TypeVar("V", bound=PType)
+U = TypeVar("U", bound=PType)
+A = TypeVar("A", bound=PType)
 
 
 class Unzipped(NamedTuple, Generic[U, V]):
-    a: TKR[Sequence[U]]  # noqa: F821 # fmt: skip
-    b: TKR[Sequence[V]]  # noqa: F821 # fmt: skip
+    a: TKR[list[U]]  # noqa: F821 # fmt: skip
+    b: TKR[list[V]]  # noqa: F821 # fmt: skip
 
 
 class Untupled(NamedTuple, Generic[U, V]):
@@ -22,7 +23,7 @@ class Untupled(NamedTuple, Generic[U, V]):
 
 class Headed(NamedTuple, Generic[T]):
     head: TKR[T]  # noqa: F821 # fmt: skip
-    rest: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+    rest: TKR[list[T]]  # noqa: F821 # fmt: skip
 
 
 class iadd(NamedTuple):
@@ -90,12 +91,12 @@ class impl_id(NamedTuple, Generic[T]):
 
 
 class append(NamedTuple, Generic[T]):
-    v: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+    v: TKR[list[T]]  # noqa: F821 # fmt: skip
     a: TKR[T]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[Sequence[T]]]:  # noqa: F821 # fmt: skip
-        return TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+    def out() -> type[TKR[list[T]]]:  # noqa: F821 # fmt: skip
+        return TKR[list[T]]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -103,7 +104,7 @@ class append(NamedTuple, Generic[T]):
 
 
 class head(NamedTuple, Generic[T]):
-    v: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+    v: TKR[list[T]]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[Headed[T]]:  # noqa: F821 # fmt: skip
@@ -115,7 +116,7 @@ class head(NamedTuple, Generic[T]):
 
 
 class impl_len(NamedTuple, Generic[A]):
-    v: TKR[Sequence[A]]  # noqa: F821 # fmt: skip
+    v: TKR[list[A]]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
@@ -166,12 +167,12 @@ class concat(NamedTuple):
 
 
 class zip_impl(NamedTuple, Generic[U, V]):
-    a: TKR[Sequence[U]]  # noqa: F821 # fmt: skip
-    b: TKR[Sequence[V]]  # noqa: F821 # fmt: skip
+    a: TKR[list[U]]  # noqa: F821 # fmt: skip
+    b: TKR[list[V]]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[Sequence[tuple[U, V]]]]:  # noqa: F821 # fmt: skip
-        return TKR[Sequence[tuple[U, V]]]  # noqa: F821 # fmt: skip
+    def out() -> type[TKR[list[tuple[U, V]]]]:  # noqa: F821 # fmt: skip
+        return TKR[list[tuple[U, V]]]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -179,7 +180,7 @@ class zip_impl(NamedTuple, Generic[U, V]):
 
 
 class unzip(NamedTuple, Generic[U, V]):
-    value: TKR[Sequence[tuple[U, V]]]  # noqa: F821 # fmt: skip
+    value: TKR[list[tuple[U, V]]]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[Unzipped[U, V]]:  # noqa: F821 # fmt: skip
@@ -216,7 +217,7 @@ class untuple(NamedTuple, Generic[U, V]):
 
 
 class mean(NamedTuple):
-    values: TKR[Sequence[float]]  # noqa: F821 # fmt: skip
+    values: TKR[list[float]]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[float]]:  # noqa: F821 # fmt: skip

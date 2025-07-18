@@ -123,9 +123,7 @@ def symbolic_execution():
 
     substituted_circuit = g.task(substitute(ansatz, a, b, c))
     unzipped = g.task(unzip(hamiltonian))
-    pauli_strings_list: TKR[list[Literal["pytket._tket.pauli.QubitPauliString"]]] = (
-        unzipped.a  # type: ignore
-    )
+    pauli_strings_list = unzipped.a
     parameters_list = unzipped.b
 
     aes = g.map(

@@ -7,27 +7,30 @@
 # ///
 import json
 from pathlib import Path
+from typing import NamedTuple, Literal
 from uuid import UUID
 
 from pytket._tket.unit_id import Qubit
 from pytket.pauli import Pauli, QubitPauliString
 from pytket._tket.circuit import Circuit, fresh_symbol
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import (
-    Eval,
-    GraphData,
-    Const,
-    Func,
-    IfElse,
-    Output,
-    Input,
-    Map,
-    Loop,
-)
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.models import TKR
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
+
+from tierkreis.builtins.stubs import untuple, itimes, iadd, unzip, zip_impl
+from tierkreis.graphs.fold import FoldGraphInputs, fold_graph
+from example_workers.pytket_worker.stubs import (
+    append_pauli_measurement_impl,
+    optimise_phase_gadgets,
+    expectation,
+)
+
+from example_workers.aer_worker.stubs import submit_single
+from example_workers.substitution_worker.stubs import substitute
 
 root_loc = Loc()
 
@@ -56,181 +59,87 @@ def build_ansatz() -> Circuit:
     return circ
 
 
-def _compute_terms() -> GraphData:
-    g = GraphData()
-    accum = g.add(Input("accum"))("accum")
-    value = g.add(Input("value"))("value")
+class ComputeTermsInputs(NamedTuple):
+    accum: TKR[int]
+    value: TKR[tuple[int, int]]
 
-    untupled = g.add(Func("builtins.untuple", {"value": value}))
-    res_0 = untupled("a")
-    res_1 = untupled("b")
+
+def _compute_terms():
+    g = GraphBuilder(ComputeTermsInputs, TKR[int])
+
+    untupled = g.task(untuple(g.inputs.value))
+    res_0 = untupled.a
+    res_1 = untupled.b
 
     # TODO: these aren't integers, this only works
     # because these methods are untyped
-    prod = g.add(
-        Func(
-            "builtins.itimes",
-            {"a": res_0, "b": res_1},
-        )
-    )("value")
+    prod = g.task(itimes(res_0, res_1))
+    sum = g.task(iadd(g.inputs.accum, prod))
 
-    sum = g.add(
-        Func(
-            "builtins.iadd",
-            {"a": accum, "b": prod},
-        )
-    )("value")
-
-    g.add(Output({"value": sum}))
-
+    g.outputs(sum)
     return g
 
 
-def _fold_graph_outer() -> GraphData:
-    g = GraphData()
-
-    func = g.add(Input("func"))("func")
-    accum = g.add(Input("accum"))("accum")
-    values = g.add(Input("values"))("values")
-
-    zero = g.add(Const(0))("value")
-    values_len = g.add(Func("builtins.len", {"l": values}))("value")
-    # True if there is more than one value in the list.
-    non_empty = g.add(Func("builtins.igt", {"a": values_len, "b": zero}))("value")
-
-    # Will only succeed if values is non-empty.
-    headed = g.add(Func("builtins.head", {"l": values}))
-
-    # Apply the function if we were able to pop off a value.
-    applied_next = g.add(
-        Eval(
-            func,
-            {"accum": accum, "value": headed("head")},
-        )
-    )("value")
-
-    next_accum = g.add(IfElse(non_empty, applied_next, accum))("value")
-    next_values = g.add(IfElse(non_empty, headed("rest"), values))("value")
-    g.add(
-        Output(
-            {"accum": next_accum, "values": next_values, "should_continue": non_empty}
-        )
-    )
-    return g
+class SubgraphInputs(NamedTuple):
+    circuit: TKR[Literal["pytket._tket.circuit.Circuit"]]
+    pauli_string: TKR[Literal["pytket._tket.pauli.QubitPauliString"]]
+    n_shots: TKR[int]
 
 
-# fold : {func: (b -> a -> b)} -> {initial: b} -> {values: list[a]} -> {value: b}
-def _fold_graph() -> GraphData:
-    g = GraphData()
+def _subgraph():
+    g = GraphBuilder(SubgraphInputs, TKR[float])
 
-    func = g.add(Input("func"))("func")
-    initial = g.add(Input("initial"))("initial")
-    values = g.add(Input("values"))("values")
+    circuit = g.inputs.circuit
+    pauli_string = g.inputs.pauli_string
+    n_shots = g.inputs.n_shots
 
-    helper = g.add(Const(_fold_graph_outer()))("value")
-    # TODO: include the computation inside the fold
-    loop = g.add(
-        Loop(
-            helper,
-            {"func": func, "accum": initial, "values": values},
-            "should_continue",
-        )
-    )
-
-    g.add(Output({"value": loop("accum")}))
-
-    return g
-
-
-def _subgraph() -> GraphData:
-    g = GraphData()
-
-    circuit = g.add(Input("circuit"))("circuit")
-    pauli_string = g.add(Input("pauli_string"))("pauli_string")
-    n_shots = g.add(Input("n_shots"))("n_shots")
-
-    measurement_circuit = g.add(
-        Func(
-            "pytket_worker.append_pauli_measurement",
-            {"circuit": circuit, "pauli_string": pauli_string},
-        )
-    )("circuit")
+    measurement_circuit = g.task(append_pauli_measurement_impl(circuit, pauli_string))
 
     # TODO: A better compilation pass
-    compiled_circuit = g.add(
-        Func("pytket_worker.optimise_phase_gadgets", {"circuit": measurement_circuit})
-    )("circuit")
+    compiled_circuit = g.task(optimise_phase_gadgets(measurement_circuit))
 
-    backend_result = g.add(
-        Func(
-            "aer_worker.submit_single",
-            {"circuit": compiled_circuit, "n_shots": n_shots},
-        )
-    )("backend_result")
-
-    expectation = g.add(
-        Func(
-            "pytket_worker.expectation",
-            {"backend_result": backend_result},
-        )
-    )("expectation")
-
-    g.add(Output({"expectation": expectation}))
+    backend_result = g.task(submit_single(compiled_circuit, n_shots))
+    av = g.task(expectation(backend_result))
+    g.outputs(av)
     return g
 
 
-def symbolic_execution() -> GraphData:
+class SymbolicExecutionInputs(NamedTuple):
+    a: TKR[float]
+    b: TKR[float]
+    c: TKR[float]
+    ham: TKR[list[tuple[Literal["pytket._tket.pauli.QubitPauliString"], float]]]
+    ansatz: TKR
+
+
+def symbolic_execution():
     """A graph that substitutes 3 parameters into a circuit and gets an expectation value."""
-    g = GraphData()
-    a = g.add(Input("a"))("a")
-    b = g.add(Input("b"))("b")
-    c = g.add(Input("c"))("c")
-    hamiltonian = g.add(Input("ham"))("ham")
-    ansatz = g.add(Input("ansatz"))("ansatz")
-    n_shots = g.add(Const(100))("value")
+    g = GraphBuilder(SymbolicExecutionInputs, TKR[float])
+    a = g.inputs.a
+    b = g.inputs.b
+    c = g.inputs.c
+    hamiltonian = g.inputs.ham
+    ansatz = g.inputs.ansatz
 
-    substituted_circuit = g.add(
-        Func(
-            "substitution_worker.substitute",
-            {"a": a, "b": b, "c": c, "circuit": ansatz},
-        )
-    )("circuit")
-
-    unzipped = g.add(Func("builtins.unzip", {"value": hamiltonian}))
-    pauli_strings_list = unzipped("a")
-    parameters_list = unzipped("b")
-
-    pauli_expectation = g.add(Const(_subgraph()))("value")
-    unfolded_pauli_strings = g.add(
-        Func("builtins.unfold_values", {"value": pauli_strings_list})
+    substituted_circuit = g.task(substitute(ansatz, a, b, c))
+    unzipped = g.task(unzip(hamiltonian))
+    pauli_strings_list: TKR[list[Literal["pytket._tket.pauli.QubitPauliString"]]] = (
+        unzipped.a  # type: ignore
     )
-    m = g.add(
-        Map(
-            pauli_expectation,
-            {
-                "pauli_string": unfolded_pauli_strings("*"),
-                "circuit": substituted_circuit,
-                "n_shots": n_shots,
-            },
-        )
-    )
-    folded_expectations = g.add(Func("builtins.fold_values", {"values_glob": m("*")}))(
-        "value"
-    )
-    zipped = g.add(
-        Func("builtins.zip", {"a": folded_expectations, "b": parameters_list})
-    )("value")
+    parameters_list = unzipped.b
 
-    fold_graph = g.add(Const(_fold_graph()))("value")
-    compute_graph = g.add(Const(_compute_terms()))("value")
-    initial = g.add(Const(0))("value")
+    aes = g.map(
+        pauli_strings_list,
+        lambda x: SubgraphInputs(substituted_circuit, x, g.const(100)),
+    )
+    m = g.map(aes, _subgraph())
+    zipped = g.task(zip_impl(m, parameters_list))
     # (\(x,y) \z --> x*y+z) and 0
     # TODO: This needs a better name
-    computed = g.add(
-        Eval(fold_graph, {"func": compute_graph, "initial": initial, "values": zipped})
-    )("value")
-
-    g.add(Output({"computed": computed}))
+    computed = g.eval(
+        fold_graph(_compute_terms()), FoldGraphInputs(g.const(0.0), zipped)
+    )
+    g.outputs(computed)
     return g
 
 
@@ -270,7 +179,7 @@ def main() -> None:
     run_graph(
         storage,
         multi_executor,
-        symbolic_execution(),
+        symbolic_execution().get_data(),
         {
             "ansatz": json.dumps(ansatz.to_dict()).encode(),
             "a": json.dumps(0.2).encode(),
@@ -280,7 +189,7 @@ def main() -> None:
         },
         polling_interval_seconds=0.1,
     )
-    output = json.loads(storage.read_output(root_loc, "computed"))
+    output = json.loads(storage.read_output(root_loc, "value"))
     print(output)
 
 

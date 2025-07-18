@@ -5,9 +5,11 @@ from typing import Any, Callable, Generic, Protocol, TypeVar, overload
 from tierkreis.controller.data.core import EmptyModel, ValueRef
 from tierkreis.controller.data.graph import (
     Const,
+    EagerIfElse,
     Eval,
     Func,
     GraphData,
+    IfElse,
     Input,
     Loop,
     Map,
@@ -39,8 +41,8 @@ class Function[Out](TNamedModel, Protocol):
     def out() -> type[Out]: ...
 
 
-Inputs = TypeVar("Inputs", bound=TModel, contravariant=True)
-Outputs = TypeVar("Outputs", bound=TModel, covariant=True)
+Inputs = TypeVar("Inputs", bound=TModel, covariant=True)
+Outputs = TypeVar("Outputs", bound=TModel)
 
 
 @dataclass
@@ -54,7 +56,7 @@ class LoopOutput(TNamedModel, Protocol):
     def should_continue(self) -> TKR[bool]: ...
 
 
-class GraphBuilder[Inputs: TModel, Outputs: TModel]:
+class GraphBuilder(Generic[Inputs, Outputs]):
     outputs_type: type
     inputs: Inputs
 
@@ -78,6 +80,22 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     def const[T: PType](self, value: T) -> TKR[T]:
         idx, port = self.data.add(Const(value))("value")
         return TKR[T](idx, port)
+
+    def ifelse[A: PType, B: PType](
+        self, pred: TKR[bool], if_true: TKR[A], if_false: TKR[B]
+    ) -> TKR[A] | TKR[B]:
+        idx, port = self.data.add(
+            IfElse(pred.value_ref(), if_true.value_ref(), if_false.value_ref())
+        )("value")
+        return TKR(idx, port)
+
+    def eifelse[A: PType, B: PType](
+        self, pred: TKR[bool], if_true: TKR[A], if_false: TKR[B]
+    ) -> TKR[A] | TKR[B]:
+        idx, port = self.data.add(
+            EagerIfElse(pred.value_ref(), if_true.value_ref(), if_false.value_ref())
+        )("value")
+        return TKR(idx, port)
 
     def _graph_const[A: TModel, B: TModel](
         self, graph: "GraphBuilder[A, B]"

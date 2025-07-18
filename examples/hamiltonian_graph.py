@@ -129,10 +129,10 @@ def symbolic_execution():
     parameters_list = unzipped.b
 
     aes = g.map(
-        pauli_strings_list,
         lambda x: SubgraphInputs(substituted_circuit, x, g.const(100)),
+        pauli_strings_list,
     )
-    m = g.map(aes, _subgraph())
+    m = g.map(_subgraph(), aes)
     zipped = g.task(zip_impl(m, parameters_list))
     # (\(x,y) \z --> x*y+z) and 0
     # TODO: This needs a better name

@@ -165,16 +165,6 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     ) -> TKR[list[B]]:
         return self._fold_list(TList(body(aes._value)))
 
-    def _map_graph_single_out[A: TModel, B: PType](
-        self, aes: TList[A], body: TypedGraphRef[A, TKR[B]]
-    ) -> TKR[list[B]]:
-        return self._fold_list(self._map_graph_full(aes, body))
-
-    def _map_graph_single_in[A: PType, B: TModel](
-        self, aes: TKR[list[A]], body: TypedGraphRef[TKR[A], B]
-    ) -> TList[B]:
-        return self._map_graph_full(self._unfold_list(aes), body)
-
     def _map_graph_full[A: TModel, B: TModel](
         self, aes: TList[A], body: TypedGraphRef[A, B]
     ) -> TList[B]:
@@ -186,42 +176,25 @@ class GraphBuilder(Generic[Inputs, Outputs]):
 
     @overload
     def map[A: PType, B: TModel](
-        self, aes: TKR[list[A]], body: Callable[[TKR[A]], B]
-    ) -> "TList[B]": ...
+        self,
+        aes: TKR[list[A]],
+        body: (
+            Callable[[TKR[A]], B] | TypedGraphRef[TKR[A], B] | "GraphBuilder[TKR[A], B]"
+        ),
+    ) -> TList[B]: ...
 
     @overload
     def map[A: TModel, B: PType](
-        self, aes: TList[A], body: Callable[[A], TKR[B]]
-    ) -> TKR[list[B]]: ...
-
-    @overload
-    def map[A: TModel, B: PType](  # type: ignore # overlapping overload warning
-        self, aes: TList[A], body: TypedGraphRef[A, TKR[B]]
-    ) -> TKR[list[B]]: ...
-
-    @overload
-    def map[A: TModel, B: PType](  # type: ignore # overlapping overload warning
-        self, aes: TList[A], body: "GraphBuilder[A, TKR[B]]"
+        self,
+        aes: TList[A],
+        body: (
+            Callable[[A], TKR[B]] | TypedGraphRef[A, TKR[B]] | "GraphBuilder[A, TKR[B]]"
+        ),
     ) -> TKR[list[B]]: ...
 
     @overload
     def map[A: TModel, B: TModel](
-        self, aes: TList[A], body: TypedGraphRef[A, B]
-    ) -> TList[B]: ...
-
-    @overload
-    def map[A: PType, B: TModel](
-        self, aes: TKR[list[A]], body: "GraphBuilder[TKR[A], B]"
-    ) -> TList[B]: ...
-
-    @overload
-    def map[A: PType, B: TModel](
-        self, aes: TKR[list[A]], body: TypedGraphRef[TKR[A], B]
-    ) -> TList[B]: ...
-
-    @overload
-    def map[A: TModel, B: TModel](
-        self, aes: TList[A], body: "GraphBuilder[A, B]"
+        self, aes: TList[A], body: TypedGraphRef[A, B] | "GraphBuilder[A, B]"
     ) -> TList[B]: ...
 
     def map(

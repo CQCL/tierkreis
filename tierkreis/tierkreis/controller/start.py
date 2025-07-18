@@ -150,6 +150,8 @@ def start(
             pipe_inputs_to_output_location(
                 storage, node_location.M(p).N(-1), eval_inputs
             )
+            # Necessary in the node visualization
+            storage.write_node_def(node_location.M(p), Eval((-1, "body"), {}))
 
     elif node.type == "ifelse":
         pass

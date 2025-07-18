@@ -3,8 +3,8 @@ from typing import Optional, assert_never
 
 from pydantic import BaseModel
 from tierkreis.controller.data.core import NodeIndex
-from tierkreis.controller.data.location import WorkerCallArgs, Loc
-from tierkreis.controller.data.graph import GraphData, IfElse
+from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.graph import GraphData, IfElse, NodeDef
 from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -18,7 +18,7 @@ class EvalNodeData(BaseModel):
 
 
 def node_status(
-    is_finished: bool, definition: Optional[WorkerCallArgs], has_error: bool = False
+    is_finished: bool, definition: Optional[NodeDef], has_error: bool = False
 ) -> NodeStatus:
     if is_finished:
         return "Finished"
@@ -79,7 +79,7 @@ def get_eval_node(
         is_finished = storage.is_node_finished(new_location)
         has_error = check_error(new_location, errored_nodes)
         try:
-            definition = storage.read_worker_call_args(new_location)
+            definition = storage.read_node_def(new_location)
         except FileNotFoundError:
             definition = None
 

@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, assert_never
 from uuid import UUID
 
@@ -22,6 +23,7 @@ from tierkreis_visualization.routers.models import PyGraph
 from tierkreis_visualization.routers.navigation import breadcrumbs
 
 router = APIRouter(prefix="/workflows")
+logger = logging.getLogger(__name__)
 
 
 # Update the routes section with this new route:
@@ -205,16 +207,24 @@ def get_logs(workflow_id: UUID, node_location_str: str):
     storage = get_storage(workflow_id)
     if not storage.is_node_started(node_location):
         return PlainTextResponse("Node not started yet.")
-    definition = storage.read_worker_call_args(node_location)
-
-    if definition.logs_path is None:
+    try:
+        definition = storage.read_node_def(node_location)
+    except (FileNotFoundError, TierkreisError):
         return PlainTextResponse("Node definition not found.")
-    if not definition.logs_path.exists():
-        return PlainTextResponse("No logs available.")
+    logs_path = storage.logs_path
+    if definition.type == "function":
+        try:
+            call_args = storage.read_worker_call_args(node_location)
+            if call_args.logs_path is not None and call_args.logs_path.exists():
+                logs_path = call_args.logs_path
+        except (FileNotFoundError, TierkreisError):
+            logger.warning(
+                "Function node has no valid call args, falling back to storage logs."
+            )
 
     messages = ""
 
-    with open(definition.logs_path, "rb") as fh:
+    with open(logs_path, "rb") as fh:
         for line in fh:
             messages += line.decode()
 

@@ -13,11 +13,18 @@ class CompleteActiveSpace(Protocol):
 
 class Molecule(Protocol):
     @property
-    def basis(self) -> str: ...  # noqa: F821 # fmt: skip
+    def geometry(self) -> Sequence[tuple[str, Sequence[float]]]: ...  # noqa: F821 # fmt: skip
     @property
     def charge(self) -> int: ...  # noqa: F821 # fmt: skip
     @property
-    def geometry(self) -> Sequence[tuple[str, Sequence[float]]]: ...  # noqa: F821 # fmt: skip
+    def basis(self) -> str: ...  # noqa: F821 # fmt: skip
+
+
+# TODO: Manually added, need to add codegen that does the same.
+class Hamiltonian(NamedTuple):
+    h0: float
+    h1: Sequence[Sequence[float]]
+    h2: Sequence[Sequence[Sequence[Sequence[float]]]]
 
 
 class make_ham(NamedTuple):
@@ -26,8 +33,8 @@ class make_ham(NamedTuple):
     cas: TKR[CompleteActiveSpace]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[OpaqueType["__main__.Hamiltonian"]]]:  # noqa: F821 # fmt: skip
-        return TKR[OpaqueType["__main__.Hamiltonian"]]  # noqa: F821 # fmt: skip
+    def out() -> type[TKR[Hamiltonian]]:  # noqa: F821 # fmt: skip
+        return TKR[Hamiltonian]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

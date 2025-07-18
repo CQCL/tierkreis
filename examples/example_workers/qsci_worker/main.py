@@ -1,6 +1,6 @@
 # /// script
 # requires-python = ">=3.12"
-# dependencies = ["pydantic", "pytket", "tierkreis"]
+# dependencies = ["pydantic", "pytket", "pytket-qiskit", "tierkreis"]
 #
 # [tool.uv.sources]
 # tierkreis = { path = "../../../tierkreis" }
@@ -41,8 +41,8 @@ class CompleteActiveSpace(NamedTuple):
 
 class Hamiltonian(NamedTuple):
     h0: float
-    h1: Sequence[float]
-    h2: Sequence[float]
+    h1: Sequence[Sequence[float]]
+    h2: Sequence[Sequence[Sequence[Sequence[float]]]]
 
 
 @worker.function()

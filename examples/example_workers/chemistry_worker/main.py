@@ -34,8 +34,8 @@ class CompleteActiveSpace(NamedTuple):
 
 class Hamiltonian(BaseModel):
     h0: float
-    h1: Sequence[float]
-    h2: Sequence[float]
+    h1: Sequence[Sequence[float]]
+    h2: Sequence[Sequence[Sequence[Sequence[float]]]]
 
 
 @worker.function()

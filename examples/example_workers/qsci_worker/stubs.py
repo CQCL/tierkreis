@@ -4,20 +4,20 @@ from typing import NamedTuple, Sequence, Protocol
 from tierkreis.controller.data.models import TKR, OpaqueType
 
 
-class Hamiltonian(Protocol):
+class CompleteActiveSpace(Protocol):
     @property
-    def h2(self) -> Sequence[float]: ...  # noqa: F821 # fmt: skip
+    def n(self) -> int: ...  # noqa: F821 # fmt: skip
+    @property
+    def n_ele(self) -> int: ...  # noqa: F821 # fmt: skip
+
+
+class Hamiltonian(Protocol):
     @property
     def h0(self) -> float: ...  # noqa: F821 # fmt: skip
     @property
-    def h1(self) -> Sequence[float]: ...  # noqa: F821 # fmt: skip
-
-
-class CompleteActiveSpace(Protocol):
+    def h2(self) -> Sequence[Sequence[Sequence[Sequence[float]]]]: ...  # noqa: F821 # fmt: skip
     @property
-    def n_ele(self) -> int: ...  # noqa: F821 # fmt: skip
-    @property
-    def n(self) -> int: ...  # noqa: F821 # fmt: skip
+    def h1(self) -> Sequence[Sequence[float]]: ...  # noqa: F821 # fmt: skip
 
 
 class state_prep(NamedTuple):

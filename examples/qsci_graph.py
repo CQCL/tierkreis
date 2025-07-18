@@ -152,21 +152,27 @@ def main() -> None:
             k: json.dumps(v).encode()
             for k, v in (
                 {
-                    "basis": "sto-3g",
-                    "charge": 0,
-                    "geometry": [
-                        ["H", [0, 0, 0]],
-                        ["H", [0, 0, 1.0]],
-                        ["H", [0, 0, 2.0]],
-                        ["H", [0, 0, 3.0]],
-                    ],
+                    "molecule": {
+                        "geometry": [
+                            ["H", [0, 0, 0]],
+                            ["H", [0, 0, 1.0]],
+                            ["H", [0, 0, 2.0]],
+                            ["H", [0, 0, 3.0]],
+                        ],
+                        "basis": "sto-3g",
+                        "charge": 0,
+                    },
+                    "reference_state": [1, 1, 0, 0],
+                    "cas_init": {
+                        "n": 2,
+                        "n_ele": 2,
+                    },
+                    "cas_hsim": {
+                        "n": 4,
+                        "n_ele": 4,
+                    },
                     "max_cx_gates_hsim": 2000,
                     "mo_occ": [2, 2, 0, 0],
-                    "reference_state": [1, 1, 0, 0],
-                    "n_cas_init": 2,
-                    "n_elecas_init": 2,
-                    "n_cas_hsim": 4,
-                    "n_elecas_hsim": 4,
                     "t_step_list": [0.5, 1.0, 1.5],
                     "max_iteration_prep": 5,
                     "atol": 0.03,

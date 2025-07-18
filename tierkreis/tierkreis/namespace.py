@@ -3,7 +3,6 @@ from inspect import get_annotations
 from logging import getLogger
 from types import NoneType
 from typing import Any
-from pydantic import BaseModel
 from tierkreis.controller.data.models import (
     PModel,
     PNamedModel,

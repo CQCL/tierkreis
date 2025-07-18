@@ -1,7 +1,7 @@
 """Code generated from chemistry_worker namespace. Please do not edit."""
 
 from typing import NamedTuple, Sequence, Protocol
-from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.data.models import TKR  # noqa: E401
 
 
 class CompleteActiveSpace(Protocol):

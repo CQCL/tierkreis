@@ -44,12 +44,12 @@ class CompleteActiveSpace(NamedTuple):
 
 
 def _compile_and_run() -> GraphBuilder[
-    TKR[OpaqueType["pytket._tket.circuit.Circuit"]],
-    TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]],
+    TKR[OpaqueType["pytket._tket.circuit.Circuit"]],  # noqa: F821
+    TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]],  # noqa: F821
 ]:
     g = GraphBuilder(
-        TKR[OpaqueType["pytket._tket.circuit.Circuit"]],
-        TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]],
+        TKR[OpaqueType["pytket._tket.circuit.Circuit"]],  # noqa: F821
+        TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]],  # noqa: F821
     )
 
     n_shots = g.const(500)

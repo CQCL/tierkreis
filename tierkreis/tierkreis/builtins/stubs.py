@@ -4,9 +4,9 @@ from typing import NamedTuple, Sequence, TypeVar, Generic
 from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import PType
 
-U = TypeVar("U", bound=PType)
 A = TypeVar("A", bound=PType)
 T = TypeVar("T", bound=PType)
+U = TypeVar("U", bound=PType)
 V = TypeVar("V", bound=PType)
 
 

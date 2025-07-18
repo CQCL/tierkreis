@@ -2,12 +2,7 @@ from types import NoneType
 from typing import assert_never, get_args, get_origin
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import (
-    PModel,
-    PNamedModel,
-    generics_in_pmodel,
-    is_pnamedmodel,
-)
+from tierkreis.controller.data.models import PModel, PNamedModel, is_pnamedmodel
 from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
@@ -98,13 +93,14 @@ def format_typevars(generics: set[str]) -> str:
 
 def format_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
     origin = get_origin(pnamedmodel)
+    args = get_args(pnamedmodel)
     if origin is not None:
         pnamedmodel = origin
 
     outs = {format_annotation(k, v) for k, v in pnamedmodel.__annotations__.items()}
     outs_str = "\n    ".join(outs)
 
-    generics = generics_in_pmodel(pnamedmodel)
+    generics = [str(x) for x in args]
     generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
 
     return f"""

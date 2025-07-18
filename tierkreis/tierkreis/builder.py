@@ -177,28 +177,28 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     @overload
     def map[A: PType, B: TModel](
         self,
-        aes: TKR[list[A]],
         body: (
             Callable[[TKR[A]], B] | TypedGraphRef[TKR[A], B] | "GraphBuilder[TKR[A], B]"
         ),
+        aes: TKR[list[A]],
     ) -> TList[B]: ...
 
     @overload
-    def map[A: TModel, B: PType](
+    def map[A: TModel, B: PType](  # type: ignore # overlapping overload warning
         self,
-        aes: TList[A],
         body: (
             Callable[[A], TKR[B]] | TypedGraphRef[A, TKR[B]] | "GraphBuilder[A, TKR[B]]"
         ),
+        aes: TList[A],
     ) -> TKR[list[B]]: ...
 
     @overload
     def map[A: TModel, B: TModel](
-        self, aes: TList[A], body: TypedGraphRef[A, B] | "GraphBuilder[A, B]"
+        self, body: TypedGraphRef[A, B] | "GraphBuilder[A, B]", aes: TList[A]
     ) -> TList[B]: ...
 
     def map(
-        self, aes: TKR | TList, body: TypedGraphRef | Callable | "GraphBuilder"
+        self, body: TypedGraphRef | Callable | "GraphBuilder", aes: TKR | TList
     ) -> Any:
         if isinstance(body, GraphBuilder):
             body = self._graph_const(body)

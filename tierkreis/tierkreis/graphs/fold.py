@@ -1,4 +1,4 @@
-from typing import NamedTuple, Protocol, Sequence
+from typing import NamedTuple, Protocol
 from tierkreis.builder import GraphBuilder, TypedGraphRef
 from tierkreis.builtins.stubs import head, igt, impl_len
 from tierkreis.controller.data.graph import GraphData
@@ -9,12 +9,12 @@ from tierkreis.controller.data.types import PType
 class FoldGraphOuterInputs[A: PType, B: PType](NamedTuple):
     func: TKR[GraphData]
     accum: TKR[B]
-    values: TKR[Sequence[A]]
+    values: TKR[list[A]]
 
 
 class FoldGraphOuterOutputs[A: PType, B: PType](NamedTuple):
     accum: TKR[B]
-    values: TKR[Sequence[A]]
+    values: TKR[list[A]]
     should_continue: TKR[bool]
 
 
@@ -49,7 +49,7 @@ def _fold_graph_outer[A: PType, B: PType]():
 
 class FoldGraphInputs[A: PType, B: PType](NamedTuple):
     initial: TKR[B]
-    values: TKR[Sequence[tuple[A, B]]]
+    values: TKR[list[tuple[A, B]]]
 
 
 class FoldFunctionInput[A: PType, B: PType](TNamedModel, Protocol):

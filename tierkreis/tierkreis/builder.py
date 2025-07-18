@@ -197,6 +197,17 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         self, body: TypedGraphRef[A, B] | "GraphBuilder[A, B]", aes: TList[A]
     ) -> TList[B]: ...
 
+    @overload
+    def map[A: PType, B: PType](
+        self,
+        body: (
+            Callable[[TKR[A]], TKR[B]]
+            | TypedGraphRef[TKR[A], TKR[B]]
+            | "GraphBuilder[TKR[A], TKR[B]]"
+        ),
+        aes: TList[TKR[A]],
+    ) -> TKR[list[B]]: ...
+
     def map(
         self, body: TypedGraphRef | Callable | "GraphBuilder", aes: TKR | TList
     ) -> Any:

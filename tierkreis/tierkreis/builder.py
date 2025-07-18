@@ -205,7 +205,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
             | TypedGraphRef[TKR[A], TKR[B]]
             | "GraphBuilder[TKR[A], TKR[B]]"
         ),
-        aes: TList[TKR[A]],
+        aes: TKR[list[A]],
     ) -> TKR[list[B]]: ...
 
     def map(

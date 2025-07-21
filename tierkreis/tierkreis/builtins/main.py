@@ -1,4 +1,3 @@
-from glob import glob
 from logging import getLogger
 from pathlib import Path
 import statistics
@@ -84,7 +83,7 @@ def str_neq(a: str, b: str) -> bool:
 
 @worker.primitive_task()
 def fold_values(args: WorkerCallArgs, storage: WorkerStorage) -> None:
-    values_glob = glob(str(args.inputs["values_glob"]))
+    values_glob = storage.glob(str(args.inputs["values_glob"]))
     values_glob.sort(key=lambda x: int(Path(x).name.split("-")[-1]))
     bs = [storage.read_input(Path(value)) for value in values_glob]
     values = [ptype_from_bytes(b) for b in bs]

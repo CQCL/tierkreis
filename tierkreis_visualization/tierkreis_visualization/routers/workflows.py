@@ -202,29 +202,39 @@ def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/logs")
-def get_logs(workflow_id: UUID, node_location_str: str):
+def get_function_logs(workflow_id: UUID, node_location_str: str) -> PlainTextResponse:
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
-    if not storage.is_node_started(node_location):
-        return PlainTextResponse("Node not started yet.")
     try:
         definition = storage.read_node_def(node_location)
     except (FileNotFoundError, TierkreisError):
-        return PlainTextResponse("Node definition not found.")
-    logs_path = storage.logs_path
-    if definition.type == "function":
-        try:
-            call_args = storage.read_worker_call_args(node_location)
-            if call_args.logs_path is not None and call_args.logs_path.exists():
-                logs_path = call_args.logs_path
-        except (FileNotFoundError, TierkreisError):
-            logger.warning(
-                "Function node has no valid call args, falling back to storage logs."
-            )
+        return PlainTextResponse("Node definition not found; node is not started.")
+    if definition.type != "function":
+        return PlainTextResponse("Only function nodes should have a log file.")
+    try:
+        call_args = storage.read_worker_call_args(node_location)
+    except (FileNotFoundError, TierkreisError):
+        logger.warning("Function node has no valid call args.")
+        return PlainTextResponse("No logfile found")
+    if call_args.logs_path is None or not call_args.logs_path.exists():
+        return PlainTextResponse("No logfile found")
 
     messages = ""
+    with open(call_args.logs_path, "rb") as fh:
+        for line in fh:
+            messages += line.decode()
 
-    with open(logs_path, "rb") as fh:
+    return PlainTextResponse(messages)
+
+
+@router.get("/{workflow_id}/logs")
+def get_logs(workflow_id: UUID) -> PlainTextResponse:
+    storage = get_storage(workflow_id)
+    if not storage.logs_path.is_file():
+        return PlainTextResponse("Logfile not found.")
+
+    messages = ""
+    with open(storage.logs_path, "rb") as fh:
         for line in fh:
             messages += line.decode()
 

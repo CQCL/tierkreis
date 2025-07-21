@@ -18,18 +18,26 @@ const fetchText = async (
   return response.text();
 };
 
-export const useLogs = (workflowId: string, node_location: string) => {
+export const useLogs = (
+  workflowId: string,
+  node_location: string,
+  node_title: string
+) => {
   return useQuery({
     queryKey: ["logs", workflowId, node_location],
     queryFn: () => fetchText(workflowId, node_location, "logs"),
-    enabled: !!workflowId && !!node_location,
+    enabled: !!workflowId && !!node_location && node_title == "Function",
   });
 };
 
-export const useErrors = (workflowId: string, node_location: string, status: "Not started" | "Started" | "Error" | "Finished") => {
+export const useErrors = (
+  workflowId: string,
+  node_location: string,
+  status: "Not started" | "Started" | "Error" | "Finished"
+) => {
   return useQuery({
     queryKey: ["errors", workflowId, node_location],
     queryFn: () => fetchText(workflowId, node_location, "errors"),
-    enabled: !!workflowId && !!node_location && status === "Error"
+    enabled: !!workflowId && !!node_location && status === "Error",
   });
 };

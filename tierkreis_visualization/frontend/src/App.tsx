@@ -25,6 +25,7 @@ import { edgeTypes } from "@/edges";
 import { bottomUpLayout } from "@/graph/layoutGraph";
 import { nodeTypes } from "@/nodes";
 import { BackendNode } from "./nodes/types";
+import { useWorkflowLogs } from "@/data/logs";
 
 const saveGraph = ({
   key,
@@ -120,7 +121,6 @@ const Main = (props: {
 
 export default function App() {
   const { workflowId: workflow_id_url } = useParams();
-  const [info, setInfo] = useState<InfoProps>({ type: "Logs", content: "" });
 
   const workflowsQuery = useSuspenseQuery<Workflow[]>({
     queryKey: ["workflows", URL],
@@ -141,6 +141,27 @@ export default function App() {
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
   const workflow_id = workflow_id_url || workflowsQuery.data[0].id;
+  
+  const logs = useSuspenseQuery({
+    queryKey: ["workflowLogs", workflow_id],
+    queryFn: async () => {
+      const url = `${URL}/${workflow_id}/logs`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/text" },
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.text();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  const [info, setInfo] = useState<InfoProps>({
+    type: "Logs",
+    content: logs.data,
+  });
+
   const graphQuery = useSuspenseQuery({
     queryKey: ["workflowGraph", workflow_id],
     queryFn: async () => {

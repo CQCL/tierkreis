@@ -15,8 +15,16 @@ import { type BackendNode } from "./types";
 import { OctagonAlert } from "lucide-react";
 
 export function DefaultNode({ data }: NodeProps<BackendNode>) {
-  const { data: logs } = useLogs(data.workflowId, data.node_location);
-  const { data: errors } = useErrors(data.workflowId, data.node_location, data.status);
+  const { data: logs } = useLogs(
+    data.workflowId,
+    data.node_location,
+    data.title
+  );
+  const { data: errors } = useErrors(
+    data.workflowId,
+    data.node_location,
+    data.status
+  );
   return (
     <NodeStatusIndicator status={data.status}>
       <Card className="w-[180px]">
@@ -26,7 +34,9 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               //workaround to render errors
               const target = event.target as HTMLElement;
               if (target.closest("button") === null) {
-                data.setInfo({ type: "Logs", content: logs ? logs : "" });
+                if (data.title == "Function") {
+                  data.setInfo({ type: "Logs", content: logs ? logs : "" });
+                }
               }
             }}
           >

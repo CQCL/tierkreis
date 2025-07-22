@@ -56,6 +56,8 @@ generate:
   just stubs-generate 'examples/example_workers/error_worker'
   just stubs-generate 'examples/example_workers/hello_world_worker'
   just stubs-generate 'examples/example_workers/substitution_worker'
+  just stubs-generate 'examples/example_workers/chemistry_worker'
+  just stubs-generate 'examples/example_workers/qsci_worker'
 
   mkdir -p examples/example_workers/aer_worker
   mkdir -p examples/example_workers/nexus_worker

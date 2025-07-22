@@ -3,6 +3,8 @@ import secrets
 from sys import argv
 from time import time
 from typing import NamedTuple
+
+from tierkreis.controller.data.models import portmapping
 import pyscrypt  # type: ignore
 from tierkreis import Worker
 
@@ -10,6 +12,7 @@ worker = Worker("auth_worker")
 logger = logging.getLogger(__name__)
 
 
+@portmapping
 class EncryptionResult(NamedTuple):
     ciphertext: str
     time_taken: float

@@ -2,7 +2,7 @@ from types import NoneType
 from typing import assert_never, get_args, get_origin
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import PModel, PNamedModel, is_pnamedmodel
+from tierkreis.controller.data.models import PModel, PNamedModel, is_portmapping
 from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
@@ -47,13 +47,15 @@ def format_ptype(ptype: type[PType]) -> str:
     assert_never(ptype)
 
 
-def format_generics(generics: set[str]) -> str:
+def format_generics(generics: list[str]) -> str:
     return f", Generic[{', '.join(generics)}]" if generics else ""
 
 
 def format_tmodel_type(outputs: type[PModel]) -> str:
-    if is_pnamedmodel(outputs):
-        return str(outputs).split(".")[-1]  # unqualified type
+    if is_portmapping(outputs):
+        args = [str(x) for x in get_args(outputs)]
+        generics_str = f"[{', '.join(args)}]" if args else ""
+        return f"{outputs.__qualname__}{generics_str}"
 
     return f"TKR[{format_ptype(outputs)}]"
 
@@ -88,7 +90,7 @@ def format_typevar(name: str) -> str:
 
 
 def format_typevars(generics: set[str]) -> str:
-    return "\n".join([format_typevar(x) for x in generics])
+    return "\n".join([format_typevar(x) for x in sorted(list(generics))])
 
 
 def format_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
@@ -97,11 +99,11 @@ def format_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
     if origin is not None:
         pnamedmodel = origin
 
-    outs = {format_annotation(k, v) for k, v in pnamedmodel.__annotations__.items()}
+    outs = [format_annotation(k, v) for k, v in pnamedmodel.__annotations__.items()]
+    outs.sort()
     outs_str = "\n    ".join(outs)
 
-    generics = [str(x) for x in args]
-    generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
+    generics_str = format_generics([str(x) for x in args])
 
     return f"""
 class {pnamedmodel.__qualname__}(NamedTuple{generics_str}):
@@ -110,7 +112,8 @@ class {pnamedmodel.__qualname__}(NamedTuple{generics_str}):
 
 
 def format_pnamedmodels(models: set[type[PNamedModel]]) -> str:
-    return "\n\n".join([format_pnamedmodel(x) for x in models])
+    models_list = sorted(list(models), key=lambda x: x.__name__)
+    return "\n\n".join([format_pnamedmodel(x) for x in models_list])
 
 
 def format_namespace(namespace: Namespace) -> str:

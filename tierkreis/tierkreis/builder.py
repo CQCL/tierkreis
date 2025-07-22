@@ -175,7 +175,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
         return TList(init_tmodel(body.outputs_type, refs))
 
     @overload
-    def map[A: PType, B: TModel](
+    def map[A: PType, B: TNamedModel](
         self,
         body: (
             Callable[[TKR[A]], B] | TypedGraphRef[TKR[A], B] | "GraphBuilder[TKR[A], B]"
@@ -184,7 +184,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     ) -> TList[B]: ...
 
     @overload
-    def map[A: TModel, B: PType](  # type: ignore # overlapping overload warning
+    def map[A: TNamedModel, B: PType](
         self,
         body: (
             Callable[[A], TKR[B]] | TypedGraphRef[A, TKR[B]] | "GraphBuilder[A, TKR[B]]"
@@ -193,7 +193,7 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     ) -> TKR[list[B]]: ...
 
     @overload
-    def map[A: TModel, B: TModel](
+    def map[A: TNamedModel, B: TNamedModel](
         self, body: TypedGraphRef[A, B] | "GraphBuilder[A, B]", aes: TList[A]
     ) -> TList[B]: ...
 

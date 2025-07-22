@@ -125,50 +125,90 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return False
 
 
-def bytes_from_ptype(ptype: PType) -> bytes:
+def ser_from_ptype(ptype: PType) -> Any | bytes:
     match ptype:
         case bytes() | bytearray() | memoryview():
             # Top level bytes should be a clean pass-through.
             return bytes(ptype)
-        case (
-            bool()
-            | int()
-            | float()
-            | str()
-            | NoneType()
-            | collections.abc.Sequence()
-            | tuple()
-            | dict()
-            | collections.abc.Mapping()
-            | TypeVar()
-        ):
-            return json.dumps(ptype, cls=TierkreisEncoder).encode()
+        case bool() | int() | float() | str() | NoneType() | TypeVar():
+            return ptype
+        case collections.abc.Sequence():
+            return [ser_from_ptype(p) for p in ptype]
+        case collections.abc.Mapping():
+            return {k: ser_from_ptype(p) for k, p in ptype.items()}
         case DictConvertible():
-            return json.dumps(ptype.to_dict(), cls=TierkreisEncoder).encode()
+            return ser_from_ptype(ptype.to_dict())
         case ListConvertible():
-            return json.dumps(ptype.to_list(), cls=TierkreisEncoder).encode()
+            return ser_from_ptype(ptype.to_list())
         case BaseModel():
-            return ptype.model_dump_json().encode()
+            return ptype.model_dump(mode="json")
         case _:
             assert_never(ptype)
 
 
-def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
-    try:
-        j = json.loads(bs, cls=TierkreisDecoder)
-        if annotation is None:
-            return j
-        if isclass(annotation) and issubclass(annotation, DictConvertible):
-            return annotation.from_dict(j)
-        if isclass(annotation) and issubclass(annotation, ListConvertible):
-            return annotation.from_list(j)
-        if isclass(annotation) and issubclass(annotation, BaseModel):
-            return annotation(**j)
+def bytes_from_ptype(ptype: PType) -> bytes:
+    ser = ser_from_ptype(ptype)
+    match ptype:
+        case bytes():
+            # Top level bytes should be a clean pass-through.
+            return ptype
+        case _:
+            return json.dumps(ser, cls=TierkreisEncoder).encode()
 
+
+def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
+    origin = get_origin(annotation)
+    if origin is None:
+        origin = annotation
+
+    if isinstance(origin, TypeVar):
+        # Required to support generic parameters in functions,
+        # we can't really make a judgement about what type it
+        # should be deserialised in this case and so have to
+        # just return the value in its "raw" form.
+        return ser
+
+    if issubclass(origin, (bool, int, float, str, bytes, NoneType)):
+        return ser
+
+    if issubclass(origin, DictConvertible):
+        assert issubclass(annotation, origin)
+        return annotation.from_dict(ser)
+
+    if issubclass(origin, ListConvertible):
+        assert issubclass(annotation, origin)
+        return annotation.from_list(ser)
+
+    if issubclass(origin, BaseModel):
+        assert issubclass(annotation, origin)
+        return annotation(**ser)
+
+    if issubclass(origin, collections.abc.Sequence):
+        args = get_args(annotation)
+        if len(args) == 0:
+            return ser
+
+        return cast(T, [coerce_from_annotation(x, args[0]) for x in ser])
+
+    if issubclass(origin, collections.abc.Mapping):
+        args = get_args(annotation)
+        if len(args) == 0:
+            return ser
+
+        return cast(T, {k: coerce_from_annotation(v, args[1]) for k, v in ser.items()})
+
+    assert_never(ser)
+
+
+def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
+    if isclass(annotation) and issubclass(annotation, bytes):
+        return cast(T, bs)
+
+    j = json.loads(bs, cls=TierkreisDecoder)
+    if annotation is None:
         return j
 
-    except json.JSONDecodeError:
-        return cast(T, bs)
+    return coerce_from_annotation(j, annotation)
 
 
 def generics_in_ptype(ptype: type[PType]) -> set[str]:

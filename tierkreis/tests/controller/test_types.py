@@ -102,6 +102,28 @@ def test_bytes_roundtrip(ptype: PType):
     assert ptype == new_type
 
 
+annotated_ptypes: Sequence[tuple[PType, type]] = [
+    (ptype, type(ptype)) for ptype in ptypes
+] + [  # Not possible to deserialise without annotations
+    (
+        [DummyListConvertible(a=1), DummyListConvertible(a=2)],
+        list[DummyListConvertible],
+    ),
+    (
+        {"a": DummyListConvertible(a=1), "b": DummyListConvertible(a=2)},
+        dict[str, DummyListConvertible],
+    ),
+]
+
+
+@pytest.mark.parametrize("annotated_ptype", annotated_ptypes)
+def test_annotated_bytes_roundtrip(annotated_ptype: tuple[PType, type]):
+    ptype, annotation = annotated_ptype
+    bs = bytes_from_ptype(ptype)
+    new_type = ptype_from_bytes(bs, annotation)
+    assert ptype == new_type
+
+
 @pytest.mark.parametrize("ptype", type_list)
 def test_ptype_from_annotation(ptype: type[PType]):
     assert is_ptype(ptype)

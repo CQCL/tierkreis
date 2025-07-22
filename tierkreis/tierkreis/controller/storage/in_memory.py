@@ -1,15 +1,15 @@
 from collections import defaultdict
 from pathlib import Path
 from uuid import UUID
-from typing import Any
+from typing import Any, assert_never
 import shutil
 import os
 from time import time_ns
 
 from pydantic import BaseModel, Field
 
-from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.graph import NodeDef
+from tierkreis.controller.data.core import PortID, ValueRef
+from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
 from tierkreis.controller.data.location import (
     Loc,
     OutputLoc,
@@ -130,6 +130,7 @@ class ControllerInMemoryStorage:
             if (node_location, output_name) in self.port_map:
                 (new_location, new_port) = self.port_map[(node_location, output_name)]
                 return self.read_output(new_location, new_port)
+            return b""
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
@@ -152,3 +153,71 @@ class ControllerInMemoryStorage:
         tmp_dir.mkdir(parents=True)
         if self.work_dir.exists():
             shutil.move(self.work_dir, tmp_dir)
+
+    def evaluate_symbolic(self, graph: GraphData, parent_loc: Loc = Loc()) -> None:
+        self.nodes[parent_loc] = NodeData(
+            definition=Eval((-1, "body"), {}),
+            call_args=None,
+            is_done=False,
+            has_error=False,
+            metadata={},
+            error_logs="",
+            outputs={output: None for output in graph.node_outputs[graph.output_idx()]},
+        )
+        self.nodes[parent_loc.N(-1)] = NodeData(
+            definition=None,
+            call_args=None,
+            is_done=False,
+            has_error=False,
+            metadata={},
+            error_logs="",
+            outputs={"body": graph.model_dump_json().encode()},
+        )
+        self._evaluate_symbolic(graph, parent_loc)
+
+    def _evaluate_symbolic(self, graph: GraphData, parent_loc: Loc = Loc()) -> None:
+        unfinished_inputs = [((graph.output_idx(), ""), parent_loc)]
+        for input, parent in unfinished_inputs:
+            output_id = input[0]
+            output_node = graph.nodes[output_id]
+            outputs = list(graph.node_outputs[output_id])
+            loc = parent.N(output_id)
+
+            self.nodes[loc] = NodeData(
+                definition=output_node,
+                call_args=None,
+                is_done=False,
+                has_error=False,
+                metadata={},
+                error_logs="",
+                outputs={output: None for output in outputs},
+            )
+            new_unfinished_inputs = self._in_edges(output_node, output_id, parent)
+            unfinished_inputs += new_unfinished_inputs
+
+    def _in_edges(
+        self, node: NodeDef, node_id: int, parent: Loc
+    ) -> list[tuple[ValueRef, Loc]]:
+        parents = [(x, parent) for x in node.inputs.values()]
+        node_loc = parent.N(node_id)
+        match node.type:
+            case "eval":
+                parents.append((node.graph, node_loc))
+            case "loop":
+                parents.append((node.body, node_loc))
+            case "map":
+                parents.append((node.body, node_loc))
+            case "ifelse" | "eifelse":
+                parents.append((node.pred, node_loc))
+                parents.append((node.if_true, node_loc))
+                parents.append((node.if_false, node_loc))
+            case "const":
+                if hasattr(node.value, "graph_output_idx"):
+                    # This is a graph
+                    self.evaluate_symbolic(node.value, parent)
+            case "function" | "input" | "output":
+                pass
+            case _:
+                assert_never(node)
+
+        return parents

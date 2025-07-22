@@ -7,6 +7,7 @@ from types import NoneType, UnionType
 from typing import (
     Any,
     Mapping,
+    NamedTuple,
     Protocol,
     Self,
     Sequence,
@@ -18,6 +19,7 @@ from typing import (
     get_origin,
     runtime_checkable,
 )
+
 from pydantic import BaseModel
 from pydantic._internal._generics import get_args as pydantic_get_args
 from typing_extensions import TypeIs
@@ -51,6 +53,7 @@ type PType = (
     | bytes
     | DictConvertible
     | ListConvertible
+    | NamedTuple
     | BaseModel
 )
 """A restricted subset of Python types that can be used to annotate
@@ -101,6 +104,16 @@ def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
     return get_origin(o) is tuple
 
 
+def is_named_tuple(o: object) -> TypeIs[type[tuple]]:
+    if not isclass(o):
+        return False
+    # If it looks like a NamedTuple it is probably a NamedTuple
+    # (no way to check if it actually is in Python currently).
+    if issubclass(o, tuple) and hasattr(o, "_asdict") and hasattr(o, "_fields"):
+        return True
+    return False
+
+
 def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     if _is_generic(annotation):
         return True
@@ -112,6 +125,9 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         or _is_mapping(annotation)
     ):
         return all(is_ptype(x) for x in get_args(annotation))
+
+    elif is_named_tuple(annotation):
+        return True
 
     elif isclass(annotation) and issubclass(
         annotation, (DictConvertible, ListConvertible, BaseModel)
@@ -226,6 +242,9 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
         return set()
 
     if issubclass(ptype, (DictConvertible, ListConvertible)):
+        return set()
+
+    if is_named_tuple(ptype):
         return set()
 
     if issubclass(ptype, BaseModel):

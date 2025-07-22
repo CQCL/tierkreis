@@ -6,6 +6,7 @@ from typing import (
     Protocol,
     SupportsIndex,
     cast,
+    dataclass_transform,
     get_origin,
     runtime_checkable,
 )
@@ -23,6 +24,12 @@ class PNamedModel(Protocol):
 
     def _asdict(self) -> dict[str, PType]: ...
     def __getitem__(self, key: SupportsIndex, /) -> PType: ...
+
+
+@dataclass_transform()
+def portmapping[T: PNamedModel](cls: type[T]) -> type[T]:
+    setattr(cls, "__tkr_portmapping__", True)
+    return cls
 
 
 PModel = PNamedModel | PType

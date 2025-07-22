@@ -1,3 +1,4 @@
+from inspect import isclass
 from types import NoneType
 from typing import assert_never, get_args, get_origin
 from pydantic import BaseModel
@@ -12,6 +13,7 @@ from tierkreis.controller.data.types import (
     _is_mapping,
     _is_tuple,
     _is_union,
+    is_named_tuple,
 )
 from tierkreis.namespace import FunctionSpec, Namespace
 
@@ -41,6 +43,9 @@ def format_ptype(ptype: type[PType]) -> str:
     if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
         return ptype.__qualname__
 
+    if is_named_tuple(ptype):
+        return ptype.__qualname__
+
     if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
         return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 
@@ -60,12 +65,51 @@ def format_tmodel_type(outputs: type[PModel]) -> str:
     return f"TKR[{format_ptype(outputs)}]"
 
 
+def format_protocol_attribute(
+    port_id: PortID, ptype: type[PType], is_constructor: bool = False
+) -> str:
+    return (
+        f"@property\n    def {port_id}(self) -> {format_ptype(ptype)}: ... {NO_QA_STR}"
+    )
+
+
 def format_annotation(
     port_id: PortID, ptype: type[PType], is_constructor: bool = False
 ) -> str:
     sep = "=" if is_constructor else ":"
     constructor = f'(n, "{port_id}")' if is_constructor else ""
-    return f"{port_id}{sep} {format_tmodel_type(ptype)}{constructor} {NO_QA_STR}"
+    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} {NO_QA_STR}"
+
+
+def format_output(outputs: type[PModel]) -> str:
+    if isclass(outputs) and issubclass(outputs, PNamedModel):
+        return outputs.__qualname__
+
+    return f"TKR[{format_ptype(outputs)}]"
+
+
+def format_input_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
+    origin = get_origin(pnamedmodel)
+    args = get_args(pnamedmodel)
+    if origin is not None:
+        pnamedmodel = origin
+
+    outs = {
+        format_protocol_attribute(k, v) for k, v in pnamedmodel.__annotations__.items()
+    }
+    outs_str = "\n    ".join(outs)
+
+    generics = [str(x) for x in args]
+    generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
+
+    return f"""
+class {pnamedmodel.__qualname__}(Protocol{generics_str}):
+    {outs_str}
+"""
+
+
+def format_input_pnamedmodels(models: set[type[PNamedModel]]) -> str:
+    return "\n\n".join([format_input_pnamedmodel(x) for x in models])
 
 
 def format_function(namespace_name: str, fn: FunctionSpec) -> str:
@@ -93,7 +137,7 @@ def format_typevars(generics: set[str]) -> str:
     return "\n".join([format_typevar(x) for x in sorted(list(generics))])
 
 
-def format_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
+def format_output_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
     origin = get_origin(pnamedmodel)
     args = get_args(pnamedmodel)
     if origin is not None:
@@ -111,9 +155,9 @@ class {pnamedmodel.__qualname__}(NamedTuple{generics_str}):
 """
 
 
-def format_pnamedmodels(models: set[type[PNamedModel]]) -> str:
+def format_output_pnamedmodels(models: set[type[PNamedModel]]) -> str:
     models_list = sorted(list(models), key=lambda x: x.__name__)
-    return "\n\n".join([format_pnamedmodel(x) for x in models_list])
+    return "\n\n".join([format_output_pnamedmodel(x) for x in models_list])
 
 
 def format_namespace(namespace: Namespace) -> str:
@@ -124,14 +168,16 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
-from typing import Literal, NamedTuple, Sequence, TypeVar, Generic
+from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol
 from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType
 
 {format_typevars(namespace.generics)}
 
-{format_pnamedmodels(namespace.refs)}
+{format_input_pnamedmodels(namespace.input_models)}
+
+{format_output_pnamedmodels(namespace.output_models)}
 
 {functions_str}
     '''

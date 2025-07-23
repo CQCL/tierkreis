@@ -9,7 +9,7 @@ from time import time_ns
 from pydantic import BaseModel, Field
 
 from tierkreis.controller.data.core import PortID, ValueRef
-from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
+from tierkreis.controller.data.graph import Const, Eval, GraphData, NodeDef
 from tierkreis.controller.data.location import (
     Loc,
     OutputLoc,
@@ -182,7 +182,8 @@ class ControllerInMemoryStorage:
             output_node = graph.nodes[output_id]
             outputs = list(graph.node_outputs[output_id])
             loc = parent.N(output_id)
-
+            if "*" in outputs:
+                outputs.append("0")
             self.nodes[loc] = NodeData(
                 definition=output_node,
                 call_args=None,
@@ -206,6 +207,9 @@ class ControllerInMemoryStorage:
             case "loop":
                 parents.append((node.body, node_loc))
             case "map":
+                self.nodes[node_loc.M("0")] = NodeData(
+                    definition=Eval((-1, "body"), {})
+                )
                 parents.append((node.body, node_loc))
             case "ifelse" | "eifelse":
                 parents.append((node.pred, node_loc))
@@ -214,6 +218,15 @@ class ControllerInMemoryStorage:
             case "const":
                 if hasattr(node.value, "graph_output_idx"):
                     # This is a graph
+
+                    self.nodes[parent.parent().N(node_id)] = NodeData(
+                        definition=Const(node.value),
+                        outputs={"value": node.value.model_dump_json().encode()},
+                    )
+
+                    if parent.M("0") in self.nodes:
+                        # This is a map node
+                        parent = parent.M("0")
                     self.evaluate_symbolic(node.value, parent)
             case "function" | "input" | "output":
                 pass

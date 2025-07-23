@@ -47,15 +47,15 @@ def format_ptype(ptype: type[PType]) -> str:
     assert_never(ptype)
 
 
-def format_generics(generics: list[str]) -> str:
-    return f", Generic[{', '.join(generics)}]" if generics else ""
+def format_generics(generics: list[str], in_constructor: bool = True) -> str:
+    prefix = ", Generic" if in_constructor else ""
+    return f"{prefix}[{', '.join(generics)}]" if generics else ""
 
 
 def format_tmodel_type(outputs: type[PModel]) -> str:
     if is_portmapping(outputs):
         args = [str(x) for x in get_args(outputs)]
-        generics_str = f"[{', '.join(args)}]" if args else ""
-        return f"{outputs.__qualname__}{generics_str}"
+        return f"{outputs.__qualname__}{format_generics(args, False)}"
 
     return f"TKR[{format_ptype(outputs)}]"
 

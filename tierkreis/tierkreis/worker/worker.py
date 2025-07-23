@@ -73,7 +73,7 @@ class Worker:
 
         return function_decorator
 
-    def function(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
+    def task(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
         """Register a function with the worker."""
 
         def function_decorator(func: WorkerFunction) -> None:

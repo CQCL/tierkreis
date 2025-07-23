@@ -18,7 +18,7 @@ class EncryptionResult(NamedTuple):
     time_taken: float
 
 
-@worker.function()
+@worker.task()
 def encrypt(plaintext: str, work_factor: int) -> EncryptionResult:
     start_time = time()
     salt = secrets.token_bytes(32)

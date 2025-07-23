@@ -22,13 +22,13 @@ class CircuitsResult(NamedTuple):
     circuits: list[Circuit]
 
 
-@worker.function()
+@worker.task()
 def add_measure_all(circuit: Circuit) -> Circuit:
     circuit.measure_all()
     return circuit
 
 
-@worker.function(name="append_pauli_measurement")
+@worker.task(name="append_pauli_measurement")
 def append_pauli_measurement_impl(
     circuit: Circuit, pauli_string: QubitPauliString
 ) -> Circuit:
@@ -36,26 +36,26 @@ def append_pauli_measurement_impl(
     return circuit
 
 
-@worker.function()
+@worker.task()
 def optimise_phase_gadgets(circuit: Circuit) -> Circuit:
     Transform.OptimisePhaseGadgets().apply(circuit)
     return circuit
 
 
-@worker.function()
+@worker.task()
 def apply_pass(circuit: Circuit, compiler_pass: BasePass) -> Circuit:
     compiler_pass.apply(circuit)
     return circuit
 
 
-@worker.function()
+@worker.task()
 def compile_circuit_quantinuum(circuit: Circuit) -> Circuit:
     p = default_compilation_pass()
     p.apply(circuit)
     return circuit
 
 
-@worker.function()
+@worker.task()
 def compile_circuits_quantinuum(circuits: list[Circuit]) -> list[Circuit]:
     p = default_compilation_pass()
     for pytket_circuit in circuits:
@@ -63,7 +63,7 @@ def compile_circuits_quantinuum(circuits: list[Circuit]) -> list[Circuit]:
     return circuits
 
 
-@worker.function()
+@worker.task()
 def expectation(backend_result: BackendResult) -> float:
     expectation = expectation_from_counts(backend_result.get_counts())
     return expectation

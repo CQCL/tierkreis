@@ -14,7 +14,7 @@ from tierkreis import Worker, Value
 worker = Worker("tests_worker")
 
 
-@worker.function()
+@worker.task()
 def sleep_and_return[T](*, output: T) -> Value[T]:
     sleep(10)
     return Value(value=output)

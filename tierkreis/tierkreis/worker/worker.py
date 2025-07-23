@@ -11,7 +11,15 @@ from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
-from tierkreis.namespace import In0, In1, In2, In3, In4, Namespace, WorkerFunction
+from tierkreis.controller.data.worker_function import (
+    In0,
+    In1,
+    In2,
+    In3,
+    In4,
+    WorkerFunction,
+)
+from tierkreis.namespace import Namespace
 from tierkreis.worker.storage.filestorage import WorkerFileStorage
 from tierkreis.worker.storage.protocol import WorkerStorage
 

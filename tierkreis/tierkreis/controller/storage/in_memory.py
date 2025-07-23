@@ -216,21 +216,38 @@ class ControllerInMemoryStorage:
                 parents.append((node.if_true, node_loc))
                 parents.append((node.if_false, node_loc))
             case "const":
-                if hasattr(node.value, "graph_output_idx"):
-                    # This is a graph
-
-                    self.nodes[parent.parent().N(node_id)] = NodeData(
-                        definition=Const(node.value),
-                        outputs={"value": node.value.model_dump_json().encode()},
-                    )
-
-                    if parent.M("0") in self.nodes:
-                        # This is a map node
-                        parent = parent.M("0")
-                    self.evaluate_symbolic(node.value, parent)
+                self._handle_const(node, node_id, parent)
             case "function" | "input" | "output":
                 pass
             case _:
                 assert_never(node)
 
         return parents
+
+    def _handle_const(self, node: Const, node_id: int, parent: Loc) -> None:
+        if parent.parent() is None:
+            raise TierkreisError(
+                f"Node {node_id} with value {node.value} cannot be a graph output without a parent."
+            )
+        value: GraphData | None = None
+        if isinstance(node.value, GraphData):
+            value = node.value
+        elif isinstance(node.value, dict):
+            try:
+                value = GraphData(**node.value)
+            except TypeError:
+                raise TierkreisError(f"Cannot convert {node}s value to GraphData.")
+        if value is None:
+            # not a graph
+            return
+        # This is a graph
+
+        self.nodes[parent.parent().N(node_id)] = NodeData(
+            definition=Const(value),
+            outputs={"value": value.model_dump_json().encode()},
+        )
+
+        if parent.M("0") in self.nodes:
+            # This is a map node
+            parent = parent.M("0")
+        self.evaluate_symbolic(value, parent)

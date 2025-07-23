@@ -52,7 +52,7 @@ class Worker:
         sys.excepthook = handle_unhandled_exception
 
     def _load_args(
-        self, f: WorkerFunction[In0, In1, In2, In3, In4], inputs: dict[str, Path]
+        self, f: WorkerFunction, inputs: dict[str, Path]
     ) -> dict[str, PType]:
         bs = {k: self.storage.read_input(p) for k, p in inputs.items()}
         types = self.namespace.functions[f.__name__].ins
@@ -86,7 +86,7 @@ class Worker:
     ) -> Callable[[WorkerFunction[In0, In1, In2, In3, In4]], None]:
         """Register a function with the worker."""
 
-        def function_decorator(func: WorkerFunction[In0, In1, In2, In3, In4]) -> None:
+        def function_decorator(func: WorkerFunction):
             func_name = func.__name__
             self.namespace.add_from_annotations(func.__name__, func.__annotations__)
 

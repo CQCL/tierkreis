@@ -6,6 +6,7 @@ from sys import argv
 from typing import NamedTuple, Sequence
 
 from tierkreis.controller.data.location import WorkerCallArgs
+from tierkreis.controller.data.models import portmapping
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.namespace import TierkreisWorkerError
 from tierkreis.worker.storage.protocol import WorkerStorage
@@ -53,6 +54,7 @@ def append[T](v: list[T], a: T) -> list[T]:  # noqa: E741
     return v
 
 
+@portmapping
 class Headed[T: PType](NamedTuple):
     head: T
     rest: list[T]
@@ -110,6 +112,7 @@ def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
     return list(zip(a, b))
 
 
+@portmapping
 class Unzipped[U: PType, V: PType](NamedTuple):
     a: list[U]
     b: list[V]
@@ -126,6 +129,7 @@ def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
     return (a, b)
 
 
+@portmapping
 class Untupled[U: PType, V: PType](NamedTuple):
     a: U
     b: V

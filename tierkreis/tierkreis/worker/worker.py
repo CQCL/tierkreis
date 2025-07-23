@@ -11,12 +11,11 @@ from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
-from tierkreis.namespace import Namespace
+from tierkreis.namespace import Namespace, WorkerFunction
 from tierkreis.worker.storage.filestorage import WorkerFileStorage
 from tierkreis.worker.storage.protocol import WorkerStorage
 
 logger = getLogger(__name__)
-WorkerFunction = Callable[..., PModel]
 PrimitiveTask = Callable[[WorkerCallArgs, WorkerStorage], None]
 
 
@@ -79,7 +78,7 @@ class Worker:
 
         def function_decorator(func: WorkerFunction) -> None:
             func_name = func.__name__
-            self.namespace.add_from_annotations(func.__name__, func.__annotations__)
+            self.namespace.add_from_annotations(func)
 
             def wrapper(node_definition: WorkerCallArgs):
                 kwargs = self._load_args(func, node_definition.inputs)

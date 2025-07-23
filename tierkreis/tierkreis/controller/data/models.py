@@ -6,12 +6,15 @@ from typing import (
     Protocol,
     SupportsIndex,
     cast,
+    dataclass_transform,
     get_origin,
     runtime_checkable,
 )
 from typing_extensions import TypeIs
 from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
 from tierkreis.controller.data.types import PType, generics_in_ptype
+
+TKR_PORTMAPPING_FLAG = "__tkr_portmapping__"
 
 
 @runtime_checkable
@@ -23,6 +26,12 @@ class PNamedModel(Protocol):
 
     def _asdict(self) -> dict[str, PType]: ...
     def __getitem__(self, key: SupportsIndex, /) -> PType: ...
+
+
+@dataclass_transform()
+def portmapping[T: PNamedModel](cls: type[T]) -> type[T]:
+    setattr(cls, TKR_PORTMAPPING_FLAG, True)
+    return cls
 
 
 PModel = PNamedModel | PType
@@ -51,11 +60,11 @@ class TNamedModel(Protocol):
 TModel = TNamedModel | TKR
 
 
-def is_pnamedmodel(o) -> TypeIs[type[PNamedModel]]:
+def is_portmapping(o) -> TypeIs[type[PNamedModel]]:
     origin = get_origin(o)
     if origin is not None:
-        return is_pnamedmodel(origin)
-    return isclass(o) and issubclass(o, PNamedModel)
+        return is_portmapping(origin)
+    return hasattr(o, TKR_PORTMAPPING_FLAG)
 
 
 def is_tnamedmodel(o) -> TypeIs[type[TNamedModel]]:
@@ -80,7 +89,7 @@ def dict_from_tmodel(tmodel: TModel) -> dict[PortID, ValueRef]:
 
 
 def model_fields(model: type[PModel] | type[TModel]) -> list[str]:
-    if is_pnamedmodel(model):
+    if is_portmapping(model):
         return getattr(model, "_fields")
 
     if is_tnamedmodel(model):
@@ -102,7 +111,7 @@ def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
 
 
 def generics_in_pmodel(pmodel: type[PModel]) -> set[str]:
-    if is_pnamedmodel(pmodel):
+    if is_portmapping(pmodel):
         origin = get_origin(pmodel)
         if origin is not None:
             return generics_in_pmodel(origin)

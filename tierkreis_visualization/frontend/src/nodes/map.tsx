@@ -75,7 +75,7 @@ function replaceMap(
   };
 }
 
-export function MapNode({ data }: NodeProps<BackendNode>) {
+export function MapNode({ data: node_data }: NodeProps<BackendNode>) {
   const reactFlowInstance = useReactFlow<BackendNode, Edge>();
   const loadChildren = async (
     workflowId: string,
@@ -90,7 +90,7 @@ export function MapNode({ data }: NodeProps<BackendNode>) {
           data.nodes,
           data.edges,
           workflowId,
-          data.setInfo,
+          node_data.setInfo,
           parentId
         );
         const oldEdges = reactFlowInstance.getEdges();
@@ -110,10 +110,10 @@ export function MapNode({ data }: NodeProps<BackendNode>) {
       });
   };
   return (
-    <NodeStatusIndicator status={data.status}>
+    <NodeStatusIndicator status={node_data.status}>
       <Card className="w-[180px]">
         <CardHeader>
-          <CardTitle>{data.title}</CardTitle>
+          <CardTitle>{node_data.title}</CardTitle>
         </CardHeader>
 
         <CardContent>
@@ -122,14 +122,24 @@ export function MapNode({ data }: NodeProps<BackendNode>) {
               variant="secondary"
               size="icon"
               onClick={() =>
-                loadChildren(data.workflowId, data.node_location, data.id)
+                loadChildren(
+                  node_data.workflowId,
+                  node_data.node_location,
+                  node_data.id
+                )
               }
             >
               <Plus />
             </Button>
           </div>
-          <InputHandleArray handles={data.handles.inputs} id={data.id} />
-          <OutputHandleArray handles={data.handles.outputs} id={data.id} />
+          <InputHandleArray
+            handles={node_data.handles.inputs}
+            id={node_data.id}
+          />
+          <OutputHandleArray
+            handles={node_data.handles.outputs}
+            id={node_data.id}
+          />
         </CardContent>
       </Card>
     </NodeStatusIndicator>

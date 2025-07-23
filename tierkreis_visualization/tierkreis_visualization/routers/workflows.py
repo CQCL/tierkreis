@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Any, assert_never
 from uuid import UUID
 
@@ -22,6 +23,7 @@ from tierkreis_visualization.routers.models import PyGraph
 from tierkreis_visualization.routers.navigation import breadcrumbs
 
 router = APIRouter(prefix="/workflows")
+logger = logging.getLogger(__name__)
 
 
 # Update the routes section with this new route:
@@ -200,21 +202,39 @@ def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/logs")
-def get_logs(workflow_id: UUID, node_location_str: str):
+def get_function_logs(workflow_id: UUID, node_location_str: str) -> PlainTextResponse:
     node_location = parse_node_location(node_location_str)
     storage = get_storage(workflow_id)
-    if not storage.is_node_started(node_location):
-        return PlainTextResponse("Node not started yet.")
-    definition = storage.read_worker_call_args(node_location)
-
-    if definition.logs_path is None:
-        return PlainTextResponse("Node definition not found.")
-    if not definition.logs_path.exists():
-        return PlainTextResponse("No logs available.")
+    try:
+        definition = storage.read_node_def(node_location)
+    except (FileNotFoundError, TierkreisError):
+        return PlainTextResponse("Node definition not found; node is not started.")
+    if definition.type != "function":
+        return PlainTextResponse("Only function nodes should have a log file.")
+    try:
+        call_args = storage.read_worker_call_args(node_location)
+    except (FileNotFoundError, TierkreisError):
+        logger.warning("Function node has no valid call args.")
+        return PlainTextResponse("No logfile found")
+    if call_args.logs_path is None or not call_args.logs_path.exists():
+        return PlainTextResponse("No logfile found")
 
     messages = ""
+    with open(call_args.logs_path, "rb") as fh:
+        for line in fh:
+            messages += line.decode()
 
-    with open(definition.logs_path, "rb") as fh:
+    return PlainTextResponse(messages)
+
+
+@router.get("/{workflow_id}/logs")
+def get_logs(workflow_id: UUID) -> PlainTextResponse:
+    storage = get_storage(workflow_id)
+    if not storage.logs_path.is_file():
+        return PlainTextResponse("Logfile not found.")
+
+    messages = ""
+    with open(storage.logs_path, "rb") as fh:
         for line in fh:
             messages += line.decode()
 

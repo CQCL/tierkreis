@@ -60,6 +60,7 @@ const Main = (props: {
   workflow_id: string;
   workflows: Workflow[];
   infoProps: InfoProps;
+  setInfo: (arg: InfoProps) => void;
 }) => {
   // Client node state (not definition)
   const [nodes, setNodes] = useState(props.initialNodes);
@@ -82,6 +83,48 @@ const Main = (props: {
     node.data.pinned = true;
   }, []);
   const reactFlowInstance = useReactFlow();
+
+  React.useEffect(() => {
+    const url = `${URL}/${props.workflow_id}/nodes/-`;
+    const ws = new WebSocket(url);
+    const edges = reactFlowInstance.getEdges();
+    const nodes = reactFlowInstance.getNodes() as BackendNode[];
+    ws.onmessage = (event) => {
+      const graph = parseGraph(
+        JSON.parse(event.data),
+        props.workflow_id,
+        props.setInfo
+      );
+      const nodesMap = new Map(nodes.map((node) => [node.id, node]));
+      const newNodes = bottomUpLayout(graph.nodes, graph.edges);
+      newNodes.forEach((node) => {
+        const existingNode = nodesMap.get(node.id);
+        if (existingNode) {
+          existingNode.data = {
+            ...existingNode.data,
+            status: node.data.status,
+          };
+          existingNode.position = {
+            ...(reactFlowInstance.getNode(node.id)?.position ?? node.position),
+          };
+        } else {
+          nodesMap.set(node.id, node);
+        }
+      });
+      setNodes(Array.from(nodesMap.values()));
+      const edgeIds = new Set(edges.map((edge) => edge.id));
+      const newEdges = graph.edges.filter((edge) => !edgeIds.has(edge.id));
+      if (newEdges.length > 0) {
+        setEdges([...edges, ...newEdges]);
+      }
+    };
+    return () => {
+      if (ws.readyState == WebSocket.OPEN) {
+        ws.close();
+      }
+    };
+  }, [props, reactFlowInstance, setNodes, setEdges]);
+
   return (
     <Layout
       workflows={props.workflows}
@@ -120,7 +163,6 @@ const Main = (props: {
 
 export default function App() {
   const { workflowId: workflow_id_url } = useParams();
-  const [info, setInfo] = useState<InfoProps>({ type: "Logs", content: "" });
 
   const workflowsQuery = useSuspenseQuery<Workflow[]>({
     queryKey: ["workflows", URL],
@@ -141,6 +183,27 @@ export default function App() {
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
   });
   const workflow_id = workflow_id_url || workflowsQuery.data[0].id;
+
+  const logs = useSuspenseQuery({
+    queryKey: ["workflowLogs", workflow_id],
+    queryFn: async () => {
+      const url = `${URL}/${workflow_id}/logs`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/text" },
+      });
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+      return response.text();
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+  const [info, setInfo] = useState<InfoProps>({
+    type: "Logs",
+    content: logs.data,
+  });
+
   const graphQuery = useSuspenseQuery({
     queryKey: ["workflowGraph", workflow_id],
     queryFn: async () => {
@@ -198,6 +261,7 @@ export default function App() {
       workflows={workflowsQuery.data}
       workflow_id={workflow_id}
       infoProps={info}
+      setInfo={setInfo}
     />
   );
 }

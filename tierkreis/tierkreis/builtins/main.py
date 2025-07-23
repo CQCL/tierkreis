@@ -13,7 +13,6 @@ from tierkreis.worker.worker import Worker
 
 
 logger = getLogger(__name__)
-
 worker = Worker("builtins")
 
 
@@ -48,7 +47,7 @@ def impl_id[T: PType](value: T) -> T:
 
 
 @worker.function()
-def append[T](v: list[T], a: T) -> list[T]:  # noqa: E741
+def append[T: PType](v: list[T], a: T) -> list[T]:  # noqa: E741
     v.append(a)
     return v
 
@@ -65,7 +64,7 @@ def head[T: PType](v: list[T]) -> Headed[T]:  # noqa: E741
 
 
 @worker.function(name="len")
-def impl_len[A](v: list[A]) -> int:
+def impl_len[A: PType](v: list[A]) -> int:
     logger.info("len: %s", v)
     return len(v)
 
@@ -106,7 +105,7 @@ def concat(lhs: str, rhs: str) -> str:
 
 
 @worker.function(name="zip")
-def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
+def zip_impl[U: PType, V: PType](a: list[U], b: list[V]) -> list[tuple[U, V]]:
     return list(zip(a, b))
 
 
@@ -122,7 +121,7 @@ def unzip[U: PType, V: PType](value: list[tuple[U, V]]) -> Unzipped[U, V]:
 
 
 @worker.function(name="tuple")
-def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
+def tuple_impl[U: PType, V: PType](a: U, b: V) -> tuple[U, V]:
     return (a, b)
 
 

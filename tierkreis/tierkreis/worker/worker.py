@@ -11,12 +11,11 @@ from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
-from tierkreis.namespace import Namespace
+from tierkreis.namespace import In0, In1, In2, In3, In4, Namespace, WorkerFunction
 from tierkreis.worker.storage.filestorage import WorkerFileStorage
 from tierkreis.worker.storage.protocol import WorkerStorage
 
 logger = getLogger(__name__)
-WorkerFunction = Callable[..., PModel]
 PrimitiveTask = Callable[[WorkerCallArgs, WorkerStorage], None]
 
 
@@ -45,7 +44,7 @@ class Worker:
         sys.excepthook = handle_unhandled_exception
 
     def _load_args(
-        self, f: WorkerFunction, inputs: dict[str, Path]
+        self, f: WorkerFunction[In0, In1, In2, In3, In4], inputs: dict[str, Path]
     ) -> dict[str, PType]:
         bs = {k: self.storage.read_input(p) for k, p in inputs.items()}
         types = self.namespace.functions[f.__name__].ins
@@ -74,16 +73,18 @@ class Worker:
 
         return function_decorator
 
-    def function(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
+    def function(
+        self, name: str | None = None
+    ) -> Callable[[WorkerFunction[In0, In1, In2, In3, In4]], None]:
         """Register a function with the worker."""
 
-        def function_decorator(func: WorkerFunction) -> None:
+        def function_decorator(func: WorkerFunction[In0, In1, In2, In3, In4]) -> None:
             func_name = func.__name__
             self.namespace.add_from_annotations(func.__name__, func.__annotations__)
 
             def wrapper(node_definition: WorkerCallArgs):
                 kwargs = self._load_args(func, node_definition.inputs)
-                results = func(**kwargs)
+                results = func(**kwargs)  # type: ignore
                 self._save_results(node_definition.outputs, results)
 
             self.functions[func_name] = wrapper

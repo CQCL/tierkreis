@@ -39,7 +39,6 @@ class FunctionSpec:
         elif is_portmapping(annotation):
             self.outs = annotation
         elif not is_ptype(annotation):
-            print(dir(annotation))
             raise TierkreisError(f"Expected PModel found {annotation}")
         else:
             self.outs = annotation

@@ -89,10 +89,10 @@ def visualize_graph_symbolic(
             page.evaluate("() => localStorage.clear()")
             page.reload()
 
-            page.wait_for_event("close")
+            page.wait_for_event("close", timeout=0)
 
         except Error as e:
             logger.error("Browser was closed prematurely: %s", e)
         finally:
             logger.info("\nBrowser closed! Resuming Python script.")
-            server_thread.join(timeout=5)
+            server_thread.join(timeout=1)

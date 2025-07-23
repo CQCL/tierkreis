@@ -7,6 +7,7 @@ from uuid import UUID
 
 from tierkreis.cli.tkr import load_graph, _load_inputs, main
 from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.data.types import PType
 from tierkreis.exceptions import TierkreisError
 
 from tests.controller.sample_graphdata import simple_eval
@@ -48,7 +49,7 @@ input_params = [
             "input1:tierkreis/tests/cli/data/input1",
             "input2:tierkreis/tests/cli/data/input2",
         ],
-        {"input1": b"test", "input2": b'{"a": 5, "b": "string"}'},
+        {"input1": "test", "input2": {"a": 5, "b": "string"}},
     ),
 ]
 
@@ -56,7 +57,7 @@ input_params = [
 @pytest.mark.parametrize(
     "input,result", input_params, ids=["json_input", "binary_input"]
 )
-def test_load_inputs(input: list[str], result: dict[str, bytes]) -> None:
+def test_load_inputs(input: list[str], result: dict[str, PType]) -> None:
     assert _load_inputs(input) == result
 
 

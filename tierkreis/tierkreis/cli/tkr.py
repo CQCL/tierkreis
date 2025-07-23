@@ -8,7 +8,7 @@ from typing import Any, Callable
 
 from tierkreis.cli.run_workflow import run_workflow
 from tierkreis.controller.data.graph import GraphData
-from tierkreis.controller.data.types import ptype_from_bytes
+from tierkreis.controller.data.types import PType, ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
 
 
@@ -34,7 +34,7 @@ def load_graph(graph_input: str) -> GraphData:
     return build_submission_graph()
 
 
-def _load_inputs(input_files: list[str]) -> dict[str, bytes]:
+def _load_inputs(input_files: list[str]) -> dict[str, PType]:
     if len(input_files) == 1 and input_files[0].endswith(".json"):
         with open(input_files[0], "r") as fh:
             return {k: json.dumps(v).encode() for k, v in json.load(fh).items()}
@@ -44,7 +44,7 @@ def _load_inputs(input_files: list[str]) -> dict[str, bytes]:
             raise TierkreisError(f"Invalid argument: {input_file}")
         key, value = input_file.split(":")
         with open(value, "rb") as fh:
-            inputs[key] = fh.read()
+            inputs[key] = ptype_from_bytes(fh.read())
     return inputs
 
 

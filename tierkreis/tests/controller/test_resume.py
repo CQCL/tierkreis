@@ -26,7 +26,7 @@ from tests.controller.typed_graphdata import (
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.types import ptype_from_bytes
+from tierkreis.controller.data.types import PType, ptype_from_bytes
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
@@ -73,7 +73,7 @@ ids = [
 
 @pytest.mark.parametrize("graph,output,name,id,inputs", params, ids=ids)
 def test_resume_eval(
-    graph: GraphData, output: Any, name: str, id: int, inputs: dict[str, Any]
+    graph: GraphData, output: Any, name: str, id: int, inputs: dict[str, PType]
 ):
     g = graph
     storage = ControllerFileStorage(UUID(int=id), name=name)

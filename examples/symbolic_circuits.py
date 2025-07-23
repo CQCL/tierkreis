@@ -120,10 +120,10 @@ def main() -> None:
         multi_executor,
         symbolic_execution().data,
         {
-            "ansatz": json.dumps(ansatz.to_dict()).encode(),
-            "a": json.dumps(0.2).encode(),
-            "b": json.dumps(0.55).encode(),
-            "c": json.dumps(0.75).encode(),
+            "ansatz": ansatz,
+            "a": 0.2,
+            "b": 0.55,
+            "c": 0.75,
         },
         polling_interval_seconds=0.1,
     )

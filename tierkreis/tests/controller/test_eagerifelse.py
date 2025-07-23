@@ -19,6 +19,7 @@ from tests.controller.sample_graphdata import (
 
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.types import PType
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
@@ -38,12 +39,12 @@ def eagerifelse_long_running() -> GraphData:
     return g
 
 
-params = [({"pred": b"true"}, 1), ({"pred": b"false"}, 2)]
+params = [({"pred": True}, 1), ({"pred": False}, 2)]
 
 
 @pytest.mark.slow
 @pytest.mark.parametrize("input, output", params)
-def test_eagerifelse_long_running(input: dict[str, bytes], output: int) -> None:
+def test_eagerifelse_long_running(input: dict[str, PType], output: int) -> None:
     g = eagerifelse_long_running()
     storage = ControllerFileStorage(UUID(int=150), name="eagerifelse_long_running")
 

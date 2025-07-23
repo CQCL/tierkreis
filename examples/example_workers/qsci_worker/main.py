@@ -34,7 +34,7 @@ class AdaptCircuitResult(BaseModel):
     adapt_circuit: dict
 
 
-@worker.function()
+@worker.task()
 def state_prep(
     h0_init: float,
     h1_init: list,
@@ -86,7 +86,7 @@ class TimeEvolutionCircuitsResult(BaseModel):
     circuits: list[dict]
 
 
-@worker.function()
+@worker.task()
 def circuits_from_hamiltonians(
     h0_init: float,
     h1_init: list,
@@ -164,7 +164,7 @@ class EnergyResult(BaseModel):
     energy: float
 
 
-@worker.function()
+@worker.task()
 def energy_from_results(
     h0_hsim: float,
     h1_hsim: list,

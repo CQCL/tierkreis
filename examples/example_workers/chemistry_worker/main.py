@@ -26,7 +26,7 @@ class HamiltonianResult(BaseModel):
     h2: list
 
 
-@worker.function()
+@worker.task()
 def make_ham(
     geometry: str, basis: str, charge: int, mo_occ: list[int], n_cas: int, n_elecas: int
 ) -> HamiltonianResult:

@@ -11,12 +11,12 @@ logger = logging.getLogger(__name__)
 worker = Worker("aer_worker")
 
 
-@worker.function()
+@worker.task()
 def submit(circuits: list[Circuit], n_shots: int) -> list[BackendResult]:
     return AerBackend().run_circuits(circuits, n_shots=n_shots)
 
 
-@worker.function()
+@worker.task()
 def submit_single(circuit: Circuit, n_shots: int) -> BackendResult:
     return AerBackend().run_circuit(circuit, n_shots=n_shots)
 

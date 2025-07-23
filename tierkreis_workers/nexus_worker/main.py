@@ -78,19 +78,19 @@ def get_backend_results(execute_job_ref: ExecuteJobRef) -> list[BackendResult]:
     return backend_results
 
 
-@worker.function()
+@worker.task()
 def submit(circuits: list[Circuit], n_shots: int) -> ExecuteJobRef:
     return execute_circuits(
         circuits, n_shots=n_shots, backend_name="H1-1LE", project_name="Riken-Test"
     )
 
 
-@worker.function()
+@worker.task()
 def check_status(execute_ref: ExecuteJobRef) -> str:
     return _check_status(execute_ref, 30).name
 
 
-@worker.function()
+@worker.task()
 def get_results(execute_ref: ExecuteJobRef) -> list[BackendResult]:
     return get_backend_results(execute_ref)
 

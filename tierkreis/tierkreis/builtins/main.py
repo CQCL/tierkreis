@@ -18,37 +18,37 @@ logger = getLogger(__name__)
 worker = Worker("builtins")
 
 
-@worker.function()
+@worker.task()
 def iadd(a: int, b: int) -> int:
     logger.debug(f"iadd {a} {b}")
     return a + b
 
 
-@worker.function()
+@worker.task()
 def itimes(a: int, b: int) -> int:
     logger.debug(f"itimes {a} {b}")
     return a * b
 
 
-@worker.function()
+@worker.task()
 def igt(a: int, b: int) -> bool:
     logger.debug(f"igt {a} {b}")
     return a > b
 
 
-@worker.function(name="and")
+@worker.task(name="and")
 def impl_and(a: bool, b: bool) -> bool:
     logger.debug(f"igt {a} {b}")
     return a and b
 
 
-@worker.function(name="id")
+@worker.task(name="id")
 def impl_id[T: PType](value: T) -> T:
     logger.debug(f"id {value}")
     return value
 
 
-@worker.function()
+@worker.task()
 def append[T](v: list[T], a: T) -> list[T]:  # noqa: E741
     v.append(a)
     return v
@@ -60,24 +60,24 @@ class Headed[T: PType](NamedTuple):
     rest: list[T]
 
 
-@worker.function()
+@worker.task()
 def head[T: PType](v: list[T]) -> Headed[T]:  # noqa: E741
     head, rest = v[0], v[1:]
     return Headed(head=head, rest=rest)
 
 
-@worker.function(name="len")
+@worker.task(name="len")
 def impl_len[A](v: list[A]) -> int:
     logger.info("len: %s", v)
     return len(v)
 
 
-@worker.function()
+@worker.task()
 def str_eq(a: str, b: str) -> bool:
     return a == b
 
 
-@worker.function()
+@worker.task()
 def str_neq(a: str, b: str) -> bool:
     return a != b
 
@@ -102,12 +102,12 @@ def unfold_values(args: WorkerCallArgs, storage: WorkerStorage) -> None:
             raise TierkreisWorkerError(f"Expected list found {value_list}")
 
 
-@worker.function()
+@worker.task()
 def concat(lhs: str, rhs: str) -> str:
     return lhs + rhs
 
 
-@worker.function(name="zip")
+@worker.task(name="zip")
 def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
     return list(zip(a, b))
 
@@ -118,13 +118,13 @@ class Unzipped[U: PType, V: PType](NamedTuple):
     b: list[V]
 
 
-@worker.function()
+@worker.task()
 def unzip[U: PType, V: PType](value: list[tuple[U, V]]) -> Unzipped[U, V]:
     value_a, value_b = map(list, zip(*value))
     return Unzipped(a=value_a, b=value_b)
 
 
-@worker.function(name="tuple")
+@worker.task(name="tuple")
 def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
     return (a, b)
 
@@ -135,14 +135,14 @@ class Untupled[U: PType, V: PType](NamedTuple):
     b: V
 
 
-@worker.function()
+@worker.task()
 def untuple[U: PType, V: PType](value: tuple[U, V]) -> Untupled[U, V]:
     logger.info("untuple: %s", value)
     value_a, value_b = value
     return Untupled(a=value_a, b=value_b)
 
 
-@worker.function()
+@worker.task()
 def mean(values: list[float]) -> float:
     return statistics.mean(values)
 

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 worker = Worker("error_worker")
 
 
-@worker.function()
+@worker.task()
 def fail() -> str:
     raise Exception("I refuse!")
     return "I failed to refuse"

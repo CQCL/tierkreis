@@ -89,7 +89,6 @@ def format_output(outputs: type[PModel]) -> str:
 
 
 def format_input_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
-    print(pnamedmodel)
     origin = get_origin(pnamedmodel)
     args = get_args(pnamedmodel)
     if origin is not None:
@@ -104,7 +103,7 @@ def format_input_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
     generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
 
     return f"""
-class {pnamedmodel.__qualname__}(PNamedModel, Protocol{generics_str}):
+class {pnamedmodel.__qualname__}(Struct, Protocol{generics_str}):
     {outs_str}
 """
 
@@ -171,8 +170,8 @@ def format_namespace(namespace: Namespace) -> str:
 
 from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol
 from types import NoneType
-from tierkreis.controller.data.models import TKR, OpaqueType, PNamedModel
-from tierkreis.controller.data.types import PType
+from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.data.types import PType, Struct
 
 {format_typevars(namespace.generics)}
 

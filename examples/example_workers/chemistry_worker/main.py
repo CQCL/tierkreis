@@ -3,12 +3,12 @@
 # dependencies = ["pydantic", "tierkreis", "pyscf"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../../tierkreis" }
+# tierkreis = { path = "../../../tierkreis", editable = true }
 # ///
 import logging
 from sys import argv
+from typing import NamedTuple
 
-from pydantic import BaseModel
 
 from chemistry.active_space import get_frozen
 from chemistry.molecule import extract_hamiltonian_rhf
@@ -20,18 +20,18 @@ logger = logging.getLogger(__name__)
 worker = Worker("chemistry_worker")
 
 
-class Molecule(BaseModel):
+class Molecule(NamedTuple):
     geometry: list[tuple[str, list[float]]]
     basis: str
     charge: int
 
 
-class CompleteActiveSpace(BaseModel):
+class CompleteActiveSpace(NamedTuple):
     n: int
     n_ele: int
 
 
-class Hamiltonian(BaseModel):
+class Hamiltonian(NamedTuple):
     h0: float
     h1: list[list[float]]
     h2: list[list[list[list[float]]]]

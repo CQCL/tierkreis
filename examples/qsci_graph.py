@@ -20,6 +20,8 @@ from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
 from example_workers.chemistry_worker.stubs import (
     make_ham,
+    Molecule,
+    CompleteActiveSpace,
 )
 from example_workers.qsci_worker.stubs import (
     circuits_from_hamiltonians,
@@ -30,17 +32,6 @@ from example_workers.aer_worker.stubs import submit_single
 from example_workers.pytket_worker.stubs import compile_circuit_quantinuum
 
 root_loc = Loc()
-
-
-class Molecule(NamedTuple):
-    geometry: list[tuple[str, list[float]]]
-    basis: str
-    charge: int
-
-
-class CompleteActiveSpace(NamedTuple):
-    n: int
-    n_ele: int
 
 
 def _compile_and_run() -> GraphBuilder[

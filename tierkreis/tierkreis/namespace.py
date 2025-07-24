@@ -78,6 +78,8 @@ class Namespace:
 
             if is_portmapping(annotations["return"]):
                 self.output_models.add(annotations["return"])
+            elif is_pnamedmodel(annotations["return"]):
+                self.input_models.add(annotations["return"])
             fn.add_outputs(annotations["return"])
 
             self.functions[fn.name] = fn

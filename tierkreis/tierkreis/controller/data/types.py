@@ -7,7 +7,6 @@ from types import NoneType, UnionType
 from typing import (
     Any,
     Mapping,
-    NamedTuple,
     Protocol,
     Self,
     Sequence,
@@ -54,7 +53,6 @@ type _PType = (
     | bytes
     | DictConvertible
     | ListConvertible
-    | NamedTuple
     | BaseModel
 )
 
@@ -156,6 +154,8 @@ def ser_from_ptype(ptype: PType) -> Any | bytes:
             return bytes(ptype)
         case bool() | int() | float() | str() | NoneType() | TypeVar():
             return ptype
+        case Struct():
+            return {k: ser_from_ptype(p) for k, p in ptype._asdict().items()}
         case collections.abc.Sequence():
             return [ser_from_ptype(p) for p in ptype]
         case collections.abc.Mapping():
@@ -166,8 +166,6 @@ def ser_from_ptype(ptype: PType) -> Any | bytes:
             return ser_from_ptype(ptype.to_list())
         case BaseModel():
             return ptype.model_dump(mode="json")
-        case Struct():
-            return {k: ser_from_ptype(p) for k, p in ptype._asdict().items()}
         case _:
             assert_never(ptype)
 
@@ -209,6 +207,14 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
         assert issubclass(annotation, origin)
         return annotation(**ser)
 
+    if issubclass(origin, Struct):
+        import logging
+
+        logger = logging.getLogger(__name__)
+        logger.error(origin)
+        logger.error(ser)
+        return cast(T, origin(**ser))
+
     if issubclass(origin, collections.abc.Sequence):
         args = get_args(annotation)
         if len(args) == 0:
@@ -222,9 +228,6 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
             return ser
 
         return cast(T, {k: coerce_from_annotation(v, args[1]) for k, v in ser.items()})
-
-    if issubclass(origin, Struct):
-        return cast(T, origin(**ser))
 
     assert_never(ser)
 

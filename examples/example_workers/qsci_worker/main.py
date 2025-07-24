@@ -3,14 +3,13 @@
 # dependencies = ["pydantic", "pytket", "pytket-qiskit", "tierkreis"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../../tierkreis" }
+# tierkreis = { path = "../../../tierkreis", editable = true }
 # ///
 import logging
 from sys import argv
 from typing import Counter, NamedTuple, cast
 
 import numpy as np
-from pydantic import BaseModel
 from pytket._tket.circuit import Circuit
 from pytket.backends.backendresult import BackendResult
 from pytket.circuit import Qubit
@@ -29,18 +28,18 @@ logger = logging.getLogger(__name__)
 worker = Worker("qsci_worker")
 
 
-class Molecule(BaseModel):
+class Molecule(NamedTuple):
     geometry: list[tuple[str, list[float]]]
     basis: str
     charge: int
 
 
-class CompleteActiveSpace(BaseModel):
+class CompleteActiveSpace(NamedTuple):
     n: int
     n_ele: int
 
 
-class Hamiltonian(BaseModel):
+class Hamiltonian(NamedTuple):
     h0: float
     h1: list[list[float]]
     h2: list[list[list[list[float]]]]

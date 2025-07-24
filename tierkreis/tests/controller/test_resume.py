@@ -25,13 +25,13 @@ from tests.controller.typed_graphdata import (
     gcd,
 )
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.types import PType, ptype_from_bytes
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
+from tierkreis.controller.data.graph import GraphData
 
 params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (simple_eval(), 12, "simple_eval", 1, {}),

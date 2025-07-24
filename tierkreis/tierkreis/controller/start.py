@@ -12,7 +12,7 @@ from tierkreis.controller.storage.adjacency import outputs_iter
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
-from tierkreis.controller.data.graph import Eval, GraphData, HasInputs, NodeDef
+from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
 from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -80,10 +80,7 @@ def start(
     if parent is None:
         raise TierkreisError(f"{node.type} node must have parent Loc.")
 
-    if isinstance(node, HasInputs):
-        ins = {k: (parent.N(idx), p) for k, (idx, p) in node.inputs.items()}
-    else:
-        ins = {}
+    ins = {k: (parent.N(idx), p) for k, (idx, p) in node.inputs.items()}
 
     logger.debug(f"start {node_location} {node} {ins} {output_list}")
     if node.type == "function":

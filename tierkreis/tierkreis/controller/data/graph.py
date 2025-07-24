@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 import logging
-from typing import Any, Callable, Literal, Protocol, assert_never, runtime_checkable
-from typing_extensions import TypeIs
+from typing import Any, Callable, Literal, assert_never
 from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
@@ -50,6 +49,7 @@ class Map:
 class Const:
     value: Any
     outputs: set[PortID] = field(default_factory=lambda: set())
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default="const")
 
 
@@ -78,6 +78,7 @@ class EagerIfElse:
 class Input:
     name: str
     outputs: set[PortID] = field(default_factory=lambda: set())
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["input"] = field(default="input")
 
 
@@ -90,12 +91,6 @@ class Output:
 
 NodeDef = Func | Eval | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
 NodeDefModel = RootModel[NodeDef]
-
-
-@runtime_checkable
-class HasInputs(Protocol):
-    @property
-    def inputs(self) -> dict[PortID, ValueRef]: ...
 
 
 class GraphData(BaseModel):
@@ -132,6 +127,12 @@ class GraphData(BaseModel):
     ) -> Callable[[PortID], ValueRef]:
         return self.add(Map(body, inputs))
 
+    def if_else(self, pred: ValueRef, if_true: ValueRef, if_false: ValueRef):
+        return self.add(IfElse(pred, if_true, if_false))
+
+    def eager_if_else(self, pred: ValueRef, if_true: ValueRef, if_false: ValueRef):
+        return self.add(EagerIfElse(pred, if_true, if_false))
+
     def output(self, inputs: dict[PortID, ValueRef]) -> None:
         self.add(Output(inputs))
 
@@ -160,9 +161,6 @@ class GraphData(BaseModel):
 
         for i, port in node.inputs.values():
             self.nodes[i].outputs.add(port)
-        if isinstance(node, HasInputs):
-            for i, port in node.inputs.values():
-                self.node_outputs[i].add(port)
 
         return lambda k: (idx, k)
 

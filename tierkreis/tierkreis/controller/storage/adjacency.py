@@ -3,7 +3,6 @@ from typing import assert_never
 
 from tierkreis.controller.data.core import PortID, ValueRef
 from tierkreis.controller.data.graph import (
-    HasInputs,
     NodeDef,
 )
 from tierkreis.controller.data.location import Loc
@@ -13,10 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
-    if isinstance(node, (HasInputs)):
-        parents = {k: v for k, v in node.inputs.items()}
-    else:
-        parents = {}
+    parents = {k: v for k, v in node.inputs.items()}
 
     match node.type:
         case "eval":

@@ -14,7 +14,7 @@ from tests.controller.sample_graphdata import (
     simple_map,
     simple_partial,
 )
-from tests.controller.loop_graphdata import loop_multiple_acc
+from tests.controller.loop_graphdata import loop_multiple_acc, loop_multiple_acc_untyped
 from tests.controller.typed_graphdata import (
     tuple_untuple,
     typed_destructuring,
@@ -25,13 +25,13 @@ from tests.controller.typed_graphdata import (
     gcd,
 )
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.types import PType, ptype_from_bytes
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
+from tierkreis.controller.data.graph import GraphData
 
 params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (simple_eval(), 12, "simple_eval", 1, {}),
@@ -41,7 +41,20 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (simple_ifelse(), 1, "simple_ifelse", 6, {"pred": b"true"}),
     (simple_ifelse(), 2, "simple_ifelse", 7, {"pred": b"false"}),
     (factorial().get_data(), 24, "factorial", 8, {"value": b"4"}),
-    (loop_multiple_acc(), {"acc": 6, "acc2": 12, "acc3": 18}, "multi_acc", 9, {}),
+    (
+        loop_multiple_acc_untyped(),
+        {"acc1": 6, "acc2": 12, "acc3": 18},
+        "multi_acc",
+        9,
+        {},
+    ),
+    (
+        loop_multiple_acc().get_data(),
+        {"acc1": 6, "acc2": 12, "acc3": 18},
+        "multi_acc",
+        9,
+        {},
+    ),
     (simple_eagerifelse(), 1, "simple_eagerifelse", 10, {"pred": b"true"}),
     (simple_partial(), 12, "simple_partial", 11, {}),
     (factorial().get_data(), 120, "factorial", 12, {"value": b"5"}),
@@ -65,6 +78,7 @@ ids = [
     "simple_ifelse_true",
     "simple_ifelse_false",
     "factorial_4",
+    "loop_multiple_acc_untyped",
     "loop_multiple_acc",
     "simple_eagerifelse",
     "simple_partial",

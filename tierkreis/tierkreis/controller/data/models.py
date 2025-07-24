@@ -11,21 +11,19 @@ from typing import (
     runtime_checkable,
 )
 from typing_extensions import TypeIs
-from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
+from tierkreis.controller.data.core import (
+    NodeIndex,
+    PortID,
+    RestrictedNamedTuple,
+    ValueRef,
+)
 from tierkreis.controller.data.types import PType, generics_in_ptype
 
 TKR_PORTMAPPING_FLAG = "__tkr_portmapping__"
 
 
 @runtime_checkable
-class PNamedModel(Protocol):
-    """A struct whose members are restricted to being PTypes.
-
-    E.g. used to specify multiple outputs in Python worker code.
-    """
-
-    def _asdict(self) -> dict[str, PType]: ...
-    def __getitem__(self, key: SupportsIndex, /) -> PType: ...
+class PNamedModel(RestrictedNamedTuple[PType], Protocol): ...
 
 
 @dataclass_transform()

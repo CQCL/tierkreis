@@ -7,6 +7,7 @@ from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
     PType,
+    Struct,
     _is_generic,
     _is_list,
     _is_mapping,
@@ -39,6 +40,9 @@ def format_ptype(ptype: type[PType]) -> str:
         return f"dict[{', '.join(args)}]"
 
     if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
+        return ptype.__qualname__
+
+    if issubclass(ptype, Struct):
         return ptype.__qualname__
 
     if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):

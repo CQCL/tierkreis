@@ -59,7 +59,7 @@ class Namespace:
             fn = FunctionSpec(
                 name=name, namespace=self.name, ins={}, outs=NoneType, generics=generics
             )
-            [self.refs.add(v) for k, v in annotations.items() if is_portmapping(v)]
+            [self.refs.add(v) for v in annotations.values() if is_portmapping(v)]
             fn.add_inputs({k: v for k, v in annotations.items() if k != "return"})
             fn.add_outputs(annotations["return"])
             self.functions[fn.name] = fn

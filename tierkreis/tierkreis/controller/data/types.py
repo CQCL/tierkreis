@@ -20,6 +20,7 @@ from typing import (
 )
 from pydantic import BaseModel
 from pydantic._internal._generics import get_args as pydantic_get_args
+from tierkreis.controller.data.core import RestrictedNamedTuple
 from typing_extensions import TypeIs
 
 
@@ -37,7 +38,7 @@ class ListConvertible(Protocol):
     def from_list(cls, arg: list, /) -> "Self": ...
 
 
-type PType = (
+type _PType = (
     bool
     | int
     | float
@@ -53,6 +54,15 @@ type PType = (
     | ListConvertible
     | BaseModel
 )
+
+
+@runtime_checkable
+class Struct(RestrictedNamedTuple[_PType], Protocol): ...
+
+
+type PType = _PType | Struct
+"""A restricted subset of Python types that can be used to annotate
+worker functions for automatic codegen of graph builder stubs."""
 """A restricted subset of Python types that can be used to annotate
 worker functions for automatic codegen of graph builder stubs."""
 
@@ -114,11 +124,11 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return all(is_ptype(x) for x in get_args(annotation))
 
     elif isclass(annotation) and issubclass(
-        annotation, (DictConvertible, ListConvertible, BaseModel)
+        annotation, (DictConvertible, ListConvertible, BaseModel, Struct)
     ):
         return True
 
-    elif annotation in get_args(PType.__value__):
+    elif annotation in get_args(_PType.__value__):
         return True
 
     else:
@@ -142,6 +152,8 @@ def ser_from_ptype(ptype: PType) -> Any | bytes:
             return ser_from_ptype(ptype.to_list())
         case BaseModel():
             return ptype.model_dump(mode="json")
+        case Struct():
+            return {k: ser_from_ptype(p) for k, p in ptype._asdict().items()}
         case _:
             assert_never(ptype)
 
@@ -197,6 +209,9 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
 
         return cast(T, {k: coerce_from_annotation(v, args[1]) for k, v in ser.items()})
 
+    if issubclass(origin, Struct):
+        return cast(T, origin(**ser))
+
     assert_never(ser)
 
 
@@ -225,7 +240,7 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
     if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
         return set()
 
-    if issubclass(ptype, (DictConvertible, ListConvertible)):
+    if issubclass(ptype, (DictConvertible, ListConvertible, Struct)):
         return set()
 
     if issubclass(ptype, BaseModel):

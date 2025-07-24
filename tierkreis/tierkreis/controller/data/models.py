@@ -3,11 +3,13 @@ from inspect import isclass
 from itertools import chain
 from typing import (
     Literal,
+    Mapping,
     Protocol,
     SupportsIndex,
     cast,
     dataclass_transform,
     get_origin,
+    overload,
     runtime_checkable,
 )
 from typing_extensions import TypeIs
@@ -58,7 +60,15 @@ class TNamedModel(Protocol):
 TModel = TNamedModel | TKR
 
 
-def is_portmapping(o) -> TypeIs[type[PNamedModel]]:
+@overload
+def is_portmapping(o: PModel) -> TypeIs[PNamedModel]: ...
+@overload
+def is_portmapping(o: type[PModel]) -> TypeIs[type[PNamedModel]]: ...
+@overload
+def is_portmapping(o: type[TModel]) -> TypeIs[type[TNamedModel]]: ...
+def is_portmapping(
+    o,
+) -> TypeIs[type[PNamedModel]] | TypeIs[PNamedModel] | TypeIs[type[TNamedModel]]:
     origin = get_origin(o)
     if origin is not None:
         return is_portmapping(origin)
@@ -72,8 +82,8 @@ def is_tnamedmodel(o) -> TypeIs[type[TNamedModel]]:
     return isclass(o) and issubclass(o, TNamedModel)
 
 
-def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
-    if isinstance(pmodel, PNamedModel):
+def dict_from_pmodel(pmodel: PModel) -> Mapping[PortID, PType]:
+    if is_portmapping(pmodel):
         return pmodel._asdict()
 
     return {"value": pmodel}

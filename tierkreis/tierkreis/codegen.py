@@ -8,12 +8,12 @@ from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
     PType,
+    Struct,
     _is_generic,
     _is_list,
     _is_mapping,
     _is_tuple,
     _is_union,
-    is_named_tuple,
 )
 from tierkreis.namespace import FunctionSpec, Namespace
 
@@ -43,7 +43,7 @@ def format_ptype(ptype: type[PType]) -> str:
     if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
         return ptype.__qualname__
 
-    if is_named_tuple(ptype):
+    if issubclass(ptype, Struct):
         return ptype.__qualname__
 
     if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
@@ -82,13 +82,14 @@ def format_annotation(
 
 
 def format_output(outputs: type[PModel]) -> str:
-    if isclass(outputs) and issubclass(outputs, PNamedModel):
+    if isclass(outputs) and is_portmapping(outputs):
         return outputs.__qualname__
 
     return f"TKR[{format_ptype(outputs)}]"
 
 
 def format_input_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
+    print(pnamedmodel)
     origin = get_origin(pnamedmodel)
     args = get_args(pnamedmodel)
     if origin is not None:
@@ -103,7 +104,7 @@ def format_input_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
     generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
 
     return f"""
-class {pnamedmodel.__qualname__}(Protocol{generics_str}):
+class {pnamedmodel.__qualname__}(PNamedModel, Protocol{generics_str}):
     {outs_str}
 """
 
@@ -170,7 +171,7 @@ def format_namespace(namespace: Namespace) -> str:
 
 from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol
 from types import NoneType
-from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.data.models import TKR, OpaqueType, PNamedModel
 from tierkreis.controller.data.types import PType
 
 {format_typevars(namespace.generics)}

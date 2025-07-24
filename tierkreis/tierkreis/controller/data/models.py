@@ -7,6 +7,7 @@ from typing import (
     cast,
     dataclass_transform,
     get_origin,
+    overload,
     runtime_checkable,
 )
 from typing_extensions import TypeIs
@@ -58,11 +59,26 @@ class TNamedModel(RestrictedNamedTuple[TKR[PType]], Protocol):
 TModel = TNamedModel | TKR
 
 
-def is_portmapping(o) -> TypeIs[type[PNamedModel]]:
+@overload
+def is_portmapping(o: PModel) -> TypeIs[PNamedModel]: ...
+@overload
+def is_portmapping(o: type[PModel]) -> TypeIs[type[PNamedModel]]: ...
+@overload
+def is_portmapping(o: type[TModel]) -> TypeIs[type[TNamedModel]]: ...
+def is_portmapping(
+    o,
+) -> TypeIs[type[PNamedModel]] | TypeIs[PNamedModel] | TypeIs[type[TNamedModel]]:
     origin = get_origin(o)
     if origin is not None:
         return is_portmapping(origin)
     return hasattr(o, TKR_PORTMAPPING_FLAG)
+
+
+def is_pnamedmodel(o) -> TypeIs[type[PNamedModel]]:
+    origin = get_origin(o)
+    if origin is not None:
+        return is_tnamedmodel(origin)
+    return isclass(o) and issubclass(o, PNamedModel)
 
 
 def is_tnamedmodel(o) -> TypeIs[type[TNamedModel]]:
@@ -73,7 +89,7 @@ def is_tnamedmodel(o) -> TypeIs[type[TNamedModel]]:
 
 
 def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
-    if isinstance(pmodel, PNamedModel):
+    if is_portmapping(pmodel):
         return pmodel._asdict()
 
     return {"value": pmodel}

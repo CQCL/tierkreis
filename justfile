@@ -44,9 +44,9 @@ examples:
 stubs-generate dir:
   #!/usr/bin/env bash
   cd {{dir}}
-  python main.py --stubs-path ./stubs.py
-  ruff format stubs.py
-  ruff check --fix stubs.py
+  uv run main.py --stubs-path ./stubs.py
+  uv run ruff format stubs.py
+  uv run ruff check --fix stubs.py
 
 generate: 
   just stubs-generate 'tierkreis/tierkreis/builtins'

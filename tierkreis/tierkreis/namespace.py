@@ -6,6 +6,7 @@ from typing import Any, Callable
 from tierkreis.controller.data.models import (
     PModel,
     PNamedModel,
+    is_pnamedmodel,
     is_portmapping,
 )
 from tierkreis.controller.data.types import PType, is_ptype
@@ -54,7 +55,7 @@ class Namespace:
     output_models: set[type[PNamedModel]] = field(default_factory=lambda: set())
 
     def _add_input_model(self, annotation: Any) -> None:
-        if is_portmapping(annotation):
+        if is_pnamedmodel(annotation):
             sub_annotations = get_annotations(annotation)
             [
                 self._add_input_model(sub_annotation)

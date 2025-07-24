@@ -49,7 +49,7 @@ input_params = [
             "input1:tierkreis/tests/cli/data/input1",
             "input2:tierkreis/tests/cli/data/input2",
         ],
-        {"input1": "test", "input2": {"a": 5, "b": "string"}},
+        {"input1": b"test\n", "input2": {"a": 5, "b": "string"}},
     ),
 ]
 

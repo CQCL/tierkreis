@@ -208,11 +208,6 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
         return annotation(**ser)
 
     if issubclass(origin, Struct):
-        import logging
-
-        logger = logging.getLogger(__name__)
-        logger.error(origin)
-        logger.error(ser)
         return cast(T, origin(**ser))
 
     if issubclass(origin, collections.abc.Sequence):

@@ -4,39 +4,32 @@ from uuid import UUID
 import pytest
 from tests.controller.partial_graphdata import partial_intersection
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import (
-    Const,
-    Eval,
-    Func,
-    GraphData,
-    Output,
-)
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
-from tierkreis import Labels
 from tierkreis.exceptions import TierkreisError
+from tierkreis_core import GraphData
 
 
 def will_fail() -> GraphData:
     graph = GraphData()
-    out = graph.add(Func("failing_worker.fail", {}))("fail")
-    graph.add(Output({"fail": out}))
+    out = graph.func("failing_worker.fail", {})("fail")
+    graph.output({"fail": out})
     return graph
 
 
 def wont_fail() -> GraphData:
     graph = GraphData()
-    out = graph.add(Func("failing_worker.wont_fail", {}))("wont_fail")
-    graph.add(Output({"wont_fail": out}))
+    out = graph.func("failing_worker.wont_fail", {})("wont_fail")
+    graph.output({"wont_fail": out})
     return graph
 
 
 def fail_in_eval() -> GraphData:
     graph = GraphData()
-    subgraph_const = graph.add(Const(will_fail()))(Labels.VALUE)
-    eval = graph.add(Eval(subgraph_const, {}))
-    graph.add(Output({"simple_eval_output": eval("fail")}))
+    subgraph_const = graph.const(will_fail())
+    eval = graph.eval(subgraph_const, {})
+    graph.output({"simple_eval_output": eval("fail")})
     return graph
 
 

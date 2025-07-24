@@ -1,52 +1,44 @@
-from tierkreis.controller.data.graph import (
-    Const,
-    Eval,
-    Func,
-    GraphData,
-    Input,
-    Output,
-)
-from tierkreis import Labels
 
 
 def ternary_add() -> GraphData:
     g = GraphData()
-    a = g.add(Input("a"))("a")
-    b = g.add(Input("b"))("b")
-    c = g.add(Input("c"))("c")
+    a = g.input("a")
+    b = g.input("b")
+    c = g.input("c")
 
-    step_one = g.add(Func("builtins.iadd", {"a": a, "b": b}))(Labels.VALUE)
-    step_two = g.add(Func("builtins.iadd", {"a": step_one, "b": c}))(Labels.VALUE)
+    step_one = g.func("builtins.iadd", {"a": a, "b": b})("value")
+    step_two = g.func("builtins.iadd", {"a": step_one, "b": c})("value")
 
-    g.add(Output({"ternary_add_output": step_two}))
+    g.output({"ternary_add_output": step_two})
     return g
 
 
 def double_partial() -> GraphData:
     g = GraphData()
-    one = g.add(Const(1))(Labels.VALUE)
-    two = g.add(Const(2))(Labels.VALUE)
-    three = g.add(Const(3))(Labels.VALUE)
-    termary_add_const = g.add(Const(ternary_add()))(Labels.VALUE)
 
-    add_add_1 = g.add(Eval(termary_add_const, {"a": one}))("body")
-    add_3 = g.add(Eval(add_add_1, {"b": two}))("body")
-    six = g.add(Eval(add_3, {"c": three}))("ternary_add_output")
+    one = g.const(1)
+    two = g.const(2)
+    three = g.const(3)
+    termary_add_const = g.const(ternary_add())
 
-    g.add(Output({"double_partial_output": six}))
+    add_add_1 = g.eval(termary_add_const, {"a": one})("body")
+    add_3 = g.eval(add_add_1, {"b": two})("body")
+    six = g.eval(add_3, {"c": three})("ternary_add_output")
+
+    g.output({"double_partial_output": six})
     return g
 
 
 def partial_intersection() -> GraphData:
     g = GraphData()
-    one = g.add(Const(1))(Labels.VALUE)
-    two = g.add(Const(2))(Labels.VALUE)
-    three = g.add(Const(3))(Labels.VALUE)
-    termary_add_const = g.add(Const(ternary_add()))(Labels.VALUE)
+    one = g.const(1)
+    two = g.const(2)
+    three = g.const(3)
+    termary_add_const = g.const(ternary_add())
 
-    add_add_1 = g.add(Eval(termary_add_const, {"a": one}))("body")
-    add_3 = g.add(Eval(add_add_1, {"a": one, "b": two}))("body")
-    six = g.add(Eval(add_3, {"c": three}))("ternary_add_output")
+    add_add_1 = g.eval(termary_add_const, {"a": one})("body")
+    add_3 = g.eval(add_add_1, {"a": one, "b": two})("body")
+    six = g.eval(add_3, {"c": three})("ternary_add_output")
 
-    g.add(Output({"double_partial_output": six}))
+    g.output({"double_partial_output": six})
     return g

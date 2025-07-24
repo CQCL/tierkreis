@@ -2,19 +2,7 @@ from dataclasses import dataclass
 from inspect import isclass
 from typing import Any, Callable, Protocol, overload
 
-from tierkreis.controller.data.core import EmptyModel, ValueRef
-from tierkreis.controller.data.graph import (
-    Const,
-    EagerIfElse,
-    Eval,
-    Func,
-    GraphData,
-    IfElse,
-    Input,
-    Loop,
-    Map,
-    Output,
-)
+from tierkreis.controller.data.core import EmptyModel
 from tierkreis.controller.data.models import (
     TKR,
     TModel,
@@ -24,6 +12,7 @@ from tierkreis.controller.data.models import (
     init_tmodel,
 )
 from tierkreis.controller.data.types import PType
+from tierkreis_core import GraphData, ValueRef
 
 
 @dataclass
@@ -65,51 +54,52 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         self.data = GraphData()
         self.inputs_type = inputs_type
         self.outputs_type = outputs_type
-        inputs = [self.data.add(Input(x))(x) for x in model_fields(inputs_type)]
+        inputs = [self.data.input(x) for x in model_fields(inputs_type)]
         self.inputs = init_tmodel(self.inputs_type, inputs)
 
     def get_data(self) -> GraphData:
         return self.data
 
     def outputs(self, outputs: Outputs):
-        self.data.add(Output(inputs=dict_from_tmodel(outputs)))
+        self.data.output(inputs=dict_from_tmodel(outputs))
 
     def const[T: PType](self, value: T) -> TKR[T]:
-        idx, port = self.data.add(Const(value))("value")
+        idx, port = self.data.const(value)
         return TKR[T](idx, port)
 
     def ifelse[A: PType, B: PType](
         self, pred: TKR[bool], if_true: TKR[A], if_false: TKR[B]
     ) -> TKR[A] | TKR[B]:
-        idx, port = self.data.add(
-            IfElse(pred.value_ref(), if_true.value_ref(), if_false.value_ref())
+        idx, port = self.data.if_else(
+            pred.value_ref(), if_true.value_ref(), if_false.value_ref()
         )("value")
         return TKR(idx, port)
 
     def eifelse[A: PType, B: PType](
         self, pred: TKR[bool], if_true: TKR[A], if_false: TKR[B]
     ) -> TKR[A] | TKR[B]:
-        idx, port = self.data.add(
-            EagerIfElse(pred.value_ref(), if_true.value_ref(), if_false.value_ref())
+        idx, port = self.data.eager_if_else(
+            pred.value_ref(), if_true.value_ref(), if_false.value_ref()
         )("value")
         return TKR(idx, port)
 
     def _graph_const[A: TModel, B: TModel](
         self, graph: "GraphBuilder[A, B]"
     ) -> TypedGraphRef[A, B]:
-        idx, port = self.data.add(Const(graph.data.model_dump()))("value")
+        idx, port = self.data.const(graph.data.to_dict())
         return TypedGraphRef[A, B](
             graph_ref=(idx, port),
             outputs_type=graph.outputs_type,
             inputs_type=graph.inputs_type,
+            graph_ref=ValueRef(idx, port), outputs_type=graph.outputs_type
         )
 
     def task[Out: TModel](self, f: Function[Out]) -> Out:
         name = f"{f.namespace}.{f.__class__.__name__}"
         ins = dict_from_tmodel(f)
-        idx, _ = self.data.add(Func(name, ins))("dummy")
+        idx, _ = self.data.func(name, ins)("dummy")
         OutModel = f.out()
-        outputs = [(idx, x) for x in model_fields(OutModel)]
+        outputs = [ValueRef(idx, x) for x in model_fields(OutModel)]
         return init_tmodel(OutModel, outputs)
 
     @overload
@@ -122,8 +112,8 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         if isinstance(body, GraphBuilder):
             body = self._graph_const(body)
 
-        idx, _ = self.data.add(Eval(body.graph_ref, dict_from_tmodel(a)))("dummy")
-        outputs = [(idx, x) for x in model_fields(body.outputs_type)]
+        idx, _ = self.data.eval(body.graph_ref, dict_from_tmodel(a))("dummy")
+        outputs = [ValueRef(idx, x) for x in model_fields(body.outputs_type)]
         return init_tmodel(body.outputs_type, outputs)
 
     @overload
@@ -137,20 +127,20 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
             body = self._graph_const(body)
 
         g = body.graph_ref
-        idx, _ = self.data.add(Loop(g, dict_from_tmodel(a), "should_continue"))("dummy")
-        outputs = [(idx, x) for x in model_fields(body.outputs_type)]
+        idx, _ = self.data.loop(g, dict_from_tmodel(a), "should_continue")("dummy")
+        outputs = [ValueRef(idx, x) for x in model_fields(body.outputs_type)]
         return init_tmodel(body.outputs_type, outputs)
 
     def _unfold_list[T: PType](self, ref: TKR[list[T]]) -> TList[TKR[T]]:
-        ins = (ref.node_index, ref.port_id)
-        idx, _ = self.data.add(Func("builtins.unfold_values", {"value": ins}))("dummy")
+        ins = ValueRef(ref.node_index, ref.port_id)
+        idx, _ = self.data.func("builtins.unfold_values", {"value": ins})("dummy")
         return TList(TKR[T](idx, "*"))
 
     def _fold_list[T: PType](self, refs: TList[TKR[T]]) -> TKR[list[T]]:
-        value_ref = refs._value.node_index, refs._value.port_id
-        idx, _ = self.data.add(
-            Func("builtins.fold_values", {"values_glob": value_ref})
-        )("dummy")
+        value_ref = ValueRef(refs._value.node_index, refs._value.port_id)
+        idx, _ = self.data.func("builtins.fold_values", {"values_glob": value_ref})(
+            "dummy"
+        )
         return TKR[list[T]](idx, "value")
 
     def _map_fn_single_in[A: PType, B: TModel](
@@ -168,9 +158,9 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         self, aes: TList[A], body: TypedGraphRef[A, B]
     ) -> TList[B]:
         ins = dict_from_tmodel(aes._value)
-        idx, _ = self.data.add(Map(body.graph_ref, ins))("x")
+        idx, _ = self.data.map(body.graph_ref, ins)("x")
 
-        refs = [(idx, s + "-*") for s in model_fields(body.outputs_type)]
+        refs = [ValueRef(idx, s + "-*") for s in model_fields(body.outputs_type)]
         return TList(init_tmodel(body.outputs_type, refs))
 
     @overload

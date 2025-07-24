@@ -1,11 +1,10 @@
 import pytest
-from tierkreis.controller.data.graph import Const, GraphData, Output
 from tierkreis.exceptions import TierkreisError
-from tierkreis.labels import Labels
+from tierkreis_core import GraphData
 
 
 def test_only_one_output():
     with pytest.raises(TierkreisError):
         g = GraphData()
-        g.add(Output({"one": g.add(Const(1))(Labels.VALUE)}))
-        g.add(Output({"two": g.add(Const(2))(Labels.VALUE)}))
+        g.output({"one": g.const(1)})
+        g.output({"two": g.const(2)})

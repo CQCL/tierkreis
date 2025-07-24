@@ -27,6 +27,7 @@ def typed_doubler_plus():
     g = GraphBuilder(DoublerInput, TKR[int])
     mul = g.task(itimes(a=g.inputs.x, b=g.const(2)))
     out = g.task(iadd(a=mul, b=g.inputs.intercept))
+    print(out)
     g.outputs(out)
     return g
 

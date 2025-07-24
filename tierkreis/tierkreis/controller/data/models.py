@@ -4,28 +4,29 @@ from itertools import chain
 from typing import (
     Literal,
     Protocol,
-    SupportsIndex,
     cast,
     dataclass_transform,
     get_origin,
     runtime_checkable,
 )
 from typing_extensions import TypeIs
-from tierkreis.controller.data.core import NodeIndex, PortID, ValueRef
+from tierkreis.controller.data.core import (
+    NodeIndex,
+    PortID,
+    RestrictedNamedTuple,
+    ValueRef,
+)
 from tierkreis.controller.data.types import PType, generics_in_ptype
 
 TKR_PORTMAPPING_FLAG = "__tkr_portmapping__"
 
 
 @runtime_checkable
-class PNamedModel(Protocol):
+class PNamedModel(RestrictedNamedTuple[PType], Protocol):
     """A struct whose members are restricted to being PTypes.
 
     E.g. used to specify multiple outputs in Python worker code.
     """
-
-    def _asdict(self) -> dict[str, PType]: ...
-    def __getitem__(self, key: SupportsIndex, /) -> PType: ...
 
 
 @dataclass_transform()
@@ -48,13 +49,10 @@ class TKR[T: PModel]:
 
 
 @runtime_checkable
-class TNamedModel(Protocol):
+class TNamedModel(RestrictedNamedTuple[TKR[PType]], Protocol):
     """A struct whose members are restricted to being references to PTypes.
 
     E.g. in graph builder code these are outputs of tasks."""
-
-    def _asdict(self) -> dict[str, TKR[PType]]: ...
-    def __getitem__(self, key: SupportsIndex, /) -> TKR[PType]: ...
 
 
 TModel = TNamedModel | TKR

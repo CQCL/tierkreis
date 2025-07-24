@@ -1,7 +1,7 @@
 import logging
 from time import sleep
 
-from tierkreis.controller.data.graph import Eval, GraphData
+from tierkreis.controller.data.graph import Eval
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.controller.executor.protocol import ControllerExecutor
@@ -10,6 +10,7 @@ from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node
 from tierkreis.controller.data.core import PortID, ValueRef
 from tierkreis.exceptions import TierkreisError
+from tierkreis_core import GraphData
 
 root_loc = Loc("")
 logger = logging.getLogger(__name__)

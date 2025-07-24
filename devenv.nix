@@ -4,6 +4,7 @@
 
   packages = [
     pkgs.just
+    pkgs.maturin
     pkgs.graphviz
   ] ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs.darwin.apple_sdk; [
     frameworks.CoreServices

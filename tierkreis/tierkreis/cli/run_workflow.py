@@ -3,12 +3,12 @@ import uuid
 import logging
 
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.types import PType
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
+from tierkreis_core import GraphData
 
 logger = logging.getLogger(__name__)
 

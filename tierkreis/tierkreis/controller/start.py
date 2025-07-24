@@ -12,7 +12,8 @@ from tierkreis.controller.storage.adjacency import outputs_iter
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
-from tierkreis.controller.data.graph import Eval, GraphData, HasInputs, NodeDef
+from tierkreis_core import GraphData
+from tierkreis.controller.data.graph import Eval, HasInputs, NodeDef
 from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage

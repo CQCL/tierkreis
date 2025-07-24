@@ -7,7 +7,6 @@ from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.graph import (
     EagerIfElse,
     Eval,
-    GraphData,
     Loop,
     Map,
     NodeDef,
@@ -18,6 +17,7 @@ from tierkreis.controller.start import NodeRunData
 from tierkreis.controller.storage.adjacency import outputs_iter, unfinished_inputs
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.labels import Labels
+from tierkreis_core import GraphData
 
 logger = getLogger(__name__)
 

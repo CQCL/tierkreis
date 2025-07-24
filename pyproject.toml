@@ -1,6 +1,7 @@
 [tool.uv.workspace]
 members = [
     "tierkreis",
+    "tierkreis_core",
     "tierkreis_visualization",
 
     "tierkreis_workers/*",
@@ -35,4 +36,5 @@ docs = [
 examples = ["pyscf>=2.9.0"]
 
 [tool.uv.sources]
+tierkreis_core = { workspace = true }
 quantinuum-sphinx = { git = "https://github.com/CQCL/quantinuum-sphinx.git" }

@@ -1,3 +1,4 @@
+from tierkreis_core import GraphData
 
 
 def ternary_add() -> GraphData:

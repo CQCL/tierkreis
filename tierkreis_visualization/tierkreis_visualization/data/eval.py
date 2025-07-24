@@ -4,10 +4,11 @@ from typing import Optional, assert_never
 from pydantic import BaseModel
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.graph import GraphData, IfElse, NodeDef
+from tierkreis.controller.data.graph import IfElse, NodeDef
 from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
+from tierkreis_core import GraphData
 
 from tierkreis.exceptions import TierkreisError
 from tierkreis_visualization.data.models import PyNode, NodeStatus, PyEdge

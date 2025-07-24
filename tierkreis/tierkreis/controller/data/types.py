@@ -23,6 +23,7 @@ from pydantic import BaseModel
 from pydantic._internal._generics import get_args as pydantic_get_args
 from tierkreis.controller.data.core import RestrictedNamedTuple
 from typing_extensions import TypeIs
+from tierkreis_core import GraphData
 
 
 @runtime_checkable

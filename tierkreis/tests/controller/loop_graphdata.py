@@ -1,4 +1,5 @@
 from tierkreis import Labels
+from tierkreis_core import GraphData
 
 
 def _loop_body_multiple_acc() -> GraphData:

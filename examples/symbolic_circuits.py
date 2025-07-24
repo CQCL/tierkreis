@@ -61,7 +61,7 @@ class SymbolicCircuitsInputs(NamedTuple):
     a: TKR[float]
     b: TKR[float]
     c: TKR[float]
-    ansatz: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]
+    ansatz: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821
 
 
 class SymbolicCircuitsOutputs(NamedTuple):

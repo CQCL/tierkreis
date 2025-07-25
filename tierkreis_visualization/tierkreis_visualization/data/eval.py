@@ -9,6 +9,7 @@ from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
 
+from tierkreis.exceptions import TierkreisError
 from tierkreis_visualization.data.models import PyNode, NodeStatus, PyEdge
 
 
@@ -44,7 +45,7 @@ def add_conditional_edges(
 ):
     try:
         pred = json.loads(storage.read_output(loc.N(node.pred[0]), node.pred[1]))
-    except FileNotFoundError:
+    except (FileNotFoundError, TierkreisError):
         pred = None
 
     refs = {True: node.if_true, False: node.if_false}
@@ -80,7 +81,7 @@ def get_eval_node(
         has_error = check_error(new_location, errored_nodes)
         try:
             definition = storage.read_node_def(new_location)
-        except FileNotFoundError:
+        except (FileNotFoundError, TierkreisError):
             definition = None
 
         status = node_status(is_finished, definition, has_error)
@@ -104,7 +105,11 @@ def get_eval_node(
         for p0, (idx, p1) in in_edges(node).items():
             value = None
             if p1 in storage.read_output_ports(node_location.N(idx)):
-                value = json.loads(storage.read_output(node_location.N(idx), p1))
+                try:
+                    value = json.loads(storage.read_output(node_location.N(idx), p1))
+                except json.decoder.JSONDecodeError:
+                    # In symbolic evaluation output could be "" causing an error
+                    value = None
 
             py_edge = PyEdge(
                 from_node=idx, from_port=p1, to_node=i, to_port=p0, value=value

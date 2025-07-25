@@ -1,4 +1,5 @@
 import json
+from glob import glob
 from pathlib import Path
 
 from tierkreis.controller.data.location import WorkerCallArgs
@@ -22,3 +23,6 @@ class WorkerFileStorage:
     def write_output(self, path: Path, value: bytes) -> None:
         with open(path, "wb+") as fh:
             fh.write(value)
+
+    def glob(self, path_string: str) -> list[str]:
+        return glob(path_string)

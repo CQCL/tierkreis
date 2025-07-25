@@ -51,7 +51,7 @@ def _extract_hamiltonian_rhf(
 
 
 def extract_hamiltonian_rhf(
-    atom: str,
+    atom: list[tuple[str, list[float]]],
     basis: str,
     charge: int = 0,
     spin: int = 0,

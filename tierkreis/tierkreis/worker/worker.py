@@ -78,7 +78,7 @@ class Worker:
 
         def function_decorator(func: WorkerFunction) -> None:
             func_name = func.__name__
-            self.namespace.add_from_annotations(func)
+            self.namespace.add_function(func)
 
             def wrapper(node_definition: WorkerCallArgs):
                 kwargs = self._load_args(func, node_definition.inputs)

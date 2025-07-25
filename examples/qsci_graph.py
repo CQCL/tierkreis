@@ -7,151 +7,107 @@
 # ///
 import json
 from pathlib import Path
+from typing import NamedTuple
 from uuid import UUID
 
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
+from example_workers.chemistry_worker.stubs import (
+    make_ham,
+    Molecule,
+    CompleteActiveSpace,
+)
+from example_workers.qsci_worker.stubs import (
+    circuits_from_hamiltonians,
+    energy_from_results,
+    state_prep,
+)
+from example_workers.aer_worker.stubs import submit_single
+from example_workers.pytket_worker.stubs import compile_circuit_quantinuum
+
 root_loc = Loc()
 
 
-def _compile_and_run() -> GraphData:
-    g = GraphData()
-    circuit = g.input("circuit")
+def _compile_and_run() -> GraphBuilder[
+    TKR[OpaqueType["pytket._tket.circuit.Circuit"]],  # noqa: F821
+    TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]],  # noqa: F821
+]:
+    g = GraphBuilder(
+        TKR[OpaqueType["pytket._tket.circuit.Circuit"]],  # noqa: F821
+        TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]],  # noqa: F821
+    )
+
     n_shots = g.const(500)
+    compiled_circuit = g.task(compile_circuit_quantinuum(g.inputs))
+    backend_result = g.task(submit_single(compiled_circuit, n_shots))
 
-    out = g.func("pytket_worker.compile_circuit_quantinuum", {"circuit": circuit})
-
-    backend_result = g.func(
-        "aer_worker.submit_single",
-        {"circuit": out("circuit"), "n_shots": n_shots},
-    )("backend_result")
-
-    g.output({"backend_result": backend_result})
+    g.outputs(backend_result)
     return g
 
 
-def qsci_graph() -> GraphData:
-    g = GraphData()
-    geometry = g.input("geometry")
-    basis = g.input("basis")
-    charge = g.input("charge")
-    mo_occ = g.input("mo_occ")
-    # init
-    n_cas_init = g.input("n_cas_init")
-    n_elecas_init = g.input("n_elecas_init")
-    # hsim
-    n_cas_hsim = g.input("n_cas_hsim")
-    n_elecas_hsim = g.input("n_elecas_hsim")
+class QSCIInputs(NamedTuple):
+    molecule: TKR[Molecule]
+    mo_occ: TKR[list[int]]  # TODO: check this type
+    reference_state: TKR[list[int]]  # TODO: check this type
+    cas_init: TKR[CompleteActiveSpace]
+    cas_hsim: TKR[CompleteActiveSpace]
+    t_step_list: TKR[list[float]]
+    max_iteration_prep: TKR[int]
+    max_cx_gates_hsim: TKR[int]
+    atol: TKR[float]
 
-    # Functions 'make_h_init'+'state_pre' and 'make_h_hsim' run in parallel
-    h_init = g.func(
-        "chemistry_worker.make_ham",
-        {
-            "geometry": geometry,
-            "basis": basis,
-            "charge": charge,
-            "mo_occ": mo_occ,
-            "n_cas": n_cas_init,
-            "n_elecas": n_elecas_init,
-        },
+
+class QSCIOutputs(NamedTuple):
+    energy: TKR[float]
+
+
+def qsci_graph() -> GraphBuilder[QSCIInputs, QSCIOutputs]:
+    g = GraphBuilder(QSCIInputs, QSCIOutputs)
+    # Separate tasks 'make_h_init'+'state_pre' and 'make_h_hsim' run in parallel
+    ham_init = g.task(make_ham(g.inputs.molecule, g.inputs.mo_occ, g.inputs.cas_init))
+    ham_hsim = g.task(make_ham(g.inputs.molecule, g.inputs.mo_occ, g.inputs.cas_hsim))
+
+    adapt_circuit = g.task(
+        state_prep(
+            ham_init,
+            g.inputs.reference_state,
+            g.inputs.max_iteration_prep,
+            g.inputs.atol,
+            g.inputs.mo_occ,
+            g.inputs.cas_init,
+            g.inputs.cas_hsim,
+        )
     )
-    h0_init = h_init("h0")
-    h1_init = h_init("h1")
-    h2_init = h_init("h2")
-
-    h_hsim = g.func(
-        "chemistry_worker.make_ham",
-        {
-            "geometry": geometry,
-            "basis": basis,
-            "charge": charge,
-            "mo_occ": mo_occ,
-            "n_cas": n_cas_hsim,
-            "n_elecas": n_elecas_hsim,
-        },
+    circuits = g.task(
+        circuits_from_hamiltonians(
+            ham_init,
+            ham_hsim,
+            adapt_circuit,
+            g.inputs.t_step_list,
+            g.inputs.cas_init,
+            g.inputs.cas_hsim,
+            g.inputs.mo_occ,
+            g.inputs.max_cx_gates_hsim,
+        )
     )
-    h0_hsim = h_hsim("h0")
-    h1_hsim = h_hsim("h1")
-    h2_hsim = h_hsim("h2")
-
-    reference_state = g.input("reference_state")
-    max_iteration_prep = g.input("max_iteration_prep")
-    atol = g.input("atol")
-
-    state_prep = g.func(
-        "qsci_worker.state_prep",
-        {
-            "h0_init": h0_init,
-            "h1_init": h1_init,
-            "h2_init": h2_init,
-            "reference_state": reference_state,
-            "max_iteration_prep": max_iteration_prep,
-            "atol": atol,
-            "mo_occ": mo_occ,
-            "n_cas_init": n_cas_init,
-            "n_elecas_init": n_elecas_init,
-            "n_cas_hsim": n_cas_hsim,
-            "n_elecas_hsim": n_elecas_hsim,
-        },
+    backend_results = g.map(_compile_and_run(), circuits)
+    energy = g.task(
+        energy_from_results(
+            ham_hsim,
+            backend_results,
+            g.inputs.mo_occ,
+            g.inputs.cas_init,
+            g.inputs.cas_hsim,
+        )
     )
-    adapt_circuit = state_prep("adapt_circuit")
 
-    t_step_list = g.input("t_step_list")
-    max_cx_gates_hsim = g.input("max_cx_gates_hsim")
-
-    circuits = g.func(
-        "qsci_worker.circuits_from_hamiltonians",
-        {
-            "h0_init": h0_init,
-            "h1_init": h1_init,
-            "h2_init": h2_init,
-            "h0_hsim": h0_hsim,
-            "h1_hsim": h1_hsim,
-            "h2_hsim": h2_hsim,
-            "adapt_circuit": adapt_circuit,
-            "t_step_list": t_step_list,
-            "n_elecas_init": n_elecas_init,
-            "n_elecas_hsim": n_elecas_hsim,
-            "n_cas_hsim": n_cas_hsim,
-            "mo_occ": mo_occ,
-            "max_cx_gates": max_cx_gates_hsim,
-        },
-    )("circuits")
-
-    unfolded_circuits = g.func("builtins.unfold_values", {"value": circuits})
-
-    compile_and_run_const = g.const(_compile_and_run())
-    m = g.map(
-        compile_and_run_const,
-        unfolded_circuits("*")[0],
-        "circuit",
-        "backend_result",
-        {},
-    )
-    backend_results = g.func("builtins.fold_values", {"values_glob": m("*")})("value")
-
-    energy = g.func(
-        "qsci_worker.energy_from_results",
-        {
-            "h0_hsim": h0_hsim,
-            "h1_hsim": h1_hsim,
-            "h2_hsim": h2_hsim,
-            "backend_results": backend_results,
-            "mo_occ": mo_occ,
-            "n_elecas_init": n_elecas_init,
-            "n_elecas_hsim": n_elecas_hsim,
-            "n_cas_init": n_cas_init,
-            "n_cas_hsim": n_cas_hsim,
-        },
-    )("energy")
-
-    g.output({"energy": energy})
-
+    g.outputs(QSCIOutputs(energy))
     return g
 
 
@@ -182,26 +138,32 @@ def main() -> None:
     run_graph(
         storage,
         multi_executor,
-        qsci_graph(),
+        qsci_graph().get_data(),
         {
             k: json.dumps(v).encode()
             for k, v in (
                 {
-                    "basis": "sto-3g",
-                    "charge": 0,
-                    "geometry": [
-                        ["H", [0, 0, 0]],
-                        ["H", [0, 0, 1.0]],
-                        ["H", [0, 0, 2.0]],
-                        ["H", [0, 0, 3.0]],
-                    ],
+                    "molecule": {
+                        "geometry": [
+                            ["H", [0, 0, 0]],
+                            ["H", [0, 0, 1.0]],
+                            ["H", [0, 0, 2.0]],
+                            ["H", [0, 0, 3.0]],
+                        ],
+                        "basis": "sto-3g",
+                        "charge": 0,
+                    },
+                    "reference_state": [1, 1, 0, 0],
+                    "cas_init": {
+                        "n": 2,
+                        "n_ele": 2,
+                    },
+                    "cas_hsim": {
+                        "n": 4,
+                        "n_ele": 4,
+                    },
                     "max_cx_gates_hsim": 2000,
                     "mo_occ": [2, 2, 0, 0],
-                    "reference_state": [1, 1, 0, 0],
-                    "n_cas_init": 2,
-                    "n_elecas_init": 2,
-                    "n_cas_hsim": 4,
-                    "n_elecas_hsim": 4,
                     "t_step_list": [0.5, 1.0, 1.5],
                     "max_iteration_prep": 5,
                     "atol": 0.03,

@@ -40,10 +40,7 @@ def format_ptype(ptype: type[PType]) -> str:
         args = [format_ptype(x) for x in get_args(ptype)]
         return f"dict[{', '.join(args)}]"
 
-    if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
-        return ptype.__qualname__
-
-    if issubclass(ptype, Struct):
+    if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
         return ptype.__qualname__
 
     if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):

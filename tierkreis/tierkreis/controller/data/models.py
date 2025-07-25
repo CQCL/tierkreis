@@ -74,13 +74,6 @@ def is_portmapping(
     return hasattr(o, TKR_PORTMAPPING_FLAG)
 
 
-def is_pnamedmodel(o) -> TypeIs[type[PNamedModel]]:
-    origin = get_origin(o)
-    if origin is not None:
-        return is_pnamedmodel(origin)
-    return isclass(o) and issubclass(o, PNamedModel)
-
-
 def is_tnamedmodel(o) -> TypeIs[type[TNamedModel]]:
     origin = get_origin(o)
     if origin is not None:

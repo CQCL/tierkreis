@@ -179,11 +179,11 @@ def main() -> None:
         multi_executor,
         symbolic_execution().get_data(),
         {
-            "ansatz": json.dumps(ansatz.to_dict()).encode(),
-            "a": json.dumps(0.2).encode(),
-            "b": json.dumps(0.55).encode(),
-            "c": json.dumps(0.75).encode(),
-            "ham": json.dumps(hamiltonian).encode(),
+            "ansatz": ansatz.to_dict(),
+            "a": 0.2,
+            "b": 0.55,
+            "c": 0.75,
+            "ham": hamiltonian,
         },
         polling_interval_seconds=0.1,
     )

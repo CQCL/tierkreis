@@ -5,11 +5,9 @@
 # [tool.uv.sources]
 # tierkreis = { path = "../tierkreis", editable = true }
 # ///
-import json
 from pathlib import Path
 from uuid import UUID
 
-from tierkreis import Labels
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.core import EmptyModel
@@ -46,7 +44,7 @@ def main() -> None:
         storage,
         executor,
         error_graph().data,
-        {Labels.VALUE: json.dumps("world!").encode()},
+        {"value": "world!"},
         polling_interval_seconds=0.1,
     )
     output = storage.read_errors(root_loc)

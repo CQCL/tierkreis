@@ -5,6 +5,7 @@ import logging
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.types import PType
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 def run_workflow(
     graph: GraphData,
-    inputs: dict[str, bytes],
+    inputs: dict[str, PType],
     name: str | None = None,
     run_id: int | None = None,
     log_level: int | str = logging.INFO,

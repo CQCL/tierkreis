@@ -3,7 +3,7 @@ from time import sleep
 
 from tierkreis.controller.data.graph import Eval, GraphData
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -19,7 +19,7 @@ def run_graph(
     storage: ControllerStorage,
     executor: ControllerExecutor,
     g: GraphData,
-    graph_inputs: dict[str, bytes],
+    graph_inputs: dict[str, PType],
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
 ) -> None:
@@ -29,7 +29,7 @@ def run_graph(
 
     storage.write_metadata(Loc(""))
     for name, value in graph_inputs.items():
-        storage.write_output(root_loc.N(-1), name, value)
+        storage.write_output(root_loc.N(-1), name, bytes_from_ptype(value))
 
     storage.write_output(root_loc.N(-1), "body", bytes_from_ptype(g))
 

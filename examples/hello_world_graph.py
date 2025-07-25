@@ -5,10 +5,8 @@
 # [tool.uv.sources]
 # tierkreis = { path = "../tierkreis", editable = true }
 # ///
-import json
 from pathlib import Path
 
-from tierkreis import Labels
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.location import Loc
 from tierkreis.cli.run_workflow import run_workflow
@@ -42,7 +40,7 @@ def main() -> None:
     """Configure our workflow execution and run it to completion."""
     run_workflow(
         hello_graph().data,
-        {Labels.VALUE: json.dumps("world!").encode()},
+        {"value": "world!"},
         name="hello_world",
         run_id=100,  # Assign a fixed uuid for our workflow.
         registry_path=Path(__file__).parent

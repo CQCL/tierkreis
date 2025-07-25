@@ -204,7 +204,13 @@ def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> 
     if isclass(annotation) and issubclass(annotation, bytes):
         return cast(T, bs)
 
-    j = json.loads(bs, cls=TierkreisDecoder)
+    try:
+        j = json.loads(bs, cls=TierkreisDecoder)
+    except json.JSONDecodeError as err:
+        if annotation is None:
+            return cast(T, bs)
+        raise err
+
     if annotation is None:
         return j
 

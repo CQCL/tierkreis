@@ -64,10 +64,17 @@ def is_portmapping(o: PModel) -> TypeIs[PNamedModel]: ...
 @overload
 def is_portmapping(o: type[PModel]) -> TypeIs[type[PNamedModel]]: ...
 @overload
+def is_portmapping(o: TModel) -> TypeIs[TNamedModel]: ...
+@overload
 def is_portmapping(o: type[TModel]) -> TypeIs[type[TNamedModel]]: ...
 def is_portmapping(
     o,
-) -> TypeIs[type[PNamedModel]] | TypeIs[PNamedModel] | TypeIs[type[TNamedModel]]:
+) -> (
+    TypeIs[type[PNamedModel]]
+    | TypeIs[PNamedModel]
+    | TypeIs[TNamedModel]
+    | TypeIs[type[TNamedModel]]
+):
     origin = get_origin(o)
     if origin is not None:
         return is_portmapping(origin)

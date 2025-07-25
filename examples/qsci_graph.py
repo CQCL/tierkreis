@@ -69,7 +69,7 @@ class QSCIOutputs(NamedTuple):
 
 def qsci_graph() -> GraphBuilder[QSCIInputs, QSCIOutputs]:
     g = GraphBuilder(QSCIInputs, QSCIOutputs)
-    # Functions 'make_h_init'+'state_pre' and 'make_h_hsim' run in parallel
+    # Separate tasks 'make_h_init'+'state_pre' and 'make_h_hsim' run in parallel
     ham_init = g.task(make_ham(g.inputs.molecule, g.inputs.mo_occ, g.inputs.cas_init))
     ham_hsim = g.task(make_ham(g.inputs.molecule, g.inputs.mo_occ, g.inputs.cas_hsim))
 

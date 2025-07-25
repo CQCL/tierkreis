@@ -6,28 +6,20 @@ from tierkreis.controller.data.types import Struct
 
 
 class CompleteActiveSpace(Struct, Protocol):
-    @property
-    def n(self) -> int: ...  # noqa: F821 # fmt: skip
-    @property
-    def n_ele(self) -> int: ...  # noqa: F821 # fmt: skip
+    n: int  # noqa: F821 # fmt: skip
+    n_ele: int  # noqa: F821 # fmt: skip
 
 
 class Hamiltonian(Struct, Protocol):
-    @property
-    def h0(self) -> float: ...  # noqa: F821 # fmt: skip
-    @property
-    def h1(self) -> list[list[float]]: ...  # noqa: F821 # fmt: skip
-    @property
-    def h2(self) -> list[list[list[list[float]]]]: ...  # noqa: F821 # fmt: skip
+    h0: float  # noqa: F821 # fmt: skip
+    h1: list[list[float]]  # noqa: F821 # fmt: skip
+    h2: list[list[list[list[float]]]]  # noqa: F821 # fmt: skip
 
 
 class Molecule(Struct, Protocol):
-    @property
-    def basis(self) -> str: ...  # noqa: F821 # fmt: skip
-    @property
-    def charge(self) -> int: ...  # noqa: F821 # fmt: skip
-    @property
-    def geometry(self) -> list[tuple[str, list[float]]]: ...  # noqa: F821 # fmt: skip
+    basis: str  # noqa: F821 # fmt: skip
+    charge: int  # noqa: F821 # fmt: skip
+    geometry: list[tuple[str, list[float]]]  # noqa: F821 # fmt: skip
 
 
 class make_ham(NamedTuple):

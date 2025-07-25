@@ -49,7 +49,7 @@ def format_ptype(ptype: type[PType]) -> str:
 
 
 def format_generics(generics: list[str], in_constructor: bool = True) -> str:
-    prefix = ", Generic" if in_constructor else ""
+    prefix = "Generic" if in_constructor else ""
     return f"{prefix}[{', '.join(generics)}]" if generics else ""
 
 
@@ -61,44 +61,30 @@ def format_tmodel_type(outputs: type[PModel]) -> str:
     return f"TKR[{format_ptype(outputs)}]"
 
 
-def format_protocol_attribute(
-    port_id: PortID, ptype: type[PType], is_constructor: bool = False
+def format_annotation(port_id: PortID, ptype: type[PType], is_raw: bool = False) -> str:
+    t = format_ptype(ptype) if is_raw else f"TKR[{format_ptype(ptype)}]"
+    return f"{port_id}: {t} {NO_QA_STR}"
+
+
+def format_model(
+    model: type[PNamedModel], bases: list[str], is_raw: bool = False
 ) -> str:
-    return (
-        f"@property\n    def {port_id}(self) -> {format_ptype(ptype)}: ... {NO_QA_STR}"
-    )
-
-
-def format_annotation(
-    port_id: PortID, ptype: type[PType], is_constructor: bool = False
-) -> str:
-    sep = "=" if is_constructor else ":"
-    constructor = f'(n, "{port_id}")' if is_constructor else ""
-    return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} {NO_QA_STR}"
-
-
-def format_input_pnamedmodel(model: type[PNamedModel]) -> str:
     origin = get_origin(model)
     args = get_args(model)
     if origin is not None:
         model = origin
 
-    outs = [format_protocol_attribute(k, v) for k, v in model.__annotations__.items()]
+    outs = [format_annotation(k, v, is_raw) for k, v in model.__annotations__.items()]
     outs.sort()
     outs_str = "\n    ".join(outs)
 
-    generics = [str(x) for x in args]
-    generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
+    if args:
+        bases.append(format_generics([str(x) for x in args]))
 
     return f"""
-class {model.__qualname__}(Struct, Protocol{generics_str}):
+class {model.__qualname__}({", ".join(bases)}):
     {outs_str}
 """
-
-
-def format_input_pnamedmodels(models: set[type[PNamedModel]]) -> str:
-    ms = sorted(list(models), key=lambda x: x.__name__)
-    return "\n\n".join([format_input_pnamedmodel(x) for x in ms])
 
 
 def format_function(namespace_name: str, fn: FunctionSpec) -> str:
@@ -106,7 +92,11 @@ def format_function(namespace_name: str, fn: FunctionSpec) -> str:
     ins_str = "\n    ".join(ins)
     class_name = format_tmodel_type(fn.outs)
 
-    return f"""class {fn.name}(NamedTuple{format_generics(fn.generics)}):
+    bases = ["NamedTuple"]
+    if fn.generics:
+        bases.append(format_generics(fn.generics))
+
+    return f"""class {fn.name}({", ".join(bases)}):
     {ins_str}
 
     @staticmethod
@@ -126,27 +116,14 @@ def format_typevars(generics: set[str]) -> str:
     return "\n".join([format_typevar(x) for x in sorted(list(generics))])
 
 
-def format_output_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
-    origin = get_origin(pnamedmodel)
-    args = get_args(pnamedmodel)
-    if origin is not None:
-        pnamedmodel = origin
-
-    outs = [format_annotation(k, v) for k, v in pnamedmodel.__annotations__.items()]
-    outs.sort()
-    outs_str = "\n    ".join(outs)
-
-    generics_str = format_generics([str(x) for x in args])
-
-    return f"""
-class {pnamedmodel.__qualname__}(NamedTuple{generics_str}):
-    {outs_str}
-"""
+def format_input_models(models: set[type[PNamedModel]]) -> str:
+    ms = sorted(list(models), key=lambda x: x.__name__)
+    return "\n\n".join([format_model(x, ["Struct", "Protocol"], True) for x in ms])
 
 
-def format_output_pnamedmodels(models: set[type[PNamedModel]]) -> str:
-    models_list = sorted(list(models), key=lambda x: x.__name__)
-    return "\n\n".join([format_output_pnamedmodel(x) for x in models_list])
+def format_output_models(models: set[type[PNamedModel]]) -> str:
+    ms = sorted(list(models), key=lambda x: x.__name__)
+    return "\n\n".join([format_model(x, ["NamedTuple"]) for x in ms])
 
 
 def format_namespace(namespace: Namespace) -> str:
@@ -164,9 +141,9 @@ from tierkreis.controller.data.types import PType, Struct
 
 {format_typevars(namespace.generics)}
 
-{format_input_pnamedmodels(namespace.input_models)}
+{format_input_models(namespace.input_models)}
 
-{format_output_pnamedmodels(namespace.output_models)}
+{format_output_models(namespace.output_models)}
 
 {functions_str}
     '''

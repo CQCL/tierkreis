@@ -6,19 +6,14 @@ from tierkreis.controller.data.types import Struct
 
 
 class CompleteActiveSpace(Struct, Protocol):
-    @property
-    def n(self) -> int: ...  # noqa: F821 # fmt: skip
-    @property
-    def n_ele(self) -> int: ...  # noqa: F821 # fmt: skip
+    n: int  # noqa: F821 # fmt: skip
+    n_ele: int  # noqa: F821 # fmt: skip
 
 
 class Hamiltonian(Struct, Protocol):
-    @property
-    def h0(self) -> float: ...  # noqa: F821 # fmt: skip
-    @property
-    def h1(self) -> list[list[float]]: ...  # noqa: F821 # fmt: skip
-    @property
-    def h2(self) -> list[list[list[list[float]]]]: ...  # noqa: F821 # fmt: skip
+    h0: float  # noqa: F821 # fmt: skip
+    h1: list[list[float]]  # noqa: F821 # fmt: skip
+    h2: list[list[list[list[float]]]]  # noqa: F821 # fmt: skip
 
 
 class state_prep(NamedTuple):

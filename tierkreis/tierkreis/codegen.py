@@ -1,4 +1,3 @@
-from inspect import isclass
 from types import NoneType
 from typing import assert_never, get_args, get_origin
 from pydantic import BaseModel

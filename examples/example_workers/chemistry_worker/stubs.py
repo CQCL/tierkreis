@@ -5,13 +5,6 @@ from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import Struct
 
 
-class CompleteActiveSpace(Struct, Protocol):
-    @property
-    def n_ele(self) -> int: ...  # noqa: F821 # fmt: skip
-    @property
-    def n(self) -> int: ...  # noqa: F821 # fmt: skip
-
-
 class Molecule(Struct, Protocol):
     @property
     def basis(self) -> str: ...  # noqa: F821 # fmt: skip
@@ -23,11 +16,18 @@ class Molecule(Struct, Protocol):
 
 class Hamiltonian(Struct, Protocol):
     @property
-    def h2(self) -> list[list[list[list[float]]]]: ...  # noqa: F821 # fmt: skip
+    def h1(self) -> list[list[float]]: ...  # noqa: F821 # fmt: skip
     @property
     def h0(self) -> float: ...  # noqa: F821 # fmt: skip
     @property
-    def h1(self) -> list[list[float]]: ...  # noqa: F821 # fmt: skip
+    def h2(self) -> list[list[list[list[float]]]]: ...  # noqa: F821 # fmt: skip
+
+
+class CompleteActiveSpace(Struct, Protocol):
+    @property
+    def n_ele(self) -> int: ...  # noqa: F821 # fmt: skip
+    @property
+    def n(self) -> int: ...  # noqa: F821 # fmt: skip
 
 
 class make_ham(NamedTuple):

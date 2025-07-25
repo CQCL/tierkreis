@@ -14,11 +14,11 @@ class CompleteActiveSpace(Struct, Protocol):
 
 class Hamiltonian(Struct, Protocol):
     @property
+    def h1(self) -> list[list[float]]: ...  # noqa: F821 # fmt: skip
+    @property
     def h0(self) -> float: ...  # noqa: F821 # fmt: skip
     @property
     def h2(self) -> list[list[list[list[float]]]]: ...  # noqa: F821 # fmt: skip
-    @property
-    def h1(self) -> list[list[float]]: ...  # noqa: F821 # fmt: skip
 
 
 class state_prep(NamedTuple):

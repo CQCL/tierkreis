@@ -77,7 +77,7 @@ def is_portmapping(
 def is_pnamedmodel(o) -> TypeIs[type[PNamedModel]]:
     origin = get_origin(o)
     if origin is not None:
-        return is_tnamedmodel(origin)
+        return is_pnamedmodel(origin)
     return isclass(o) and issubclass(o, PNamedModel)
 
 

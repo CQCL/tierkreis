@@ -85,28 +85,28 @@ def format_output(outputs: type[PModel]) -> str:
     return f"TKR[{format_ptype(outputs)}]"
 
 
-def format_input_pnamedmodel(pnamedmodel: type[PNamedModel]) -> str:
-    origin = get_origin(pnamedmodel)
-    args = get_args(pnamedmodel)
+def format_input_pnamedmodel(model: type[PNamedModel]) -> str:
+    origin = get_origin(model)
+    args = get_args(model)
     if origin is not None:
-        pnamedmodel = origin
+        model = origin
 
-    outs = {
-        format_protocol_attribute(k, v) for k, v in pnamedmodel.__annotations__.items()
-    }
+    outs = [format_protocol_attribute(k, v) for k, v in model.__annotations__.items()]
+    outs.sort()
     outs_str = "\n    ".join(outs)
 
     generics = [str(x) for x in args]
     generics_str = f", Generic[{', '.join(generics)}]" if generics else ""
 
     return f"""
-class {pnamedmodel.__qualname__}(Struct, Protocol{generics_str}):
+class {model.__qualname__}(Struct, Protocol{generics_str}):
     {outs_str}
 """
 
 
 def format_input_pnamedmodels(models: set[type[PNamedModel]]) -> str:
-    return "\n\n".join([format_input_pnamedmodel(x) for x in models])
+    ms = sorted(list(models), key=lambda x: x.__name__)
+    return "\n\n".join([format_input_pnamedmodel(x) for x in ms])
 
 
 def format_function(namespace_name: str, fn: FunctionSpec) -> str:

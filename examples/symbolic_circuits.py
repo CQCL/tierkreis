@@ -17,7 +17,7 @@ from pytket._tket.circuit import Circuit, fresh_symbol
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.models import TKR
+from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
@@ -61,7 +61,7 @@ class SymbolicCircuitsInputs(NamedTuple):
     a: TKR[float]
     b: TKR[float]
     c: TKR[float]
-    ansatz: TKR[Circuit]
+    ansatz: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821
 
 
 class SymbolicCircuitsOutputs(NamedTuple):
@@ -77,7 +77,7 @@ def symbolic_execution() -> GraphBuilder:
     ansatz = g.inputs.ansatz
     n_shots = g.const(100)
 
-    substituted_circuit = g.task(substitute(a=a, b=b, c=c, circuit=ansatz))  # type: ignore
+    substituted_circuit = g.task(substitute(a=a, b=b, c=c, circuit=ansatz))
     measurement_circuit = g.task(add_measure_all(circuit=substituted_circuit))
 
     # TODO: A better compilation pass

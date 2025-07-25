@@ -1,15 +1,10 @@
 from dataclasses import dataclass, field
-from inspect import get_annotations
+from inspect import isclass
 from logging import getLogger
 from types import NoneType
 from typing import Any, Callable
-from tierkreis.controller.data.models import (
-    PModel,
-    PNamedModel,
-    is_pnamedmodel,
-    is_portmapping,
-)
-from tierkreis.controller.data.types import PType, is_ptype
+from tierkreis.controller.data.models import PModel, PNamedModel, is_portmapping
+from tierkreis.controller.data.types import PType, Struct, is_ptype
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
@@ -25,8 +20,8 @@ class FunctionSpec:
     name: str
     namespace: str
     ins: dict[str, type[PType]]
-    outs: type[PModel]
     generics: list[str]
+    outs: type[PModel] = NoneType
 
     def add_inputs(self, annotations: dict[str, Any]) -> None:
         for name, annotation in annotations.items():
@@ -37,13 +32,10 @@ class FunctionSpec:
     def add_outputs(self, annotation: type | None) -> None:
         if annotation is None:
             self.outs = NoneType
-            return
-        elif is_portmapping(annotation):
+        elif is_portmapping(annotation) or is_ptype(annotation):
             self.outs = annotation
-        elif not is_ptype(annotation):
-            raise TierkreisError(f"Expected PModel found {annotation}")
         else:
-            self.outs = annotation
+            raise TierkreisError(f"Expected PModel found {annotation}")
 
 
 @dataclass
@@ -51,39 +43,30 @@ class Namespace:
     name: str
     functions: dict[str, FunctionSpec] = field(default_factory=lambda: {})
     generics: set[str] = field(default_factory=lambda: set())
-    input_models: set[type[PNamedModel]] = field(default_factory=lambda: set())
+    structs: set[type[Struct]] = field(default_factory=lambda: set())
     output_models: set[type[PNamedModel]] = field(default_factory=lambda: set())
 
-    def _add_input_model(self, annotation: Any) -> None:
-        if is_pnamedmodel(annotation):
-            sub_annotations = get_annotations(annotation)
-            [
-                self._add_input_model(sub_annotation)
-                for sub_annotation in sub_annotations
-            ]
+    def _add_struct(self, annotation: Any) -> None:
+        if not (isclass(annotation) and issubclass(annotation, Struct)):
+            return
 
-            self.input_models.add(annotation)
+        self.structs.add(annotation)
 
-    def add_from_annotations(self, func: WorkerFunction) -> None:
+    def add_function(self, func: WorkerFunction) -> None:
         name = func.__name__
         annotations = func.__annotations__
+        generics: list[str] = [str(x) for x in func.__type_params__]
+        fn = FunctionSpec(name=name, namespace=self.name, ins={}, generics=generics)
+        self.functions[fn.name] = fn
+        self.generics.update(fn.generics)
+        [self._add_struct(v) for v in annotations.values()]
+
+        if is_portmapping(annotations["return"]):
+            self.output_models.add(annotations["return"])
+
         try:
-            generics: list[str] = [str(x) for x in func.__type_params__]
-            fn = FunctionSpec(
-                name=name, namespace=self.name, ins={}, outs=NoneType, generics=generics
-            )
-
-            [self._add_input_model(v) for k, v in annotations.items() if k != "return"]
             fn.add_inputs({k: v for k, v in annotations.items() if k != "return"})
-
-            if is_portmapping(annotations["return"]):
-                self.output_models.add(annotations["return"])
-            elif is_pnamedmodel(annotations["return"]):
-                self.input_models.add(annotations["return"])
             fn.add_outputs(annotations["return"])
-
-            self.functions[fn.name] = fn
-            self.generics.update(fn.generics)
         except TierkreisError as exc:
             logger.error(
                 f"Error adding function {name} to {self.name} namespace.", exc_info=exc

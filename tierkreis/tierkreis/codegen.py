@@ -67,7 +67,7 @@ def format_annotation(port_id: PortID, ptype: type[PType], is_raw: bool = False)
 
 
 def format_model(
-    model: type[PNamedModel], bases: list[str], is_raw: bool = False
+    model: type[PNamedModel] | type[Struct], bases: list[str], is_raw: bool = False
 ) -> str:
     origin = get_origin(model)
     args = get_args(model)
@@ -116,7 +116,7 @@ def format_typevars(generics: set[str]) -> str:
     return "\n".join([format_typevar(x) for x in sorted(list(generics))])
 
 
-def format_input_models(models: set[type[PNamedModel]]) -> str:
+def format_input_models(models: set[type[Struct]]) -> str:
     ms = sorted(list(models), key=lambda x: x.__name__)
     return "\n\n".join([format_model(x, ["Struct", "Protocol"], True) for x in ms])
 
@@ -141,7 +141,7 @@ from tierkreis.controller.data.types import PType, Struct
 
 {format_typevars(namespace.generics)}
 
-{format_input_models(namespace.input_models)}
+{format_input_models(namespace.structs)}
 
 {format_output_models(namespace.output_models)}
 

@@ -78,13 +78,6 @@ def format_annotation(
     return f"{port_id}{sep} TKR[{format_ptype(ptype)}]{constructor} {NO_QA_STR}"
 
 
-def format_output(outputs: type[PModel]) -> str:
-    if isclass(outputs) and is_portmapping(outputs):
-        return outputs.__qualname__
-
-    return f"TKR[{format_ptype(outputs)}]"
-
-
 def format_input_pnamedmodel(model: type[PNamedModel]) -> str:
     origin = get_origin(model)
     args = get_args(model)

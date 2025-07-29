@@ -1,5 +1,5 @@
 sphinx_opts  := ""
-sphinx_build := "sphinx-build"
+sphinx_build := "uv run sphinx-build"
 source_dir   := "source"
 build_dir    := "build"
 

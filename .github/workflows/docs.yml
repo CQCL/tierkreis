@@ -22,7 +22,7 @@ jobs:
         uses: extractions/setup-just@v3
 
       - name: Install with uv
-        run: uv sync
+        run: uv sync --group docs
 
       - name: Build docs
         run: just docs

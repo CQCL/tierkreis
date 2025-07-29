@@ -31,3 +31,7 @@ exclude_patterns = []
 html_theme = "quantinuum_sphinx"
 html_static_path = ["_static"]
 html_favicon = "_static/quantinuum_favicon.svg"
+
+# -- Notebook options --------------------------------------------------------
+
+nb_execution_raise_on_error = True

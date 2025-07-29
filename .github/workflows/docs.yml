@@ -10,6 +10,9 @@ jobs:
         with:
           fetch-depth: "0"
 
+      - name: Setup just
+        uses: extractions/setup-just@v3
+
       - name: Build docs
         run: just docs
 

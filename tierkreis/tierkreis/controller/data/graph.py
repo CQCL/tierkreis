@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 import logging
 from typing import Any, Callable, Literal, Protocol, assert_never, runtime_checkable
-from typing_extensions import TypeIs
 from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex

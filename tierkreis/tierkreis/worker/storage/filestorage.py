@@ -26,3 +26,10 @@ class WorkerFileStorage:
 
     def glob(self, path_string: str) -> list[str]:
         return glob(path_string)
+
+    def mark_done(self, path: Path) -> None:
+        path.touch()
+
+    def write_error(self, path: Path, error_logs: str) -> None:
+        with open(path, "w+") as f:
+            f.write(error_logs)

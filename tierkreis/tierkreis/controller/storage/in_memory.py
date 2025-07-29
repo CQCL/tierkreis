@@ -41,13 +41,29 @@ class ControllerInMemoryStorage:
         self.logs_path = self.work_dir / "logs"
         self.logs_path.touch()
         self.name = name
-        self.nodes: dict[Loc, NodeData] = defaultdict(lambda: NodeData())
+        self.nodes: dict[Path, NodeData] = defaultdict(lambda: NodeData())
+
+    def loc_to_path(self, location: Loc, port: PortID | None = None) -> Path:
+        # Directly convert, not a real filesystem path
+        if port is not None:
+            return Path(location) / port
+        return Path(location)
+
+    def path_to_loc(self, path: Path) -> tuple[Loc, PortID | None]:
+        # assumes the path is in the format 'location/port'
+        parts = path.parts
+        if len(parts) == 1:
+            return Loc(parts[0]), None
+        elif len(parts) == 2:
+            return Loc(parts[0]), PortID(parts[1])
+        else:
+            raise ValueError(f"Invalid path format: {path}")
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None:
-        self.nodes[node_location].definition = node
+        self.nodes[self.loc_to_path(node_location)].definition = node
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        if result := self.nodes[node_location].definition:
+        if result := self.nodes[self.loc_to_path(node_location)].definition:
             return result
         raise TierkreisError(f"Node definition of {node_location} not found.")
 
@@ -58,11 +74,13 @@ class ControllerInMemoryStorage:
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
     ) -> Path:
-        node_path = Path(node_location)
+        node_path = self.loc_to_path(node_location)
         call_args = WorkerCallArgs(
             function_name=function_name,
-            inputs={k: Path(loc) / port for k, (loc, port) in inputs.items()},
-            outputs={k: node_path / k for k in output_list},
+            inputs={
+                k: self.loc_to_path(loc, port) for k, (loc, port) in inputs.items()
+            },
+            outputs={k: self.loc_to_path(node_location, k) for k in output_list},
             output_dir=node_path,
             done_path=node_path,
             error_path=node_path,
@@ -70,36 +88,36 @@ class ControllerInMemoryStorage:
         )
         for port in output_list:
             # workaround
-            self.nodes[node_location].outputs[port] = None
-        self.nodes[node_location].call_args = call_args
+            self.nodes[node_path].outputs[port] = None
+        self.nodes[node_path].call_args = call_args
         if (parent := node_location.parent()) is not None:
-            self.nodes[parent].metadata = {}
+            self.nodes[self.loc_to_path(parent)].metadata = {}
 
         return node_path
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
-        if result := self.nodes[node_location].call_args:
+        if result := self.nodes[self.loc_to_path(node_location)].call_args:
             return result
         raise TierkreisError(
             f"Node location {node_location} doesn't have a associate call args."
         )
 
     def read_errors(self, node_location: Loc) -> str:
-        if errors := self.nodes[node_location].error_logs:
+        if errors := self.nodes[self.loc_to_path(node_location)].error_logs:
             return errors
         return ""
 
     def node_has_error(self, node_location: Loc) -> bool:
-        return self.nodes[node_location].has_error
+        return self.nodes[self.loc_to_path(node_location)].has_error
 
     def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
-        self.nodes[node_location].error_logs = error_logs
+        self.nodes[self.loc_to_path(node_location)].error_logs = error_logs
 
     def mark_node_finished(self, node_location: Loc) -> None:
-        self.nodes[node_location].is_done = True
+        self.nodes[self.loc_to_path(node_location)].is_done = True
 
     def is_node_finished(self, node_location: Loc) -> bool:
-        return self.nodes[node_location].is_done
+        return self.nodes[self.loc_to_path(node_location)].is_done
 
     def link_outputs(
         self,
@@ -108,36 +126,41 @@ class ControllerInMemoryStorage:
         old_location: Loc,
         old_port: PortID,
     ) -> None:
-        self.nodes[new_location].outputs[new_port] = self.nodes[old_location].outputs[
-            old_port
-        ]
+        self.nodes[self.loc_to_path(new_location)].outputs[new_port] = self.nodes[
+            self.loc_to_path(old_location)
+        ].outputs[old_port]
 
     def write_output(
         self, node_location: Loc, output_name: PortID, value: bytes
     ) -> Path:
-        self.nodes[node_location].outputs[output_name] = value
+        self.nodes[self.loc_to_path(node_location)].outputs[output_name] = value
         return Path(node_location) / output_name
 
     def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
-        if output_name in self.nodes[node_location].outputs:
-            if output := self.nodes[node_location].outputs[output_name]:
+        if output_name in self.nodes[self.loc_to_path(node_location)].outputs:
+            if output := self.nodes[self.loc_to_path(node_location)].outputs[
+                output_name
+            ]:
                 return output
             return b""
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
         return list(
-            filter(lambda k: k != "*", self.nodes[node_location].outputs.keys())
+            filter(
+                lambda k: k != "*",
+                self.nodes[self.loc_to_path(node_location)].outputs.keys(),
+            )
         )
 
     def is_node_started(self, node_location: Loc) -> bool:
-        return self.nodes[node_location].definition is not None
+        return self.nodes[self.loc_to_path(node_location)].definition is not None
 
     def read_metadata(self, node_location: Loc) -> dict[str, Any]:
-        return self.nodes[node_location].metadata
+        return self.nodes[self.loc_to_path(node_location)].metadata
 
     def write_metadata(self, node_location: Loc) -> None:
-        self.nodes[node_location].metadata = {"name": self.name}
+        self.nodes[self.loc_to_path(node_location)].metadata = {"name": self.name}
 
     def clean_graph_files(self) -> None:
         uid = os.getuid()

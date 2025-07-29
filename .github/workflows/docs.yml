@@ -10,6 +10,14 @@ jobs:
         with:
           fetch-depth: "0"
 
+      - name: Set up uv & venv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: uv.lock
+
       - name: Setup just
         uses: extractions/setup-just@v3
 

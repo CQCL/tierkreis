@@ -5,8 +5,8 @@ on:
 jobs:
   docs:
     permissions:
-    pages: write
-    id-token: write
+      pages: write
+      id-token: write
 
     runs-on: ubuntu-24.04
     steps:

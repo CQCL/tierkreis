@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any
+from typing import Any, Type
 from uuid import UUID
 
 import pytest
@@ -27,8 +27,10 @@ from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.types import PType, ptype_from_bytes
+from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
+from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
 
 factorial_bytes = factorial().model_dump_json().encode()
 params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
@@ -70,16 +72,27 @@ ids = [
     "tuple_untuple",
 ]
 
+storage_classes = [ControllerFileStorage, ControllerInMemoryStorage]
+storage_ids = ["FileStorage", "In-memory"]
 
+
+@pytest.mark.parametrize("storage_class", storage_classes, ids=storage_ids)
 @pytest.mark.parametrize("graph,output,name,id,inputs", params, ids=ids)
 def test_resume_eval(
-    graph: GraphData, output: Any, name: str, id: int, inputs: dict[str, PType]
+    storage_class: Type[ControllerFileStorage | ControllerInMemoryStorage],
+    graph: GraphData,
+    output: Any,
+    name: str,
+    id: int,
+    inputs: dict[str, PType],
 ):
     g = graph
-    storage = ControllerFileStorage(UUID(int=id), name=name)
+    storage = storage_class(UUID(int=id), name=name)
     executor = ShellExecutor(
         Path("./python/examples/launchers"), logs_path=storage.logs_path
     )
+    if isinstance(storage, ControllerInMemoryStorage):
+        executor = InMemoryExecutor(Path("./tierkreis/tierkreis"), storage=storage)
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
 

@@ -14,7 +14,6 @@ authors = [
 
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "playwright>=1.53.0",
     "pydantic~=2.5",
 ]
 

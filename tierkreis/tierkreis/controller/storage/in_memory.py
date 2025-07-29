@@ -1,15 +1,15 @@
 from collections import defaultdict
 from pathlib import Path
 from uuid import UUID
-from typing import Any, assert_never
+from typing import Any
 import shutil
 import os
 from time import time_ns
 
 from pydantic import BaseModel, Field
 
-from tierkreis.controller.data.core import PortID, ValueRef
-from tierkreis.controller.data.graph import Const, Eval, GraphData, NodeDef
+from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.graph import NodeDef
 from tierkreis.controller.data.location import (
     Loc,
     OutputLoc,
@@ -145,120 +145,3 @@ class ControllerInMemoryStorage:
         tmp_dir.mkdir(parents=True)
         if self.work_dir.exists():
             shutil.move(self.work_dir, tmp_dir)
-
-    def evaluate_symbolic(self, graph: GraphData, parent_loc: Loc = Loc()) -> None:
-        """Evaluate a graph symbolically, creating nodes in the storage.
-
-        This is used internally to create the visualization of symbolic graphs.
-        Recursively creates all nodes by parsing the graph structure.
-        Assumes that nested graphs are wrapped in a Const parent node.
-        Starts from the final output node.
-
-        :param graph: The graph to evaluate symbolically.
-        :type graph: GraphData
-        :param parent_loc: The location of the parent node only relevant for Const nodes, defaults to Loc().
-        :type parent_loc: Loc, optional
-        """
-        self.nodes[parent_loc] = NodeData(
-            definition=Eval((-1, "body"), {}),
-            call_args=None,
-            is_done=False,
-            has_error=False,
-            metadata={},
-            error_logs="",
-            outputs={output: None for output in graph.node_outputs[graph.output_idx()]},
-        )
-        self.nodes[parent_loc.N(-1)] = NodeData(
-            definition=None,
-            call_args=None,
-            is_done=False,
-            has_error=False,
-            metadata={},
-            error_logs="",
-            outputs={"body": graph.model_dump_json().encode()},
-        )
-        self._evaluate_symbolic(graph, parent_loc)
-
-    def _evaluate_symbolic(self, graph: GraphData, parent_loc: Loc = Loc()) -> None:
-        unfinished_inputs = [((graph.output_idx(), ""), parent_loc)]
-        for input, parent in unfinished_inputs:
-            output_id = input[0]
-            output_node = graph.nodes[output_id]
-            outputs = list(graph.node_outputs[output_id])
-            loc = parent.N(output_id)
-            if "*" in outputs:
-                outputs.append("0")
-            self.nodes[loc] = NodeData(
-                definition=output_node,
-                call_args=None,
-                is_done=False,
-                has_error=False,
-                metadata={},
-                error_logs="",
-                outputs={output: None for output in outputs},
-            )
-            new_unfinished_inputs = self._in_edges(output_node, output_id, parent)
-            unfinished_inputs += new_unfinished_inputs
-
-    def _in_edges(
-        self, node: NodeDef, node_id: int, parent: Loc
-    ) -> list[tuple[ValueRef, Loc]]:
-        """Mimics tierkreis.controller.storage.adjacency.in_edges.
-        This lets us know which nodes are the inputs of the current node.
-        """
-        parents = [(x, parent) for x in node.inputs.values()]
-        node_loc = parent.N(node_id)
-        match node.type:
-            case "eval":
-                parents.append((node.graph, node_loc))
-            case "loop":
-                parents.append((node.body, node_loc))
-            case "map":
-                # Unevaluated maps have a body but no child element to evaluate it
-                # We add the first child "0" to allow visualization of the body
-                self.nodes[node_loc.M("0")] = NodeData(
-                    definition=Eval((-1, "body"), {})
-                )
-                parents.append((node.body, node_loc))
-            case "ifelse" | "eifelse":
-                # We want to see conditional branches in both cases
-                parents.append((node.pred, node_loc))
-                parents.append((node.if_true, node_loc))
-                parents.append((node.if_false, node_loc))
-            case "const":
-                # Const nodes can be graphs themselves, so we need to handle them
-                self._handle_const(node, node_id, parent)
-            case "function" | "input" | "output":
-                pass
-            case _:
-                assert_never(node)
-
-        return parents
-
-    def _handle_const(self, node: Const, node_id: int, parent: Loc) -> None:
-        if parent.parent() is None:
-            raise TierkreisError(
-                f"Node {node_id} with value {node.value} cannot be a graph output without a parent."
-            )
-        value: GraphData | None = None
-        # Try to load a nested graph from value
-        if isinstance(node.value, GraphData):
-            value = node.value
-        elif isinstance(node.value, dict):
-            try:
-                value = GraphData(**node.value)
-            except TypeError:
-                raise TierkreisError(f"Cannot convert {node}s value to GraphData.")
-        if value is None:
-            # not a graph
-            return
-
-        self.nodes[parent.parent().N(node_id)] = NodeData(  # type: ignore
-            definition=Const(value),
-            outputs={"value": value.model_dump_json().encode()},
-        )
-
-        if parent.M("0") in self.nodes:
-            # This is a map node
-            parent = parent.M("0")
-        self.evaluate_symbolic(value, parent)

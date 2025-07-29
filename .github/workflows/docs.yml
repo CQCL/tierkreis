@@ -1,0 +1,21 @@
+on: workflow_call
+
+jobs:
+  docs:
+    runs_on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: "0"
+
+      - name: Build docs
+        run: just docs
+
+      - name: Upload static files as artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build/html
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

@@ -4,6 +4,10 @@ on:
 
 jobs:
   docs:
+    permissions:
+    pages: write
+    id-token: write
+
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout code

@@ -16,12 +16,11 @@ pip install tierkreis
 
 First we instantiate a `GraphBuilder` object.
 The arguments to the constructor describe the inputs and outputs of the graph respectively.
-This graph has no inputs and outputs a single integer.
+The following graph has no inputs and outputs a single integer.
 
 ```{code-cell} ipython3
 from tierkreis.builder import GraphBuilder
-from tierkreis.controller.data.core import EmptyModel
-from tierkreis.controller.data.models import TKR
+from tierkreis.types import EmptyModel, TKR
 
 g = GraphBuilder(EmptyModel, TKR[int])
 ```
@@ -42,7 +41,7 @@ two: TKR[int] = g.const(2)
 ```
 
 The constants will be added into the data structure defining the graph.
-In particular if the graph is ever serialised then these constants will be hard-coded into that serialisation.
+In particular if the graph is serialised then these constants will be hard-coded into that serialisation.
 
 We can add tasks using `GraphBuilder.task`:
 
@@ -55,7 +54,7 @@ three: TKR[int] = g.task(iadd(g.const(1), g.const(2)))
 In this example we import the type stubs provided by the Tierkreis library for the built-in functions.
 This allows us to use the [pyright](https://github.com/microsoft/pyright) static analysis tool to check that the input and outputs types of the tasks are what we expect them to be.
 
-To finish, we specify the output of the graph.
+To finish, we specify the outputs of the graph.
 
 ```{code-cell} ipython3
 g.outputs(three)
@@ -63,19 +62,47 @@ g.outputs(three)
 
 ## Running the graph
 
+To run a general Tierkreis graph we need to set up:-
+
+- a way to store and share inputs and outputs (the 'storage' interface)
+- a way to run tasks (the 'executor' interface)
+
+For this example we use the `FileStorage` that is provided by the Tierkreis library itself.
+The inputs and outputs will be stored in a directory on disk.
+(By default the files are stored in `~/.tierkreis/checkpoints/<WORKFLOW_ID>`, where `<WORKFLOW_ID>` is a `UUID` identifying the workflow.)
+
+```{code-cell} ipython3
+from uuid import UUID
+from tierkreis.storage import FileStorage
+
+storage = FileStorage(UUID(int=99), name="My first graph")
+```
+
+If we have already run this example then there will already be files at this directory in the storage.
+If we want to reuse the directory then run
+
+```{code-cell} ipython3
+storage.clean_graph_files()
+```
+
+to get a fresh area to work in.
+
+Since we are just using the Tierkreis built-in tasks the executor will not actually be called.
+As a placeholder we create a simple `ShellExecutor`, also provided by the Tierkreis library, which can run bash scripts in a specified directory.
+
 ```{code-cell} ipython3
 from pathlib import Path
-from uuid import UUID
+from tierkreis.executor import ShellExecutor
 
-from tierkreis.controller import run_graph
-from tierkreis.controller.data.location import Loc
-from tierkreis.controller.executor.shell_executor import ShellExecutor
-from tierkreis.controller.storage.filestorage import ControllerFileStorage
-
-storage = ControllerFileStorage(UUID(int=99), name="My first graph")
 executor = ShellExecutor(Path("."), logs_path=storage.logs_path)
-storage.clean_graph_files()
+```
+
+With the storage and executor specified we can now run a graph using `run_graph`:
+
+```{code-cell} ipython3
+from tierkreis import run_graph
+from tierkreis.storage import read_outputs
+
 run_graph(storage, executor, g.get_data(), {})
-output = storage.read_output(Loc(), "value")
-print(output)
+print(read_outputs(storage))
 ```

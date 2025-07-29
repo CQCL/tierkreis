@@ -2,13 +2,7 @@
 
 ## Step by step
 
-A general Tierkeis graph allows us to specify:-
-
-- inputs to the entire graph
-- custom task definitions (Tierkreis 'workers')
-- a way to store and share inputs and outputs (the 'storage' interface)
-- a way to run tasks (the 'executor' interface)
-
-For our first graph we make the following simplifications: the graph has no inputs and uses only the built-in task definitions that come with the Tierkreis library.
+A general Tierkeis graph can make use of custom task definitions and take input arguments, which can be specified at graph runtime.
+However for our first graph we create a graph that has no inputs and uses only the built-in task definitions that are provided with the Tierkreis library itself.
 
 [Build a graph using built-in tasks](tutorial/builtins.md)

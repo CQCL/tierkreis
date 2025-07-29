@@ -21,6 +21,9 @@ jobs:
       - name: Setup just
         uses: extractions/setup-just@v3
 
+      - name: Install with uv
+        run: uv sync
+
       - name: Build docs
         run: just docs
 

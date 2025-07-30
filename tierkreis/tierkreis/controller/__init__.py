@@ -19,10 +19,12 @@ def run_graph(
     storage: ControllerStorage,
     executor: ControllerExecutor,
     g: GraphData,
-    graph_inputs: dict[str, PType],
+    graph_inputs: dict[str, PType] | PType,
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
 ) -> None:
+    if not isinstance(graph_inputs, dict):
+        graph_inputs = {"value": graph_inputs}
     remaining_inputs = g.remaining_inputs({k for k in graph_inputs.keys()})
     if len(remaining_inputs) > 0:
         raise TierkreisError(f"Some inputs were not provided: {remaining_inputs}")

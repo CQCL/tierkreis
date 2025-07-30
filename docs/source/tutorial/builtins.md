@@ -20,7 +20,7 @@ The following graph has no inputs and outputs a single integer.
 
 ```{code-cell} ipython3
 from tierkreis.builder import GraphBuilder
-from tierkreis.types import EmptyModel, TKR
+from tierkreis.models import EmptyModel, TKR
 
 g = GraphBuilder(EmptyModel, TKR[int])
 ```

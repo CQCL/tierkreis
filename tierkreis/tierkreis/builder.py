@@ -41,14 +41,11 @@ class Function[Out](TNamedModel, Protocol):
     def out() -> type[Out]: ...
 
 
-Inputs = TypeVar("Inputs", bound=TModel, covariant=True)
-Outputs = TypeVar("Outputs", bound=TModel)
-
-
 @dataclass
-class TypedGraphRef(Generic[Inputs, Outputs]):
+class TypedGraphRef[Ins: TModel, Outs: TModel]:
     graph_ref: ValueRef
-    outputs_type: type[Outputs]
+    outputs_type: type[Outs]
+    inputs_type: type[Ins]
 
 
 class LoopOutput(TNamedModel, Protocol):
@@ -56,7 +53,7 @@ class LoopOutput(TNamedModel, Protocol):
     def should_continue(self) -> TKR[bool]: ...
 
 
-class GraphBuilder(Generic[Inputs, Outputs]):
+class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     outputs_type: type
     inputs: Inputs
 
@@ -102,7 +99,9 @@ class GraphBuilder(Generic[Inputs, Outputs]):
     ) -> TypedGraphRef[A, B]:
         idx, port = self.data.add(Const(graph.data.model_dump()))("value")
         return TypedGraphRef[A, B](
-            graph_ref=(idx, port), outputs_type=graph.outputs_type
+            graph_ref=(idx, port),
+            outputs_type=graph.outputs_type,
+            inputs_type=graph.inputs_type,
         )
 
     def task[Out: TModel](self, f: Function[Out]) -> Out:

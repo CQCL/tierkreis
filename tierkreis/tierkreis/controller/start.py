@@ -7,6 +7,7 @@ import sys
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
@@ -14,6 +15,7 @@ from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
 from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
+from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
 from tierkreis.labels import Labels
 from tierkreis.exceptions import TierkreisError
 
@@ -87,7 +89,12 @@ def start(
         def_path = storage.write_worker_call_args(node_location, name, ins, output_list)
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
 
-        if launcher_name == "builtins":
+        if isinstance(storage, ControllerInMemoryStorage) and isinstance(
+            executor, InMemoryExecutor
+        ):
+            executor.run(launcher_name, def_path)
+
+        elif launcher_name == "builtins":
             run_builtin(def_path, storage.logs_path)
         else:
             executor.run(launcher_name, def_path)

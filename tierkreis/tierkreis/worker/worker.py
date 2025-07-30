@@ -112,11 +112,10 @@ class Worker:
 
             function(node_definition)
 
-            node_definition.done_path.touch()
+            self.storage.mark_done(node_definition.done_path)
         except Exception as err:
             logger.error("encountered error", exc_info=err)
-            with open(node_definition.error_path, "w+") as f:
-                f.write(str(err))
+            self.storage.write_error(node_definition.error_path, str(err))
 
     def write_stubs(self, stubs_path: Path) -> None:
         with open(stubs_path, "w+") as fh:

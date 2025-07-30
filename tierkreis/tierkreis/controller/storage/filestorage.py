@@ -79,15 +79,6 @@ class ControllerFileStorage:
         if self.workflow_dir.exists():
             shutil.move(self.workflow_dir, tmp_dir)
 
-    def add_input(self, port_name: PortID, value: bytes) -> Loc:
-        input_loc = Loc().N(-1)
-        path = self._output_path(input_loc, port_name)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, "wb+") as fh:
-            fh.write(bytes(value))
-
-        return input_loc
-
     def write_node_def(self, node_location: Loc, node: NodeDef):
         with open(self._nodedef_path(node_location), "w+") as fh:
             fh.write(NodeDefModel(root=node).model_dump_json())
@@ -148,9 +139,6 @@ class ControllerFileStorage:
             raise TierkreisError(
                 "Workflow already exists. Try running with a different ID or do_cleanup."
             ) from e
-
-    def is_output_ready(self, node_location: Loc, output_name: PortID) -> bool:
-        return self._output_path(node_location, output_name).exists()
 
     def write_output(
         self, node_location: Loc, output_name: PortID, value: bytes

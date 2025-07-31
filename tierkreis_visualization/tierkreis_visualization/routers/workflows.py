@@ -230,6 +230,9 @@ def get_function_logs(workflow_id: UUID, node_location_str: str) -> PlainTextRes
 @router.get("/{workflow_id}/logs")
 def get_logs(workflow_id: UUID) -> PlainTextResponse:
     storage = get_storage(workflow_id)
+    if not storage.logs_path:
+        return PlainTextResponse("Workflow has no logs file specified.")
+
     if not storage.logs_path.is_file():
         return PlainTextResponse("Logfile not found.")
 

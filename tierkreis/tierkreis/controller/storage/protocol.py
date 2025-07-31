@@ -3,15 +3,12 @@ from typing import Any, Protocol
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.graph import NodeDef
-from tierkreis.controller.data.location import (
-    Loc,
-    OutputLoc,
-    WorkerCallArgs,
-)
+from tierkreis.controller.data.location import Loc, OutputLoc, WorkerCallArgs
 
 
 class ControllerStorage(Protocol):
-    logs_path: Path
+    @property
+    def logs_path(self) -> Path | None: ...
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None: ...
     def read_node_def(self, node_location: Loc) -> NodeDef: ...

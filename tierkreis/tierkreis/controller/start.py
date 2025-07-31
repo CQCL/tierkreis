@@ -42,9 +42,20 @@ def start_nodes(
         started_locs.add(node_run_datum.node_location)
 
 
-def run_builtin(def_path: Path, logs_path: Path) -> None:
+def run_builtin(def_path: Path, logs_path: Path | None) -> None:
+    def _run(logs_file) -> None:
+        subprocess.Popen(
+            [sys.executable, "main.py", def_path],
+            start_new_session=True,
+            cwd=PACKAGE_PATH / "tierkreis" / "builtins",
+            stderr=logs_file,
+            stdout=logs_file,
+        )
+
     logger = getLogger("builtins")
-    if not logger.hasHandlers():
+    if not logs_path:
+        logger = getLogger(__name__)
+    elif not logger.hasHandlers():
         formatter = logging.Formatter(
             fmt="%(asctime)s: %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
@@ -56,14 +67,12 @@ def run_builtin(def_path: Path, logs_path: Path) -> None:
         logger.addHandler(handler)
 
     logger.info("START builtin %s", def_path)
+
+    if not logs_path:
+        return _run(None)
+
     with open(logs_path, "a") as fh:
-        subprocess.Popen(
-            [sys.executable, "main.py", def_path],
-            start_new_session=True,
-            cwd=PACKAGE_PATH / "tierkreis" / "builtins",
-            stderr=fh,
-            stdout=fh,
-        )
+        _run(fh)
 
 
 def start(

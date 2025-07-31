@@ -2,19 +2,12 @@ from collections import defaultdict
 from pathlib import Path
 from uuid import UUID
 from typing import Any
-import shutil
-import os
-from time import time_ns
 
 from pydantic import BaseModel, Field
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.graph import NodeDef
-from tierkreis.controller.data.location import (
-    Loc,
-    OutputLoc,
-    WorkerCallArgs,
-)
+from tierkreis.controller.data.location import Loc, OutputLoc, WorkerCallArgs
 from tierkreis.exceptions import TierkreisError
 
 
@@ -34,12 +27,8 @@ class ControllerInMemoryStorage:
         workflow_id: UUID,
         name: str | None = None,
     ) -> None:
-        self.work_dir = Path.home() / ".tierkreis" / "tmp"
-        self.clean_graph_files()
-        self.work_dir.mkdir(parents=True, exist_ok=True)
         self.workflow_id = workflow_id
-        self.logs_path = self.work_dir / "logs"
-        self.logs_path.touch()
+        self.logs_path = None
         self.name = name
         self.nodes: dict[Path, NodeData] = defaultdict(lambda: NodeData())
 
@@ -84,7 +73,7 @@ class ControllerInMemoryStorage:
             output_dir=node_path,
             done_path=node_path,
             error_path=node_path,
-            logs_path=self.logs_path,
+            logs_path=None,
         )
         for port in output_list:
             # workaround
@@ -163,8 +152,4 @@ class ControllerInMemoryStorage:
         self.nodes[self.loc_to_path(node_location)].metadata = {"name": self.name}
 
     def clean_graph_files(self) -> None:
-        uid = os.getuid()
-        tmp_dir = Path(f"/tmp/{uid}/tierkreis/archive/{time_ns()}")
-        tmp_dir.mkdir(parents=True)
-        if self.work_dir.exists():
-            shutil.move(self.work_dir, tmp_dir)
+        self.nodes.clear()

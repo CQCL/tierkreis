@@ -15,6 +15,17 @@ class WorkflowDisplay(BaseModel):
 
 
 def get_workflows() -> list[WorkflowDisplay]:
+    storage_type = os.environ.get("TKR_STORAGE", "FileStorage")
+    if storage_type == "GraphDataStorage":
+        return [
+            WorkflowDisplay(
+                id=UUID(int=0), id_int=0, name="tmp", start=str(datetime.now())
+            )
+        ]
+    return get_workflows_from_disk()
+
+
+def get_workflows_from_disk() -> list[WorkflowDisplay]:
     folders = os.listdir(CONFIG.tierkreis_path)
     folders.sort()
     workflows: list[WorkflowDisplay] = []

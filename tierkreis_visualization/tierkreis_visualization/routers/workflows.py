@@ -9,11 +9,13 @@ from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
 from starlette.websockets import WebSocket, WebSocketDisconnect
 
+from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
+from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.exceptions import TierkreisError
 from watchfiles import awatch  # type: ignore
 
-from tierkreis_visualization.config import CONFIG, get_storage, templates
+from tierkreis_visualization.config import CONFIG, templates
 from tierkreis_visualization.data.eval import get_eval_node
 from tierkreis_visualization.data.function import get_function_node
 from tierkreis_visualization.data.loop import get_loop_node
@@ -31,16 +33,20 @@ logger = logging.getLogger(__name__)
 async def websocket_endpoint(
     websocket: WebSocket, workflow_id: UUID, node_location_str: str
 ) -> None:
+    storage = websocket.app.state.get_storage_fn(workflow_id)
     try:
         await websocket.accept()
         # Handle WebSocket connection.
-        await handle_websocket(websocket, workflow_id, node_location_str)
+        await handle_websocket(websocket, workflow_id, node_location_str, storage)
     except WebSocketDisconnect:
         pass
 
 
 async def handle_websocket(
-    websocket: WebSocket, workflow_id: UUID, node_location_str: str
+    websocket: WebSocket,
+    workflow_id: UUID,
+    node_location_str: str,
+    storage: ControllerStorage,
 ) -> None:
     node_location = parse_node_location(node_location_str)
     # currently we are watching the entire workflow in the frontend
@@ -48,7 +54,7 @@ async def handle_websocket(
     if not node_path.exists():
         return
     async for _changes in awatch(node_path, recursive=True):
-        ctx = get_node_data(workflow_id, node_location)
+        ctx = get_node_data(workflow_id, node_location, storage)
         await websocket.send_json(ctx)
 
 
@@ -74,15 +80,15 @@ def parse_node_location(node_location_str: str) -> Loc:
     return Loc(node_location_str)
 
 
-def get_errored_nodes(workflow_id: UUID) -> list[Loc]:
-    storage = get_storage(workflow_id)
+def get_errored_nodes(storage: ControllerStorage) -> list[Loc]:
     errored_nodes = storage.read_errors(Loc("-"))
     return [parse_node_location(node) for node in errored_nodes.split("\n")]
 
 
-def get_node_data(workflow_id: UUID, loc: Loc) -> dict[str, Any]:
-    storage = get_storage(workflow_id)
-    errored_nodes = get_errored_nodes(workflow_id)
+def get_node_data(
+    workflow_id: UUID, loc: Loc, storage: ControllerStorage
+) -> dict[str, Any]:
+    errored_nodes = get_errored_nodes(storage)
 
     try:
         node = storage.read_node_def(loc)
@@ -151,34 +157,47 @@ def get_node_data(workflow_id: UUID, loc: Loc) -> dict[str, Any]:
     return ctx
 
 
-async def node_stream(workflow_id: UUID, node_location: Loc):
+async def node_stream(
+    workflow_id: UUID, node_location: Loc, storage: ControllerStorage
+):
     node_path = CONFIG.tierkreis_path / str(workflow_id) / str(node_location)
     async for _changes in awatch(node_path, recursive=False):
         if (node_path / "definition").exists():
-            ctx = get_node_data(workflow_id, node_location)
+            ctx = get_node_data(workflow_id, node_location, storage)
             yield f"event: message\ndata: {json.dumps(ctx)}\n\n"
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}")
-def get_node(request: Request, workflow_id: UUID, node_location_str: str):
+def get_node(
+    request: Request,
+    workflow_id: UUID,
+    node_location_str: str,
+):
     node_location = parse_node_location(node_location_str)
-    ctx = get_node_data(workflow_id, node_location)
+    storage = request.app.state.get_storage_fn(workflow_id)
+    ctx = get_node_data(workflow_id, node_location, storage)
     if request.headers["Accept"] == "application/json":
         return JSONResponse(ctx)
 
     if request.headers["Accept"] == "text/event-stream":
         return StreamingResponse(
-            node_stream(workflow_id, node_location), media_type="text/event-stream"
+            node_stream(workflow_id, node_location, storage),
+            media_type="text/event-stream",
         )
 
     return templates.TemplateResponse(request=request, name=ctx["name"], context=ctx)
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/inputs/{port_name}")
-def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
+def get_input(
+    request: Request,
+    workflow_id: UUID,
+    node_location_str: str,
+    port_name: str,
+):
     try:
         node_location = parse_node_location(node_location_str)
-        storage = get_storage(workflow_id)
+        storage = request.app.state.get_storage_fn(workflow_id)
         definition = storage.read_worker_call_args(node_location)
 
         with open(definition.inputs[port_name], "rb") as fh:
@@ -188,25 +207,34 @@ def get_input(workflow_id: UUID, node_location_str: str, port_name: str):
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/outputs/{port_name}")
-def get_output(workflow_id: UUID, node_location_str: str, port_name: str):
-    output_file = (
-        CONFIG.tierkreis_path
-        / str(workflow_id)
-        / node_location_str
-        / "outputs"
-        / port_name
-    )
+def get_output(
+    request: Request,
+    workflow_id: UUID,
+    node_location_str: str,
+    port_name: str,
+):
+    storage = request.app.state.get_storage_fn(workflow_id)
     try:
-        with open(output_file, "rb") as fh:
-            return JSONResponse(json.loads(fh.read()))
+        return JSONResponse(
+            json.loads(
+                storage.read_output(
+                    parse_node_location(node_location_str), PortID(port_name)
+                )
+            )
+        )
+
     except FileNotFoundError as e:
         return PlainTextResponse(str(e))
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/logs")
-def get_function_logs(workflow_id: UUID, node_location_str: str) -> PlainTextResponse:
+def get_function_logs(
+    request: Request,
+    workflow_id: UUID,
+    node_location_str: str,
+) -> PlainTextResponse:
     node_location = parse_node_location(node_location_str)
-    storage = get_storage(workflow_id)
+    storage = request.app.state.get_storage_fn(workflow_id)
     try:
         definition = storage.read_node_def(node_location)
     except (FileNotFoundError, TierkreisError):
@@ -230,8 +258,11 @@ def get_function_logs(workflow_id: UUID, node_location_str: str) -> PlainTextRes
 
 
 @router.get("/{workflow_id}/logs")
-def get_logs(workflow_id: UUID) -> PlainTextResponse:
-    storage = get_storage(workflow_id)
+def get_logs(
+    request: Request,
+    workflow_id: UUID,
+) -> PlainTextResponse:
+    storage = request.app.state.get_storage_fn(workflow_id)
     if not storage.logs_path.is_file():
         return PlainTextResponse("Logfile not found.")
 
@@ -244,9 +275,13 @@ def get_logs(workflow_id: UUID) -> PlainTextResponse:
 
 
 @router.get("/{workflow_id}/nodes/{node_location_str}/errors")
-def get_errors(workflow_id: UUID, node_location_str: str):
+def get_errors(
+    request: Request,
+    workflow_id: UUID,
+    node_location_str: str,
+):
     node_location = parse_node_location(node_location_str)
-    storage = get_storage(workflow_id)
+    storage = request.app.state.get_storage_fn(workflow_id)
     if not storage.node_has_error(node_location):
         return PlainTextResponse("Node has no errors.", status_code=404)
 

@@ -59,7 +59,7 @@ class FibDataStruct(NamedTuple):
 ```
 
 To use this as part of the signature of a graph, we wrap it in `TKR`.
-The `TKR[A]` wrapper type indicates that a single edge contains a value of type `A`.
+The `TKR[A]` wrapper type indicates that a single input/output contains a value of type `A`.
 The contents of `A` will not in general be accessible to the graph builder code.
 
 ```{code-cell} ipython3
@@ -97,7 +97,7 @@ fib_step.outputs(FibData(fib_step.inputs.b, sum))
 Note that we are now able to access the contents of `FibData` in the graph builder.
 
 ```{note}
-What would happen if we used a nested data structure inside a single edge to construct this graph?
+What would happen if we used a nested data structure inside a single input/output to construct this graph?
 ```
 
 If instead we wanted to have a single output containing a nested structure `FibData`

@@ -38,7 +38,7 @@ loop_body = GraphBuilder(LoopBodyInput, LoopBodyOutput)
 
 The loop body input type consists of all the variables that we want the loop body to have access to.
 This includes variables that the loop does not modify, like `step` and `bound`.
-The loop body output type is the are the variables that the loop modifies
+The loop body output type consists of the variables that the loop modifies
 (in this case the counter `i` and the `value`)
 plus a special boolean output called `should_continue` that tells the loop when to finish.
 

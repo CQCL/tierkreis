@@ -45,6 +45,8 @@ async def handle_websocket(
     node_location = parse_node_location(node_location_str)
     # currently we are watching the entire workflow in the frontend
     node_path = CONFIG.tierkreis_path / str(workflow_id)
+    if not node_path.exists():
+        return
     async for _changes in awatch(node_path, recursive=True):
         ctx = get_node_data(workflow_id, node_location)
         await websocket.send_json(ctx)

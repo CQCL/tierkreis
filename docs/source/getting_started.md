@@ -9,3 +9,5 @@ A sequence of tutorials that cover the fundamentals of writing and operating Tie
 [Graph inputs and outputs](tutorial/inputs.md)
 
 [Nested graphs using Eval](tutorial/eval.md)
+
+[Iteration using Loop](tutorial/loop.md)

@@ -44,16 +44,22 @@ from tierkreis.models import EmptyModel
 fib4 = GraphBuilder(EmptyModel, TKR[int])
 ```
 
-```{code-cell} ipython3
-two = fib4.eval(fib_step, FibData(a=fib4.const(0), b=fib4.const(1)))
-```
+The `GraphBuilder.eval` method takes a `GraphBuilder` object as its first argument
+and the appropriately typed input data as the second object.
 
 ```{code-cell} ipython3
-three = fib4.eval(fib_step, two)
-four = fib4.eval(fib_step, three)
-fib4.outputs(four.b)
-
+second = fib4.eval(fib_step, FibData(a=fib4.const(0), b=fib4.const(1)))
 ```
+
+We can iterate manually as follows:
+
+```{code-cell} ipython3
+third = fib4.eval(fib_step, second)
+fourth = fib4.eval(fib_step, third)
+fib4.outputs(fourth.b)
+```
+
+In the [next tutorial](./loop.md) we will see how to iterate programmatically.
 
 # Execution
 

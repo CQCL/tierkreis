@@ -143,7 +143,7 @@ class ControllerInMemoryStorage:
                 output_name
             ]:
                 return output
-            return b""
+            return b"null"
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:

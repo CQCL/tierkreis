@@ -15,15 +15,6 @@ from tierkreis.controller.data.location import (
 from tierkreis.exceptions import TierkreisError
 from tierkreis.controller.storage.in_memory import NodeData
 
-# class NodeData(BaseModel):
-#     definition: NodeDef | None = None
-#     call_args: WorkerCallArgs | None = None
-#     is_done: bool = False
-#     has_error: bool = False
-#     metadata: dict[str, Any] = Field(default_factory=dict)
-#     error_logs: str = ""
-#     outputs: dict[PortID, bytes | None] = Field(default_factory=dict)
-
 
 class GraphDataStorage:
     def __init__(
@@ -99,15 +90,12 @@ class GraphDataStorage:
         if output_name in node.outputs:
             if output := node.outputs[output_name]:
                 return output
-            return b""
+            return b"null"
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
         node = self._node_from_loc(node_location)
-        return list(
-            # node.outputs.keys()
-            filter(lambda k: k != "*", node.outputs.keys())
-        )
+        return list(filter(lambda k: k != "*", node.outputs.keys()))
 
     def is_node_started(self, node_location: Loc) -> bool:
         return False

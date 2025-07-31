@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from inspect import isclass
-from typing import Any, Callable, Generic, Protocol, TypeVar, overload
+from typing import Any, Callable, Protocol, overload
 
 from tierkreis.controller.data.core import EmptyModel, ValueRef
 from tierkreis.controller.data.graph import (

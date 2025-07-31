@@ -13,11 +13,7 @@ author = "Quantinuum"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = [
-    "autodoc2",
-    "myst_parser",
-    "quantinuum_sphinx",
-]
+extensions = ["autodoc2", "quantinuum_sphinx", "myst_nb"]
 autodoc2_packages = [
     "../../tierkreis/tierkreis",
     "../../tierkreis_workers/aer_worker",
@@ -32,6 +28,10 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = "quantinuum_sphinx"
+html_theme = "furo"
 html_static_path = ["_static"]
 html_favicon = "_static/quantinuum_favicon.svg"
+
+# -- Notebook options --------------------------------------------------------
+
+nb_execution_raise_on_error = True

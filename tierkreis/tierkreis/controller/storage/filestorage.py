@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+from datetime import datetime
 from pathlib import Path
 from time import time_ns
 from typing import Any
@@ -184,7 +185,7 @@ class ControllerFileStorage:
 
     def write_metadata(self, node_location: Loc) -> None:
         with open(self._metadata_path(node_location), "w+") as fh:
-            fh.write(json.dumps({"name": self.name}))
+            fh.write(json.dumps({"name": self.name, "start": str(datetime.now())}))
 
     def read_metadata(self, node_location: Loc) -> dict[str, Any]:
         with open(self._metadata_path(node_location)) as fh:

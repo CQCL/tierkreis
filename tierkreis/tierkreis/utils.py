@@ -1,3 +1,4 @@
+from datetime import datetime
 from uuid import UUID
 from unittest.mock import MagicMock, patch
 import logging
@@ -29,7 +30,9 @@ def visualize_graph(
     """
     storage = GraphDataStorage(UUID(int=0), graph=graph)
     os.environ["TKR_STORAGE"] = "GraphDataStorage"
-    get_workflows.return_value = [WorkflowDisplay(id=UUID(int=0), id_int=0, name="tmp")]
+    get_workflows.return_value = [
+        WorkflowDisplay(id=UUID(int=0), id_int=0, name="tmp", start=str(datetime.now()))
+    ]
     get_storage.return_value = storage
 
     start()

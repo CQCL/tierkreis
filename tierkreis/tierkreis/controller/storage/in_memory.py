@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 from typing import Any
@@ -160,7 +161,10 @@ class ControllerInMemoryStorage:
         return self.nodes[self.loc_to_path(node_location)].metadata
 
     def write_metadata(self, node_location: Loc) -> None:
-        self.nodes[self.loc_to_path(node_location)].metadata = {"name": self.name}
+        self.nodes[self.loc_to_path(node_location)].metadata = {
+            "name": self.name,
+            "start": str(datetime.now()),
+        }
 
     def clean_graph_files(self) -> None:
         uid = os.getuid()

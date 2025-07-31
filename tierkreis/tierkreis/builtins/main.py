@@ -1,5 +1,6 @@
 from logging import getLogger
 from pathlib import Path
+from random import randint
 import statistics
 from sys import argv
 from typing import NamedTuple, Sequence
@@ -37,7 +38,7 @@ def igt(a: int, b: int) -> bool:
 
 @worker.task(name="and")
 def impl_and(a: bool, b: bool) -> bool:
-    logger.debug(f"igt {a} {b}")
+    logger.debug(f"and {a} {b}")
     return a and b
 
 
@@ -144,6 +145,11 @@ def untuple[U: PType, V: PType](value: tuple[U, V]) -> Untupled[U, V]:
 @worker.task()
 def mean(values: list[float]) -> float:
     return statistics.mean(values)
+
+
+@worker.task()
+def rand_int(a: int, b: int) -> int:
+    return randint(a, b)
 
 
 if __name__ == "__main__":

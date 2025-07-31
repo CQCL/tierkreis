@@ -22,7 +22,7 @@ from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
 
 from tierkreis.builtins.stubs import untuple, itimes, iadd, unzip, zip_impl
-from tierkreis.graphs.fold import FoldGraphInputs, fold_graph
+from tierkreis.graphs.fold import FoldFunctionInput, FoldGraphInputs, fold_graph
 from example_workers.pytket_worker.stubs import (
     append_pauli_measurement_impl,
     optimise_phase_gadgets,
@@ -59,13 +59,11 @@ def build_ansatz() -> Circuit:
     return circ
 
 
-class ComputeTermsInputs(NamedTuple):
-    accum: TKR[int]
-    value: TKR[tuple[int, int]]
+ComputeTermsInputs = FoldFunctionInput[tuple[float, float], float]
 
 
 def _compute_terms():
-    g = GraphBuilder(ComputeTermsInputs, TKR[int])
+    g = GraphBuilder(ComputeTermsInputs, TKR[float])
 
     untupled = g.task(untuple(g.inputs.value))
     res_0 = untupled.a
@@ -73,8 +71,8 @@ def _compute_terms():
 
     # TODO: these aren't integers, this only works
     # because these methods are untyped
-    prod = g.task(itimes(res_0, res_1))
-    sum = g.task(iadd(g.inputs.accum, prod))
+    prod = g.task(itimes(res_0, res_1))  # type: ignore
+    sum = g.task(iadd(g.inputs.accum, prod))  # type: ignore
 
     g.outputs(sum)
     return g
@@ -134,9 +132,9 @@ def symbolic_execution():
     zipped = g.task(zip_impl(m, parameters_list))
     # (\(x,y) \z --> x*y+z) and 0
     # TODO: This needs a better name
-    computed = g.eval(
-        fold_graph(_compute_terms()), FoldGraphInputs(g.const(0.0), zipped)
-    )
+    ins = FoldGraphInputs(g.const(0.0), zipped)
+    folder = fold_graph(_compute_terms())
+    computed = g.eval(folder, ins)
     g.outputs(computed)
     return g
 

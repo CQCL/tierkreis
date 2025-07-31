@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 from uuid import UUID
 
@@ -10,6 +11,7 @@ class WorkflowDisplay(BaseModel):
     id: UUID
     id_int: int
     name: str | None
+    start: str
 
 
 def get_workflows() -> list[WorkflowDisplay]:
@@ -21,7 +23,10 @@ def get_workflows() -> list[WorkflowDisplay]:
             id = UUID(folder)
             metadata = get_storage(id).read_metadata(Loc(""))
             name = metadata["name"] or "workflow"
-            workflows.append(WorkflowDisplay(id=id, id_int=int(id), name=name))
+            start = metadata.get("start", str(datetime.now()))
+            workflows.append(
+                WorkflowDisplay(id=id, id_int=int(id), name=name, start=start)
+            )
         except (TypeError, ValueError):
             continue
 

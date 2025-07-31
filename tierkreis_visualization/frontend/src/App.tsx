@@ -33,6 +33,7 @@ const saveGraph = ({
   key: string;
   nodes: BackendNode[];
   edges: Edge[];
+  start: string;
 }) => {
   try {
     localStorage.setItem(key, JSON.stringify(graph));
@@ -43,11 +44,15 @@ const saveGraph = ({
 
 const loadGraph = (props: {
   key: string;
-}): { nodes: BackendNode[]; edges: Edge[] } | null => {
+}): { nodes: BackendNode[]; edges: Edge[]; start: string } | null => {
   try {
     const item = localStorage.getItem(props.key);
     if (item !== null)
-      return JSON.parse(item) as { nodes: BackendNode[]; edges: Edge[] };
+      return JSON.parse(item) as {
+        nodes: BackendNode[];
+        edges: Edge[];
+        start: string;
+      };
     return null;
   } catch {
     return null;
@@ -58,6 +63,7 @@ const Main = (props: {
   initialNodes: BackendNode[];
   initialEdges: Edge[];
   workflow_id: string;
+  workflow_start: string;
   workflows: Workflow[];
   infoProps: InfoProps;
   setInfo: (arg: InfoProps) => void;
@@ -66,8 +72,13 @@ const Main = (props: {
   const [nodes, setNodes] = useState(props.initialNodes);
   const [edges, setEdges] = useState(props.initialEdges);
   React.useEffect(() => {
-    saveGraph({ key: props.workflow_id, nodes, edges });
-  }, [edges, nodes, props.workflow_id]);
+    saveGraph({
+      key: props.workflow_id,
+      nodes,
+      edges,
+      start: props.workflow_start,
+    });
+  }, [edges, nodes, props.workflow_id, props.workflow_start]);
 
   const onNodesChange: OnNodesChange<BackendNode> = useCallback(
     (changes) =>
@@ -178,6 +189,7 @@ export default function App() {
         (workflow): Workflow => ({
           id: workflow.id,
           name: workflow.name,
+          start: workflow.start,
         })
       ),
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
@@ -221,13 +233,18 @@ export default function App() {
 
   const remoteGraph = graphQuery.data;
   const localGraph = loadGraph({ key: workflow_id });
-
+  const workflow_start = workflowsQuery.data.find(
+    (workflow) => workflow.id == workflow_id
+  )?.start;
   const mergedGraph = (() => {
     const default_node_positions = bottomUpLayout(
       remoteGraph.nodes,
       remoteGraph.edges
     );
-    if (localGraph === null)
+    if (
+      localGraph === null ||
+      (workflow_start && workflow_start == localGraph.start)
+    )
       return {
         nodes: default_node_positions,
         edges: remoteGraph.edges,
@@ -260,6 +277,7 @@ export default function App() {
       initialEdges={mergedGraph.edges}
       workflows={workflowsQuery.data}
       workflow_id={workflow_id}
+      workflow_start={workflow_start}
       infoProps={info}
       setInfo={setInfo}
     />

@@ -5,6 +5,7 @@ export interface InfoProps {
 export interface Workflow {
   id: string;
   name: string;
+  start: string;
 }
 
 export interface HandleProps {

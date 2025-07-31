@@ -30,14 +30,15 @@ but for now we keep things simple.
 
 ```{note}
 In order to keep a clear separation between the types used in the Tierkreis graph and the types already present in the Python language we wrap the former with `TKR`.
+(The `TKR[A]` wrapper type indicates that an edge in the graph contains a value of type `A`.)
 For more information please see [types in Tierkreis]().
 ```
 
 We can add constants to a graph using `GraphBuilder.const`.
 
 ```{code-cell} ipython3
-one: TKR[int] = g.const(1)
-two: TKR[int] = g.const(2)
+one = g.const(1)
+two = g.const(2)
 ```
 
 The constants will be added into the data structure defining the graph.
@@ -48,7 +49,7 @@ We can add tasks using `GraphBuilder.task`:
 ```{code-cell} ipython3
 from tierkreis.builtins.stubs import iadd
 
-three: TKR[int] = g.task(iadd(g.const(1), g.const(2)))
+three = g.task(iadd(g.const(1), g.const(2)))
 ```
 
 In this example we import the type stubs provided by the Tierkreis library for the built-in functions.

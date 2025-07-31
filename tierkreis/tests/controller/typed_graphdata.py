@@ -1,4 +1,5 @@
 from typing import NamedTuple
+from pydantic import BaseModel
 from tierkreis.builtins.stubs import iadd, igt, itimes, tuple_impl, untuple
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder

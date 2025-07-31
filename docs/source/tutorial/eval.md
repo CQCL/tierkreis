@@ -22,10 +22,9 @@ from typing import NamedTuple
 
 from tierkreis.builder import GraphBuilder
 from tierkreis.builtins.stubs import iadd
-from tierkreis.models import portmapping, TKR
+from tierkreis.models import TKR
 
 
-@portmapping
 class FibData(NamedTuple):
     a: TKR[int]
     b: TKR[int]
@@ -37,16 +36,23 @@ fib_step.outputs(FibData(fib_step.inputs.b, sum))
 ```
 
 We create a graph `fib4` that calls `fib_step` three times.
+The graph will have no inputs and gives a single integer as output:
 
 ```{code-cell} ipython3
 from tierkreis.models import EmptyModel
 
 fib4 = GraphBuilder(EmptyModel, TKR[int])
-init = FibData(a=fib4.const(0), b=fib4.const(1))
-two = fib4.eval(fib_step, init)
+```
+
+```{code-cell} ipython3
+two = fib4.eval(fib_step, FibData(a=fib4.const(0), b=fib4.const(1)))
+```
+
+```{code-cell} ipython3
 three = fib4.eval(fib_step, two)
 four = fib4.eval(fib_step, three)
 fib4.outputs(four.b)
+
 ```
 
 # Execution
@@ -61,7 +67,7 @@ from tierkreis import run_graph
 from tierkreis.storage import FileStorage, read_outputs
 from tierkreis.executor import ShellExecutor
 
-storage = FileStorage(UUID(int=99), name="My first graph")
+storage = FileStorage(UUID(int=99), name="Nested graphs using Eval")
 executor = ShellExecutor(Path("."), logs_path=storage.logs_path)
 
 storage.clean_graph_files()

@@ -42,7 +42,7 @@ The loop body output type consists of the variables that the loop modifies
 (in this case the counter `i` and the `value`)
 plus a special boolean output called `should_continue` that tells the loop when to finish.
 
-The loop body increments the counter `i`,
+In our example the loop body increments the counter `i`,
 adds `step` to the `value`
 and checks if `i` has met the bound.
 

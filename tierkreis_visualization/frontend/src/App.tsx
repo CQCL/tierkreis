@@ -42,6 +42,14 @@ const saveGraph = ({
   }
 };
 
+const deleteGraph = ({ key }: { key: string }) => {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    return null;
+  }
+};
+
 const loadGraph = (props: {
   key: string;
 }): { nodes: BackendNode[]; edges: Edge[]; start: string } | null => {
@@ -79,7 +87,6 @@ const Main = (props: {
       start: props.workflow_start,
     });
   }, [edges, nodes, props.workflow_id, props.workflow_start]);
-
   const onNodesChange: OnNodesChange<BackendNode> = useCallback(
     (changes) =>
       setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
@@ -94,7 +101,6 @@ const Main = (props: {
     node.data.pinned = true;
   }, []);
   const reactFlowInstance = useReactFlow();
-
   React.useEffect(() => {
     const url = `${URL}/${props.workflow_id}/nodes/-`;
     const ws = new WebSocket(url);
@@ -232,19 +238,21 @@ export default function App() {
   });
 
   const remoteGraph = graphQuery.data;
-  const localGraph = loadGraph({ key: workflow_id });
   const workflow_start = workflowsQuery.data.find(
     (workflow) => workflow.id == workflow_id
-  )?.start;
+  )?.start || "";
+  const localGraph = loadGraph({ key: workflow_id });
+  if (workflow_start && workflow_start != localGraph?.start) {
+    deleteGraph({ key: workflow_id });
+    localGraph == null;
+  }
+
   const mergedGraph = (() => {
     const default_node_positions = bottomUpLayout(
       remoteGraph.nodes,
       remoteGraph.edges
     );
-    if (
-      localGraph === null ||
-      (workflow_start && workflow_start == localGraph.start)
-    )
+    if (localGraph === null)
       return {
         nodes: default_node_positions,
         edges: remoteGraph.edges,
@@ -260,7 +268,7 @@ export default function App() {
       };
     });
     const edgesMap = new Map();
-    localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
+    remoteGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
     localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
     const mergedEdges = [...edgesMap.values()];
 

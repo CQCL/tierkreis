@@ -1,10 +1,14 @@
 from pathlib import Path
+from typing import Callable
+from uuid import UUID
 from fastapi.middleware.cors import CORSMiddleware
 
 
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import RedirectResponse
+from tierkreis.controller.storage.protocol import ControllerStorage
+from tierkreis_visualization.config import get_storage
 import uvicorn
 
 from tierkreis_visualization.routers.workflows import router as workflows_router
@@ -37,4 +41,14 @@ def read_root(request: Request):
 
 
 def start():
+    app.state.get_storage_fn = get_storage
+    uvicorn.run(app, reload=True)
+
+
+def start_with_storage_fn(get_storage_fn: Callable[[UUID], ControllerStorage]):
+    app.state.get_storage_fn = get_storage_fn
     uvicorn.run(app)
+
+
+if __name__ == "__main__":
+    start()

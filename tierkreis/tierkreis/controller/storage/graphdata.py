@@ -119,6 +119,13 @@ class GraphDataStorage:
         :param parent_loc: The location of the parent node only relevant for Const nodes, defaults to Loc().
         :type parent_loc: Loc, optional
         """
+        try:
+            outputs = {
+                output: None for output in graph.node_outputs[graph.output_idx()]
+            }
+        except TierkreisError:
+            outputs = {}
+
         self.nodes[parent_loc] = NodeData(
             definition=Eval((-1, "body"), {}),
             call_args=None,
@@ -126,7 +133,7 @@ class GraphDataStorage:
             has_error=False,
             metadata={},
             error_logs="",
-            outputs={output: None for output in graph.node_outputs[graph.output_idx()]},
+            outputs=outputs,
         )
         self.nodes[parent_loc].metadata["start_time"] = str(datetime.now())
         self.nodes[parent_loc.N(-1)] = NodeData(
@@ -197,12 +204,17 @@ class GraphDataStorage:
 
                 case "loop":
                     graph = graph.nodes[node.body[0]].value
+                    try:
+                        outputs = (
+                            {
+                                output: None
+                                for output in graph.node_outputs[graph.output_idx()]
+                            },
+                        )
+                    except TierkreisError:
+                        outputs = {}
                     self.nodes[loc.L(0)] = NodeData(
-                        definition=Eval((-1, "body"), {}),
-                        outputs={
-                            output: None
-                            for output in graph.node_outputs[graph.output_idx()]
-                        },
+                        definition=Eval((-1, "body"), {}), outputs=outputs
                     )
                     self.nodes[loc.L(0).N(-1)] = NodeData(
                         outputs={"body": graph.model_dump_json().encode()},
@@ -210,10 +222,15 @@ class GraphDataStorage:
 
                 case "map":
                     graph = graph.nodes[node.body[0]].value
-                    outputs = {
-                        output: None
-                        for output in graph.node_outputs[graph.output_idx()]
-                    }
+                    try:
+                        outputs = (
+                            {
+                                output: None
+                                for output in graph.node_outputs[graph.output_idx()]
+                            },
+                        )
+                    except TierkreisError:
+                        outputs = {}
                     if "*" in outputs:
                         outputs["0"] = None
                     self.nodes[loc.M("0")] = NodeData(

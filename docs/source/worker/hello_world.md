@@ -74,7 +74,7 @@ Now can we import the `greet` function from the stubs file and use it in `GraphB
 
 ```{code-cell} ipython3
 from tierkreis.builder import GraphBuilder
-from tierkreis.controller.data.models import TKR
+from tierkreis.models import TKR
 from hello_stubs import greet
 
 g = GraphBuilder(TKR[str], TKR[str])
@@ -88,12 +88,14 @@ g.outputs(output)
 from uuid import UUID
 from pathlib import Path
 
+from tierkreis import run_graph
 from tierkreis.executor import UvExecutor
-from tierkreis.storage import FileStorage
+from tierkreis.storage import FileStorage, read_outputs
 
 storage = FileStorage(UUID(int=99), "hello_world_tutorial", do_cleanup=True)
 executor = UvExecutor(
-    registry_path=Path("./example_workers"), logs_path=storage.logs_path
+    registry_path=Path("../../../examples/example_workers"), logs_path=storage.logs_path
 )
 run_graph(storage, executor, g.data, "world!")
+read_outputs(storage)
 ```

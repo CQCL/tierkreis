@@ -268,8 +268,8 @@ export default function App() {
       };
     });
     const edgesMap = new Map();
-    remoteGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
     localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
+    remoteGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
     const mergedEdges = [...edgesMap.values()];
 
     return {

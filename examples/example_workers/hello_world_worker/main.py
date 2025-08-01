@@ -19,5 +19,5 @@ def greet(greeting: str, subject: str) -> str:
     return greeting + subject
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and "__file__" in globals():
     worker.app(argv)

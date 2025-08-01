@@ -1,8 +1,6 @@
-Core Concepts in Tierkreis
-==========================
+# Core Concepts in Tierkreis
 
-Program model
--------------
+## Program model
 
 In Tierkreis, a computation is represented as a sequence of tasks comprising a workflow.
 They are combined in a directed acyclic graph (DAG), where each task is represented by a node.
@@ -13,8 +11,7 @@ As a result a computation can be distributed easily and run on different types o
 -  GPUs
 -  QPUs
 
-Tasks
-^^^^^
+### Tasks
 
 Tasks are the basic building blocks of a workflow.
 They are independent and loosely coupled and represent an atomic operation in the workflow.
@@ -22,23 +19,19 @@ Still, they can consume large amounts of resources and running time.
 While they can maintain state for the duration of their lifetime in the context of the workflow they are stateless.
 They simply act on their inputs and produce outputs, which are linked to other tasks.
 
-
-Workflows
-^^^^^^^^^
+### Workflows
 
 Workflows are a composition of tasks, that provide the control structure and data flow.
 Higher-order constructions like nesting graphs, folding and mapping can be used to create complex workflows.
 From the data dependencies, the runtime environment can infer which tasks it needs to run and can do so in parallel manner.
 
-Execution model
----------------
+## Execution model
 
 The second part of Tierkreis is the execution model, which is baked into the runtime environment.
 It is responsible for the orchestration and the proper execution of the tasks specified in a workflow.
 The goal is to distribute tasks over the available resources, based on the capabilities of each resource.
 
-Controller
-^^^^^^^^^^
+### Controller
 
 The controller is responsible for the execution of the entire workflow, maintaining the global state and checking the progress.
 It checks the state of the individual tasks and decides what to run next based on the given data availability.
@@ -51,23 +44,19 @@ Further, the controller interacts with all the other components of the system:
 A resulting feature is that computation can be interrupted and resumed at any point, without losing significant progress.
 The controller also validates the workflow to ensure each node can be implemented by a combination of worker and executor.
 
-
-Storage
-^^^^^^^
+### Storage
 
 The storage layer is an abstraction of the state of the computation.
 It stores the information of individual tasks such as their definition, their inputs (dependencies), and their status.
 The actual implementation can be a file system, a database or cloud storage.
 
-Worker
-^^^^^^
+### Worker
 
 A worker implements *atomic* functionalities that will not be broken further by the controller.
 These functionalities are unrestricted and can be implemented in any language as long as they correctly implement the interface defined by the storage layer.
 Typically, workers represent more expensive operations that run asynchronously.
 
-Executor
-^^^^^^^^
+### Executor
 
 An executor runs a single worker tasks.
 It possesses the knowledge about its environment and how to run programs there in a specific way.

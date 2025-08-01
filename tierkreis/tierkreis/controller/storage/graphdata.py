@@ -1,5 +1,4 @@
 from collections import defaultdict
-import json
 from pathlib import Path
 from uuid import UUID
 from typing import Any, assert_never
@@ -113,96 +112,44 @@ class GraphDataStorage:
         :param graph: The graph to evaluate symbolically.
         :type graph: GraphData
         """
-        try:
-            outputs: dict[PortID, None | bytes] = {
-                output: None for output in graph.node_outputs[graph.output_idx()]
-            }
-        except TierkreisError:
-            outputs = {}
+        outputs = _build_outputs(graph)
         parent_loc = Loc()
         self.nodes[parent_loc] = NodeData(
             definition=Eval((-1, "body"), {}),
-            call_args=None,
-            is_done=False,
-            has_error=False,
-            metadata={},
-            error_logs="",
             outputs=outputs,
         )
         self.nodes[parent_loc].metadata["start_time"] = str(datetime.now())
         self.nodes[parent_loc.N(-1)] = NodeData(
-            definition=None,
-            call_args=None,
-            is_done=False,
-            has_error=False,
-            metadata={},
-            error_logs="",
             outputs={"body": graph.model_dump_json().encode()},
         )
 
     def _node_from_loc(self, node_location: Loc) -> NodeData:
+        # "read-only"-> if we seen it once it won't change
         if node_location in self.nodes:
             return self.nodes[node_location]
+        # start with the full graph
         graph: GraphData = self.graph
         if len(graph.nodes) == 0:
             raise TierkreisError("Cannot convert location to node. Reason: Empty Graph")
         previous_graph = graph
         node_id = 0
         node: NodeDef | None = graph.nodes[0]
-        loc = Loc()
+        current_loc = Loc()
+        # Walk the loc and on the way populate all intermediate notes
+        # Each layer of nesting is one step
         for step in node_location.steps():
             if step == "-":
+                # root step is handled in _initialize_storage
                 continue
             _, node_id = step
-
-            loc = Loc(loc + "." + step[0] + str(step[1]))
-            if loc in self.nodes:
-                #
-                node = self.nodes[loc].definition
-                if node is None:
-                    if (body := self.nodes[loc].outputs["body"]) is None:
-                        raise TierkreisError(
-                            "Cannot convert location to node. Reason: Intermediate node without body."
-                        )
-                    graph = GraphData(**json.loads(body))
-                    continue
-                match node.type:
-                    case "eval":
-                        if node.graph[0] == -1:
-                            continue
-                        tmp_node = graph.nodes[node.graph[0]]
-                        if not isinstance(tmp_node, Const):
-                            raise TierkreisError(
-                                "Cannot convert location to node. Reason: eval does not wrap const"
-                            )
-                        if not isinstance(tmp_node.value, GraphData):
-                            raise TierkreisError(
-                                "Cannot convert location to node. Reason: const value is not a graph"
-                            )
-                        graph = tmp_node.value
-                    case "map" | "loop":
-                        tmp_node = graph.nodes[node.body[0]]
-                        if not isinstance(tmp_node, Const):
-                            raise TierkreisError(
-                                f"Cannot convert location to node. Reason: {node.type} does not wrap const"
-                            )
-                        if not isinstance(tmp_node.value, GraphData):
-                            raise TierkreisError(
-                                "Cannot convert location to node. Reason: const value is not a graph"
-                            )
-                        graph = tmp_node.value
-                    case (
-                        "const" | "function" | "input" | "output" | "ifelse" | "eifelse"
-                    ):
-                        pass
-                    case _:
-                        assert_never(node)
-                continue
+            # keep track of the current location
+            current_loc = Loc(current_loc + "." + step[0] + str(step[1]))
 
             if isinstance(node_id, str):
+                # map nodes can have port names here
                 if "-" in node_id:
                     node_id = node_id.split("-")[1]
-                if node_id == "*":  # potentially "*" in node_id
+                if node_id == "*":
                     node_id = "0"
                 try:
                     node_id = int(node_id)
@@ -211,81 +158,48 @@ class GraphDataStorage:
 
             node = graph.nodes[node_id]
             previous_graph = graph
+            # Build up the intermediate Nodes, nested graphs are wrapped in const nodes
+            # For eval nodes we expect a Node at N-1 with a body output
+            # For loop and map we expect an empty eval node at M0/L1
+            # For loop and map we don't have values yet but now the internal graph
+            # so we set up a dummy value 0
             match node.type:
                 case "eval":
-                    tmp_node = graph.nodes[node.graph[0]]
-                    if not isinstance(tmp_node, Const):
-                        raise TierkreisError(
-                            "Cannot convert location to node. Reason: eval does not wrap const"
-                        )
-                    if not isinstance(tmp_node.value, GraphData):
-                        raise TierkreisError(
-                            "Cannot convert location to node. Reason: const value is not a graph"
-                        )
-                    graph = tmp_node.value
-                    self.nodes[loc.N(-1)] = NodeData(
+                    graph = _unwrap_node(graph.nodes[node.graph[0]], node.type)
+                    self.nodes[current_loc.N(-1)] = NodeData(
                         outputs={"body": graph.model_dump_json().encode()},
                     )
 
                 case "loop":
-                    tmp_node = graph.nodes[node.body[0]]
-                    if not isinstance(tmp_node, Const):
-                        raise TierkreisError(
-                            f"Cannot convert location to node. Reason: {node.type} does not wrap const"
-                        )
-                    if not isinstance(tmp_node.value, GraphData):
-                        raise TierkreisError(
-                            "Cannot convert location to node. Reason: const value is not a graph"
-                        )
-                    graph = tmp_node.value
-                    try:
-                        outputs: dict[PortID, None | bytes] = {
-                            output: None
-                            for output in graph.node_outputs[graph.output_idx()]
-                        }
-                    except TierkreisError:
-                        outputs = {}
-                    self.nodes[loc.L(0)] = NodeData(
+                    graph = _unwrap_node(graph.nodes[node.body[0]], node.type)
+                    outputs = _build_outputs(graph)
+                    self.nodes[current_loc.L(0)] = NodeData(
                         definition=Eval((-1, "body"), {}), outputs=outputs
                     )
-                    self.nodes[loc.L(0).N(-1)] = NodeData(
+                    self.nodes[current_loc.L(0).N(-1)] = NodeData(
                         outputs={"body": graph.model_dump_json().encode()},
                     )
 
                 case "map":
-                    tmp_node = graph.nodes[node.body[0]]
-                    if not isinstance(tmp_node, Const):
-                        raise TierkreisError(
-                            f"Cannot convert location to node. Reason: {node.type} does not wrap const"
-                        )
-                    if not isinstance(tmp_node.value, GraphData):
-                        raise TierkreisError(
-                            "Cannot convert location to node. Reason: const value is not a graph"
-                        )
-                    graph = tmp_node.value
-                    try:
-                        outputs: dict[PortID, None | bytes] = {
-                            output: None
-                            for output in graph.node_outputs[graph.output_idx()]
-                        }
-                    except TierkreisError:
-                        outputs = {}
+                    graph = _unwrap_node(graph.nodes[node.body[0]], node.type)
+                    outputs = _build_outputs(graph)
                     if "*" in outputs:
                         outputs["0"] = None
-                    self.nodes[loc.M("0")] = NodeData(
+                    self.nodes[current_loc.M("0")] = NodeData(
                         definition=Eval((-1, "body"), {}),
                         outputs=outputs,
                     )
-                    self.nodes[loc.M("0").N(-1)] = NodeData(
+                    self.nodes[current_loc.M("0").N(-1)] = NodeData(
                         outputs={"body": graph.model_dump_json().encode()},
                     )
                 case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
                     pass
                 case _:
                     assert_never(node)
+
         # Have found the node, now populate the node data correctly
         if node_location not in self.nodes:
-            outputs = {
+            outputs: dict[PortID, bytes | None] = {
                 output: None for output in previous_graph.node_outputs[int(node_id)]
             }
             if "*" in outputs:
@@ -296,3 +210,28 @@ class GraphDataStorage:
             )
 
         return self.nodes[node_location]
+
+
+def _unwrap_node(node: NodeDef, node_type: str) -> GraphData:
+    """Safely unwraps a const nodes GraphData."""
+    if not isinstance(node, Const):
+        raise TierkreisError(
+            f"Cannot convert location to node. Reason: {node_type} does not wrap const"
+        )
+    if not isinstance(node.value, GraphData):
+        raise TierkreisError(
+            "Cannot convert location to node. Reason: const value is not a graph"
+        )
+    return node.value
+
+
+def _build_outputs(graph: GraphData) -> dict[PortID, None | bytes]:
+    """Safely read the outputs, works for graphs without output nodes."""
+    try:
+        outputs: dict[PortID, None | bytes] = {
+            output: None for output in graph.node_outputs[graph.output_idx()]
+        }
+    except TierkreisError:
+        # partial graph without an output
+        outputs = {}
+    return outputs

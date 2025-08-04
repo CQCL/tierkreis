@@ -163,7 +163,7 @@ class ControllerInMemoryStorage:
     def write_metadata(self, node_location: Loc) -> None:
         self.nodes[self.loc_to_path(node_location)].metadata = {
             "name": self.name,
-            "start": str(datetime.now()),
+            "start_time": datetime.now().isoformat(),
         }
 
     def clean_graph_files(self) -> None:

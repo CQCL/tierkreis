@@ -33,7 +33,7 @@ const saveGraph = ({
   key: string;
   nodes: BackendNode[];
   edges: Edge[];
-  start: string;
+  start_time: string;
 }) => {
   try {
     localStorage.setItem(key, JSON.stringify(graph));
@@ -52,14 +52,14 @@ const deleteGraph = ({ key }: { key: string }) => {
 
 const loadGraph = (props: {
   key: string;
-}): { nodes: BackendNode[]; edges: Edge[]; start: string } | null => {
+}): { nodes: BackendNode[]; edges: Edge[]; start_time: string } | null => {
   try {
     const item = localStorage.getItem(props.key);
     if (item !== null)
       return JSON.parse(item) as {
         nodes: BackendNode[];
         edges: Edge[];
-        start: string;
+        start_time: string;
       };
     return null;
   } catch {
@@ -84,7 +84,7 @@ const Main = (props: {
       key: props.workflow_id,
       nodes,
       edges,
-      start: props.workflow_start,
+      start_time: props.workflow_start,
     });
   }, [edges, nodes, props.workflow_id, props.workflow_start]);
   const onNodesChange: OnNodesChange<BackendNode> = useCallback(
@@ -195,7 +195,7 @@ export default function App() {
         (workflow): Workflow => ({
           id: workflow.id,
           name: workflow.name,
-          start: workflow.start,
+          start_time: workflow.start_time,
         })
       ),
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
@@ -240,9 +240,9 @@ export default function App() {
   const remoteGraph = graphQuery.data;
   const workflow_start = workflowsQuery.data.find(
     (workflow) => workflow.id == workflow_id
-  )?.start || "";
+  )?.start_time || "";
   const localGraph = loadGraph({ key: workflow_id });
-  if (workflow_start && workflow_start != localGraph?.start) {
+  if (workflow_start && workflow_start != localGraph?.start_time) {
     deleteGraph({ key: workflow_id });
     localGraph == null;
   }

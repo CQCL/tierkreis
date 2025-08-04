@@ -11,7 +11,7 @@ class WorkflowDisplay(BaseModel):
     id: UUID
     id_int: int
     name: str | None
-    start: str
+    start_time: str
 
 
 def get_workflows() -> list[WorkflowDisplay]:
@@ -19,7 +19,10 @@ def get_workflows() -> list[WorkflowDisplay]:
     if storage_type == "GraphDataStorage":
         return [
             WorkflowDisplay(
-                id=UUID(int=0), id_int=0, name="tmp", start=str(datetime.now())
+                id=UUID(int=0),
+                id_int=0,
+                name="tmp",
+                start_time=datetime.now().isoformat(),
             )
         ]
     return get_workflows_from_disk()
@@ -34,9 +37,9 @@ def get_workflows_from_disk() -> list[WorkflowDisplay]:
             id = UUID(folder)
             metadata = get_storage(id).read_metadata(Loc(""))
             name = metadata["name"] or "workflow"
-            start = metadata.get("start", str(datetime.now()))
+            start = metadata.get("start_time", datetime.now().isoformat())
             workflows.append(
-                WorkflowDisplay(id=id, id_int=int(id), name=name, start=start)
+                WorkflowDisplay(id=id, id_int=int(id), name=name, start_time=start)
             )
         except (TypeError, ValueError):
             continue

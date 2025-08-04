@@ -185,7 +185,11 @@ class ControllerFileStorage:
 
     def write_metadata(self, node_location: Loc) -> None:
         with open(self._metadata_path(node_location), "w+") as fh:
-            fh.write(json.dumps({"name": self.name, "start": str(datetime.now())}))
+            fh.write(
+                json.dumps(
+                    {"name": self.name, "start_time": datetime.now().isoformat()}
+                )
+            )
 
     def read_metadata(self, node_location: Loc) -> dict[str, Any]:
         with open(self._metadata_path(node_location)) as fh:

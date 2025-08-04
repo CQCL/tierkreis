@@ -5,11 +5,12 @@
 In Tierkreis, a computation is represented as a sequence of tasks comprising a workflow.
 They are combined in a directed acyclic graph (DAG), where each task is represented by a node.
 Edges carry the data of a computation instance.
-The data dependencies induce a partial order of execution, which allows parallel and asynchronous execution. 
+The data dependencies induce a partial order of execution, which allows parallel and asynchronous execution.
 As a result a computation can be distributed easily and run on different types of hardware including remote (cloud) and onsite:
--  CPUs
--  GPUs
--  QPUs
+
+- CPUs
+- GPUs
+- QPUs
 
 ### Tasks
 
@@ -25,6 +26,11 @@ Workflows are a composition of tasks, that provide the control structure and dat
 Higher-order constructions like nesting graphs, folding and mapping can be used to create complex workflows.
 From the data dependencies, the runtime environment can infer which tasks it needs to run and can do so in parallel manner.
 
+### Types
+
+In Tierkreis, it is possible to associate types with edges (data) at construction.
+Type information can be used by the `GraphBuild` to infer additional information about the graph to prevent runtime errors.
+
 ## Execution model
 
 The second part of Tierkreis is the execution model, which is baked into the runtime environment.
@@ -37,6 +43,7 @@ The controller is responsible for the execution of the entire workflow, maintain
 It checks the state of the individual tasks and decides what to run next based on the given data availability.
 In case of an error, the controller interrupts the progress such that a user can interfere.
 Further, the controller interacts with all the other components of the system:
+
 - It assigns executors to workers according to their requirements
 - It dispatches workers once their inputs are ready
 - It interfaces with the storage layer
@@ -53,11 +60,12 @@ The storage protocol is defined in [](#tierkreis.controller.storage.protocol).
 
 ### Worker
 
-A worker implements *atomic* functionalities that will not be broken further by the controller.
+A worker implements _atomic_ functionalities that will not be broken further by the controller.
 These functionalities are unrestricted and can be implemented in any language as long as they correctly implement the interface defined by the storage layer.
 To facilitate the interface, workers have access to their own storage layer, see [](tierkreis.worker.storage.protocol).
 Typically, workers represent more expensive operations that run asynchronously.
 See [Workers](#tierkreis.worker.worker.Worker).
+Tierkreis can automatically generate type stubs for python workers.
 
 ### Executor
 

@@ -45,11 +45,11 @@ type _PType = (
     | float
     | str
     | NoneType
-    | list[PType]
-    | Sequence[PType]
-    | tuple[PType, ...]
-    | dict[str, PType]
-    | Mapping[str, PType]
+    | list[_PType]
+    | Sequence[_PType]
+    | tuple[_PType, ...]
+    | dict[str, _PType]
+    | Mapping[str, _PType]
     | bytes
     | DictConvertible
     | ListConvertible

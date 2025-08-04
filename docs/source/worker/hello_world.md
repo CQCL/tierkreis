@@ -8,12 +8,14 @@ kernelspec:
 
 We see how to run tasks that are not Tierkreis built-in tasks.
 Although we can build workers that manually read and write to the appropriate files,
-in this section we use the Tierkreis worker Python library that provide various helper functions.
+in this section we use the helper functions in the Tierkreis Python library.
 
 ## Worker code
 
 Our worker will consist of a single function returning a string.
 We first instantiate a `Worker` class, which is constructed using the name of the worker.
+The name of the worker tells the executor which worker a task comes from.
+Therefore all of the different workers used in a single graph should have distinct names.
 
 ```{code-cell} ipython3
 from tierkreis import Worker
@@ -36,7 +38,7 @@ but for now we keep things simple.
 For more information please see [Complex types in Tierkreis Python workers](complex_types.md).
 ```
 
-We use the `Worker.app` method to turn our Python programme into a legimiate Tierkreis worker.
+We use the `Worker.app` method to turn our Python programme into a legitimate Tierkreis worker.
 
 ```{code-cell} ipython3
 if __name__ == "__main__" and "__file__" in globals():

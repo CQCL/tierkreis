@@ -1,17 +1,7 @@
 """Code generated from auth_worker namespace. Please do not edit."""
 
-from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol
-from types import NoneType
-from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis.controller.data.types import PType, Struct
-
-
-
-
-class EncryptionResult(Struct, Protocol):
-    ciphertext: str  # noqa: F821 # fmt: skip
-    time_taken: float  # noqa: F821 # fmt: skip
-
+from typing import NamedTuple
+from tierkreis.controller.data.models import TKR
 
 
 class EncryptionResult(NamedTuple):
@@ -24,10 +14,9 @@ class encrypt(NamedTuple):
     work_factor: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[EncryptionResult]: # noqa: F821 # fmt: skip
-        return EncryptionResult # noqa: F821 # fmt: skip
+    def out() -> type[EncryptionResult]:  # noqa: F821 # fmt: skip
+        return EncryptionResult  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
-        return "auth_worker" 
-    
+        return "auth_worker"

@@ -42,7 +42,7 @@ two = g.const(2)
 ```
 
 The constants will be added into the data structure defining the graph.
-In particular if the graph is serialised then these constants will be hard-coded into that serialisation.
+In particular if the graph is serialized then these constants will be hard-coded into that serialization.
 
 We can add tasks using `GraphBuilder.task`:
 

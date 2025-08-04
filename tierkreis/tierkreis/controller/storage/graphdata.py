@@ -1,4 +1,3 @@
-from collections import defaultdict
 from pathlib import Path
 from uuid import UUID
 from typing import Any, assert_never
@@ -25,7 +24,7 @@ class GraphDataStorage:
     ) -> None:
         self.workflow_id = workflow_id
         self.name = name
-        self.nodes: dict[Loc, NodeData] = defaultdict(lambda: NodeData())
+        self.nodes: dict[Loc, NodeData] = {}
         self.graph = graph
         self._initialize_storage(graph)
         self.logs_path = Path("")
@@ -49,9 +48,6 @@ class GraphDataStorage:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
-        node = self._node_from_loc(node_location)
-        if result := node.call_args:
-            return result
         raise TierkreisError(
             f"Node location {node_location} doesn't have a associate call args."
         )
@@ -118,7 +114,8 @@ class GraphDataStorage:
             definition=Eval((-1, "body"), {}),
             outputs=outputs,
         )
-        self.nodes[parent_loc].metadata["start_time"] = str(datetime.now())
+        self.nodes[parent_loc].metadata["start_time"] = datetime.now().isoformat()
+
         self.nodes[parent_loc.N(-1)] = NodeData(
             outputs={"body": graph.model_dump_json().encode()},
         )
@@ -132,8 +129,7 @@ class GraphDataStorage:
         if len(graph.nodes) == 0:
             raise TierkreisError("Cannot convert location to node. Reason: Empty Graph")
         previous_graph = graph
-        node_id = 0
-        node: NodeDef | None = graph.nodes[0]
+        node: NodeDef = graph.nodes[0]
         current_loc = Loc()
         # Walk the loc and on the way populate all intermediate notes
         # Each layer of nesting is one step
@@ -165,13 +161,13 @@ class GraphDataStorage:
             # so we set up a dummy value 0
             match node.type:
                 case "eval":
-                    graph = _unwrap_node(graph.nodes[node.graph[0]], node.type)
+                    graph = _unwrap_graph(graph.nodes[node.graph[0]], node.type)
                     self.nodes[current_loc.N(-1)] = NodeData(
                         outputs={"body": graph.model_dump_json().encode()},
                     )
 
                 case "loop":
-                    graph = _unwrap_node(graph.nodes[node.body[0]], node.type)
+                    graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
                     outputs = _build_outputs(graph)
                     self.nodes[current_loc.L(0)] = NodeData(
                         definition=Eval((-1, "body"), {}), outputs=outputs
@@ -181,7 +177,7 @@ class GraphDataStorage:
                     )
 
                 case "map":
-                    graph = _unwrap_node(graph.nodes[node.body[0]], node.type)
+                    graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
                     outputs = _build_outputs(graph)
                     if "*" in outputs:
                         outputs["0"] = None
@@ -199,11 +195,7 @@ class GraphDataStorage:
 
         # Have found the node, now populate the node data correctly
         if node_location not in self.nodes:
-            outputs: dict[PortID, bytes | None] = {
-                output: None for output in previous_graph.node_outputs[int(node_id)]
-            }
-            if "*" in outputs:
-                outputs["0"] = None
+            outputs: dict[PortID, bytes | None] = _build_outputs(previous_graph)
             self.nodes[node_location] = NodeData(
                 definition=node,
                 outputs=outputs,
@@ -212,7 +204,7 @@ class GraphDataStorage:
         return self.nodes[node_location]
 
 
-def _unwrap_node(node: NodeDef, node_type: str) -> GraphData:
+def _unwrap_graph(node: NodeDef, node_type: str) -> GraphData:
     """Safely unwraps a const nodes GraphData."""
     if not isinstance(node, Const):
         raise TierkreisError(
@@ -234,4 +226,6 @@ def _build_outputs(graph: GraphData) -> dict[PortID, None | bytes]:
     except TierkreisError:
         # partial graph without an output
         outputs = {}
+    if "*" in outputs:
+        outputs["0"] = None
     return outputs

@@ -44,7 +44,7 @@ E.g. `TKR[int]`, `TKR[str]`, `TKR[tuple[dict[str, list[int]], int]]`.
 
 ## Struct using NamedTuple
 
-Given a sequence `T_0`, `T_1`, ..., `T_n` of allowed types then a `NamedTuple` that is a subclass of `tuple[T_0, T_1, ..., T_n]` is allowed as a type.
+Given a sequence `T_0`, `T_1`, ..., `T_n` of allowed types then a `NamedTuple` wrapping `tuple[T_0, T_1, ..., T_n]` is allowed as a type.
 For example
 
 ```{code-cell}

@@ -4,8 +4,11 @@ from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.filestorage import (
     ControllerFileStorage as FileStorage,
 )
+from tierkreis.controller.storage.in_memory import (
+    ControllerInMemoryStorage as InMemoryStorage,
+)
 
-__all__ = ["FileStorage"]
+__all__ = ["FileStorage", "InMemoryStorage"]
 
 
 def read_outputs(storage: ControllerStorage) -> dict[str, PType] | PType:

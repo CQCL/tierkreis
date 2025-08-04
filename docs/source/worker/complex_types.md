@@ -61,7 +61,7 @@ The stub generation process will duplicate this type into the stubs file and it 
 ```{tip}
 The class generated in the stubs file will additionally inherit from `Protocol`.
 Therefore if a struct is used as an input to a task then the graph builder code will accept any class with the appropriate fields.
-This makes it easier to pass data between workers that contain similar class definitions but where there is not shared model library between the workers.
+This makes it easier to pass data between workers that contain similar class definitions but where there is not a shared model library between the workers.
 For nominal typing please use `BaseModel`, `DictConvertible` or `ListConvertible` as below.
 ```
 

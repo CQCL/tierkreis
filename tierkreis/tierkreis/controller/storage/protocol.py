@@ -11,6 +11,13 @@ from tierkreis.controller.data.location import (
 
 
 class ControllerStorage(Protocol):
+    """The storage protocol defines interaction with the *state* of the computation.
+
+    The controller progresses the computation by committing the output values of a computation to the storage.
+    They can then in turn be picked up as inputs of dependent calculations.
+    For this purpose the protocol exposes *read_...* and *write_...* functions.
+    """
+
     logs_path: Path
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None:

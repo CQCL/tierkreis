@@ -17,6 +17,15 @@ from tierkreis.exceptions import TierkreisError
 
 
 class ControllerFileStorage:
+    """Default file-base storage for the controller.
+
+    All information is stored in the file system, by default in `~/.tierkreis/checkpoints`.
+    Uses file systems links to map outputs to new nodes.
+    Invalid read operations raise a FileNotFoundError.
+
+    Implements: :py:class:`tierkreis.controller.storage.protocol.ControllerStorage`
+    """
+
     def __init__(
         self,
         workflow_id: UUID,

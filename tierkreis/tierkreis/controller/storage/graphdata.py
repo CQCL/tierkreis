@@ -33,7 +33,7 @@ class GraphDataStorage:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        node = self._node_from_loc(node_location)
+        node = self._node_from_loc(node_location, self.graph)
         if result := node.definition:
             return result
         raise TierkreisError(f"Node definition of {node_location} not found.")
@@ -82,7 +82,7 @@ class GraphDataStorage:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
-        node = self._node_from_loc(node_location)
+        node = self._node_from_loc(node_location, self.graph)
         if output_name in node.outputs:
             if output := node.outputs[output_name]:
                 return output
@@ -90,7 +90,7 @@ class GraphDataStorage:
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
-        node = self._node_from_loc(node_location)
+        node = self._node_from_loc(node_location, self.graph)
         return list(filter(lambda k: k != "*", node.outputs.keys()))
 
     def is_node_started(self, node_location: Loc) -> bool:
@@ -120,87 +120,87 @@ class GraphDataStorage:
             outputs={"body": graph.model_dump_json().encode()},
         )
 
-    def _node_from_loc(self, node_location: Loc) -> NodeData:
+    def _node_from_loc(
+        self,
+        node_location: Loc,
+        graph: GraphData,
+    ) -> NodeData:
         # "read-only"-> if we seen it once it won't change
         if node_location in self.nodes:
             return self.nodes[node_location]
         # start with the full graph
-        graph: GraphData = self.graph
         if len(graph.nodes) == 0:
             raise TierkreisError("Cannot convert location to node. Reason: Empty Graph")
-        previous_graph = graph
-        node: NodeDef = graph.nodes[0]
-        current_loc = Loc()
-        # Walk the loc and on the way populate all intermediate notes
-        # Each layer of nesting is one step
-        for step in node_location.steps():
-            if step == "-":
-                # root step is handled in _initialize_storage
-                continue
-            _, node_id = step
-            # keep track of the current location
-            current_loc = Loc(current_loc + "." + step[0] + str(step[1]))
-
-            if isinstance(node_id, str):
-                # map nodes can have port names here
-                if "-" in node_id:
-                    node_id = node_id.split("-")[1]
-                if node_id == "*":
-                    node_id = "0"
-                try:
-                    node_id = int(node_id)
-                except ValueError:
-                    node_id = 0
-
-            node = graph.nodes[node_id]
-            previous_graph = graph
-            # Build up the intermediate Nodes, nested graphs are wrapped in const nodes
-            # For eval nodes we expect a Node at N-1 with a body output
-            # For loop and map we expect an empty eval node at M0/L1
-            # For loop and map we don't have values yet but now the internal graph
-            # so we set up a dummy value 0
-            match node.type:
-                case "eval":
-                    graph = _unwrap_graph(graph.nodes[node.graph[0]], node.type)
-                    self.nodes[current_loc.N(-1)] = NodeData(
-                        outputs={"body": graph.model_dump_json().encode()},
-                    )
-
-                case "loop":
-                    graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
-                    outputs = _build_outputs(graph)
-                    self.nodes[current_loc.L(0)] = NodeData(
-                        definition=Eval((-1, "body"), {}), outputs=outputs
-                    )
-                    self.nodes[current_loc.L(0).N(-1)] = NodeData(
-                        outputs={"body": graph.model_dump_json().encode()},
-                    )
-
-                case "map":
-                    graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
-                    outputs = _build_outputs(graph)
-                    if "*" in outputs:
-                        outputs["0"] = None
-                    self.nodes[current_loc.M("0")] = NodeData(
-                        definition=Eval((-1, "body"), {}),
-                        outputs=outputs,
-                    )
-                    self.nodes[current_loc.M("0").N(-1)] = NodeData(
-                        outputs={"body": graph.model_dump_json().encode()},
-                    )
-                case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
-                    pass
-                case _:
-                    assert_never(node)
-
-        # Have found the node, now populate the node data correctly
-        if node_location not in self.nodes:
-            outputs: dict[PortID, bytes | None] = _build_outputs(previous_graph)
-            self.nodes[node_location] = NodeData(
-                definition=node,
-                outputs=outputs,
+        # We move through the recursion by changing node_loc -> .parent()
+        parent_location = node_location.parent()
+        if parent_location is None:
+            raise TierkreisError(
+                "Cannot convert location to node. Reason: Invalid Graph"
             )
 
+        # Get the current node from the graph. Its at the end of the loc e.g -.N0.M1 <- M1 is relevant
+        _, node_id = node_location.steps()[-1]
+        if isinstance(node_id, str):
+            # map nodes can have port names here
+            if "-" in node_id:
+                node_id = node_id.split("-")[1]
+            if node_id == "*":
+                node_id = "0"
+            try:
+                node_id = int(node_id)
+            except ValueError:
+                node_id = 0
+        node = graph.nodes[node_id]
+
+        # Build up the intermediate nodes recursively, nested graphs are wrapped in const nodes
+        # For eval nodes we expect a Node at N-1 with a body output
+        # For loop and map we expect an empty eval node at M0/L1
+        # For loop and map we don't have values yet but now the internal graph
+        # so we set up a dummy value 0
+        match node.type:
+            case "eval":
+                graph = _unwrap_graph(graph.nodes[node.graph[0]], node.type)
+                self.nodes[node_location.N(-1)] = NodeData(
+                    outputs={"body": graph.model_dump_json().encode()},
+                )
+                self._node_from_loc(parent_location, graph)
+
+            case "loop":
+                graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
+                outputs = _build_outputs(graph)
+                self.nodes[node_location.L(0)] = NodeData(
+                    definition=Eval((-1, "body"), {}), outputs=outputs
+                )
+                self.nodes[node_location.L(0).N(-1)] = NodeData(
+                    outputs={"body": graph.model_dump_json().encode()},
+                )
+                self._node_from_loc(parent_location, graph)
+
+            case "map":
+                graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
+                outputs = _build_outputs(graph)
+                if "*" in outputs:
+                    outputs["0"] = None
+                self.nodes[node_location.M("0")] = NodeData(
+                    definition=Eval((-1, "body"), {}),
+                    outputs=outputs,
+                )
+                self.nodes[node_location.M("0").N(-1)] = NodeData(
+                    outputs={"body": graph.model_dump_json().encode()},
+                )
+                self._node_from_loc(parent_location, graph)
+            case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
+                pass
+            case _:
+                assert_never(node)
+
+        outputs: dict[PortID, bytes | None] = _build_outputs(graph)
+        if "*" in outputs:
+            outputs["0"] = None
+        self.nodes[node_location] = NodeData(
+            definition=node,
+            outputs=outputs,
+        )
         return self.nodes[node_location]
 
 
@@ -226,6 +226,4 @@ def _build_outputs(graph: GraphData) -> dict[PortID, None | bytes]:
     except TierkreisError:
         # partial graph without an output
         outputs = {}
-    if "*" in outputs:
-        outputs["0"] = None
     return outputs

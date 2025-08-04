@@ -60,7 +60,8 @@ async def handle_websocket(
 
 @router.get("/")
 def list_workflows(request: Request):
-    workflows = get_workflows()
+    storage_type = request.app.state.storage_type
+    workflows = get_workflows(storage_type)
     return templates.TemplateResponse(
         request=request, name="workflows.html", context={"workflows": workflows}
     )
@@ -68,7 +69,8 @@ def list_workflows(request: Request):
 
 @router.get("/all")
 def list_all_workflows(request: Request):
-    workflows = get_workflows()
+    storage_type = request.app.state.storage_type
+    workflows = get_workflows(storage_type)
     return JSONResponse([workflow.model_dump(mode="json") for workflow in workflows])
 
 

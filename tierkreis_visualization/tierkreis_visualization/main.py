@@ -1,16 +1,17 @@
+import os
 from pathlib import Path
-from typing import Callable
 from uuid import UUID
-from fastapi.middleware.cors import CORSMiddleware
 
-
+import uvicorn
 from fastapi import FastAPI, Request
-from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+
+from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.storage.graphdata import GraphDataStorage
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis_visualization.config import get_storage
-import uvicorn
-
 from tierkreis_visualization.routers.workflows import router as workflows_router
 
 app = FastAPI()
@@ -45,9 +46,23 @@ def start():
     uvicorn.run(app, reload=True)
 
 
-def start_with_storage_fn(get_storage_fn: Callable[[UUID], ControllerStorage]):
-    app.state.get_storage_fn = get_storage_fn
+def visualize_graph(
+    graph: GraphData,
+) -> None:
+    """Visualize a computation graph in a web browser.
+
+    :param graph: The computation graph to visualize.
+    :type graph: GraphData
+    """
+    storage = GraphDataStorage(UUID(int=0), graph=graph)
+    os.environ["TKR_STORAGE"] = "GraphDataStorage"
+
+    def get_storage(workflow_id: UUID) -> ControllerStorage:
+        return storage
+
+    app.state.get_storage_fn = get_storage
     uvicorn.run(app)
+    os.environ["TKR_STORAGE"] = "FileStorage"
 
 
 if __name__ == "__main__":

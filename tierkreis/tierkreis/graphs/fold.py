@@ -1,8 +1,8 @@
-from typing import NamedTuple, Protocol
+from typing import Generic, NamedTuple, TypeVar
 from tierkreis.builder import GraphBuilder, TypedGraphRef
 from tierkreis.builtins.stubs import head, igt, impl_len
 from tierkreis.controller.data.graph import GraphData
-from tierkreis.controller.data.models import TKR, TNamedModel
+from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import PType
 
 
@@ -38,7 +38,9 @@ def _fold_graph_outer[A: PType, B: PType]():
     headed = g.task(head(values))
 
     # Apply the function if we were able to pop off a value.
-    tgd = TypedGraphRef[InnerFuncInput, TKR[B]](func.value_ref(), TKR[B])
+    tgd = TypedGraphRef[InnerFuncInput, TKR[B]](
+        func.value_ref(), TKR[B], InnerFuncInput
+    )
     applied_next = g.eval(tgd, InnerFuncInput(accum, headed.head))
 
     next_accum = g.ifelse(non_empty, applied_next, accum)
@@ -47,21 +49,25 @@ def _fold_graph_outer[A: PType, B: PType]():
     return g
 
 
-class FoldGraphInputs[A: PType, B: PType](NamedTuple):
+A = TypeVar("A", bound=PType, covariant=True)
+B = TypeVar("B", bound=PType, covariant=True)
+
+
+class FoldGraphInputs(NamedTuple, Generic[A, B]):
     initial: TKR[B]
-    values: TKR[list[tuple[A, B]]]
+    values: TKR[list[A]]
 
 
-class FoldFunctionInput[A: PType, B: PType](TNamedModel, Protocol):
-    @property
-    def accum(self) -> TKR[B]: ...
-
-    @property
-    def value(self) -> TKR[A]: ...
+class FoldFunctionInput(NamedTuple, Generic[A, B]):
+    accum: TKR[B]
+    value: TKR[A]
 
 
 # fold : {func: (b -> a -> b)} -> {initial: b} -> {values: list[a]} -> {value: b}
-def fold_graph[A: PType, B: PType](func: GraphBuilder[FoldFunctionInput[A, B], TKR[B]]):
+# fold : { A x B -> B } -> { list[A] x B -> B }
+def fold_graph(
+    func: GraphBuilder[FoldFunctionInput[A, B], TKR[B]],
+) -> GraphBuilder[FoldGraphInputs[A, B], TKR[B]]:
     g = GraphBuilder(FoldGraphInputs[A, B], TKR[B])
     foldfunc = g._graph_const(func)
     # TODO: include the computation inside the fold

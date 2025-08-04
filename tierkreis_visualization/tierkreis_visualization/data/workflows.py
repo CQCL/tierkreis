@@ -1,10 +1,19 @@
-from datetime import datetime
 import os
+from datetime import datetime
+from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel
+
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.storage.filestorage import ControllerFileStorage
+from tierkreis.controller.storage.graphdata import GraphDataStorage
 from tierkreis_visualization.config import CONFIG, get_storage
+
+
+class StorageType(Enum):
+    FILESTORAGE = ControllerFileStorage
+    GRAPHDATA = GraphDataStorage
 
 
 class WorkflowDisplay(BaseModel):
@@ -14,9 +23,8 @@ class WorkflowDisplay(BaseModel):
     start_time: str
 
 
-def get_workflows() -> list[WorkflowDisplay]:
-    storage_type = os.environ.get("TKR_STORAGE", "FileStorage")
-    if storage_type == "GraphDataStorage":
+def get_workflows(storage_type: StorageType) -> list[WorkflowDisplay]:
+    if storage_type == StorageType.GRAPHDATA:
         return [
             WorkflowDisplay(
                 id=UUID(int=0),

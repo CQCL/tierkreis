@@ -49,16 +49,20 @@ The controller also validates the workflow to ensure each node can be implemente
 The storage layer is an abstraction of the state of the computation.
 It stores the information of individual tasks such as their definition, their inputs (dependencies), and their status.
 The actual implementation can be a file system, a database or cloud storage.
+The storage protocol is defined in [](#tierkreis.controller.storage.protocol).
 
 ### Worker
 
 A worker implements *atomic* functionalities that will not be broken further by the controller.
 These functionalities are unrestricted and can be implemented in any language as long as they correctly implement the interface defined by the storage layer.
+To facilitate the interface, workers have access to their own storage layer, see [](tierkreis.worker.storage.protocol).
 Typically, workers represent more expensive operations that run asynchronously.
+See [Workers](#tierkreis.worker.worker.Worker).
 
 ### Executor
 
-An executor runs a single worker tasks.
+An executor is responsible for running assigned worker tasks.
 It possesses the knowledge about its environment and how to run programs there in a specific way.
-For example, the `UVExecutor <tbd>`_ can run python programs locally by building them as a packaged executable.
+For example, the [UvExecutor](#tierkreis.controller.executor.uv_executor.UvExecutor) can run python programs locally by building them as a packaged executable.
 Multiple executors could handle the same worker in different environments, the choice is then up to the controller.
+The executor protocol is defined in [](#tierkreis.controller.storage.protocol).

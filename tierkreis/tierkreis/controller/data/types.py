@@ -39,29 +39,34 @@ class ListConvertible(Protocol):
     def from_list(cls, arg: list, /) -> "Self": ...
 
 
-type _PType = (
+type Container[T] = (
+    T
+    | list[Container[T]]
+    | Sequence[Container[T]]
+    | tuple[Container[T], ...]
+    | dict[str, Container[T]]
+    | Mapping[str, Container[T]]
+)
+type ElementaryType = (
     bool
     | int
     | float
     | str
     | NoneType
-    | list[PType]
-    | Sequence[PType]
-    | tuple[PType, ...]
-    | dict[str, PType]
-    | Mapping[str, PType]
     | bytes
     | DictConvertible
     | ListConvertible
     | BaseModel
 )
+type JsonType = Container[ElementaryType]
 
 
 @runtime_checkable
-class Struct(RestrictedNamedTuple[_PType], Protocol): ...
+class Struct(RestrictedNamedTuple[JsonType], Protocol): ...
 
 
-PType = _PType | Struct
+_StructPType = JsonType | Struct
+PType = Container[_StructPType]
 """A restricted subset of Python types that can be used to annotate
 worker functions for automatic codegen of graph builder stubs."""
 
@@ -127,7 +132,7 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     ):
         return True
 
-    elif annotation in get_args(_PType.__value__):
+    elif annotation in get_args(ElementaryType.__value__):
         return True
 
     else:

@@ -47,6 +47,9 @@ class Namespace:
     output_models: set[type[PNamedModel]] = field(default_factory=lambda: set())
 
     def _add_struct(self, annotation: Any) -> None:
+        if is_portmapping(annotation):
+            return
+
         if not (isclass(annotation) and issubclass(annotation, Struct)):
             return
 

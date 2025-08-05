@@ -11,3 +11,13 @@ A sequence of tutorials that cover the fundamentals of writing and operating Tie
 [Nested graphs using Eval](tutorial/eval.md)
 
 [Iteration using Loop](tutorial/loop.md)
+
+[Parallel computation using Map](tutorial/map.md)
+
+## Worker examples
+
+### Tierkreis Python library
+
+[Hello world worker](worker/hello_world.md)
+
+[Complex types in Tierkreis Python workers](worker/complex_types.md)

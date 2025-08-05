@@ -1,6 +1,8 @@
 import logging
 from logging import getLogger
 from pathlib import Path
+import shutil
+import subprocess
 import sys
 from types import TracebackType
 from typing import Callable
@@ -120,6 +122,13 @@ class Worker:
     def write_stubs(self, stubs_path: Path) -> None:
         with open(stubs_path, "w+") as fh:
             fh.write(format_namespace(self.namespace))
+
+        ruff_binary = shutil.which("ruff")
+        if ruff_binary:
+            subprocess.run([ruff_binary, "format", stubs_path])
+            subprocess.run([ruff_binary, "check", "--fix", stubs_path])
+        else:
+            logger.warning("No ruff binary found. Stubs will contain raw codegen.")
 
     def app(self, argv: list[str]) -> None:
         if argv[1] == "--stubs-path":

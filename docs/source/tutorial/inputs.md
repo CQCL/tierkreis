@@ -147,6 +147,7 @@ g = GraphBuilder(MultiPortInputData, TKR[str])
 # Execution
 
 Since we still only use built-in functions, we execute the graph in the same way as before.
+For the examples with graph inputs, we provide the input in the third argument of `run_graph`.
 
 ```{code-cell} ipython3
 from uuid import UUID

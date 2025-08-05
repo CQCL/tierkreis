@@ -12,6 +12,8 @@ A sequence of tutorials that cover the fundamentals of writing and operating Tie
 
 [Iteration using Loop](tutorial/loop.md)
 
+[Parallel computation using Map](tutorial/map.md)
+
 ## Worker examples
 
 ### Tierkreis Python library

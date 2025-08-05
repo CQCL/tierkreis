@@ -1,4 +1,3 @@
-import logging
 import secrets
 from sys import argv
 from time import time
@@ -9,7 +8,6 @@ import pyscrypt  # type: ignore
 from tierkreis import Worker
 
 worker = Worker("auth_worker")
-logger = logging.getLogger(__name__)
 
 
 @portmapping

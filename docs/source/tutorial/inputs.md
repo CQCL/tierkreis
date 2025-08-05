@@ -101,7 +101,7 @@ What would happen if we used a nested data structure inside a single input/outpu
 ```
 
 If instead we wanted to have a single output containing a nested structure `FibData`
-then we would initialise the graph builder as follows:
+then we would initialize the graph builder as follows:
 
 ```{code-cell} ipython3
 class FibData(NamedTuple):
@@ -119,7 +119,7 @@ sum = fib_step_2.task(iadd(fib_step_2.inputs.a, fib_step_2.inputs.b))
 ```
 
 ```{hint}
-We can use the different behaviour of the above two examples to create a separation of concerns between the graph builder and the workers.
+We can use the different behavior of the above two examples to create a separation of concerns between the graph builder and the workers.
 If some data is required in graph builder code then we use multiple inputs/outputs.
 If some data is only used in workers and can be passed between them without the graph needing to inspect them then we use a single input/output containing within it a nested data structure.
 ```

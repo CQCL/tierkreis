@@ -39,3 +39,8 @@ def unfinished_inputs(
     return [
         x for x in in_edges(node).values() if not storage.is_node_finished(loc.N(x[0]))
     ]
+
+
+def outputs_iter(storage: ControllerStorage, loc: Loc) -> list[tuple[int, PortID]]:
+    eles = storage.read_output_ports(loc)
+    return [(int(x.split("-")[-1]), x) for x in eles]

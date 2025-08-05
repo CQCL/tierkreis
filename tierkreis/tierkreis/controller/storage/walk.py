@@ -15,7 +15,7 @@ from tierkreis.controller.data.graph import (
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.start import NodeRunData
-from tierkreis.controller.storage.adjacency import unfinished_inputs
+from tierkreis.controller.storage.adjacency import outputs_iter, unfinished_inputs
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.labels import Labels
 
@@ -159,9 +159,9 @@ def walk_map(
         return result
 
     first_ref = next(x for x in map.inputs.values() if x[1] == "*")
-    map_eles = storage.read_output_ports(parent.N(first_ref[0]))
-    unfinished = [p for p in map_eles if not storage.is_node_finished(loc.M(p))]
-    message = storage.read_output(loc.M(map_eles[0]).N(-1), BODY_PORT)
+    map_eles = outputs_iter(storage, parent.N(first_ref[0]))
+    unfinished = [i for i, _ in map_eles if not storage.is_node_finished(loc.M(i))]
+    message = storage.read_output(loc.M(0).N(-1), BODY_PORT)
     g = ptype_from_bytes(message, GraphData)
     [result.extend(walk_node(storage, loc.M(p), g.output_idx(), g)) for p in unfinished]
 
@@ -169,9 +169,9 @@ def walk_map(
         return result
 
     map_outputs = g.nodes[g.output_idx()].inputs
-    for j in map_eles:
+    for i, j in map_eles:
         for output in map_outputs.keys():
-            storage.link_outputs(loc, f"{output}-{j}", loc.M(j), output)
+            storage.link_outputs(loc, f"{output}-{j}", loc.M(i), output)
 
     storage.mark_node_finished(loc)
     return result

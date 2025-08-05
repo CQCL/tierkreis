@@ -8,7 +8,7 @@ node_location_1 = node_location_1.L(0)
 node_location_1 = node_location_1.N(3)
 node_location_1 = node_location_1.L(2)
 node_location_1 = node_location_1.N(0)
-node_location_1 = node_location_1.M("map_port")
+node_location_1 = node_location_1.M(7)
 node_location_1 = node_location_1.N(0)
 
 
@@ -28,7 +28,7 @@ node_location_4 = Loc()
 @pytest.mark.parametrize(
     ["node_location", "loc_str"],
     [
-        (node_location_1, "-.N0.L0.N3.L2.N0.Mmap_port.N0"),
+        (node_location_1, "-.N0.L0.N3.L2.N0.M7.N0"),
         (node_location_2, "-.N0.L0.N3.N8.N0"),
         (node_location_3, "-.N0"),
         (node_location_4, "-"),

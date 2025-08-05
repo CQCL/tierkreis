@@ -52,7 +52,7 @@ The complete worker file is as follows:
 :load: ../../../examples/example_workers/hello_world_worker/main.py
 ```
 
-and is present at `examples/example_workers/hello_world_worker/main.py`.
+and is present at `examples/example_workers/hello_world_worker/main.py` in the [Tierkreis GitHub repo](https://github.com/CQCL/tierkreis).
 
 ## Stub generation
 

@@ -89,8 +89,8 @@ g.outputs(output)
 We use the `FileStorage` as usual but this time use the `UvExecutor` instead of the `ShellExecutor`.
 To configure the `UvExecutor` we provide a path to a 'registry' folder of workers constructed using `uv`.
 To add a worker to the registry we create a sub-folder of the registry folder containing a `main.py` that is executable by `uv`.
+(The directory could be a whole `uv` project with a `pyproject.toml` or it might be that the `main.py` is a `uv` script.)
 The folder name should correspond to the name of the worker.
-(The directory could be a `uv` project with a `pyproject.toml` or the `main.py` file in the directory a `uv` script.)
 
 ```{code-cell}
 from uuid import UUID

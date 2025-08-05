@@ -25,11 +25,7 @@ Since this worker uses the Tierkreis Python library, we can automatically genera
 The stub files will provide us with type hints in the graph building process later on.
 
 ```{code-cell}
-# Generate stubs file.
-!cd ../../../examples/example_workers/auth_worker && VIRTUAL_ENV="" uv run main.py --stubs-path ../../../docs/source/tutorial/auth_stubs.py
-# Format and lint generated file.
-!uv run ruff format ../../../examples/example_workers/auth_worker/stubs.py
-!uv run ruff check --fix ../../../examples/example_workers/auth_worker/stubs.py
+!cd ../../../examples/example_workers/auth_worker && uv run main.py --stubs-path ../../../docs/source/tutorial/auth_stubs.py > /dev/null 2>&1
 ```
 
 ## Writing a graph

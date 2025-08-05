@@ -30,6 +30,29 @@ def handle_unhandled_exception(
 
 
 class Worker:
+    """A worker bundles a set of functionality under a common namespace.
+
+    The main usage of a worker is to convert python functions into atomic tasks,
+    which can then be executed by the :py:class:`tierkreis.controller.executor.uv_executor.UvExecutor`
+    or similar Executors.
+    From the worker type stubs can be generated to statically check the function calls.
+
+    Example snippet for wrapping a python function:
+
+    .. code-block:: python
+
+        worker = Worker("numpy_worker")
+
+        @worker.function()
+        def exp(x: float, a: float) -> float:
+            return value = a * np.exp(x)
+
+    :param name: The name of the worker.
+    :type name: str
+    :param storage: Storage layer for the worker to interact with the ControllerStorage.
+    :type storage: WorkerStorage
+    """
+
     functions: dict[str, Callable[[WorkerCallArgs], None]]
     namespace: Namespace
 
@@ -61,7 +84,11 @@ class Worker:
     def primitive_task(
         self, name: str | None = None
     ) -> Callable[[PrimitiveTask], None]:
-        """Register a primitive task with the worker."""
+        """Registers a python function as a primitive task with the worker.
+
+        :param name: A different name for the function, defaults to function name.
+        :type name: str | None, optional
+        """
 
         def function_decorator(func: PrimitiveTask) -> None:
             func_name = name if name is not None else func.__name__
@@ -74,10 +101,14 @@ class Worker:
         return function_decorator
 
     def task(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
-        """Register a function with the worker."""
+        """Registers a python function as a task with the worker.
+
+        :param name: A different name for the function, defaults to function name.
+        :type name: str | None, optional
+        """
 
         def function_decorator(func: WorkerFunction) -> None:
-            func_name = func.__name__
+            func_name = name if name is not None else func.__name__
             self.namespace.add_function(func)
 
             def wrapper(node_definition: WorkerCallArgs):
@@ -90,7 +121,12 @@ class Worker:
         return function_decorator
 
     def run(self, worker_definition_path: Path) -> None:
-        """Run a function."""
+        """Run a function with the parameters defined in worker_definition_path.
+
+        :param worker_definition_path: The worker call args written by the controller.
+        :type worker_definition_path: Path
+        :raises TierkreisError: When the function execution results in an error.
+        """
         node_definition = self.storage.read_call_args(worker_definition_path)
 
         logging.basicConfig(
@@ -118,10 +154,16 @@ class Worker:
             self.storage.write_error(node_definition.error_path, str(err))
 
     def write_stubs(self, stubs_path: Path) -> None:
+        """Writes the type stubs to stubs_path.
+
+        :param stubs_path: The location to write to.
+        :type stubs_path: Path
+        """
         with open(stubs_path, "w+") as fh:
             fh.write(format_namespace(self.namespace))
 
     def app(self, argv: list[str]) -> None:
+        """Wrapper for UV execution."""
         if argv[1] == "--stubs-path":
             self.write_stubs(Path(argv[2]))
         else:

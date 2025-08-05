@@ -17,7 +17,7 @@ We first instantiate a `Worker` class, which is constructed using the name of th
 The name of the worker tells the executor which worker a task comes from.
 Therefore all of the different workers used in a single graph should have distinct names.
 
-```{code-cell} ipython3
+```{code} ipython3
 from tierkreis import Worker
 
 worker = Worker("hello_world_worker")
@@ -25,7 +25,7 @@ worker = Worker("hello_world_worker")
 
 The `Worker.task` method is used as a decorator to add functions to the worker.
 
-```{code-cell} ipython3
+```{code} ipython3
 @worker.task()
 def greet(greeting: str, subject: str) -> str: ...
 ```
@@ -40,34 +40,25 @@ For more information please see [Complex types in Tierkreis Python workers](comp
 
 We use the `Worker.app` method to turn our Python programme into a legitimate Tierkreis worker.
 
-```{code-cell} ipython3
-if __name__ == "__main__" and "__file__" in globals():
+```{code} ipython3
+from sys import argv
+
+if __name__ == "__main__":
     worker.app(argv)
 ```
 
-(Usually we don't need to check the `globals` object but in this case we want to make sure `.app` doesn't run in an interactive notebook.)
 The complete worker file is as follows:
 
-```{code-cell} ipython3
-:load: ../../../examples/example_workers/hello_world_worker/main.py
+```{literalinclude} ../../../examples/example_workers/hello_world_worker/main.py
+:language: python
 ```
 
-and is present at `examples/example_workers/hello_world_worker/main.py` in the [Tierkreis GitHub repo](https://github.com/CQCL/tierkreis).
+## Generating stubs
 
-## Stub generation
-
-To help us construct a graph using this worker we can generate stubs files:
+Since this worker uses the Tierkreis Python library, we can automatically generate stub files using the following command.
 
 ```{code-cell}
-from pathlib import Path
-
-worker.write_stubs(Path("./hello_stubs.py"))
-```
-
-```{note}
-An alternative way to write the stubs files is using the CLI.
-For instance if our worker definition is in `main.py` then we can run
-`uv run main.py --stubs-path stubs.py` to generate the stubs file.
+!cd ../../../examples/example_workers/hello_world_worker && uv run main.py --stubs-path ../../../docs/source/worker/hello_stubs.py > /dev/null 2>&1
 ```
 
 ## Graph creation

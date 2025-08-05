@@ -45,8 +45,6 @@ stubs-generate dir:
   #!/usr/bin/env bash
   cd {{dir}}
   uv run main.py --stubs-path ./stubs.py
-  uv run ruff format stubs.py
-  uv run ruff check --fix stubs.py
 
 generate: 
   just stubs-generate 'tierkreis/tierkreis/builtins'

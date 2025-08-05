@@ -38,8 +38,8 @@ We can import this stub file to help create our graph.
 
 The graph builder manipulates references to values, not the values themselves.
 (The one exception to this rule is when we add a constant value to a graph using `GraphBuilder.const`. Then the actual value is added to the graph definition and `GraphBuilder.const` returns a reference to this value.)
-The references are type checked using the `TKRRef` type.
-I.e. a reference to an `int` has the type `TKRRef[int]`.
+The references are type checked using the `TKR` type.
+I.e. a reference to an `int` has the type `TKR[int]`.
 
 ```{code-cell}
 from typing import NamedTuple

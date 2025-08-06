@@ -17,6 +17,7 @@ class Func:
     function_name: str
     inputs: dict[PortID, ValueRef]
     type: Literal["function"] = field(default="function")
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -24,6 +25,7 @@ class Eval:
     graph: ValueRef
     inputs: dict[PortID, ValueRef]
     type: Literal["eval"] = field(default="eval")
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -32,6 +34,7 @@ class Loop:
     inputs: dict[PortID, ValueRef]
     continue_port: PortID  # The port that specifies if the loop should continue.
     type: Literal["loop"] = field(default="loop")
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -39,6 +42,7 @@ class Map:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
     type: Literal["map"] = field(default="map")
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -46,6 +50,7 @@ class Const:
     value: Any
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default="const")
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -55,6 +60,7 @@ class IfElse:
     if_false: ValueRef
     type: Literal["ifelse"] = field(default="ifelse")
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -64,6 +70,7 @@ class EagerIfElse:
     if_false: ValueRef
     type: Literal["eifelse"] = field(default="eifelse")
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -71,12 +78,14 @@ class Input:
     name: str
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["input"] = field(default="input")
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
 class Output:
     inputs: dict[PortID, ValueRef]
     type: Literal["output"] = field(default="output")
+    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 NodeDef = Func | Eval | Loop | Map | Const | IfElse | EagerIfElse | Input | Output
@@ -85,7 +94,6 @@ NodeDefModel = RootModel[NodeDef]
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
-    node_outputs: list[set[PortID]] = []
     fixed_inputs: dict[PortID, OutputLoc] = {}
     graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
@@ -127,7 +135,6 @@ class GraphData(BaseModel):
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
         self.nodes.append(node)
-        self.node_outputs.append(set())
 
         match node.type:
             case "output":
@@ -138,9 +145,9 @@ class GraphData(BaseModel):
 
                 self.graph_output_idx = idx
             case "ifelse" | "eifelse":
-                self.node_outputs[node.pred[0]].add(node.pred[1])
-                self.node_outputs[node.if_true[0]].add(node.if_true[1])
-                self.node_outputs[node.if_false[0]].add(node.if_false[1])
+                self.nodes[node.pred[0]].outputs.add(node.pred[1])
+                self.nodes[node.if_true[0]].outputs.add(node.if_true[1])
+                self.nodes[node.if_false[0]].outputs.add(node.if_false[1])
             case "input":
                 self.graph_inputs.add(node.name)
             case "const" | "eval" | "function" | "loop" | "map":
@@ -149,7 +156,7 @@ class GraphData(BaseModel):
                 assert_never(node)
 
         for i, port in node.inputs.values():
-            self.node_outputs[i].add(port)
+            self.nodes[i].outputs.add(port)
 
         return lambda k: (idx, k)
 

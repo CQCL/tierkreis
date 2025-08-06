@@ -90,8 +90,7 @@ class GraphDataStorage:
         if parent_loc is None:
             raise TierkreisError("Node needs parent loc!")
         _, graph = graph_node_from_loc(parent_loc, self.graph)
-        if -1 == get_last_index(node_location):
-            # -1 only has body
+        if -1 == get_last_index(node_location) and output_name == "body":
             return graph.model_dump_json().encode()
         if node_location.pop_last()[0][0] in ["M", "L"]:
             outputs = _build_outputs(graph)
@@ -104,14 +103,14 @@ class GraphDataStorage:
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
-        if -1 == get_last_index(node_location):
-            return ["body"]
         parent_loc = node_location.parent()
         if parent_loc is None:
             raise TierkreisError("Node needs parent loc!")
         _, graph = graph_node_from_loc(parent_loc, self.graph)
         if node_location.pop_last()[0][0] in ["M", "L"]:
             outputs = _build_outputs(graph)
+        elif get_last_index(node_location) == -1:
+            outputs = {"body": None}
         else:
             outputs = _build_outputs(graph, get_last_index(node_location))
         return list(filter(lambda k: k != "*", outputs.keys()))

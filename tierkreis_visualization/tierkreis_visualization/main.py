@@ -45,7 +45,7 @@ def read_root(request: Request):
 def start():
     app.state.get_storage_fn = get_storage
     app.state.storage_type = StorageType.FILESTORAGE
-    uvicorn.run(app, reload=True)
+    uvicorn.run(app)
 
 
 def visualize_graph(

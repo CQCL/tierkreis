@@ -51,9 +51,9 @@ def add_conditional_edges(
     refs = {True: node.if_true, False: node.if_false}
 
     for branch, (idx, p) in refs.items():
-        if p in storage.read_output_ports(loc.N(idx)):
+        try:
             value = json.loads(storage.read_output(loc.N(idx), p))
-        else:
+        except FileNotFoundError:
             value = None
         edge = PyEdge(
             from_node=idx,
@@ -104,8 +104,12 @@ def get_eval_node(
 
         for p0, (idx, p1) in in_edges(node).items():
             value = None
-            if p1 in storage.read_output_ports(node_location.N(idx)):
+
+            try:
                 value = json.loads(storage.read_output(node_location.N(idx), p1))
+            except (FileNotFoundError, json.decoder.JSONDecodeError):
+                # In symbolic evaluation output could be "" causing an error
+                value = None
 
             py_edge = PyEdge(
                 from_node=idx, from_port=p1, to_node=i, to_port=p0, value=value

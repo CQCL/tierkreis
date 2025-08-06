@@ -23,9 +23,7 @@ class WorkerCallArgs(BaseModel):
     logs_path: Optional[Path]
 
 
-NodeStep = (
-    Literal["-"] | tuple[Literal["N", "L"], NodeIndex] | tuple[Literal["M"], PortID]
-)
+NodeStep = Literal["-"] | tuple[Literal["N", "L", "M"], NodeIndex]
 
 
 class Loc(str):
@@ -38,7 +36,7 @@ class Loc(str):
     def L(self, idx: int) -> "Loc":
         return Loc(str(self) + f".L{idx}")
 
-    def M(self, idx: PortID) -> "Loc":
+    def M(self, idx: int) -> "Loc":
         return Loc(str(self) + f".M{idx}")
 
     @staticmethod
@@ -83,8 +81,8 @@ class Loc(str):
                     steps.append(("N", int(idx_str)))
                 case ("L", idx_str):
                     steps.append(("L", int(idx_str)))
-                case ("M", _port):
-                    steps.append(("M", step_str[1:]))
+                case ("M", idx_str):
+                    steps.append(("M", int(idx_str)))
                 case _:
                     raise TierkreisError(f"Invalid Loc: {self}")
 

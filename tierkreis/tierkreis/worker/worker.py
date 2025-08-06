@@ -12,6 +12,10 @@ from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
+
+# fmt: off
+from tierkreis.controller.data.worker_function import _T0, _T11, _T2, _T3, _T1, _T10, _T4, _T5, _T6, _T7, _T8, _T9
+# fmt: on
 from tierkreis.exceptions import TierkreisError
 from tierkreis.namespace import Namespace, WorkerFunction
 from tierkreis.worker.storage.filestorage import WorkerFileStorage
@@ -75,16 +79,25 @@ class Worker:
 
         return function_decorator
 
-    def task(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
+    def task(
+        self, name: str | None = None
+    ) -> Callable[
+        [WorkerFunction[_T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, _T10, _T11]],
+        None,
+    ]:
         """Register a function with the worker."""
 
-        def function_decorator(func: WorkerFunction) -> None:
+        def function_decorator(
+            func: WorkerFunction[
+                _T0, _T1, _T2, _T3, _T4, _T5, _T6, _T7, _T8, _T9, _T10, _T11
+            ],
+        ) -> None:
             func_name = func.__name__
             self.namespace.add_function(func)
 
             def wrapper(node_definition: WorkerCallArgs):
                 kwargs = self._load_args(func, node_definition.inputs)
-                results = func(**kwargs)
+                results = func(**kwargs)  # type: ignore
                 self._save_results(node_definition.outputs, results)
 
             self.functions[func_name] = wrapper

@@ -2,13 +2,13 @@ from dataclasses import dataclass, field
 from inspect import isclass
 from logging import getLogger
 from types import NoneType
-from typing import Any, Callable
+from typing import Any
 from tierkreis.controller.data.models import PModel, PNamedModel, is_portmapping
 from tierkreis.controller.data.types import PType, Struct, is_ptype
+from tierkreis.controller.data.worker_function import WorkerFunction
 from tierkreis.exceptions import TierkreisError
 
 logger = getLogger(__name__)
-WorkerFunction = Callable[..., PModel]
 
 
 class TierkreisWorkerError(TierkreisError):

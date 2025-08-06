@@ -49,7 +49,7 @@ def impl_id[T: PType](value: T) -> T:
 
 
 @worker.task()
-def append[T](v: list[T], a: T) -> list[T]:  # noqa: E741
+def append[T: PType](v: list[T], a: T) -> list[T]:  # noqa: E741
     v.append(a)
     return v
 
@@ -66,8 +66,8 @@ def head[T: PType](v: list[T]) -> Headed[T]:  # noqa: E741
     return Headed(head=head, rest=rest)
 
 
-@worker.task(name="len")
-def impl_len[A](v: list[A]) -> int:
+@worker.task()
+def impl_len[A: PType](v: list[A]) -> int:
     logger.info("len: %s", v)
     return len(v)
 
@@ -107,8 +107,8 @@ def concat(lhs: str, rhs: str) -> str:
     return lhs + rhs
 
 
-@worker.task(name="zip")
-def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
+@worker.task()
+def zip_impl[U: PType, V: PType](a: list[U], b: list[V]) -> list[tuple[U, V]]:
     return list(zip(a, b))
 
 

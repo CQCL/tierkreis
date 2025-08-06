@@ -78,5 +78,5 @@ executor = ShellExecutor(Path("."), logs_path=storage.logs_path)
 
 storage.clean_graph_files()
 run_graph(storage, executor, fib4.get_data(), {})
-print(read_outputs(storage))
+print(read_outputs(fib4, storage))
 ```

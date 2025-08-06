@@ -16,16 +16,16 @@ logger = logging.getLogger(__name__)
 class Func:
     function_name: str
     inputs: dict[PortID, ValueRef]
-    type: Literal["function"] = field(default="function")
     outputs: set[PortID] = field(default_factory=lambda: set())
+    type: Literal["function"] = field(default="function")
 
 
 @dataclass
 class Eval:
     graph: ValueRef
     inputs: dict[PortID, ValueRef]
-    type: Literal["eval"] = field(default="eval")
     outputs: set[PortID] = field(default_factory=lambda: set())
+    type: Literal["eval"] = field(default="eval")
 
 
 @dataclass
@@ -33,24 +33,24 @@ class Loop:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
     continue_port: PortID  # The port that specifies if the loop should continue.
-    type: Literal["loop"] = field(default="loop")
     outputs: set[PortID] = field(default_factory=lambda: set())
+    type: Literal["loop"] = field(default="loop")
 
 
 @dataclass
 class Map:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
-    type: Literal["map"] = field(default="map")
     outputs: set[PortID] = field(default_factory=lambda: set())
+    type: Literal["map"] = field(default="map")
 
 
 @dataclass
 class Const:
     value: Any
+    outputs: set[PortID] = field(default_factory=lambda: set())
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default="const")
-    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
@@ -58,9 +58,9 @@ class IfElse:
     pred: ValueRef
     if_true: ValueRef
     if_false: ValueRef
-    type: Literal["ifelse"] = field(default="ifelse")
-    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     outputs: set[PortID] = field(default_factory=lambda: set())
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+    type: Literal["ifelse"] = field(default="ifelse")
 
 
 @dataclass
@@ -68,24 +68,25 @@ class EagerIfElse:
     pred: ValueRef
     if_true: ValueRef
     if_false: ValueRef
-    type: Literal["eifelse"] = field(default="eifelse")
-    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     outputs: set[PortID] = field(default_factory=lambda: set())
+    inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+
+    type: Literal["eifelse"] = field(default="eifelse")
 
 
 @dataclass
 class Input:
     name: str
+    outputs: set[PortID] = field(default_factory=lambda: set())
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["input"] = field(default="input")
-    outputs: set[PortID] = field(default_factory=lambda: set())
 
 
 @dataclass
 class Output:
     inputs: dict[PortID, ValueRef]
-    type: Literal["output"] = field(default="output")
     outputs: set[PortID] = field(default_factory=lambda: set())
+    type: Literal["output"] = field(default="output")
 
 
 NodeDef = Func | Eval | Loop | Map | Const | IfElse | EagerIfElse | Input | Output

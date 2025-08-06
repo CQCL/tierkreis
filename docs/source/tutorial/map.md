@@ -100,7 +100,7 @@ start = time.time()
 run_graph(storage, executor, graph().data, {})
 total_time = time.time() - start
 
-outputs = read_outputs(storage)
+outputs = read_outputs(graph(), storage)
 av = outputs["average_time_taken"]
 ciphertexts = outputs["ciphertexts"]
 print(f"Encrypted 20 plaintexts in {total_time:1g}s with mean encryption time {av:1g}")

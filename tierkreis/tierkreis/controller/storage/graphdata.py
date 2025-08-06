@@ -37,9 +37,9 @@ class GraphDataStorage:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        node, graph = graph_node_from_loc(node_location, self.graph)
         if node_location.steps()[-1][0] in ["M", "L"]:
             return Eval((-1, "body"), {})
+        node, graph = graph_node_from_loc(node_location, self.graph)
         return node
 
     def write_worker_call_args(
@@ -86,12 +86,17 @@ class GraphDataStorage:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
-        node, graph = graph_node_from_loc(node_location.parent(), self.graph)
-        if -1 == get_last_index(node_location):  # do outputs correctly
+        parent_loc = node_location.parent()
+        if parent_loc is None:
+            raise TierkreisError("Node needs parent loc!")
+        _, graph = graph_node_from_loc(parent_loc, self.graph)
+        if -1 == get_last_index(node_location):
+            # -1 only has body
             return graph.model_dump_json().encode()
         if node_location.steps()[-1][0] in ["M", "L"]:
-            return _build_outputs(graph)[output_name] or b"null"
-        outputs = _build_outputs(graph, get_last_index(node_location))
+            outputs = _build_outputs(graph)
+        else:
+            outputs = _build_outputs(graph, get_last_index(node_location))
         if output_name in outputs:
             if output := outputs[output_name]:
                 return output
@@ -99,12 +104,16 @@ class GraphDataStorage:
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
-        node, graph = graph_node_from_loc(node_location.parent(), self.graph)
         if -1 == get_last_index(node_location):
             return ["body"]
+        parent_loc = node_location.parent()
+        if parent_loc is None:
+            raise TierkreisError("Node needs parent loc!")
+        _, graph = graph_node_from_loc(parent_loc, self.graph)
         if node_location.steps()[-1][0] in ["M", "L"]:
-            return list(filter(lambda k: k != "*", _build_outputs(graph).keys()))
-        outputs = _build_outputs(graph, get_last_index(node_location))
+            outputs = _build_outputs(graph)
+        else:
+            outputs = _build_outputs(graph, get_last_index(node_location))
         return list(filter(lambda k: k != "*", outputs.keys()))
 
     def is_node_started(self, node_location: Loc) -> bool:

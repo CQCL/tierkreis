@@ -162,13 +162,13 @@ executor = ShellExecutor(Path("."), logs_path=storage.logs_path)
 
 storage.clean_graph_files()
 run_graph(storage, executor, f.get_data(), 10)
-print(read_outputs(storage))
+print(read_outputs(f, storage))
 
 storage.clean_graph_files()
 run_graph(storage, executor, init_data.get_data(), {})
-print(read_outputs(storage))
+print(read_outputs(init_data, storage))
 
 storage.clean_graph_files()
 run_graph(storage, executor, fib_step.get_data(), {'a': 0, 'b': 1})
-print(read_outputs(storage))
+print(read_outputs(fib_step, storage))
 ```

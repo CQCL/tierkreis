@@ -123,9 +123,9 @@ executor = ShellExecutor(Path("."), logs_path=storage.logs_path)
 
 storage.clean_graph_files()
 run_graph(storage, executor, f.get_data(), {})
-print(read_outputs(storage))
+print(read_outputs(f, storage))
 
 storage.clean_graph_files()
 run_graph(storage, executor, g.get_data(), {})
-print(read_outputs(storage))
+print(read_outputs(g, storage))
 ```

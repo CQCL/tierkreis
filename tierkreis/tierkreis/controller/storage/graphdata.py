@@ -37,7 +37,7 @@ class GraphDataStorage:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        if node_location.steps()[-1][0] in ["M", "L"]:
+        if node_location.pop_last()[0][0] in ["M", "L"]:
             return Eval((-1, "body"), {})
         node, graph = graph_node_from_loc(node_location, self.graph)
         return node
@@ -93,7 +93,7 @@ class GraphDataStorage:
         if -1 == get_last_index(node_location):
             # -1 only has body
             return graph.model_dump_json().encode()
-        if node_location.steps()[-1][0] in ["M", "L"]:
+        if node_location.pop_last()[0][0] in ["M", "L"]:
             outputs = _build_outputs(graph)
         else:
             outputs = _build_outputs(graph, get_last_index(node_location))
@@ -110,7 +110,7 @@ class GraphDataStorage:
         if parent_loc is None:
             raise TierkreisError("Node needs parent loc!")
         _, graph = graph_node_from_loc(parent_loc, self.graph)
-        if node_location.steps()[-1][0] in ["M", "L"]:
+        if node_location.pop_last()[0][0] in ["M", "L"]:
             outputs = _build_outputs(graph)
         else:
             outputs = _build_outputs(graph, get_last_index(node_location))

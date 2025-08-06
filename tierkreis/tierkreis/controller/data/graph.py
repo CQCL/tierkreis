@@ -185,24 +185,19 @@ def graph_node_from_loc(
         raise TierkreisError("Cannot convert location to node. Reason: Empty Graph")
     if node_location == "-":
         return Eval((-1, "body"), {}), graph
-    if node_location.startswith("-."):
-        node_location = Loc(node_location[2:])
-    steps = node_location.steps()
-    current_location = Loc(steps[0][0] + str(steps[0][1]))
+    current_location, remaining_location = node_location.pop_first()
     node_id = get_last_index(current_location)
     if node_id == -1:
         raise TierkreisError("Cannot convert location to node. Reason: Invalid Loc")
     node = graph.nodes[node_id]
     match node.type:
         case "eval":
-            remaining_location = Loc(".".join(a + str(b) for a, b in steps[1:]))
             graph = _unwrap_graph(graph.nodes[node.graph[0]], node.type)
-            if remaining_location != "":
+            if remaining_location != "-.":
                 node, graph = graph_node_from_loc(remaining_location, graph)
         case "loop" | "map":
-            remaining_location = Loc(".".join(a + str(b) for a, b in steps[1:]))
             graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
-            if remaining_location != "":
+            if remaining_location != "-.":
                 node, graph = graph_node_from_loc(remaining_location, graph)
         case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
             pass

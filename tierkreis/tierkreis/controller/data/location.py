@@ -94,21 +94,28 @@ class Loc(str):
     ) -> CoreSchema:
         return core_schema.no_info_after_validator_function(cls, handler(str))
 
+    def pop_first(self) -> tuple["Loc", "Loc"]:
+        if self == "-":
+            return Loc(), Loc("")
+
+        steps = self.steps()
+        current_location = Loc(steps[1][0] + str(steps[1][1]))
+        return current_location, Loc("-." + ".".join(a + str(b) for a, b in steps[2:]))
+
+    def pop_last(self) -> tuple["Loc", "Loc"]:
+        if self == "-":
+            return Loc(), Loc("")
+        steps = self.steps()
+        current_location = Loc(steps[-1][0] + str(steps[-1][1]))
+        return current_location, Loc(
+            "-." + ".".join(a + str(b) for a, b in steps[1:-1])
+        )
+
 
 def get_last_index(loc: Loc) -> int:
-    if loc == "-":
-        return 0
     _, node_id = loc.steps()[-1]
     if isinstance(node_id, str):
-        # map nodes can have port names here
-        if "-" in node_id:
-            node_id = node_id.split("-")[1]
-        if node_id == "*":
-            node_id = "0"
-        try:
-            node_id = int(node_id)
-        except ValueError:
-            node_id = 0
+        return 0
     return node_id
 
 

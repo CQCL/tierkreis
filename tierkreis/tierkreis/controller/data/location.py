@@ -95,4 +95,21 @@ class Loc(str):
         return core_schema.no_info_after_validator_function(cls, handler(str))
 
 
+def get_last_index(loc: Loc) -> int:
+    if loc == "-":
+        return 0
+    _, node_id = loc.steps()[-1]
+    if isinstance(node_id, str):
+        # map nodes can have port names here
+        if "-" in node_id:
+            node_id = node_id.split("-")[1]
+        if node_id == "*":
+            node_id = "0"
+        try:
+            node_id = int(node_id)
+        except ValueError:
+            node_id = 0
+    return node_id
+
+
 OutputLoc = tuple[Loc, PortID]

@@ -87,18 +87,20 @@ def start(
         name = node.function_name
         launcher_name = ".".join(name.split(".")[:-1])
         name = name.split(".")[-1]
-        def_path = storage.write_worker_call_args(node_location, name, ins, output_list)
+        call_args_path = storage.write_worker_call_args(
+            node_location, name, ins, output_list
+        )
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
 
         if isinstance(storage, ControllerInMemoryStorage) and isinstance(
             executor, InMemoryExecutor
         ):
-            executor.run(launcher_name, def_path)
+            executor.run(launcher_name, call_args_path)
 
         elif launcher_name == "builtins":
-            run_builtin(def_path, storage.logs_path)
+            run_builtin(call_args_path, storage.logs_path)
         else:
-            executor.run(launcher_name, def_path)
+            executor.run(launcher_name, call_args_path)
 
     elif node.type == "input":
         input_loc = parent.N(-1)

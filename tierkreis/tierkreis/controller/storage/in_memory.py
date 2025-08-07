@@ -19,6 +19,8 @@ from tierkreis.exceptions import TierkreisError
 
 
 class NodeData(BaseModel):
+    """Internal storage class to store all necessary node information."""
+
     definition: NodeDef | None = None
     call_args: WorkerCallArgs | None = None
     is_done: bool = False
@@ -29,6 +31,14 @@ class NodeData(BaseModel):
 
 
 class ControllerInMemoryStorage:
+    """In-memory storage for the controller.
+
+    All information is kept in a local dictionary.
+    Invalid read operations raise a TierkreisError.
+
+    Implements: :py:class:`tierkreis.controller.storage.protocol.ControllerStorage`
+    """
+
     def __init__(
         self,
         workflow_id: UUID,

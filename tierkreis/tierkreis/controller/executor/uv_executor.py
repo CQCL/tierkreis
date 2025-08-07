@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 class UvExecutor:
+    """Executes workers in an UV python environment.
+
+    Implements: :py:class:`tierkreis.controller.executor.protocol.ControllerExecutor`
+    """
+
     def __init__(self, registry_path: Path, logs_path: Path) -> None:
         self.launchers_path = registry_path
         self.logs_path = logs_path
@@ -17,7 +22,7 @@ class UvExecutor:
     def run(
         self,
         launcher_name: str,
-        node_definition_path: Path,
+        worker_call_args_path: Path,
         uv_path: str | None = None,
     ) -> None:
         logging.basicConfig(
@@ -27,8 +32,8 @@ class UvExecutor:
             filemode="a",
             level=logging.INFO,
         )
-        self.errors_path = node_definition_path.parent / "errors"
-        logger.info("START %s %s", launcher_name, node_definition_path)
+        self.errors_path = worker_call_args_path.parent / "errors"
+        logger.info("START %s %s", launcher_name, worker_call_args_path)
 
         if uv_path is None:
             uv_path = shutil.which("uv")
@@ -41,7 +46,7 @@ class UvExecutor:
         with open(self.logs_path, "a") as lfh:
             with open(self.errors_path, "a") as efh:
                 subprocess.Popen(
-                    [uv_path, "run", "main.py", node_definition_path],
+                    [uv_path, "run", "main.py", worker_call_args_path],
                     start_new_session=True,
                     cwd=worker_path,
                     stderr=efh,

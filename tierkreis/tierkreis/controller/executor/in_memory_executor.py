@@ -12,6 +12,11 @@ logger = logging.getLogger(__name__)
 
 
 class InMemoryExecutor:
+    """Executes workers in the same process as the controller.
+
+    Implements: :py:class:`tierkreis.controller.executor.protocol.ControllerExecutor`
+    """
+
     def __init__(self, registry_path: Path, storage: ControllerInMemoryStorage) -> None:
         self.registry_path = registry_path
         self.storage = storage
@@ -19,7 +24,7 @@ class InMemoryExecutor:
     def run(
         self,
         launcher_name: str,
-        node_definition_path: Path,
+        worker_call_args_path: Path,
     ) -> None:
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
@@ -27,8 +32,8 @@ class InMemoryExecutor:
             filemode="a",
             level=logging.INFO,
         )
-        logger.info("START %s %s", launcher_name, node_definition_path)
-        node_location = Loc(str(node_definition_path))
+        logger.info("START %s %s", launcher_name, worker_call_args_path)
+        node_location = Loc(str(worker_call_args_path))
         call_args = self.storage.read_worker_call_args(node_location)
 
         spec = importlib.util.spec_from_file_location(

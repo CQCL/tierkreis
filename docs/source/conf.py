@@ -20,6 +20,7 @@ autodoc2_packages = [
     "../../tierkreis_workers/nexus_worker",
     "../../tierkreis_workers/pytket_worker",
 ]
+autodoc2_hidden_objects = ["private"]
 
 templates_path = ["_templates"]
 exclude_patterns = []

@@ -31,7 +31,6 @@ but for now we keep things simple.
 ```{note}
 In order to keep a clear separation between the types used in the Tierkreis graph and the types already present in the Python language we wrap the former with `TKR`.
 (The `TKR[A]` wrapper type indicates that an edge in the graph contains a value of type `A`.)
-For more information please see [types in Tierkreis]().
 ```
 
 We can add constants to a graph using `GraphBuilder.const`.

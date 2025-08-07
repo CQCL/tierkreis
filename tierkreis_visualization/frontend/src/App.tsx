@@ -33,6 +33,7 @@ const saveGraph = ({
   key: string;
   nodes: BackendNode[];
   edges: Edge[];
+  start_time: string;
 }) => {
   try {
     localStorage.setItem(key, JSON.stringify(graph));
@@ -41,13 +42,25 @@ const saveGraph = ({
   }
 };
 
+const deleteGraph = ({ key }: { key: string }) => {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    return null;
+  }
+};
+
 const loadGraph = (props: {
   key: string;
-}): { nodes: BackendNode[]; edges: Edge[] } | null => {
+}): { nodes: BackendNode[]; edges: Edge[]; start_time: string } | null => {
   try {
     const item = localStorage.getItem(props.key);
     if (item !== null)
-      return JSON.parse(item) as { nodes: BackendNode[]; edges: Edge[] };
+      return JSON.parse(item) as {
+        nodes: BackendNode[];
+        edges: Edge[];
+        start_time: string;
+      };
     return null;
   } catch {
     return null;
@@ -58,6 +71,7 @@ const Main = (props: {
   initialNodes: BackendNode[];
   initialEdges: Edge[];
   workflow_id: string;
+  workflow_start: string;
   workflows: Workflow[];
   infoProps: InfoProps;
   setInfo: (arg: InfoProps) => void;
@@ -66,9 +80,13 @@ const Main = (props: {
   const [nodes, setNodes] = useState(props.initialNodes);
   const [edges, setEdges] = useState(props.initialEdges);
   React.useEffect(() => {
-    saveGraph({ key: props.workflow_id, nodes, edges });
-  }, [edges, nodes, props.workflow_id]);
-
+    saveGraph({
+      key: props.workflow_id,
+      nodes,
+      edges,
+      start_time: props.workflow_start,
+    });
+  }, [edges, nodes, props.workflow_id, props.workflow_start]);
   const onNodesChange: OnNodesChange<BackendNode> = useCallback(
     (changes) =>
       setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
@@ -83,7 +101,6 @@ const Main = (props: {
     node.data.pinned = true;
   }, []);
   const reactFlowInstance = useReactFlow();
-
   React.useEffect(() => {
     const url = `${URL}/${props.workflow_id}/nodes/-`;
     const ws = new WebSocket(url);
@@ -178,6 +195,7 @@ export default function App() {
         (workflow): Workflow => ({
           id: workflow.id,
           name: workflow.name,
+          start_time: workflow.start_time,
         })
       ),
     staleTime: 1000 * 60 * 5, // Cache for 5 minutes
@@ -220,7 +238,14 @@ export default function App() {
   });
 
   const remoteGraph = graphQuery.data;
+  const workflow_start = workflowsQuery.data.find(
+    (workflow) => workflow.id == workflow_id
+  )?.start_time || "";
   const localGraph = loadGraph({ key: workflow_id });
+  if (workflow_start && workflow_start != localGraph?.start_time) {
+    deleteGraph({ key: workflow_id });
+    localGraph == null;
+  }
 
   const mergedGraph = (() => {
     const default_node_positions = bottomUpLayout(
@@ -244,7 +269,7 @@ export default function App() {
     });
     const edgesMap = new Map();
     localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
-    localGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
+    remoteGraph.edges.forEach((edge) => edgesMap.set(edge.id, edge));
     const mergedEdges = [...edgesMap.values()];
 
     return {
@@ -260,6 +285,7 @@ export default function App() {
       initialEdges={mergedGraph.edges}
       workflows={workflowsQuery.data}
       workflow_id={workflow_id}
+      workflow_start={workflow_start}
       infoProps={info}
       setInfo={setInfo}
     />

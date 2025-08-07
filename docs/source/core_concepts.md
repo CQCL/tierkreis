@@ -4,7 +4,7 @@
 
 In Tierkreis, a computation is represented as a sequence of tasks comprising a workflow.
 They are combined in a directed acyclic graph (DAG), where each task is represented by a node.
-Edges carry the data of a computation instance.
+An edge indicates that data computed by one node is required to start another node.
 The data dependencies induce a partial order of execution, which allows parallel and asynchronous execution.
 As a result a computation can be distributed easily and run on different types of hardware including remote (cloud) and onsite:
 
@@ -29,11 +29,11 @@ From the data dependencies, the runtime environment can infer which tasks it nee
 ### Types
 
 In Tierkreis, it is possible to associate types with edges (data) at construction.
-Type information can be used by the `GraphBuild` to infer additional information about the graph to prevent runtime errors.
+Type information can be used by the `GraphBuilder` to infer additional information about the graph to prevent runtime errors.
 
 ## Execution model
 
-The second part of Tierkreis is the execution model, which is baked into the runtime environment.
+The second part of Tierkreis is the execution model.
 It is responsible for the orchestration and the proper execution of the tasks specified in a workflow.
 The goal is to distribute tasks over the available resources, based on the capabilities of each resource.
 

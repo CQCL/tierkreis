@@ -82,33 +82,22 @@ class Worker:
             self.storage.write_output(path, bytes_from_ptype(d[result_name]))
 
     def primitive_task(
-        self, name: str | None = None
+        self,
     ) -> Callable[[PrimitiveTask], None]:
-        """Registers a python function as a primitive task with the worker.
-
-        :param name: A different name for the function, defaults to function name.
-        :type name: str | None, optional
-        """
+        """Registers a python function as a primitive task with the worker."""
 
         def function_decorator(func: PrimitiveTask) -> None:
-            func_name = name if name is not None else func.__name__
-
             def wrapper(args: WorkerCallArgs):
                 func(args, self.storage)
 
-            self.functions[func_name] = wrapper
+            self.functions[func.__name__] = wrapper
 
         return function_decorator
 
     def task(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
-        """Registers a python function as a task with the worker.
-
-        :param name: A different name for the function, defaults to function name.
-        :type name: str | None, optional
-        """
+        """Registers a python function as a task with the worker."""
 
         def function_decorator(func: WorkerFunction) -> None:
-            func_name = name if name is not None else func.__name__
             self.namespace.add_function(func)
 
             def wrapper(node_definition: WorkerCallArgs):
@@ -116,7 +105,7 @@ class Worker:
                 results = func(**kwargs)
                 self._save_results(node_definition.outputs, results)
 
-            self.functions[func_name] = wrapper
+            self.functions[func.__name__] = wrapper
 
         return function_decorator
 

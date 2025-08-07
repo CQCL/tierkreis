@@ -36,13 +36,13 @@ def igt(a: int, b: int) -> bool:
     return a > b
 
 
-@worker.task(name="and")
+@worker.task()
 def impl_and(a: bool, b: bool) -> bool:
     logger.debug(f"and {a} {b}")
     return a and b
 
 
-@worker.task(name="id")
+@worker.task()
 def impl_id[T: PType](value: T) -> T:
     logger.debug(f"id {value}")
     return value
@@ -66,7 +66,7 @@ def head[T: PType](v: list[T]) -> Headed[T]:  # noqa: E741
     return Headed(head=head, rest=rest)
 
 
-@worker.task(name="len")
+@worker.task()
 def impl_len[A](v: list[A]) -> int:
     logger.info("len: %s", v)
     return len(v)
@@ -107,7 +107,7 @@ def concat(lhs: str, rhs: str) -> str:
     return lhs + rhs
 
 
-@worker.task(name="zip")
+@worker.task()
 def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
     return list(zip(a, b))
 
@@ -124,7 +124,7 @@ def unzip[U: PType, V: PType](value: list[tuple[U, V]]) -> Unzipped[U, V]:
     return Unzipped(a=value_a, b=value_b)
 
 
-@worker.task(name="tuple")
+@worker.task()
 def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
     return (a, b)
 

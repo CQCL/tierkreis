@@ -1,0 +1,23 @@
+spec: models interface
+
+type_symbol: CNAME
+var_name: CNAME
+
+key_type_pair: var_name ":" type_symbol ";"
+key_type_pairs: (key_type_pair)*
+model: "model" var_name "{" key_type_pairs "}"
+models: (model*)
+
+arg: var_name ":" type_symbol
+args: [arg ("," arg*)]
+return_type: type_symbol
+method: var_name "(" args ")" ":" return_type ";"
+methods: (method*)
+interface: "interface" var_name "{" methods "}"
+
+%import common.ESCAPED_STRING
+%import common.SIGNED_NUMBER
+%import common.WS
+%import common.CNAME
+
+%ignore WS

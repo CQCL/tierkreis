@@ -57,7 +57,7 @@ def walk_node(
         return WalkResult([], [], [loc])
 
     node = graph.nodes[idx]
-    node_run_data = NodeRunData(loc, node, list(graph.node_outputs[idx]))
+    node_run_data = NodeRunData(loc, node, list(node.outputs))
 
     result = WalkResult([], [])
     if unfinished_results(result, storage, parent, node, graph):
@@ -144,7 +144,7 @@ def walk_loop(
     ins.update(loop_outputs)
     node_run_data = NodeRunData(
         loc.L(i + 1),
-        Eval((-1, BODY_PORT), ins),
+        Eval((-1, BODY_PORT), ins, loop.outputs),
         list(loop_outputs.keys()),
     )
     return WalkResult([node_run_data], [])

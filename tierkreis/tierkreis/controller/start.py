@@ -141,7 +141,7 @@ def start(
             executor,
             NodeRunData(
                 node_location.L(0),
-                Eval((-1, "body"), {k: (-1, k) for k, _ in ins.items()}),
+                Eval((-1, "body"), {k: (-1, k) for k, _ in ins.items()}, node.outputs),
                 output_list,
             ),
         )
@@ -162,7 +162,7 @@ def start(
             )
             # Necessary in the node visualization
             storage.write_node_def(
-                node_location.M(idx), Eval((-1, "body"), node.inputs)
+                node_location.M(idx), Eval((-1, "body"), node.inputs, node.outputs)
             )
 
     elif node.type == "ifelse":

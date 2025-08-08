@@ -104,5 +104,5 @@ from tierkreis import run_graph
 from tierkreis.storage import read_outputs
 
 run_graph(storage, executor, g.get_data(), {})
-print(read_outputs(storage))
+print(read_outputs(g, storage))
 ```

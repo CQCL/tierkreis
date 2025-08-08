@@ -73,4 +73,4 @@ An executor is responsible for running assigned worker tasks.
 It possesses the knowledge about its environment and how to run programs there in a specific way.
 For example, the [UvExecutor](#tierkreis.controller.executor.uv_executor.UvExecutor) can run python programs locally by building them as a packaged executable.
 Multiple executors could handle the same worker in different environments, the choice is then up to the controller.
-The executor protocol is defined in [](#tierkreis.controller.storage.protocol).
+The executor protocol is defined in [](#tierkreis.controller.executor.protocol).

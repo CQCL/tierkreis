@@ -1,7 +1,7 @@
 from pathlib import Path
 from types import NoneType
 from typing import Literal, NamedTuple
-from lark import Lark, Token, Tree
+from lark import Lark, Tree
 from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG, PModel, PNamedModel
 from tierkreis.controller.data.types import PType
 from tierkreis.exceptions import TierkreisError
@@ -108,7 +108,6 @@ class NamespaceTransformer:
         )
 
     def args(self, args: Tree) -> list[tuple[str, type[PType]]]:
-        print(args)
         return [self.arg(x) for x in args.children]
 
     def return_type(self, args: Tree) -> type[PModel]:

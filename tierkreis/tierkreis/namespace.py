@@ -55,17 +55,22 @@ class Namespace:
 
         self.structs.add(annotation)
 
+    def _add_function_spec(self, fn: FunctionSpec) -> None:
+        self.functions[fn.name] = fn
+        self.generics.update(fn.generics)
+
+        [self._add_struct(v) for v in fn.ins.values()]
+
+        if is_portmapping(fn.outs):
+            self.output_models.add(fn.outs)
+        else:
+            self._add_struct(fn.outs)
+
     def add_function(self, func: WorkerFunction) -> None:
         name = func.__name__
         annotations = func.__annotations__
         generics: list[str] = [str(x) for x in func.__type_params__]
         fn = FunctionSpec(name=name, namespace=self.name, ins={}, generics=generics)
-        self.functions[fn.name] = fn
-        self.generics.update(fn.generics)
-        [self._add_struct(v) for v in annotations.values()]
-
-        if is_portmapping(annotations["return"]):
-            self.output_models.add(annotations["return"])
 
         try:
             fn.add_inputs({k: v for k, v in annotations.items() if k != "return"})
@@ -74,3 +79,5 @@ class Namespace:
             logger.error(
                 f"Error adding function {name} to {self.name} namespace.", exc_info=exc
             )
+
+        self._add_function_spec(fn)

@@ -1,9 +1,9 @@
 from pathlib import Path
 from types import NoneType
-from typing import NamedTuple
-from lark import Lark, Token, Transformer, Tree
-from tierkreis.controller.data.models import PModel, PNamedModel
-from tierkreis.controller.data.types import PType, is_ptype
+from typing import Literal, NamedTuple
+from lark import Lark, Tree
+from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG, PModel, PNamedModel
+from tierkreis.controller.data.types import PType
 from tierkreis.exceptions import TierkreisError
 from tierkreis.namespace import FunctionSpec, Namespace
 
@@ -73,11 +73,23 @@ class NamespaceTransformer:
     def key_type_pairs(self, pairs: Tree) -> list[tuple[str, type[PModel]]]:
         return [self.key_type_pair(x) for x in pairs.children]
 
+    def model_kw(self, model_kw: Tree) -> Literal["struct", "portmapping"]:
+        kw = model_kw.children[0].data
+        if kw == "struct_kw":
+            return "struct"
+        if kw == "portmapping_kw":
+            return "portmapping"
+
+        raise TierkreisError(f"Unknown model keyword {kw}.")
+
     def model(self, model: Tree) -> type[PNamedModel]:
-        name = self.var_name(model.children[0])
-        arg_list = self.key_type_pairs(model.children[1])
+        kw = self.model_kw(model.children[0])
+        name = self.var_name(model.children[1])
+        arg_list = self.key_type_pairs(model.children[2])
         nt = NamedTuple(name, arg_list)
         self.model_lookup[name] = nt
+        if kw == "portmapping":
+            setattr(nt, TKR_PORTMAPPING_FLAG, True)
 
         return nt
 
@@ -91,8 +103,7 @@ class NamespaceTransformer:
         )
 
     def args(self, args: Tree) -> list[tuple[str, type[PType]]]:
-        if len(args.children) == 1 and args.children[0] is None:
-            return []
+        print(args)
         return [self.arg(x) for x in args.children]
 
     def return_type(self, args: Tree) -> type[PModel]:
@@ -102,7 +113,10 @@ class NamespaceTransformer:
         name = self.var_name(method.children[0])
         ins = {k: v for k, v in self.args(method.children[1])}
         ret_type = self.return_type(method.children[2])
-        return FunctionSpec(name, "unknown", ins, [], ret_type)
+        fn = FunctionSpec(name, "unknown", {}, [], NoneType)
+        fn.add_inputs(ins)
+        fn.add_outputs(ret_type)
+        return fn
 
     def methods(self, methods: Tree) -> list[FunctionSpec]:
         return [self.method(x) for x in methods.children]
@@ -110,9 +124,13 @@ class NamespaceTransformer:
     def interface(self, interface: Tree) -> Namespace:
         name = self.var_name(interface.children[0])
         fns = self.methods(interface.children[1])
+        ns = Namespace(name, {}, set())
+
         for f in fns:
             f.namespace = name
-        return Namespace(name, {f.name: f for f in fns}, set())
+            ns._add_function_spec(f)
+
+        return ns
 
     def spec(self, spec: Tree) -> Namespace:
         models = self.models(spec.children[0])

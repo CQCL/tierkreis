@@ -3,13 +3,17 @@ spec: models interface
 type_symbol: CNAME
 var_name: CNAME
 
+struct_kw: "struct"
+portmapping_kw: "portmapping"
+model_kw: struct_kw | portmapping_kw
+
 key_type_pair: var_name ":" type_symbol ";"
 key_type_pairs: (key_type_pair)*
-model: "model" var_name "{" key_type_pairs "}"
+model: model_kw var_name "{" key_type_pairs "}"
 models: (model*)
 
 arg: var_name ":" type_symbol
-args: [arg ("," arg*)]
+args: [] | [arg] | [arg ("," arg*)]
 return_type: type_symbol
 method: var_name "(" args ")" ":" return_type ";"
 methods: (method*)

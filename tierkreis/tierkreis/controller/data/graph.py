@@ -5,7 +5,7 @@ from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
-from tierkreis.controller.data.location import Loc, OutputLoc, get_last_index
+from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.data.types import PType
 from tierkreis.exceptions import TierkreisError
 
@@ -185,20 +185,24 @@ def graph_node_from_loc(
         raise TierkreisError("Cannot convert location to node. Reason: Empty Graph")
     if node_location == "-":
         return Eval((-1, "body"), {}), graph
-    current_location, remaining_location = node_location.pop_first()
-    node_id = get_last_index(current_location)
+
+    if (first := node_location.pop_first()) is None:
+        raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
+    (_, node_id), remaining_location = first
+    if isinstance(node_id, str):
+        raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
     if node_id == -1:
         raise TierkreisError("Cannot convert location to node. Reason: Invalid Loc")
     node = graph.nodes[node_id]
+    if remaining_location == Loc():
+        return node, graph
     match node.type:
         case "eval":
             graph = _unwrap_graph(graph.nodes[node.graph[0]], node.type)
-            if remaining_location != "-.":
-                node, graph = graph_node_from_loc(remaining_location, graph)
+            node, graph = graph_node_from_loc(remaining_location, graph)
         case "loop" | "map":
             graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
-            if remaining_location != "-.":
-                node, graph = graph_node_from_loc(remaining_location, graph)
+            node, graph = graph_node_from_loc(remaining_location, graph)
         case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
             pass
         case _:

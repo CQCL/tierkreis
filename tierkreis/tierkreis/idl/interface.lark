@@ -1,6 +1,8 @@
 spec: models interface
 
-type_symbol: CNAME
+array: "Array<" type_symbol ">"
+record: "Record<" type_symbol ">"
+type_symbol: array | record | CNAME
 var_name: CNAME
 
 struct_kw: "struct"

@@ -1,7 +1,7 @@
 from pathlib import Path
 from types import NoneType
 from typing import Literal, NamedTuple
-from lark import Lark, Tree
+from lark import Lark, Token, Tree
 from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG, PModel, PNamedModel
 from tierkreis.controller.data.types import PType
 from tierkreis.exceptions import TierkreisError
@@ -22,6 +22,11 @@ class NamespaceTransformer:
         https://typespec.io/docs/language-basics/built-in-types/"""
 
         type_decl = type_symbol.children[0]
+        if isinstance(type_decl, Tree) and type_decl.data == "array":
+            return list[self.type_symbol(type_decl.children[0])]
+        elif isinstance(type_decl, Tree) and type_decl.data == "record":
+            return dict[str, self.type_symbol(type_decl.children[0])]
+
         match type_decl:
             case "integer" | "int64" | "int32" | "int16" | "int8" | "safeint":
                 return int

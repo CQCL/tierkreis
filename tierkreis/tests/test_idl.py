@@ -5,15 +5,15 @@ from tierkreis.idl.parser import typespec_parser, NamespaceTransformer
 def test_load_transform():
     txt = """
 portmapping Dog {
-  name: string;
+  name: Record<string>;
   age: uint8;
 }
 struct Dog2 {
-  name: string;
+  name: Record<string>;
   age: uint8;
 }
 portmapping A {
-    a: integer;
+    a: Array<integer>;
 }
 interface SampleInterface {
   foo(a: integer, b:string): Dog;

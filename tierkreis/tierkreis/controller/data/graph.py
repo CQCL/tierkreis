@@ -5,7 +5,7 @@ from pydantic import BaseModel, RootModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
-from tierkreis.controller.data.location import OutputLoc
+from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.data.types import PType
 from tierkreis.exceptions import TierkreisError
 
@@ -174,3 +174,51 @@ class GraphData(BaseModel):
 
         actual_inputs = fixed_inputs.union(provided_inputs)
         return self.graph_inputs - actual_inputs
+
+
+def graph_node_from_loc(
+    node_location: Loc,
+    graph: GraphData,
+) -> tuple[NodeDef, GraphData]:
+    """Assumes the first part of a loc can be found in current graph"""
+    if len(graph.nodes) == 0:
+        raise TierkreisError("Cannot convert location to node. Reason: Empty Graph")
+    if node_location == "-":
+        return Eval((-1, "body"), {}), graph
+
+    if (first := node_location.pop_first()) is None:
+        raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
+    (_, node_id), remaining_location = first
+    if isinstance(node_id, str):
+        raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
+    if node_id == -1:
+        raise TierkreisError("Cannot convert location to node. Reason: Invalid Loc")
+    node = graph.nodes[node_id]
+    if remaining_location == Loc():
+        return node, graph
+    match node.type:
+        case "eval":
+            graph = _unwrap_graph(graph.nodes[node.graph[0]], node.type)
+            node, graph = graph_node_from_loc(remaining_location, graph)
+        case "loop" | "map":
+            graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
+            node, graph = graph_node_from_loc(remaining_location, graph)
+        case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
+            pass
+        case _:
+            assert_never(node)
+
+    return node, graph
+
+
+def _unwrap_graph(node: NodeDef, node_type: str) -> GraphData:
+    """Safely unwraps a const nodes GraphData."""
+    if not isinstance(node, Const):
+        raise TierkreisError(
+            f"Cannot convert location to node. Reason: {node_type} does not wrap const"
+        )
+    if not isinstance(node.value, GraphData):
+        raise TierkreisError(
+            "Cannot convert location to node. Reason: const value is not a graph"
+        )
+    return node.value

@@ -26,7 +26,7 @@ docs:
 
 [working-directory:'tierkreis_visualization']
 serve:
-	{{uvrun}} fastapi dev tierkreis_visualization/main.py
+	{{uvrun}} python tierkreis_visualization/main.py
 
 [working-directory:'tierkreis_visualization']
 prod:

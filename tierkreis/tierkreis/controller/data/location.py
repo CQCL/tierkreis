@@ -94,5 +94,47 @@ class Loc(str):
     ) -> CoreSchema:
         return core_schema.no_info_after_validator_function(cls, handler(str))
 
+    def pop_first(self) -> None | tuple[NodeStep, "Loc"]:
+        if self == "":
+            return None
+        if self == "-":
+            return "-", Loc("")
+
+        steps = self.steps()
+        first = steps[1]
+        if first == "-":
+            raise TierkreisError("Malformed Loc")
+        current_location = (first[0], first[1])
+        if len(steps) == 2:
+            remaining_location = Loc()
+        else:
+            remaining_location = Loc("-." + ".".join(a + str(b) for a, b in steps[2:]))
+        return current_location, remaining_location
+
+    def pop_last(self) -> None | tuple[NodeStep, "Loc"]:
+        if self == "":
+            return None
+        if self == "-":
+            return "-", Loc("")
+        steps = self.steps()
+        last = steps[-1]
+        if last == "-":
+            raise TierkreisError("Malformed Loc")
+        current_location = (last[0], last[1])
+        if len(steps) == 2:
+            remaining_location = Loc()
+        else:
+            remaining_location = Loc(
+                "-." + ".".join(a + str(b) for a, b in steps[1:-1])
+            )
+        return current_location, remaining_location
+
+
+def get_last_index(loc: Loc) -> int:
+    _, node_id = loc.steps()[-1]
+    if isinstance(node_id, str):
+        return 0
+    return node_id
+
 
 OutputLoc = tuple[Loc, PortID]

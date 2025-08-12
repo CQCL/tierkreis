@@ -67,7 +67,8 @@ function replaceEval(
         const node = newNodes[index];
         if (node.id.startsWith(nodeId)) {
           node.data.handles.inputs.forEach((value) => {
-            if (edge.sourceHandle?.endsWith(value)) {
+            if (edge.sourceHandle?.endsWith(value) && value != "loop") {
+              // != "loop" is a hack to fix loops with a single iteration TODO: check if this really works
               node.data.handles.outputs.push(value);
               edge.sourceHandle = node.id + "_" + value;
               edge.source = node.id;

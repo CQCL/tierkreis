@@ -1,4 +1,5 @@
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 from uuid import UUID
 from typing import Any
@@ -152,7 +153,7 @@ class ControllerInMemoryStorage:
                 output_name
             ]:
                 return output
-            return b""
+            return b"null"
         raise TierkreisError(f"No output named {output_name} in node {node_location}")
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
@@ -170,7 +171,10 @@ class ControllerInMemoryStorage:
         return self.nodes[self.loc_to_path(node_location)].metadata
 
     def write_metadata(self, node_location: Loc) -> None:
-        self.nodes[self.loc_to_path(node_location)].metadata = {"name": self.name}
+        self.nodes[self.loc_to_path(node_location)].metadata = {
+            "name": self.name,
+            "start_time": datetime.now().isoformat(),
+        }
 
     def clean_graph_files(self) -> None:
         uid = os.getuid()

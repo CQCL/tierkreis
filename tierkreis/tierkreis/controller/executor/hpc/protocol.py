@@ -28,7 +28,7 @@ class TemplateAdapter:
         self,
         template_name: str,
         command: str,
-        template_dir=".",
+        template_dir: str = ".",
         parse_fn: Callable[[Path], JobSpec] = _not_implemeneted,
     ) -> None:
         env = Environment(loader=FileSystemLoader(template_dir))
@@ -50,8 +50,3 @@ class TemplateAdapter:
 
     def spec_from_script(self, batch_script: Path) -> JobSpec:
         return self._parse_fn(batch_script)
-
-
-PJSUB_ADAPTER = TemplateAdapter("pjsub.jinja", "pjsub")
-PBS_ADAPTER = TemplateAdapter("pbs.jinja", "qsub")
-SLURM_ADAPTER = TemplateAdapter("slurm.jinja", "sbatch")

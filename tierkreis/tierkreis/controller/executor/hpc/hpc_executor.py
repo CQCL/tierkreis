@@ -36,6 +36,8 @@ class HpcExecutor:
         )
         logger.info("START %s %s", launcher_name, node_definition_path)
 
+        self.spec.command += str(node_definition_path)
+
         with NamedTemporaryFile(
             mode="w",
             delete=False,
@@ -45,14 +47,12 @@ class HpcExecutor:
         ) as script_file:
             self.adapter.generate_script(self.spec, Path(script_file.name))
             submission_cmd = [self.adapter.command, script_file.name]
-            # todo: additional input
 
             with open(self.logs_path, "a") as lfh:
                 with open(self.errors_path, "a") as efh:
                     process = subprocess.run(
                         submission_cmd,
                         cwd=launcher_path,
-                        env=self.spec.environment,  # could be export in bash script?
                         start_new_session=True,
                         capture_output=True,
                         universal_newlines=True,

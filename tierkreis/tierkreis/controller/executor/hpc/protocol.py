@@ -28,7 +28,7 @@ class TemplateAdapter:
         self,
         template_name: str,
         command: str,
-        template_dir="templates",
+        template_dir=".",
         parse_fn: Callable[[Path], JobSpec] = _not_implemeneted,
     ) -> None:
         env = Environment(loader=FileSystemLoader(template_dir))

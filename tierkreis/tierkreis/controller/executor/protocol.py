@@ -1,5 +1,13 @@
+from enum import Enum, auto
 from pathlib import Path
 from typing import Protocol
+
+
+class ExecutorEnvironment(Enum):
+    PYTHON = auto()
+    HPC = auto()
+    IN_MEMORY = auto()
+    SHELL = auto()
 
 
 class ControllerExecutor(Protocol):
@@ -8,6 +16,11 @@ class ControllerExecutor(Protocol):
     An executor is responsible for running a worker(binary) in a given environment.
 
     """
+
+    @property
+    def environment(self) -> ExecutorEnvironment:
+        "Returns the Environments an Executor fulfills"
+        ...
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         """Run the node defined by the node_definition path.
@@ -21,5 +34,4 @@ class ControllerExecutor(Protocol):
         :param worker_call_args_path: Location of the worker call args.
         :type worker_call_args_path: Path
         """
-
-    ...
+        ...

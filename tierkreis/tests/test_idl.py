@@ -1,8 +1,9 @@
 from typing import NamedTuple
+import pytest
 from tierkreis.codegen import format_namespace
 from tierkreis.controller.data.models import portmapping
-from tierkreis.idl.parser import typespec_parser, NamespaceTransformer
 from tierkreis.namespace import FunctionSpec, Namespace
+from tierkreis.idl.combinators import type_t, spec
 
 
 @portmapping
@@ -31,10 +32,7 @@ expected_namespace._add_function_spec(
 expected_namespace._add_function_spec(
     FunctionSpec("z", "TestNamespace", {"a": C}, [], C),
 )
-
-
-def test_load_transform():
-    txt = """
+txt = """
 portmapping A {
   name: Record<string>;
   age: uint8;
@@ -52,6 +50,21 @@ interface TestNamespace {
   z(a: C): C;
 }
 """
-    tree = typespec_parser.parse(txt)
-    ns = NamespaceTransformer().spec(tree)
-    assert format_namespace(ns) == format_namespace(expected_namespace)
+
+
+type_symbols = [
+    ("uint8", int),
+    ("string", str),
+    ("Array<integer>", list[int]),
+    ("Record<Array<string>>", dict[str, list[str]]),
+]
+
+
+@pytest.mark.parametrize("type_symbol,expected", type_symbols)
+def test_type_t(type_symbol: str, expected: type):
+    assert (expected, "") == type_t(type_symbol)
+
+
+def test_namespace():
+    namespace = spec(txt)
+    assert format_namespace(namespace[0]) == format_namespace(expected_namespace)

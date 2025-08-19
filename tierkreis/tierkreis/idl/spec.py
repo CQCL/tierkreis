@@ -3,7 +3,7 @@
 We use
 https://typespec.io/docs/language-basics/models/
 https://typespec.io/docs/language-basics/interfaces/
-as a guide but split 'model' into 'portmapping' and 'interface'.
+as a guide but split 'model' into 'portmapping' and 'struct'.
 """
 
 from typing import NamedTuple

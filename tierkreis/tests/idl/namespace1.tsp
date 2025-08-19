@@ -7,12 +7,12 @@ model A {
 model B {
   name: Record<string>;
   age: uint8;
-  a: A;
 }
 
 @portmapping
 model C {
   a: Array<integer>;
+  b: B;
 }
 interface TestNamespace {
   foo(a: integer, b: string): A;

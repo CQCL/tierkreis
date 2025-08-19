@@ -12,12 +12,12 @@ class A(NamedTuple):
 class B(NamedTuple):
     name: dict[str, str]
     age: int
-    a: A
 
 
 @portmapping
 class C(NamedTuple):
     a: list[int]
+    b: B
 
 
 expected_namespace = Namespace("TestNamespace", functions={})

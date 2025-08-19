@@ -200,7 +200,7 @@ def graph_node_from_loc(
     if isinstance(node_id, str):
         raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
     if node_id == -1:
-        raise TierkreisError("Cannot convert location to node. Reason: Invalid Loc")
+        return Eval((-1, "body"), {}), graph
     node = graph.nodes[node_id]
     if remaining_location == Loc():
         return node, graph

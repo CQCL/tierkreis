@@ -107,8 +107,7 @@ def get_eval_node(
 
             try:
                 value = json.loads(storage.read_output(node_location.N(idx), p1))
-            except (FileNotFoundError, json.decoder.JSONDecodeError):
-                # In symbolic evaluation output could be "" causing an error
+            except (FileNotFoundError, TierkreisError):
                 value = None
 
             py_edge = PyEdge(

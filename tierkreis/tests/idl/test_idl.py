@@ -4,7 +4,7 @@ from tierkreis.codegen import format_namespace
 from tierkreis.namespace import Namespace
 from tierkreis.idl.spec import spec
 from tierkreis.idl.type_symbols import type_symbol
-import tests.idl.foobar
+import tests.idl.namespace1
 
 type_symbols = [
     ("uint8", int),
@@ -20,7 +20,7 @@ def test_type_t(type_symb: str, expected: type):
 
 
 dir = Path(__file__).parent
-typespecs = [(dir / "foobar.tsp", tests.idl.foobar.expected_namespace)]
+typespecs = [(dir / "namespace1.tsp", tests.idl.namespace1.expected_namespace)]
 
 
 @pytest.mark.parametrize("path,expected", typespecs)

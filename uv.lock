@@ -2045,7 +2045,7 @@ wheels = [
 
 [[package]]
 name = "tierkreis"
-version = "2.0.0"
+version = "2.0.1"
 source = { editable = "tierkreis" }
 dependencies = [
     { name = "pydantic" },
@@ -2072,7 +2072,7 @@ dev = [
 
 [[package]]
 name = "tierkreis-visualization"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "tierkreis_visualization" }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },
@@ -2093,7 +2093,7 @@ requires-dist = [
 
 [[package]]
 name = "tkr-aer-worker"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "tierkreis_workers/aer_worker" }
 dependencies = [
     { name = "pytket-qiskit" },
@@ -2108,7 +2108,7 @@ requires-dist = [
 
 [[package]]
 name = "tkr-nexus-worker"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "tierkreis_workers/nexus_worker" }
 dependencies = [
     { name = "qnexus" },
@@ -2123,7 +2123,7 @@ requires-dist = [
 
 [[package]]
 name = "tkr-pytket-worker"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "tierkreis_workers/pytket_worker" }
 dependencies = [
     { name = "pytket" },

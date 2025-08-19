@@ -139,7 +139,7 @@ def _build_outputs(
         index = graph.output_idx()
     try:
         outputs: dict[PortID, None | bytes] = {
-            output: None for output in graph.node_outputs[index]
+            output: None for output in graph.nodes[index].outputs
         }
     except TierkreisError:
         # partial graph without an output

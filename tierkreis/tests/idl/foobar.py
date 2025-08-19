@@ -12,6 +12,7 @@ class A(NamedTuple):
 class B(NamedTuple):
     name: dict[str, str]
     age: int
+    a: A
 
 
 @portmapping

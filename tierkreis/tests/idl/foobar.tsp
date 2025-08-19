@@ -7,6 +7,7 @@ model A {
 model B {
   name: Record<string>;
   age: uint8;
+  a: A;
 }
 
 @portmapping

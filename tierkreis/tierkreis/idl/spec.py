@@ -31,38 +31,51 @@ class Interface(NamedTuple):
     methods: list[Method]
 
 
-def parse_model(args: tuple[str, str, list[TypeDecl]]) -> type[NamedTuple]:
-    id, name, decls = args
-    a = [(x.name, x.t) for x in decls]
-    nt = NamedTuple(name, a)
-    if id == "@portmapping\nmodel":
-        setattr(nt, TKR_PORTMAPPING_FLAG, True)
-    return nt
+class Model(NamedTuple):
+    id: str
+    name: str
+    decls: list[TypeDecl]
 
 
-def create_spec(args: tuple[list[type[NamedTuple]], Interface]) -> Namespace:
-    models = {f.__name__: f for f in args[0]}
+def resolve_type(ref: TypeSymbol, model_dict: dict[str, type]) -> type:
+    if not isinstance(ref, str):
+        return ref
+
+    if ref not in model_dict:
+        raise TierkreisError(f"No such model {ref}")
+
+    return model_dict[ref]
+
+
+def convert_models(models: list[Model]) -> dict[str, type]:
+    model_dict = {}
+
+    for model in models:
+        fields = []
+        if model.name in model_dict:
+            raise TierkreisError(f"Model {model.name} already exists.")
+        for arg, t in model.decls:
+            fields.append((arg, resolve_type(t, model_dict)))
+        nt = NamedTuple(model.name, fields)
+        if model.id == "@portmapping\nmodel":
+            setattr(nt, TKR_PORTMAPPING_FLAG, True)
+        model_dict[model.name] = nt
+
+    return model_dict
+
+
+def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
+    model_dict = convert_models(args[0])
     interface = args[1]
 
     namespace = Namespace(interface.name)
     for f in interface.methods:
         fn = FunctionSpec(f.name, interface.name, {}, [])
-        ins = {}
+        ins: dict[str, TypeSymbol | TypeDecl] = {}
         for name, t in f.decls:
-            if isinstance(t, str):
-                t = models.get(t)
-                if t is None:
-                    raise TierkreisError(f"No such model {name}")
-            ins[name] = t
+            ins[name] = resolve_type(t, model_dict)
         fn.add_inputs(ins)
-
-        if isinstance(f.return_type, str):
-            t = models.get(f.return_type)
-            if t is None:
-                raise TierkreisError(f"No such model {f.return_type}")
-            fn.add_outputs(t)
-        else:
-            fn.add_outputs(f.return_type)
+        fn.add_outputs(resolve_type(f.return_type, model_dict))
 
         namespace._add_function_spec(fn)
     return namespace
@@ -73,7 +86,7 @@ model = seq(
     lit("@portmapping\nmodel", "model"),
     identifier << lit("{"),
     type_decl.rep(lit(";")) << lit("}"),
-).map(parse_model)
+).map(lambda x: Model(*x))
 method = seq(
     identifier << lit("("), type_decl.rep(lit(",")) << lit(")") << lit(":"), type_symbol
 ).map(lambda x: Method(*x))

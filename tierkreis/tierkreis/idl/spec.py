@@ -1,3 +1,11 @@
+"""Combinators for the Tierkreis worker IDL.
+
+We use
+https://typespec.io/docs/language-basics/models/
+https://typespec.io/docs/language-basics/interfaces/
+as a guide but split 'model' into 'portmapping' and 'interface'.
+"""
+
 from typing import NamedTuple
 
 from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG

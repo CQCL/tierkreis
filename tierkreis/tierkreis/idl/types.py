@@ -1,3 +1,8 @@
+"""Types that are allowed in the Tierkreis worker specification IDL.
+
+We use https://typespec.io/docs/language-basics/built-in-types/ as a guide.
+"""
+
 from types import NoneType
 from tierkreis.idl.parser import Parser, lit, reg
 

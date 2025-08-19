@@ -56,6 +56,15 @@ class Parser[T]:
 
         return Parser(f)
 
+    def opt(self) -> "Parser[T|None]":
+        def f(ins: str):
+            try:
+                return self(ins)
+            except ParserError:
+                return None, ins
+
+        return Parser(f)
+
     def map[A](self, fn: Callable[[T], A]) -> "Parser[A]":
         def f(ins: str):
             t, remaining = self(ins)

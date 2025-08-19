@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 class Func:
     function_name: str
     inputs: dict[PortID, ValueRef]
+    outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["function"] = field(default="function")
 
 
@@ -23,6 +24,7 @@ class Func:
 class Eval:
     graph: ValueRef
     inputs: dict[PortID, ValueRef]
+    outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["eval"] = field(default="eval")
 
 
@@ -31,6 +33,7 @@ class Loop:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
     continue_port: PortID  # The port that specifies if the loop should continue.
+    outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["loop"] = field(default="loop")
 
 
@@ -38,12 +41,14 @@ class Loop:
 class Map:
     body: ValueRef
     inputs: dict[PortID, ValueRef]
+    outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["map"] = field(default="map")
 
 
 @dataclass
 class Const:
     value: Any
+    outputs: set[PortID] = field(default_factory=lambda: set())
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["const"] = field(default="const")
 
@@ -53,8 +58,9 @@ class IfElse:
     pred: ValueRef
     if_true: ValueRef
     if_false: ValueRef
-    type: Literal["ifelse"] = field(default="ifelse")
+    outputs: set[PortID] = field(default_factory=lambda: set())
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+    type: Literal["ifelse"] = field(default="ifelse")
 
 
 @dataclass
@@ -62,13 +68,16 @@ class EagerIfElse:
     pred: ValueRef
     if_true: ValueRef
     if_false: ValueRef
-    type: Literal["eifelse"] = field(default="eifelse")
+    outputs: set[PortID] = field(default_factory=lambda: set())
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
+
+    type: Literal["eifelse"] = field(default="eifelse")
 
 
 @dataclass
 class Input:
     name: str
+    outputs: set[PortID] = field(default_factory=lambda: set())
     inputs: dict[PortID, ValueRef] = field(default_factory=lambda: {})
     type: Literal["input"] = field(default="input")
 
@@ -76,6 +85,7 @@ class Input:
 @dataclass
 class Output:
     inputs: dict[PortID, ValueRef]
+    outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["output"] = field(default="output")
 
 
@@ -85,7 +95,6 @@ NodeDefModel = RootModel[NodeDef]
 
 class GraphData(BaseModel):
     nodes: list[NodeDef] = []
-    node_outputs: list[set[PortID]] = []
     fixed_inputs: dict[PortID, OutputLoc] = {}
     graph_inputs: set[PortID] = set()
     graph_output_idx: NodeIndex | None = None
@@ -127,7 +136,6 @@ class GraphData(BaseModel):
     def add(self, node: NodeDef) -> Callable[[PortID], ValueRef]:
         idx = len(self.nodes)
         self.nodes.append(node)
-        self.node_outputs.append(set())
 
         match node.type:
             case "output":
@@ -138,9 +146,9 @@ class GraphData(BaseModel):
 
                 self.graph_output_idx = idx
             case "ifelse" | "eifelse":
-                self.node_outputs[node.pred[0]].add(node.pred[1])
-                self.node_outputs[node.if_true[0]].add(node.if_true[1])
-                self.node_outputs[node.if_false[0]].add(node.if_false[1])
+                self.nodes[node.pred[0]].outputs.add(node.pred[1])
+                self.nodes[node.if_true[0]].outputs.add(node.if_true[1])
+                self.nodes[node.if_false[0]].outputs.add(node.if_false[1])
             case "input":
                 self.graph_inputs.add(node.name)
             case "const" | "eval" | "function" | "loop" | "map":
@@ -149,7 +157,7 @@ class GraphData(BaseModel):
                 assert_never(node)
 
         for i, port in node.inputs.values():
-            self.node_outputs[i].add(port)
+            self.nodes[i].outputs.add(port)
 
         return lambda k: (idx, k)
 
@@ -192,7 +200,7 @@ def graph_node_from_loc(
     if isinstance(node_id, str):
         raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
     if node_id == -1:
-        raise TierkreisError("Cannot convert location to node. Reason: Invalid Loc")
+        return Eval((-1, "body"), {}), graph
     node = graph.nodes[node_id]
     if remaining_location == Loc():
         return node, graph

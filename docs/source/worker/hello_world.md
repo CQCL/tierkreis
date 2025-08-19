@@ -96,5 +96,5 @@ executor = UvExecutor(
     registry_path=Path("../../../examples/example_workers"), logs_path=storage.logs_path
 )
 run_graph(storage, executor, g.data, "world!")
-read_outputs(storage)
+read_outputs(g, storage)
 ```

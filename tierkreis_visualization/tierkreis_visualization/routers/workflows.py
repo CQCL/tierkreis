@@ -145,7 +145,7 @@ def get_node_data(
                 raise TierkreisError("Visualisable node should have parent.")
 
             inputs = {k: (parent.N(i), p) for k, (i, p) in node.inputs.items()}
-            outputs = {k: (loc, k) for k in storage.read_output_ports(loc)}
+            outputs = {k: (loc, k) for k in node.outputs}
             ctx = {"node": node, "inputs": inputs, "outputs": outputs}
 
         case _:

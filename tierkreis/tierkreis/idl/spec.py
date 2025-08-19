@@ -3,7 +3,7 @@
 We use
 https://typespec.io/docs/language-basics/models/
 https://typespec.io/docs/language-basics/interfaces/
-as a guide but split 'model' into 'portmapping' and 'struct'.
+as well as an extra decorator @portmapping.
 """
 
 from typing import NamedTuple
@@ -35,7 +35,7 @@ def parse_model(args: tuple[str, str, list[TypeDecl]]) -> type[NamedTuple]:
     id, name, decls = args
     a = [(x.name, x.t) for x in decls]
     nt = NamedTuple(name, a)
-    if id == "portmapping":
+    if id == "@portmapping\nmodel":
         setattr(nt, TKR_PORTMAPPING_FLAG, True)
     return nt
 
@@ -70,7 +70,7 @@ def create_spec(args: tuple[list[type[NamedTuple]], Interface]) -> Namespace:
 
 type_decl = ((identifier << lit(":")) & type_symbol).map(lambda x: TypeDecl(*x))
 model = seq(
-    lit("portmapping", "struct"),
+    lit("@portmapping\nmodel", "model"),
     identifier << lit("{"),
     type_decl.rep(lit(";")) << lit("}"),
 ).map(parse_model)

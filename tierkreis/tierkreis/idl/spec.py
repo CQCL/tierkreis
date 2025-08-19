@@ -11,7 +11,7 @@ from typing import NamedTuple
 from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.parser import lit, seq
-from tierkreis.idl.types import TypeSymbol, identifier, type_symbol
+from tierkreis.idl.type_symbols import TypeSymbol, identifier, type_symbol
 from tierkreis.namespace import FunctionSpec, Namespace
 
 

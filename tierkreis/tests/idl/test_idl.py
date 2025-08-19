@@ -3,7 +3,7 @@ import pytest
 from tierkreis.codegen import format_namespace
 from tierkreis.namespace import Namespace
 from tierkreis.idl.spec import spec
-from tierkreis.idl.types import type_symbol
+from tierkreis.idl.type_symbols import type_symbol
 import tests.idl.foobar
 
 type_symbols = [

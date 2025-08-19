@@ -1,9 +1,7 @@
 from pathlib import Path
-from typing import NamedTuple
 import pytest
 from tierkreis.codegen import format_namespace
-from tierkreis.controller.data.models import portmapping
-from tierkreis.namespace import FunctionSpec, Namespace
+from tierkreis.namespace import Namespace
 from tierkreis.idl.spec import spec
 from tierkreis.idl.types import type_symbol
 import tests.idl.foobar

@@ -3,15 +3,31 @@ import platform
 from pydantic import BaseModel, Field
 
 
-class JobSpec(BaseModel):
-    job_name: str
-    command: str  # used instead of popen.input
+class MpiSpec(BaseModel):
+    max_proc_per_node: int | None = None
+    proc: int | None = None
+
+
+class ResourceSpec(BaseModel):
     nodes: int = 1
     cores_per_node: int | None = 1
     memory_gb: int | None = 4
+    gpus_per_node: int | None = 0
+
+
+class UserSpec(BaseModel):
+    account: str | None = None
+    mail: str | None = None  # some clusters require this
+
+
+class JobSpec(BaseModel):
+    job_name: str
+    command: str  # used instead of popen.input
+    resource: ResourceSpec
+    mpi: MpiSpec | None = None
+    user: UserSpec | None = None
     walltime: str = "01:00:00"  # HH:MM:SS Replacement?
     queue: str | None = None
-    account: str | None = None  # resource group(pjsub), project account etc
     output_path: Path | None = None
     error_path: Path | None = None
     extra_scheduler_args: dict[str, str | None] = Field(default_factory=dict)
@@ -25,8 +41,10 @@ def pjsub_large_spec() -> JobSpec:
         job_name="pjsub_large",
         command=f"{str(uv_path)} run main.py",
         queue="q-QTM-M",
-        account="hp240496",
-        nodes=32,
+        user=UserSpec(
+            account="hp240496",
+        ),
+        resource=ResourceSpec(nodes=32),
         environment={
             "VIRTUAL_ENVIRONMENT": "",
             "UV_PROJECT_ENVIRONMENT": f"venv_{arch}",
@@ -35,10 +53,10 @@ def pjsub_large_spec() -> JobSpec:
         walltime="03:00:00",
         extra_scheduler_args={
             "--no-check-directory": None,
-            "--mpi": "max-proc-per-node=4",
             "-z": "jid",
             "--llio": "sharedtmp-size=64Gi",
         },
+        mpi=MpiSpec(max_proc_per_node=4),
     )
 
 
@@ -48,8 +66,10 @@ def pjsub_small_spec() -> JobSpec:
     return JobSpec(
         job_name="pjsub_small",
         command=f"{str(uv_path)} run main.py",
-        account="hp240496",
-        nodes=1,
+        user=UserSpec(
+            account="hp240496",
+        ),
+        resource=ResourceSpec(nodes=1),
         environment={
             "VIRTUAL_ENVIRONMENT": "",
             "UV_PROJECT_ENVIRONMENT": f"venv_{arch}",
@@ -57,8 +77,8 @@ def pjsub_small_spec() -> JobSpec:
         walltime="00:15:00",
         extra_scheduler_args={
             "--no-check-directory": None,
-            "--mpi": "max-proc-per-node=4",
             "-z": "jid",
             "--llio": "sharedtmp-size=10Gi",
         },
+        mpi=MpiSpec(max_proc_per_node=4),
     )

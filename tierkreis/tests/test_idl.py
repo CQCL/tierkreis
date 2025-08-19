@@ -3,7 +3,8 @@ import pytest
 from tierkreis.codegen import format_namespace
 from tierkreis.controller.data.models import portmapping
 from tierkreis.namespace import FunctionSpec, Namespace
-from tierkreis.idl.combinators import type_t, spec
+from tierkreis.idl.spec import spec
+from tierkreis.idl.types import type_symbol
 
 
 @portmapping
@@ -35,7 +36,7 @@ expected_namespace._add_function_spec(
 txt = """
 portmapping A {
   name: Record<string>;
-  age: uint8;
+  age: uint8
 }
 struct B {
   name: Record<string>;
@@ -60,9 +61,9 @@ type_symbols = [
 ]
 
 
-@pytest.mark.parametrize("type_symbol,expected", type_symbols)
-def test_type_t(type_symbol: str, expected: type):
-    assert (expected, "") == type_t(type_symbol)
+@pytest.mark.parametrize("type_symb,expected", type_symbols)
+def test_type_t(type_symb: str, expected: type):
+    assert (expected, "") == type_symbol(type_symb)
 
 
 def test_namespace():

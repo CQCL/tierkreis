@@ -25,7 +25,7 @@ class Parser[T]:
         def f(ins: str):
             try:
                 return self(ins)
-            except:
+            except ParserError:
                 return other(ins)
 
         return Parser(f)

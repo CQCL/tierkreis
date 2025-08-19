@@ -1,9 +1,9 @@
 from types import NoneType
 from tierkreis.idl.parser import Parser, lit, reg
 
-type _TypeT = int | float | bytes | bool | NoneType | str | list[_TypeT] | dict[
-    str, _TypeT
-]
+type _TypeT = (
+    int | float | bytes | bool | NoneType | str | list[_TypeT] | dict[str, _TypeT]
+)
 type TypeSymbol = type[_TypeT] | str
 
 signed_int = lit("integer", "int64", "int32", "int16", "int8", "safeint")

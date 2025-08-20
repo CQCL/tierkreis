@@ -194,11 +194,10 @@ def graph_node_from_loc(
     if node_location == "-":
         return Eval((-1, "body"), {}), graph
 
-    if (first := node_location.pop_first()) is None:
+    step, remaining_location = node_location.pop_first()
+    if isinstance(step, str):
         raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
-    (_, node_id), remaining_location = first
-    if isinstance(node_id, str):
-        raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
+    (_, node_id) = step
     if node_id == -1:
         return Eval((-1, "body"), {}), graph
     node = graph.nodes[node_id]

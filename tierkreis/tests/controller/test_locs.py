@@ -1,6 +1,7 @@
 import pytest
 
 from tierkreis.controller.data.location import Loc, NodeStep, get_last_index
+from tierkreis.exceptions import TierkreisError
 
 node_location_1 = Loc()
 node_location_1 = node_location_1.N(1)
@@ -53,7 +54,6 @@ def test_to_from_str(node_location: Loc, loc_str: str):
 )
 def test_pop_first(node_location: Loc, node_step: NodeStep, loc_str: str) -> None:
     pop = node_location.pop_first()
-    assert pop is not None
     (step, remainder) = pop
     assert step == node_step
     assert remainder == Loc(loc_str)
@@ -70,7 +70,6 @@ def test_pop_first(node_location: Loc, node_step: NodeStep, loc_str: str) -> Non
 )
 def test_pop_last(node_location: Loc, node_step: NodeStep, loc_str: str) -> None:
     pop = node_location.pop_last()
-    assert pop is not None
     (step, remainder) = pop
     assert step == node_step
     assert remainder == Loc(loc_str)
@@ -78,80 +77,66 @@ def test_pop_last(node_location: Loc, node_step: NodeStep, loc_str: str) -> None
 
 def test_pop_empty() -> None:
     loc = Loc("")
-    assert loc.pop_first() is None
-    assert loc.pop_last() is None
+    with pytest.raises(TierkreisError):
+        loc.pop_first()
+    with pytest.raises(TierkreisError):
+        loc.pop_last()
 
 
 def test_pop_first_multiple() -> None:
     loc = node_location_2
     pop = loc.pop_first()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 0)
     assert remainder == Loc("-.L0.N3.N8.N0")
     pop = remainder.pop_first()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("L", 0)
     assert remainder == Loc("-.N3.N8.N0")
     pop = remainder.pop_first()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 3)
     assert remainder == Loc("-.N8.N0")
     pop = remainder.pop_first()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 8)
     assert remainder == Loc("-.N0")
     pop = remainder.pop_first()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 0)
     assert remainder == Loc("-")
     pop = remainder.pop_first()
-    assert pop is not None
     (step, remainder) = pop
     assert step == "-"
     assert remainder == Loc("")
-    pop = remainder.pop_first()
-    assert pop is None
 
 
 def test_pop_last_multiple() -> None:
     loc = node_location_2
     pop = loc.pop_last()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 0)
     assert remainder == Loc("-.N0.L0.N3.N8")
     pop = remainder.pop_last()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 8)
     assert remainder == Loc("-.N0.L0.N3")
     pop = remainder.pop_last()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 3)
     assert remainder == Loc("-.N0.L0")
     pop = remainder.pop_last()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("L", 0)
     assert remainder == Loc("-.N0")
     pop = remainder.pop_last()
-    assert pop is not None
     (step, remainder) = pop
     assert step == ("N", 0)
     assert remainder == Loc("-")
     pop = remainder.pop_last()
-    assert pop is not None
     (step, remainder) = pop
     assert step == "-"
     assert remainder == Loc("")
-    pop = remainder.pop_last()
-    assert pop is None
 
 
 @pytest.mark.parametrize(

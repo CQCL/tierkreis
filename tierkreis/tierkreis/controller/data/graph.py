@@ -209,6 +209,7 @@ def graph_node_from_loc(
             node, graph = graph_node_from_loc(remaining_location, graph)
         case "loop" | "map":
             graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
+            _, remaining_location = remaining_location.pop_first()  # Remove the M0/L0
             node, graph = graph_node_from_loc(remaining_location, graph)
         case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
             pass

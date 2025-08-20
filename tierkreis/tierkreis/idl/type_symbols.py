@@ -29,20 +29,21 @@ identifier = reg(r"[a-zA-Z0-9_]*")
 forward_ref = identifier.map(ForwardRef)
 
 
+@Parser
 def array_t(ins: str) -> tuple[type[list[_TypeT]], str]:
-    return (lit("Array<") >> type_t_inner << lit(">")).map(lambda x: list[x]).fn(ins)
+    return (lit("Array<") >> type_t_inner << lit(">")).map(lambda x: list[x])(ins)
 
 
+@Parser
 def record_t(ins: str) -> tuple[type[dict[str, _TypeT]], str]:
-    return (
-        (lit("Record<") >> type_t_inner << lit(">")).map(lambda x: dict[str, x]).fn(ins)
-    )
+    return (lit("Record<") >> type_t_inner << lit(">")).map(lambda x: dict[str, x])(ins)
 
 
+@Parser
 def type_t_inner(ins: str) -> tuple[type[_TypeT], str]:
     return (
         integer_t | float_t | bytes_t | bool_t | none_t | string_t | array_t | record_t
     )(ins)
 
 
-type_symbol = Parser(type_t_inner) | forward_ref
+type_symbol = type_t_inner | forward_ref

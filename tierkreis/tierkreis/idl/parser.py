@@ -1,7 +1,6 @@
 """Elementary parser and parser combinators."""
 
 import re
-from types import NoneType
 from typing import Callable, Never, overload
 
 
@@ -11,14 +10,11 @@ class ParserError(Exception): ...
 class Parser[T]:
     fn: Callable[[str], tuple[T, str]]
 
-    def __init__(self, fn: Callable[[str], tuple[T, str]]) -> NoneType:
-        def f(ins: str):
-            ins = ins.strip()
-            return fn(ins)
-
-        self.fn = f
+    def __init__(self, fn: Callable[[str], tuple[T, str]]):
+        self.fn = fn
 
     def __call__(self, ins: str) -> tuple[T, str]:
+        ins = ins.strip()
         return self.fn(ins)
 
     def __or__[S](

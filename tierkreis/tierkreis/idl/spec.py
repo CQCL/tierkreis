@@ -49,9 +49,15 @@ def convert_models(models: list[Model]) -> dict[str, type]:
     model_dict = {}
 
     for model in models:
-        fields = []
         if model.name in model_dict:
             raise TierkreisError(f"Model {model.name} already exists.")
+        nt = NamedTuple(model.name, model.decls)
+        if model.id == "@portmapping\nmodel":
+            setattr(nt, TKR_PORTMAPPING_FLAG, True)
+        model_dict[model.name] = nt
+
+    for model in models:
+        fields = []
         for arg, t in model.decls:
             fields.append((arg, resolve_type(t, model_dict)))
         nt = NamedTuple(model.name, fields)

@@ -17,5 +17,5 @@ model C {
 interface TestNamespace {
   foo(a: integer, b: string): A;
   bar(): B;
-  z(a: C): C;
+  z<T>(a: C): C;
 }

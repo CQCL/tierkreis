@@ -63,7 +63,7 @@ class TypeParser:
         if isinstance(a, str):
             try:
                 a = self.identifier_lookup[a]
-            except ParserError:
+            except:
                 raise TierkreisError(f"Unexpected identifier: {a}")
         return a, ins
 

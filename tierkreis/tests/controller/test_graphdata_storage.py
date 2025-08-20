@@ -34,7 +34,7 @@ def test_read_nodedef(node_location_str: str, graph: GraphData, target: str) -> 
     ["node_location_str", "graph", "port", "target"],
     [
         ("-.N0", simple_eval(), "value", b"null"),
-        ("-.N4.M0", simple_map(), "value", b"null"),
+        ("-.N4.M0", simple_map(), "0", b"null"),
     ],
 )
 def test_read_output(

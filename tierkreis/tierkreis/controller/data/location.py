@@ -131,10 +131,10 @@ class Loc(str):
 
 
 def get_last_index(loc: Loc) -> int:
-    _, node_id = loc.steps()[-1]
-    if isinstance(node_id, str):
+    step = loc.steps()[-1]
+    if isinstance(step, str):
         return 0
-    return node_id
+    return step[1]
 
 
 OutputLoc = tuple[Loc, PortID]

@@ -1,5 +1,5 @@
 from types import NoneType
-from typing import assert_never, get_args, get_origin
+from typing import ForwardRef, assert_never, get_args, get_origin
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, PNamedModel, is_portmapping
@@ -20,6 +20,9 @@ NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
 def format_ptype(ptype: type[PType]) -> str:
+    if isinstance(ptype, ForwardRef):
+        return f"{ptype.__forward_arg__}"
+
     if _is_generic(ptype):
         return str(ptype)
 

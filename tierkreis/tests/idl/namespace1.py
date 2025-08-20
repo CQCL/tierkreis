@@ -1,8 +1,6 @@
 from typing import NamedTuple
 from tierkreis.controller.data.models import portmapping
-from tierkreis import Worker
-
-worker = Worker("TestNamespace")
+from tierkreis.namespace import FunctionSpec, Namespace
 
 
 @portmapping
@@ -22,12 +20,13 @@ class C(NamedTuple):
     b: B
 
 
-@worker.task()
-def foo(a: int, b: str) -> A: ...
-@worker.task()
-def bar() -> B: ...
-@worker.task()
-def z[T](a: C) -> C: ...
-
-
-expected_namespace = worker.namespace
+expected_namespace = Namespace("TestNamespace", functions={})
+expected_namespace._add_function_spec(
+    FunctionSpec("foo", "TestNamespace", {"a": int, "b": str}, [], A)
+)
+expected_namespace._add_function_spec(
+    FunctionSpec("bar", "TestNamespace", {}, [], B),
+)
+expected_namespace._add_function_spec(
+    FunctionSpec("z", "TestNamespace", {"a": C}, [], C),
+)

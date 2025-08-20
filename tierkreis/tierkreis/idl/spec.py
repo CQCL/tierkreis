@@ -23,7 +23,6 @@ class TypeDecl(NamedTuple):
 
 class Method(NamedTuple):
     name: str
-    generics: list[str] | None
     decls: list[TypeDecl]
     return_type: TypeSymbol
 
@@ -36,7 +35,6 @@ class Interface(NamedTuple):
 class Model(NamedTuple):
     id: str
     name: str
-    generics: list[str] | None
     decls: list[TypeDecl]
 
 
@@ -67,8 +65,7 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
 
     namespace = Namespace(interface.name)
     for f in interface.methods:
-        generics_list = f.generics if f.generics else []
-        fn = FunctionSpec(f.name, interface.name, {}, generics_list)
+        fn = FunctionSpec(f.name, interface.name, {}, [])
         ins: dict[str, TypeSymbol | TypeDecl] = {}
         for name, t in f.decls:
             ins[name] = resolve_type(t, model_dict)
@@ -79,19 +76,14 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     return namespace
 
 
-generics = lit("<") >> identifier.rep(lit(",")) << lit(">")
 type_decl = ((identifier << lit(":")) & type_symbol).map(lambda x: TypeDecl(*x))
 model = seq(
     lit("@portmapping\nmodel", "model"),
-    identifier,
-    generics.opt(),
-    lit("{") >> type_decl.rep(lit(";")) << lit("}"),
+    identifier << lit("{"),
+    type_decl.rep(lit(";")) << lit("}"),
 ).map(lambda x: Model(*x))
 method = seq(
-    identifier,
-    generics.opt(),
-    lit("(") >> type_decl.rep(lit(",")) << lit(")") << lit(":"),
-    type_symbol,
+    identifier << lit("("), type_decl.rep(lit(",")) << lit(")") << lit(":"), type_symbol
 ).map(lambda x: Method(*x))
 interface = (
     (lit("interface") >> identifier << lit("{")) & method.rep(lit(";")) << lit("}")

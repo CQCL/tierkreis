@@ -1,7 +1,6 @@
 """Elementary parser and parser combinators."""
 
 import re
-from types import NoneType
 from typing import Callable, Never, overload
 
 

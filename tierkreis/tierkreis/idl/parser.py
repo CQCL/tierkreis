@@ -32,7 +32,9 @@ class Parser[T]:
 
         return Parser(f)
 
-    def __and__[S](self, other: "Parser[S]") -> "Parser[tuple[T,S]]":
+    def __and__[S](
+        self, other: "Parser[S]" | Callable[[str], tuple[S, str]]
+    ) -> "Parser[tuple[T,S]]":
         def f(ins: str):
             s, remaining = self(ins)
             t, remaining = other(remaining)
@@ -40,7 +42,9 @@ class Parser[T]:
 
         return Parser(f)
 
-    def __lshift__[S](self, other: "Parser[S]") -> "Parser[T]":
+    def __lshift__[S](
+        self, other: "Parser[S]" | Callable[[str], tuple[S, str]]
+    ) -> "Parser[T]":
         def f(ins: str):
             t, remaining = self(ins)
             _, remaining = other(remaining)
@@ -48,7 +52,9 @@ class Parser[T]:
 
         return Parser(f)
 
-    def __rshift__[S](self, other: "Parser[S]") -> "Parser[S]":
+    def __rshift__[S](
+        self, other: "Parser[S]" | Callable[[str], tuple[S, str]]
+    ) -> "Parser[S]":
         def f(ins: str):
             _, remaining = self(ins)
             s, remaining = other(remaining)

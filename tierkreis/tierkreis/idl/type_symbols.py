@@ -4,12 +4,13 @@ We use https://typespec.io/docs/language-basics/built-in-types/ as a guide.
 """
 
 from types import NoneType
+from typing import ForwardRef
 from tierkreis.idl.parser import Parser, lit, reg
 
 type _TypeT = (
     int | float | bytes | bool | NoneType | str | list[_TypeT] | dict[str, _TypeT]
 )
-type TypeSymbol = type[_TypeT] | str
+type TypeSymbol = type[_TypeT] | ForwardRef
 
 signed_int = lit("integer", "int64", "int32", "int16", "int8", "safeint")
 unsigned_int = lit("uint64", "uint32", "uint16", "uint8")
@@ -25,30 +26,23 @@ other_date = lit("utcDateTime", "offsetDateTime", "duration")
 date_t = (plain_datetime | other_date).fail("Date")
 unknown_t = lit("unknown", "void", "never").fail("Unknown")
 identifier = reg(r"[a-zA-Z0-9_]*")
+forward_ref = identifier.map(ForwardRef)
 
 
 def array_t(ins: str) -> tuple[type[list[_TypeT]], str]:
-    return (lit("Array<") >> type_symbol << lit(">")).map(lambda x: list[x]).fn(ins)
+    return (lit("Array<") >> type_t_inner << lit(">")).map(lambda x: list[x]).fn(ins)
 
 
 def record_t(ins: str) -> tuple[type[dict[str, _TypeT]], str]:
     return (
-        (lit("Record<") >> type_symbol << lit(">")).map(lambda x: dict[str, x]).fn(ins)
+        (lit("Record<") >> type_t_inner << lit(">")).map(lambda x: dict[str, x]).fn(ins)
     )
 
 
-def type_t_inner(ins: str) -> tuple[TypeSymbol, str]:
+def type_t_inner(ins: str) -> tuple[type[_TypeT], str]:
     return (
-        integer_t
-        | float_t
-        | bytes_t
-        | bool_t
-        | none_t
-        | string_t
-        | array_t
-        | record_t
-        | identifier
+        integer_t | float_t | bytes_t | bool_t | none_t | string_t | array_t | record_t
     )(ins)
 
 
-type_symbol = Parser[TypeSymbol](type_t_inner)
+type_symbol = Parser(type_t_inner) | forward_ref

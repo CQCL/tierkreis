@@ -6,7 +6,8 @@ https://typespec.io/docs/language-basics/interfaces/
 as well as an extra decorator @portmapping.
 """
 
-from typing import NamedTuple
+from typing import ForwardRef, NamedTuple
+from typing_extensions import evaluate_forward_ref
 
 from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG
 from tierkreis.exceptions import TierkreisError
@@ -38,13 +39,10 @@ class Model(NamedTuple):
 
 
 def resolve_type(ref: TypeSymbol, model_dict: dict[str, type]) -> type:
-    if not isinstance(ref, str):
+    if not isinstance(ref, ForwardRef):
         return ref
 
-    if ref not in model_dict:
-        raise TierkreisError(f"No such model {ref}")
-
-    return model_dict[ref]
+    return evaluate_forward_ref(ref, locals=model_dict)
 
 
 def convert_models(models: list[Model]) -> dict[str, type]:

@@ -4,7 +4,8 @@ We use https://typespec.io/docs/language-basics/built-in-types/ as a guide.
 """
 
 from types import NoneType
-from tierkreis.idl.parser import Parser, lit, reg
+from tierkreis.exceptions import TierkreisError
+from tierkreis.idl.parser import Parser, ParserError, lit, reg
 
 type _TypeT = (
     int | float | bytes | bool | NoneType | str | list[_TypeT] | dict[str, _TypeT]
@@ -27,28 +28,44 @@ unknown_t = lit("unknown", "void", "never").fail("Unknown")
 identifier = reg(r"[a-zA-Z0-9_]*")
 
 
-def array_t(ins: str) -> tuple[type[list[_TypeT]], str]:
-    return (lit("Array<") >> type_symbol << lit(">")).map(lambda x: list[x]).fn(ins)
+class TypeParser:
+    identifier_lookup: dict[str, type]
 
+    def __init__(self) -> NoneType:
+        self.identifier_lookup = {}
 
-def record_t(ins: str) -> tuple[type[dict[str, _TypeT]], str]:
-    return (
-        (lit("Record<") >> type_symbol << lit(">")).map(lambda x: dict[str, x]).fn(ins)
-    )
+    def array_t(self, ins: str) -> tuple[type[list[_TypeT]], str]:
+        return (
+            (lit("Array<") >> self.type_t_inner << lit(">"))
+            .map(lambda x: list[x])
+            .fn(ins)
+        )
 
+    def record_t(self, ins: str) -> tuple[type[dict[str, _TypeT]], str]:
+        return (
+            (lit("Record<") >> self.type_t_inner << lit(">"))
+            .map(lambda x: dict[str, x])
+            .fn(ins)
+        )
 
-def type_t_inner(ins: str) -> tuple[TypeSymbol, str]:
-    return (
-        integer_t
-        | float_t
-        | bytes_t
-        | bool_t
-        | none_t
-        | string_t
-        | array_t
-        | record_t
-        | identifier
-    )(ins)
+    def type_t_inner(self, ins: str) -> tuple[TypeSymbol, str]:
+        a, ins = (
+            integer_t
+            | float_t
+            | bytes_t
+            | bool_t
+            | none_t
+            | string_t
+            | self.array_t
+            | self.record_t
+            | identifier
+        )(ins)
+        if isinstance(a, str):
+            try:
+                a = self.identifier_lookup[a]
+            except:
+                raise TierkreisError(f"Unexpected identifier: {a}")
+        return a, ins
 
-
-type_symbol = Parser[TypeSymbol](type_t_inner)
+    def type_symbol(self):
+        return Parser[TypeSymbol](self.type_t_inner)

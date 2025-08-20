@@ -17,7 +17,7 @@ class B(NamedTuple):
 @portmapping
 class C(NamedTuple):
     a: list[int]
-    b: B
+    b: list[B]
 
 
 expected_namespace = Namespace("TestNamespace", functions={})

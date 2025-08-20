@@ -12,7 +12,7 @@ model B {
 @portmapping
 model C {
   a: Array<integer>;
-  b: B;
+  b: Array<B>;
 }
 interface TestNamespace {
   foo(a: integer, b: string): A;

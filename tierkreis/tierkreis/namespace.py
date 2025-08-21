@@ -1,14 +1,16 @@
 from dataclasses import dataclass, field
 from logging import getLogger
-from types import NoneType
-from typing import Any, Callable, get_args, get_origin
+from typing import Callable, get_args, get_origin
+from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import Struct, is_ptype
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.models import Method, Model, TypeDecl
+from tierkreis.idl.type_symbols import format_type
 
 logger = getLogger(__name__)
 WorkerFunction = Callable[..., PModel]
+type MethodName = str
 
 
 class TierkreisWorkerError(TierkreisError):
@@ -19,6 +21,7 @@ class TierkreisWorkerError(TierkreisError):
 class Namespace:
     name: str
     methods: dict[str, Method] = field(default_factory=lambda: {})
+    types: dict[MethodName, dict[PortID, type]] = field(default_factory=lambda: {})
     generics: set[str] = field(default_factory=lambda: set())
     models: set[Model] = field(default_factory=lambda: set())
 
@@ -33,7 +36,7 @@ class Namespace:
 
         annotations = t.__annotations__
         portmapping_flag = True if is_portmapping(t) else False
-        decls = [TypeDecl(k, t) for k, t in annotations.items()]
+        decls = [TypeDecl(k, format_type(t)) for k, t in annotations.items()]
         model = Model(portmapping_flag, t.__qualname__, [str(x) for x in args], decls)
         self.models.add(model)
 
@@ -41,19 +44,23 @@ class Namespace:
         name = func.__name__
         annotations = func.__annotations__
         generics: list[str] = [str(x) for x in func.__type_params__]
-        ins = [TypeDecl(k, v) for k, v in annotations.items() if k != "return"]
+        in_annotations = {k: v for k, v in annotations.items() if k != "return"}
+        ins = [TypeDecl(k, format_type(v)) for k, v in in_annotations.items()]
         outs = annotations["return"]
 
         self.generics.update(generics)
 
-        for _, annotation in ins:
+        for k, annotation in in_annotations.items():
             if not is_ptype(annotation):
                 raise TierkreisError(f"Expected PType found {annotation} {annotations}")
+            existing = self.types.get(name, {})
+            existing[k] = annotation
+            self.types[name] = existing
 
         if not is_portmapping(outs) and not is_ptype(outs) and outs is not None:
             raise TierkreisError(f"Expected PModel found {outs}")
 
-        method = Method(name, generics, ins, annotations["return"])
+        method = Method(name, generics, ins, format_type(outs), is_portmapping(outs))
         self.methods[method.name] = method
 
         [self._add_model_from_type(t) for _, t in annotations.items()]

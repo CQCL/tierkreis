@@ -4,13 +4,13 @@ We use https://typespec.io/docs/language-basics/built-in-types/ as a guide.
 """
 
 from types import NoneType
-from typing import ForwardRef
+from typing import ForwardRef, get_args
 from tierkreis.idl.parser import Parser, lit, reg
 
 type _TypeT = (
     int | float | bytes | bool | NoneType | str | list[_TypeT] | dict[str, _TypeT]
 )
-type TypeSymbol = type[_TypeT] | ForwardRef
+type TypeSymbol = str | ForwardRef
 
 signed_int = lit("integer", "int64", "int32", "int16", "int8", "safeint")
 unsigned_int = lit("uint64", "uint32", "uint16", "uint8")
@@ -46,4 +46,10 @@ def type_t_inner(ins: str) -> tuple[type[_TypeT], str]:
     )(ins)
 
 
-type_symbol = type_t_inner | forward_ref
+def format_type(t: type) -> str:
+    if get_args(t):
+        return str(t)
+    return t.__name__
+
+
+type_symbol = type_t_inner.map(format_type) | forward_ref

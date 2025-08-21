@@ -1,54 +1,41 @@
-from types import NoneType
-from typing import ForwardRef, assert_never, get_args
-from pydantic import BaseModel
+from typing import ForwardRef
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import is_portmapping
-from tierkreis.controller.data.types import (
-    DictConvertible,
-    ListConvertible,
-    Struct,
-    _is_generic,
-    _is_list,
-    _is_mapping,
-    _is_tuple,
-    _is_union,
-)
 from tierkreis.idl.models import Method, Model
 from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
-def format_ptype(ptype: type | ForwardRef) -> str:
-    if isinstance(ptype, ForwardRef):
-        return f"{ptype.__forward_arg__}"
+# def format_ptype(ptype: type | ForwardRef) -> str:
+#     if isinstance(ptype, ForwardRef):
+#         return f"{ptype.__forward_arg__}"
 
-    if _is_generic(ptype):
-        return str(ptype)
+#     if _is_generic(ptype):
+#         return str(ptype)
 
-    if _is_union(ptype):
-        args = tuple([format_ptype(x) for x in get_args(ptype)])
-        return " | ".join(args)
+#     if _is_union(ptype):
+#         args = tuple([format_ptype(x) for x in get_args(ptype)])
+#         return " | ".join(args)
 
-    if _is_tuple(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"tuple[{', '.join(args)}]"
+#     if _is_tuple(ptype):
+#         args = [format_ptype(x) for x in get_args(ptype)]
+#         return f"tuple[{', '.join(args)}]"
 
-    if _is_list(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"list[{', '.join(args)}]"
+#     if _is_list(ptype):
+#         args = [format_ptype(x) for x in get_args(ptype)]
+#         return f"list[{', '.join(args)}]"
 
-    if _is_mapping(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"dict[{', '.join(args)}]"
+#     if _is_mapping(ptype):
+#         args = [format_ptype(x) for x in get_args(ptype)]
+#         return f"dict[{', '.join(args)}]"
 
-    if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
-        return ptype.__qualname__
+#     if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
+#         return ptype.__qualname__
 
-    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
-        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
+#     if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
+#         return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 
-    assert_never(ptype)
+#     assert_never(ptype)
 
 
 def format_generics(generics: list[str], in_constructor: bool = True) -> str:
@@ -56,20 +43,22 @@ def format_generics(generics: list[str], in_constructor: bool = True) -> str:
     return f"{prefix}[{', '.join(generics)}]" if generics else ""
 
 
-def format_tmodel_type(outputs: type) -> str:
-    print(str(outputs))
-    if is_portmapping(outputs):
-        args = [str(x) for x in get_args(outputs)]
-        return f"{outputs.__qualname__}{format_generics(args, False)}"
+def format_type(outputs: str | ForwardRef, is_portmapping: bool) -> str:
+    out = outputs
 
-    return f"TKR[{format_ptype(outputs)}]"
+    if isinstance(out, ForwardRef):
+        out = out.__forward_arg__
+
+    if is_portmapping:
+        return out
+
+    return f"TKR[{out}]"
 
 
 def format_annotation(
-    port_id: PortID, ptype: type | ForwardRef, is_raw: bool = False
+    port_id: PortID, ptype: str | ForwardRef, is_portmaping: bool = True
 ) -> str:
-    t = format_ptype(ptype) if is_raw else f"TKR[{format_ptype(ptype)}]"
-    return f"{port_id}: {t} {NO_QA_STR}"
+    return f"{port_id}: {format_type(ptype, is_portmaping)} {NO_QA_STR}"
 
 
 def format_model(model: Model) -> str:
@@ -91,7 +80,7 @@ class {model.name}({", ".join(bases)}):
 def format_method(namespace_name: str, fn: Method) -> str:
     ins = [format_annotation(k, v) for k, v in fn.args]
     ins_str = "\n    ".join(ins)
-    class_name = format_tmodel_type(fn.return_type)
+    class_name = format_type(fn.return_type, fn.return_type_is_portmapping)
 
     bases = ["NamedTuple"]
     if fn.generics:

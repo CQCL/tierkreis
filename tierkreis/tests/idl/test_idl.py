@@ -25,6 +25,4 @@ def test_type_t(type_symb: str, expected: type):
 def test_namespace(path: Path, expected: Namespace):
     with open(path) as fh:
         namespace = spec(fh.read())
-    print(namespace[0])
-    print(expected)
     assert format_namespace(namespace[0]) == format_namespace(expected)

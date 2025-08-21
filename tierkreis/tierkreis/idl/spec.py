@@ -22,11 +22,8 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     [namespace.models.add(m) for m in models]
 
     for f in interface.methods:
-        ret = f.return_type
-        if isinstance(ret, ForwardRef):
-            name = ret.__forward_arg__
-            models = filter(lambda x: x.name == name, models)
-            model = next(models)
+        if isinstance(f.return_type, ForwardRef):
+            model = next(x for x in models if x.name == f.return_type.__forward_arg__)
             f.return_type_is_portmapping = model.is_portmapping
         namespace.methods[f.name] = f
 

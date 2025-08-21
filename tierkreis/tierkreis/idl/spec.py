@@ -6,7 +6,6 @@ https://typespec.io/docs/language-basics/interfaces/
 as well as an extra decorator @portmapping.
 """
 
-from typing import ForwardRef
 from tierkreis.idl.models import Interface, Method, Model, TypeDecl, format_ident
 
 from tierkreis.idl.parser import lit, seq

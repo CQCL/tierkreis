@@ -9,7 +9,7 @@ from tierkreis.controller.data.types import format_ptype
 from tierkreis.idl.models import format_ident
 from tierkreis.idl.parser import Parser, lit, reg
 
-type _TypeT = (type | ForwardRef)
+type _TypeT = type | ForwardRef
 
 
 signed_int = lit("integer", "int64", "int32", "int16", "int8", "safeint")

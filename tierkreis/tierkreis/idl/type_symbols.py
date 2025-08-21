@@ -25,8 +25,8 @@ plain_datetime = lit("plainDate", "plainTime")
 other_date = lit("utcDateTime", "offsetDateTime", "duration")
 date_t = (plain_datetime | other_date).fail("Date")
 unknown_t = lit("unknown", "void", "never").fail("Unknown")
-identifier = reg(r"[a-zA-Z0-9_]+")
-forward_ref = identifier.map(ForwardRef)
+ident = reg(r"[a-zA-Z0-9_]+")
+forward_ref = ident.map(ForwardRef)
 
 
 @Parser

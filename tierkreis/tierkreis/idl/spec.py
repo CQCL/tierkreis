@@ -10,7 +10,7 @@ from typing import ForwardRef
 from tierkreis.idl.models import Interface, Method, Model, TypeDecl
 
 from tierkreis.idl.parser import lit, seq
-from tierkreis.idl.type_symbols import identifier, type_symbol
+from tierkreis.idl.type_symbols import ident, type_symbol
 from tierkreis.namespace import Namespace
 
 
@@ -33,21 +33,21 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     return namespace
 
 
-generics = lit("<") >> identifier.rep(lit(",")) << lit(">")
-type_decl = ((identifier << lit(":")) & type_symbol).map(lambda x: TypeDecl(*x))
+generics = (lit("<") >> ident.rep(lit(",")) << lit(">")).opt().map(lambda x: x or [])
+type_decl = ((ident << lit(":")) & type_symbol).map(lambda x: TypeDecl(*x))
 model = seq(
     lit("@portmapping").opt().map(lambda x: x is not None) << lit("model"),
-    identifier,
-    generics.opt().map(lambda x: x if x else []),
+    ident,
+    generics,
     lit("{") >> type_decl.rep(lit(";")) << lit("}"),
 ).map(lambda x: Model(*x))
 method = seq(
-    identifier,
-    generics.opt().map(lambda x: x if x else []),
+    ident,
+    generics,
     lit("(") >> type_decl.rep(lit(",")) << lit(")") << lit(":"),
     type_symbol,
 ).map(lambda x: Method(*x))
 interface = (
-    (lit("interface") >> identifier << lit("{")) & method.rep(lit(";")) << lit("}")
+    (lit("interface") >> ident << lit("{")) & method.rep(lit(";")) << lit("}")
 ).map(lambda x: Interface(*x))
 spec = (model.rep() & interface).map(create_spec)

@@ -1,6 +1,6 @@
-from typing import NamedTuple
+from typing import ForwardRef, NamedTuple
 
-from tierkreis.idl.type_symbols import TypeSymbol
+type TypeSymbol = str | ForwardRef
 
 
 class TypeDecl(NamedTuple):

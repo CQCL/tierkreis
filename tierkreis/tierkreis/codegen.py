@@ -6,38 +6,6 @@ from tierkreis.namespace import Namespace
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
-# def format_ptype(ptype: type | ForwardRef) -> str:
-#     if isinstance(ptype, ForwardRef):
-#         return f"{ptype.__forward_arg__}"
-
-#     if _is_generic(ptype):
-#         return str(ptype)
-
-#     if _is_union(ptype):
-#         args = tuple([format_ptype(x) for x in get_args(ptype)])
-#         return " | ".join(args)
-
-#     if _is_tuple(ptype):
-#         args = [format_ptype(x) for x in get_args(ptype)]
-#         return f"tuple[{', '.join(args)}]"
-
-#     if _is_list(ptype):
-#         args = [format_ptype(x) for x in get_args(ptype)]
-#         return f"list[{', '.join(args)}]"
-
-#     if _is_mapping(ptype):
-#         args = [format_ptype(x) for x in get_args(ptype)]
-#         return f"dict[{', '.join(args)}]"
-
-#     if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
-#         return ptype.__qualname__
-
-#     if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
-#         return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
-
-#     assert_never(ptype)
-
-
 def format_generics(generics: list[str], in_constructor: bool = True) -> str:
     prefix = "Generic" if in_constructor else ""
     return f"{prefix}[{', '.join(generics)}]" if generics else ""
@@ -56,7 +24,7 @@ def format_type(outputs: str | ForwardRef, is_portmapping: bool) -> str:
 
 
 def format_annotation(
-    port_id: PortID, ptype: str | ForwardRef, is_portmaping: bool = True
+    port_id: PortID, ptype: str | ForwardRef, is_portmaping: bool
 ) -> str:
     return f"{port_id}: {format_type(ptype, is_portmaping)} {NO_QA_STR}"
 
@@ -78,7 +46,7 @@ class {model.name}({", ".join(bases)}):
 
 
 def format_method(namespace_name: str, fn: Method) -> str:
-    ins = [format_annotation(k, v) for k, v in fn.args]
+    ins = [format_annotation(k, v, False) for k, v in fn.args]
     ins_str = "\n    ".join(ins)
     class_name = format_type(fn.return_type, fn.return_type_is_portmapping)
 

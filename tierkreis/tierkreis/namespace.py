@@ -53,7 +53,7 @@ def format_ptype(ptype: type | ForwardRef) -> str:
     origin = get_origin(ptype)
     if origin is not None:  # Custom generic
         args = [format_ptype(x) for x in get_args(ptype)]
-        return f"{format_ptype(origin)}[{", ".join(args)}]"
+        return f"{format_ptype(origin)}[{', '.join(args)}]"
 
     if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
         return ptype.__qualname__
@@ -110,7 +110,7 @@ class Namespace:
 
         if not is_portmapping(outs) and not is_ptype(outs) and outs is not None:
             raise TierkreisError(f"Expected PModel found {outs}")
-        print(outs)
+
         method = Method(name, generics, ins, format_ptype(outs), is_portmapping(outs))
         self.methods[method.name] = method
 

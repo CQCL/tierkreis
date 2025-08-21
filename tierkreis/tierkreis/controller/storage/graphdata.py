@@ -37,9 +37,10 @@ class GraphDataStorage:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        if (last := node_location.pop_last()) is None:
-            return Eval((-1, "body"), {})
-        if last[0][0] in ["M", "L"]:
+        try:
+            if node_location.pop_last()[0][0] in ["M", "L"]:
+                return Eval((-1, "body"), {})
+        except (TierkreisError, TypeError):
             return Eval((-1, "body"), {})
         node, _ = graph_node_from_loc(node_location, self.graph)
         return node

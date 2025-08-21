@@ -194,11 +194,10 @@ def graph_node_from_loc(
     if node_location == "-":
         return Eval((-1, "body"), {}), graph
 
-    if (first := node_location.pop_first()) is None:
+    step, remaining_location = node_location.pop_first()
+    if isinstance(step, str):
         raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
-    (_, node_id), remaining_location = first
-    if isinstance(node_id, str):
-        raise TierkreisError("Cannot convert location: Reason: Malformed Loc")
+    (_, node_id) = step
     if node_id == -1:
         return Eval((-1, "body"), {}), graph
     node = graph.nodes[node_id]
@@ -210,6 +209,10 @@ def graph_node_from_loc(
             node, graph = graph_node_from_loc(remaining_location, graph)
         case "loop" | "map":
             graph = _unwrap_graph(graph.nodes[node.body[0]], node.type)
+            _, remaining_location = remaining_location.pop_first()  # Remove the M0/L0
+            if len(remaining_location.steps()) < 2:
+                return Eval((-1, "body"), node.inputs, node.outputs), graph
+
             node, graph = graph_node_from_loc(remaining_location, graph)
         case "const" | "function" | "input" | "output" | "ifelse" | "eifelse":
             pass

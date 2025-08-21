@@ -10,12 +10,13 @@ model B {
 }
 
 @portmapping
-model C {
+model C<T> {
   a: Array<integer>;
   b: B;
+  t: T;
 }
 interface TestNamespace {
   foo(a: integer, b: string): A;
   bar(): B;
-  z(a: C): C;
+  z<T>(a: C<T>): C<T>;
 }

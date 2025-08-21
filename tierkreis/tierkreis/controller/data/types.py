@@ -6,6 +6,7 @@ import json
 from types import NoneType, UnionType
 from typing import (
     Any,
+    ForwardRef,
     Mapping,
     Protocol,
     Self,
@@ -135,6 +136,10 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     elif annotation in get_args(ElementaryType.__value__):
         return True
 
+    origin = get_origin(annotation)
+    if origin is not None:
+        return is_ptype(origin) and all(is_ptype(x) for x in get_args(annotation))
+
     else:
         return False
 
@@ -255,5 +260,45 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
 
     if issubclass(ptype, BaseModel):
         return set((str(x) for x in pydantic_get_args(ptype)))
+
+    assert_never(ptype)
+
+
+def format_ptype(ptype: type | ForwardRef) -> str:
+    if isinstance(ptype, str):
+        return ptype
+
+    if isinstance(ptype, ForwardRef):
+        return f"{ptype.__forward_arg__}"
+
+    if _is_generic(ptype):
+        return str(ptype)
+
+    if _is_union(ptype):
+        args = tuple([format_ptype(x) for x in get_args(ptype)])
+        return " | ".join(args)
+
+    if _is_tuple(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"tuple[{', '.join(args)}]"
+
+    if _is_list(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"list[{', '.join(args)}]"
+
+    if _is_mapping(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"dict[{', '.join(args)}]"
+
+    origin = get_origin(ptype)
+    if origin is not None:  # Custom generic
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"{format_ptype(origin)}[{', '.join(args)}]"
+
+    if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
+        return ptype.__qualname__
+
+    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
+        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 
     assert_never(ptype)

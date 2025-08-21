@@ -1,6 +1,7 @@
 from typing import NamedTuple
 from tierkreis.controller.data.models import portmapping
 from tierkreis import Worker
+from tierkreis.controller.data.types import PType
 
 worker = Worker("TestNamespace")
 
@@ -17,9 +18,10 @@ class B(NamedTuple):
 
 
 @portmapping
-class C(NamedTuple):
+class C[T: PType](NamedTuple):
     a: list[int]
     b: B
+    t: T
 
 
 @worker.task()
@@ -27,7 +29,7 @@ def foo(a: int, b: str) -> A: ...
 @worker.task()
 def bar() -> B: ...
 @worker.task()
-def z(a: C) -> C: ...
+def z[T: PType](a: C[T]) -> C[T]: ...
 
 
 expected_namespace = worker.namespace

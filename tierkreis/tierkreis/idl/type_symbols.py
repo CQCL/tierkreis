@@ -5,7 +5,7 @@ We use https://typespec.io/docs/language-basics/built-in-types/ as a guide.
 
 from types import NoneType
 from typing import ForwardRef
-from tierkreis.namespace import format_ptype
+from tierkreis.controller.data.types import format_ptype
 from tierkreis.idl.parser import Parser, lit, reg
 
 type _TypeT = (

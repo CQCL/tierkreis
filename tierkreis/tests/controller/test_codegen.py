@@ -1,7 +1,6 @@
 from types import NoneType
 import pytest
-from tierkreis.controller.data.types import PType
-from tierkreis.namespace import format_ptype
+from tierkreis.controller.data.types import PType, format_ptype
 
 formats: list[tuple[type[PType], str]] = [
     (bool, "bool"),

@@ -3,8 +3,10 @@
 import re
 from typing import Callable, Never, overload
 
+from tierkreis.exceptions import TierkreisError
 
-class ParserError(Exception): ...
+
+class ParserError(TierkreisError): ...
 
 
 class Parser[T]:

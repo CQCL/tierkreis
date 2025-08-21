@@ -7,6 +7,7 @@ as well as an extra decorator @portmapping.
 """
 
 from typing import ForwardRef, NamedTuple
+from tierkreis.idl.models import Interface, Method, Model, TypeDecl
 from typing_extensions import evaluate_forward_ref
 
 from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG
@@ -14,28 +15,6 @@ from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.parser import lit, seq
 from tierkreis.idl.type_symbols import TypeSymbol, identifier, type_symbol
 from tierkreis.namespace import FunctionSpec, Namespace
-
-
-class TypeDecl(NamedTuple):
-    name: str
-    t: TypeSymbol
-
-
-class Method(NamedTuple):
-    name: str
-    decls: list[TypeDecl]
-    return_type: TypeSymbol
-
-
-class Interface(NamedTuple):
-    name: str
-    methods: list[Method]
-
-
-class Model(NamedTuple):
-    id: str
-    name: str
-    decls: list[TypeDecl]
 
 
 def resolve_type(ref: TypeSymbol, model_dict: dict[str, type]) -> type:

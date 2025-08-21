@@ -1,5 +1,7 @@
 from types import NoneType
+import pytest
 from tierkreis.controller.data.types import PType
+from tierkreis.namespace import format_ptype
 
 formats: list[tuple[type[PType], str]] = [
     (bool, "bool"),
@@ -18,6 +20,6 @@ formats: list[tuple[type[PType], str]] = [
 ]
 
 
-# @pytest.mark.parametrize("ttype,expected", formats)
-# def test_format_ttype(ttype: type[PType], expected: str):
-#     assert format_ptype(ttype) == expected
+@pytest.mark.parametrize("ttype,expected", formats)
+def test_format_ttype(ttype: type[PType], expected: str):
+    assert format_ptype(ttype) == expected

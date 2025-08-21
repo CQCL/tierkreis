@@ -1,6 +1,6 @@
 from typing import ForwardRef
 from tierkreis.controller.data.core import PortID
-from tierkreis.idl.models import GenericType, Method, Model
+from tierkreis.idl.models import Method, Model
 from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
@@ -11,19 +11,21 @@ def format_generics(generics: list[str], in_constructor: bool = True) -> str:
     return f"{prefix}[{', '.join(generics)}]" if generics else ""
 
 
-def format_type(generic_type: GenericType, is_portmapping: bool) -> str:
-    out = generic_type.t
+def format_type(generic_type: str | ForwardRef, is_portmapping: bool) -> str:
+    out = generic_type
 
     if isinstance(out, ForwardRef):
         out = out.__forward_arg__
 
     if is_portmapping:
-        return f"{out}{format_generics(generic_type.generics, False)}"
+        return f"{out}"
 
-    return f"TKR[{out}{format_generics(generic_type.generics, False)}]"
+    return f"TKR[{out}]"
 
 
-def format_annotation(port_id: PortID, ptype: GenericType, is_portmaping: bool) -> str:
+def format_annotation(
+    port_id: PortID, ptype: str | ForwardRef, is_portmaping: bool
+) -> str:
     return f"{port_id}: {format_type(ptype, is_portmaping)} {NO_QA_STR}"
 
 

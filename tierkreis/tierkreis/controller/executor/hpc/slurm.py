@@ -15,7 +15,7 @@ def generate_slurm_script(spec: JobSpec) -> str:
 # --- Core Job Specifications ---"""
     ]
     # 2. Name
-    lines.append(f"{_COMMAND_PREFIX} -job-name={spec.job_name}")
+    lines.append(f"{_COMMAND_PREFIX} --job-name={spec.job_name}")
     # 3. Resources (node exclusive)
     lines.append(f"{_COMMAND_PREFIX} --time={spec.walltime}")
     lines.append(f"{_COMMAND_PREFIX} --nodes={spec.resource.nodes}")
@@ -51,10 +51,10 @@ def generate_slurm_script(spec: JobSpec) -> str:
     if spec.mpi is not None:
         lines.append("\n# --- MPI ---")
         if spec.mpi.proc is not None:
-            lines.append(f"{_COMMAND_PREFIX} --ntask={spec.mpi.proc}")
+            lines.append(f"{_COMMAND_PREFIX} --ntasks={spec.mpi.proc}")
         if spec.mpi.max_proc_per_node is not None:
             lines.append(
-                f"{_COMMAND_PREFIX} --ntask-per-node={spec.mpi.max_proc_per_node}"
+                f"{_COMMAND_PREFIX} --ntasks-per-node={spec.mpi.max_proc_per_node}"
             )
 
     # 7. User specific
@@ -65,8 +65,11 @@ def generate_slurm_script(spec: JobSpec) -> str:
     # 8. Environment
     lines.append("\n# --- Environment Setup ---")
     if spec.environment != {}:
-        env = ",".join(f"{key}={value}" for key, value in spec.environment.items())
-        lines.append(f"--export=+{env}")
+        env = ",".join(
+            f"{key}={value if value else '""'}"
+            for key, value in spec.environment.items()
+        )
+        lines.append(f"--export={env}")
     # 9. Container logic
 
     # 10. User Command, (prologue), command, (epilogue)

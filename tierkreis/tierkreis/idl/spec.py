@@ -31,7 +31,7 @@ def convert_models(models: list[Model]) -> dict[str, type]:
         if model.name in model_dict:
             raise TierkreisError(f"Model {model.name} already exists.")
         nt = NamedTuple(model.name, model.decls)
-        if model.id == "@portmapping\nmodel":
+        if model.is_portmapping:
             setattr(nt, TKR_PORTMAPPING_FLAG, True)
         model_dict[model.name] = nt
 
@@ -43,8 +43,11 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     interface = args[1]
 
     namespace = Namespace(interface.name)
+    [namespace.models.add(m) for m in args[0]]
+
     for f in interface.methods:
-        fn = FunctionSpec(f.name, interface.name, {}, [])
+        generics = f.generics if f.generics else []
+        fn = FunctionSpec(f.name, interface.name, {}, generics)
         ins: dict[str, TypeSymbol | TypeDecl] = {}
         for name, t in f.decls:
             ins[name] = resolve_type(t, model_dict)
@@ -55,14 +58,19 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     return namespace
 
 
+generics = lit("<") >> identifier.rep(lit(",")) << lit(">")
 type_decl = ((identifier << lit(":")) & type_symbol).map(lambda x: TypeDecl(*x))
 model = seq(
-    lit("@portmapping\nmodel", "model"),
-    identifier << lit("{"),
-    type_decl.rep(lit(";")) << lit("}"),
+    lit("@portmapping").opt().map(lambda x: x is not None) << lit("model"),
+    identifier,
+    generics.opt(),
+    lit("{") >> type_decl.rep(lit(";")) << lit("}"),
 ).map(lambda x: Model(*x))
 method = seq(
-    identifier << lit("("), type_decl.rep(lit(",")) << lit(")") << lit(":"), type_symbol
+    identifier,
+    generics.opt(),
+    lit("(") >> type_decl.rep(lit(",")) << lit(")") << lit(":"),
+    type_symbol,
 ).map(lambda x: Method(*x))
 interface = (
     (lit("interface") >> identifier << lit("{")) & method.rep(lit(";")) << lit("}")

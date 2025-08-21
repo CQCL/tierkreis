@@ -1,12 +1,11 @@
 from types import NoneType
-from typing import ForwardRef, assert_never, get_args, get_origin
+from typing import ForwardRef, assert_never, get_args
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import PModel, PNamedModel, is_portmapping
+from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
-    PType,
     Struct,
     _is_generic,
     _is_list,
@@ -14,12 +13,13 @@ from tierkreis.controller.data.types import (
     _is_tuple,
     _is_union,
 )
+from tierkreis.idl.models import Model
 from tierkreis.namespace import FunctionSpec, Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
-def format_ptype(ptype: type[PType]) -> str:
+def format_ptype(ptype: type | ForwardRef) -> str:
     if isinstance(ptype, ForwardRef):
         return f"{ptype.__forward_arg__}"
 
@@ -56,7 +56,7 @@ def format_generics(generics: list[str], in_constructor: bool = True) -> str:
     return f"{prefix}[{', '.join(generics)}]" if generics else ""
 
 
-def format_tmodel_type(outputs: type[PModel]) -> str:
+def format_tmodel_type(outputs: type) -> str:
     if is_portmapping(outputs):
         args = [str(x) for x in get_args(outputs)]
         return f"{outputs.__qualname__}{format_generics(args, False)}"
@@ -64,28 +64,25 @@ def format_tmodel_type(outputs: type[PModel]) -> str:
     return f"TKR[{format_ptype(outputs)}]"
 
 
-def format_annotation(port_id: PortID, ptype: type[PType], is_raw: bool = False) -> str:
+def format_annotation(
+    port_id: PortID, ptype: type | ForwardRef, is_raw: bool = False
+) -> str:
     t = format_ptype(ptype) if is_raw else f"TKR[{format_ptype(ptype)}]"
     return f"{port_id}: {t} {NO_QA_STR}"
 
 
-def format_model(
-    model: type[PNamedModel] | type[Struct], bases: list[str], is_raw: bool = False
-) -> str:
-    origin = get_origin(model)
-    args = get_args(model)
-    if origin is not None:
-        model = origin
-
-    outs = [format_annotation(k, v, is_raw) for k, v in model.__annotations__.items()]
+def format_model(model: Model) -> str:
+    is_portmapping = model.is_portmapping
+    outs = [format_annotation(k, v, not is_portmapping) for k, v in model.decls]
     outs.sort()
     outs_str = "\n    ".join(outs)
 
-    if args:
-        bases.append(format_generics([str(x) for x in args]))
+    bases = ["NamedTuple"] if is_portmapping else ["Struct", "Protocol"]
+    if model.generics:
+        bases.append(format_generics([str(x) for x in model.generics]))
 
     return f"""
-class {model.__qualname__}({", ".join(bases)}):
+class {model.name}({", ".join(bases)}):
     {outs_str}
 """
 
@@ -119,14 +116,9 @@ def format_typevars(generics: set[str]) -> str:
     return "\n".join([format_typevar(x) for x in sorted(list(generics))])
 
 
-def format_input_models(models: set[type[Struct]]) -> str:
-    ms = sorted(list(models), key=lambda x: x.__name__)
-    return "\n\n".join([format_model(x, ["Struct", "Protocol"], True) for x in ms])
-
-
-def format_output_models(models: set[type[PNamedModel]]) -> str:
-    ms = sorted(list(models), key=lambda x: x.__name__)
-    return "\n\n".join([format_model(x, ["NamedTuple"]) for x in ms])
+def format_models(models: set[Model]) -> str:
+    ms = sorted(list(models), key=lambda x: x.name)
+    return "\n\n".join([format_model(x) for x in ms])
 
 
 def format_namespace(namespace: Namespace) -> str:
@@ -144,9 +136,7 @@ from tierkreis.controller.data.types import PType, Struct
 
 {format_typevars(namespace.generics)}
 
-{format_input_models(namespace.structs)}
-
-{format_output_models(namespace.output_models)}
+{format_models(namespace.models)}
 
 {functions_str}
     '''

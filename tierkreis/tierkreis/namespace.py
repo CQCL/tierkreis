@@ -1,11 +1,11 @@
 from dataclasses import dataclass, field
-from inspect import isclass
 from logging import getLogger
 from types import NoneType
-from typing import Any, Callable
-from tierkreis.controller.data.models import PModel, PNamedModel, is_portmapping
-from tierkreis.controller.data.types import PType, Struct, is_ptype
+from typing import Any, Callable, get_args, get_origin
+from tierkreis.controller.data.models import PModel, is_portmapping
+from tierkreis.controller.data.types import Struct, is_ptype
 from tierkreis.exceptions import TierkreisError
+from tierkreis.idl.models import Model, TypeDecl
 
 logger = getLogger(__name__)
 WorkerFunction = Callable[..., PModel]
@@ -19,9 +19,9 @@ class TierkreisWorkerError(TierkreisError):
 class FunctionSpec:
     name: str
     namespace: str
-    ins: dict[str, type[PType]]
+    ins: dict[str, type]
     generics: list[str]
-    outs: type[PModel] = NoneType
+    outs: type = NoneType
 
     def add_inputs(self, annotations: dict[str, Any]) -> None:
         for name, annotation in annotations.items():
@@ -43,34 +43,34 @@ class Namespace:
     name: str
     functions: dict[str, FunctionSpec] = field(default_factory=lambda: {})
     generics: set[str] = field(default_factory=lambda: set())
-    structs: set[type[Struct]] = field(default_factory=lambda: set())
-    output_models: set[type[PNamedModel]] = field(default_factory=lambda: set())
+    models: set[Model] = field(default_factory=lambda: set())
 
-    def _add_struct(self, annotation: Any) -> None:
-        if is_portmapping(annotation):
+    def _add_model_from_type(self, t: type) -> None:
+        if is_ptype(t) and not isinstance(t, Struct):
             return
 
-        if not (isclass(annotation) and issubclass(annotation, Struct)):
-            return
+        args = get_args(t)
+        origin = get_origin(t)
+        if origin is not None:
+            t = origin
 
-        self.structs.add(annotation)
+        annotations = t.__annotations__
+        portmapping_flag = True if is_portmapping(t) else False
+        decls = [TypeDecl(k, t) for k, t in annotations.items()]
+        model = Model(portmapping_flag, t.__qualname__, [str(x) for x in args], decls)
+        self.models.add(model)
 
     def _add_function_spec(self, fn: FunctionSpec) -> None:
         self.functions[fn.name] = fn
         self.generics.update(fn.generics)
-
-        [self._add_struct(v) for v in fn.ins.values()]
-
-        if is_portmapping(fn.outs):
-            self.output_models.add(fn.outs)
-        else:
-            self._add_struct(fn.outs)
 
     def add_function(self, func: WorkerFunction) -> None:
         name = func.__name__
         annotations = func.__annotations__
         generics: list[str] = [str(x) for x in func.__type_params__]
         fn = FunctionSpec(name=name, namespace=self.name, ins={}, generics=generics)
+
+        [self._add_model_from_type(t) for _, t in annotations.items()]
 
         try:
             fn.add_inputs({k: v for k, v in annotations.items() if k != "return"})

@@ -118,6 +118,10 @@ def seq[A, B, C](
 def seq[A, B, C, D](
     *args: *tuple[Parser[A], Parser[B], Parser[C], Parser[D]],
 ) -> Parser[tuple[A, B, C, D]]: ...
+@overload
+def seq[A, B, C, D, E](
+    *args: *tuple[Parser[A], Parser[B], Parser[C], Parser[D], Parser[E]],
+) -> Parser[tuple[A, B, C, D, E]]: ...
 def seq(*args: Parser) -> Parser[tuple]:
     def f(ins: str):
         outs = []

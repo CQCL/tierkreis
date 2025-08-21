@@ -8,6 +8,7 @@ class TypeDecl(NamedTuple):
 
 class Method(NamedTuple):
     name: str
+    generics: list[str] | None
     decls: list[TypeDecl]
     return_type: type | ForwardRef
 
@@ -18,6 +19,10 @@ class Interface(NamedTuple):
 
 
 class Model(NamedTuple):
-    id: str
+    is_portmapping: bool
     name: str
+    generics: list[str] | None
     decls: list[TypeDecl]
+
+    def __hash__(self) -> int:
+        return hash(self.name)

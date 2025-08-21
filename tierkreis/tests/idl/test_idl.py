@@ -11,6 +11,7 @@ type_symbols = [
     ("string", "str"),
     ("Array<integer>", "list[int]"),
     ("Record<Array<string>>", "dict[str, list[str]]"),
+    ("Record<Array<C<T, A>>>", "dict[str, list[C[T, A]]]"),
 ]
 dir = Path(__file__).parent
 typespecs = [(dir / "namespace1.tsp", tests.idl.namespace1.expected_namespace)]

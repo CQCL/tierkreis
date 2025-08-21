@@ -9,7 +9,7 @@ class TypeDecl(NamedTuple):
 class Method(NamedTuple):
     name: str
     generics: list[str] | None
-    decls: list[TypeDecl]
+    args: list[TypeDecl]
     return_type: type | ForwardRef
 
 

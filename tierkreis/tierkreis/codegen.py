@@ -13,8 +13,8 @@ from tierkreis.controller.data.types import (
     _is_tuple,
     _is_union,
 )
-from tierkreis.idl.models import Model
-from tierkreis.namespace import FunctionSpec, Namespace
+from tierkreis.idl.models import Method, Model
+from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
@@ -57,6 +57,7 @@ def format_generics(generics: list[str], in_constructor: bool = True) -> str:
 
 
 def format_tmodel_type(outputs: type) -> str:
+    print(str(outputs))
     if is_portmapping(outputs):
         args = [str(x) for x in get_args(outputs)]
         return f"{outputs.__qualname__}{format_generics(args, False)}"
@@ -87,10 +88,10 @@ class {model.name}({", ".join(bases)}):
 """
 
 
-def format_function(namespace_name: str, fn: FunctionSpec) -> str:
-    ins = [format_annotation(k, v) for k, v in fn.ins.items()]
+def format_method(namespace_name: str, fn: Method) -> str:
+    ins = [format_annotation(k, v) for k, v in fn.args]
     ins_str = "\n    ".join(ins)
-    class_name = format_tmodel_type(fn.outs)
+    class_name = format_tmodel_type(fn.return_type)
 
     bases = ["NamedTuple"]
     if fn.generics:
@@ -122,9 +123,7 @@ def format_models(models: set[Model]) -> str:
 
 
 def format_namespace(namespace: Namespace) -> str:
-    functions = [
-        format_function(namespace.name, f) for f in namespace.functions.values()
-    ]
+    functions = [format_method(namespace.name, f) for f in namespace.methods.values()]
     functions_str = "\n\n".join(functions)
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""

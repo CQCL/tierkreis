@@ -14,7 +14,7 @@ from tierkreis.controller.data.models import TKR_PORTMAPPING_FLAG
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.parser import lit, seq
 from tierkreis.idl.type_symbols import TypeSymbol, identifier, type_symbol
-from tierkreis.namespace import FunctionSpec, Namespace
+from tierkreis.namespace import Namespace
 
 
 def resolve_type(ref: TypeSymbol, model_dict: dict[str, type]) -> type:
@@ -39,22 +39,15 @@ def convert_models(models: list[Model]) -> dict[str, type]:
 
 
 def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
-    model_dict = convert_models(args[0])
+    models = args[0]
     interface = args[1]
-
     namespace = Namespace(interface.name)
-    [namespace.models.add(m) for m in args[0]]
+
+    [namespace.models.add(m) for m in models]
 
     for f in interface.methods:
-        generics = f.generics if f.generics else []
-        fn = FunctionSpec(f.name, interface.name, {}, generics)
-        ins: dict[str, TypeSymbol | TypeDecl] = {}
-        for name, t in f.decls:
-            ins[name] = resolve_type(t, model_dict)
-        fn.add_inputs(ins)
-        fn.add_outputs(resolve_type(f.return_type, model_dict))
+        namespace.methods[f.name] = f
 
-        namespace._add_function_spec(fn)
     return namespace
 
 

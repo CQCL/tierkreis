@@ -61,7 +61,7 @@ class Worker:
     def __init__(self, name: str, storage: WorkerStorage | None = None) -> None:
         self.name = name
         self.functions = {}
-        self.namespace = Namespace(name=self.name, functions={})
+        self.namespace = Namespace(name=self.name, methods={})
         if storage is None:
             self.storage: WorkerStorage = WorkerFileStorage()
         else:
@@ -72,7 +72,7 @@ class Worker:
         self, f: WorkerFunction, inputs: dict[str, Path]
     ) -> dict[str, PType]:
         bs = {k: self.storage.read_input(p) for k, p in inputs.items()}
-        types = self.namespace.functions[f.__name__].ins
+        types = self.namespace.methods[f.__name__].ins
         args = {}
         for k, b in bs.items():
             args[k] = ptype_from_bytes(b, types[k])

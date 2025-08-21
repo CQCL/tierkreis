@@ -1,14 +1,17 @@
-from typing import ForwardRef, NamedTuple
+from dataclasses import dataclass
+from typing import ForwardRef
 
 type TypeSymbol = str | ForwardRef
 
 
-class TypeDecl(NamedTuple):
+@dataclass
+class TypeDecl:
     name: str
     t: TypeSymbol
 
 
-class Method(NamedTuple):
+@dataclass
+class Method:
     name: str
     generics: list[str]
     args: list[TypeDecl]
@@ -16,12 +19,14 @@ class Method(NamedTuple):
     return_type_is_portmapping: bool = False
 
 
-class Interface(NamedTuple):
+@dataclass
+class Interface:
     name: str
     methods: list[Method]
 
 
-class Model(NamedTuple):
+@dataclass
+class Model:
     is_portmapping: bool
     name: str
     generics: list[str]

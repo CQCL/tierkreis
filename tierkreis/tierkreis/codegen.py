@@ -31,7 +31,7 @@ def format_annotation(
 
 def format_model(model: Model) -> str:
     is_portmapping = model.is_portmapping
-    outs = [format_annotation(k, v, not is_portmapping) for k, v in model.decls]
+    outs = [format_annotation(x.name, x.t, not is_portmapping) for x in model.decls]
     outs.sort()
     outs_str = "\n    ".join(outs)
 
@@ -46,7 +46,7 @@ class {model.name}({", ".join(bases)}):
 
 
 def format_method(namespace_name: str, fn: Method) -> str:
-    ins = [format_annotation(k, v, False) for k, v in fn.args]
+    ins = [format_annotation(x.name, x.t, False) for x in fn.args]
     ins_str = "\n    ".join(ins)
     class_name = format_type(fn.return_type, fn.return_type_is_portmapping)
 

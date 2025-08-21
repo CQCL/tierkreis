@@ -27,9 +27,7 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
             name = ret.__forward_arg__
             models = filter(lambda x: x.name == name, models)
             model = next(models)
-            new_method = f._asdict()
-            new_method["return_type_is_portmapping"] = model.is_portmapping
-            f = Method(**new_method)
+            f.return_type_is_portmapping = model.is_portmapping
         namespace.methods[f.name] = f
 
     return namespace

@@ -2,7 +2,7 @@ from types import NoneType
 from typing import ForwardRef, assert_never, get_args
 from pydantic import BaseModel
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.models import PModel, is_portmapping
+from tierkreis.controller.data.models import is_portmapping
 from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,

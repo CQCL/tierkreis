@@ -36,11 +36,11 @@ class HpcExecutor:
         )
         logger.info("START %s %s", launcher_name, node_definition_path)
 
-        self.spec.command += str(node_definition_path)
+        self.spec.command += " " + str(node_definition_path)
 
         with NamedTemporaryFile(
             mode="w",
-            delete=False,
+            delete=True,
             dir=launcher_path,
             suffix=".sh",
             prefix=f"{self.spec.job_name}-",

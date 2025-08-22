@@ -64,9 +64,6 @@ class GenericType:
         return GenericType._generics(self)
 
 
-type Generics = list[str]
-
-
 @dataclass
 class TypedArg:
     name: str

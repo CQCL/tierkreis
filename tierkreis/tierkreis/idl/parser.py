@@ -1,4 +1,10 @@
-"""Elementary parser and parser combinators."""
+"""Elementary parser and parser combinators.
+
+Tried a half dozen existing libraries.
+Closest was https://github.com/drhagen/parsita
+But then https://github.com/drhagen/parsita/blob/83925f035d0777debfe5a6cb53b4944b4b5bcfe2/src/parsita/parsers/_sequential.py#L10
+didn't type check things correctly.
+"""
 
 import re
 from typing import Callable, Never, overload

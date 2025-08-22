@@ -1,8 +1,57 @@
-from tierkreis.controller.data.types import _is_generic, format_ptype
+from types import NoneType
+from typing import get_args, get_origin
+from pydantic import BaseModel
+from tierkreis.controller.data.types import (
+    DictConvertible,
+    ListConvertible,
+    Struct,
+    _is_generic,
+    _is_list,
+    _is_mapping,
+    _is_tuple,
+    _is_union,
+)
 from tierkreis.idl.models import GenericType, Method, Model, TypedArg
 from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
+
+
+def format_ptype(ptype: type) -> str:
+    if isinstance(ptype, str):
+        return ptype
+
+    if _is_generic(ptype):
+        return str(ptype)
+
+    if _is_union(ptype):
+        args = tuple([format_ptype(x) for x in get_args(ptype)])
+        return " | ".join(args)
+
+    if _is_tuple(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"tuple[{', '.join(args)}]"
+
+    if _is_list(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"list[{', '.join(args)}]"
+
+    if _is_mapping(ptype):
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"dict[{', '.join(args)}]"
+
+    origin = get_origin(ptype)
+    if origin is not None:  # Custom generic
+        args = [format_ptype(x) for x in get_args(ptype)]
+        return f"{format_ptype(origin)}[{', '.join(args)}]"
+
+    if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
+        return ptype.__qualname__
+
+    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
+        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
+
+    return ptype.__qualname__
 
 
 def format_generic_type(

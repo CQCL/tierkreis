@@ -20,12 +20,22 @@ class UserSpec(BaseModel):
     mail: str | None = None  # some clusters require this
 
 
+class ContainerSpec(BaseModel):
+    image: str
+    engine: str  # e.g. singularity, docker, enroot?
+    name: str | None = None
+    command: str | None = None
+    args: list[str] | None = None
+    environment: dict[str, str] | None = Field(default_factory=dict)
+
+
 class JobSpec(BaseModel):
     job_name: str
     command: str  # used instead of popen.input
     resource: ResourceSpec
     mpi: MpiSpec | None = None
     user: UserSpec | None = None
+    container: ContainerSpec | None = None
     walltime: str = "01:00:00"  # HH:MM:SS Replacement?
     queue: str | None = None
     output_path: Path | None = None

@@ -5,7 +5,7 @@ from tierkreis.controller.executor.hpc.job_spec import JobSpec
 _COMMAND_PREFIX = "#PBS"
 
 
-def generate_slurm_script(spec: JobSpec) -> str:
+def generate_pbs_script(spec: JobSpec) -> str:
     # 1. Shebang and file header
     lines = [
         """#!/bin/bash
@@ -27,6 +27,8 @@ def generate_slurm_script(spec: JobSpec) -> str:
         resources += f":ngpus={spec.resource.gpus_per_node}"
     if spec.mpi is not None and spec.mpi.max_proc_per_node is not None:
         resources += f":mpiprocs={spec.mpi.max_proc_per_node}"
+    if spec.container is not None:
+        resources += f":container_engine={spec.container.engine}"
     lines.append(resources)
     if spec.queue is not None:
         lines.append(f"{_COMMAND_PREFIX} -q {spec.queue}")
@@ -68,7 +70,17 @@ def generate_slurm_script(spec: JobSpec) -> str:
             for key, value in spec.environment.items()
         )
         lines.append(f"-v w{env}")
-    # 9. Container logic
+    # 9. Container logic # taken from nscc docs for enroot:
+    if spec.container is not None:
+        lines.append(f"{_COMMAND_PREFIX} -l container_image={spec.container.image}")
+        if spec.container.name is not None:
+            lines.append(f"{_COMMAND_PREFIX} -l container_name={spec.container.name}")
+        for key, value in spec.container.extra_args.items():
+            lines.append(f"{_COMMAND_PREFIX} -l {key}={value}")
+        if spec.container.env_file is not None:
+            lines.append(
+                f"{_COMMAND_PREFIX} -l {spec.container.engine}_env_file={spec.container.env_file}"
+            )  # check if this makes sense for others beside enroot
 
     # 10. User Command, (prologue), command, (epilogue)
     lines.append("\n# --- User Command ---")

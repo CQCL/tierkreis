@@ -1,22 +1,40 @@
 from dataclasses import dataclass
+from types import NoneType
+from typing import Mapping, Sequence
+
+type ElementaryType = (
+    type[int]
+    | type[float]
+    | type[bytes]
+    | type[str]
+    | type[bool]
+    | type[NoneType]
+    | type[Mapping]
+    | type[Sequence]
+    | str
+)
 
 
-type TypeSymbol = str
+@dataclass
+class GenericType:
+    origin: ElementaryType
+    args: "Sequence[GenericType | str]"
+
+
 type Generics = list[str]
 
 
 @dataclass
 class TypeDecl:
     name: str
-    t: TypeSymbol
+    t: GenericType
 
 
 @dataclass
 class Method:
-    name: str
-    generics: Generics
+    name: GenericType
     args: list[TypeDecl]
-    return_type: TypeSymbol
+    return_type: GenericType
     return_type_is_portmapping: bool = False
 
 
@@ -29,12 +47,11 @@ class Interface:
 @dataclass
 class Model:
     is_portmapping: bool
-    name: str
-    generics: Generics
+    t: GenericType
     decls: list[TypeDecl]
 
     def __hash__(self) -> int:
-        return hash(self.name)
+        return hash(self.t.origin)
 
 
 def format_ident(name: str, generics: list[str]):

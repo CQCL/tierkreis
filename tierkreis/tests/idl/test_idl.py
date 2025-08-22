@@ -1,17 +1,32 @@
 from pathlib import Path
 import pytest
 from tierkreis.codegen import format_namespace
+from tierkreis.idl.models import GenericType
 from tierkreis.namespace import Namespace
 from tierkreis.idl.spec import spec
 from tierkreis.idl.type_symbols import type_symbol
 import tests.idl.namespace1
 
 type_symbols = [
-    ("uint8", "int"),
-    ("string", "str"),
-    ("Array<integer>", "list[int]"),
-    ("Record<Array<string>>", "dict[str, list[str]]"),
-    ("Record<Array<C<T, A>>>", "dict[str, list[C[T, A]]]"),
+    ("uint8", GenericType(int, [])),
+    ("string", GenericType(str, [])),
+    ("Array<integer>", GenericType(list, [GenericType(int, [])])),
+    (
+        "Record<Array<string>>",
+        GenericType(
+            dict, [GenericType(str, []), GenericType(list, [GenericType(str, [])])]
+        ),
+    ),
+    (
+        "Record<Array<C<T, A>>>",
+        GenericType(
+            dict,
+            [
+                GenericType(str, []),
+                GenericType(list, [GenericType("C", ["T", "A"])]),
+            ],
+        ),
+    ),
 ]
 dir = Path(__file__).parent
 typespecs = [(dir / "namespace1.tsp", tests.idl.namespace1.expected_namespace)]

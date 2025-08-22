@@ -301,4 +301,6 @@ def format_ptype(ptype: type | ForwardRef) -> str:
     if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
         return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 
+    return ptype.__qualname__
+
     assert_never(ptype)

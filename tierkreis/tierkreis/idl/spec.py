@@ -6,10 +6,11 @@ https://typespec.io/docs/language-basics/interfaces/
 as well as an extra decorator @portmapping.
 """
 
-from tierkreis.idl.models import Interface, Method, Model, TypeDecl, format_ident
+from tierkreis.idl.models import Interface, Method, Model, TypeDecl
 
 from tierkreis.idl.parser import lit, seq
-from tierkreis.idl.type_symbols import ident, type_symbol, generics
+from tierkreis.idl.python import generics_from_generictype
+from tierkreis.idl.type_symbols import generic_t, ident, type_symbol
 from tierkreis.namespace import Namespace
 
 
@@ -18,12 +19,10 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     interface = args[1]
     namespace = Namespace(interface.name, models=set(models))
     for f in interface.methods:
-        model = next(
-            x for x in models if format_ident(x.name, x.generics) == f.return_type
-        )
+        model = next(x for x in models if x.t == f.return_type)
         f.return_type_is_portmapping = model.is_portmapping
         namespace.methods.append(f)
-        namespace.generics.update(f.generics)
+        namespace.generics.update(generics_from_generictype(f.name))
 
     return namespace
 
@@ -31,13 +30,11 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
 type_decl = ((ident << lit(":")) & type_symbol).map(lambda x: TypeDecl(*x))
 model = seq(
     lit("@portmapping").opt().map(lambda x: x is not None) << lit("model"),
-    ident,
-    generics,
+    generic_t,
     lit("{") >> type_decl.rep(lit(";")) << lit("}"),
 ).map(lambda x: Model(*x))
 method = seq(
-    ident,
-    generics,
+    generic_t,
     lit("(") >> type_decl.rep(lit(",")) << lit(")") << lit(":"),
     type_symbol,
 ).map(lambda x: Method(*x))

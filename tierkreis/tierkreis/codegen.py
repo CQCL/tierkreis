@@ -1,6 +1,7 @@
-from typing import ForwardRef
 from tierkreis.controller.data.core import PortID
-from tierkreis.idl.models import Method, Model
+from tierkreis.controller.data.types import _is_generic, format_ptype
+from tierkreis.idl.models import ElementaryType, GenericType, Method, Model
+from tierkreis.idl.python import generics_from_generictype
 from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
@@ -11,21 +12,43 @@ def format_generics(generics: list[str], in_constructor: bool = True) -> str:
     return f"{prefix}[{', '.join(generics)}]" if generics else ""
 
 
-def format_type(generic_type: str | ForwardRef, is_portmapping: bool) -> str:
+def format_elementary_type(elementarytype: ElementaryType) -> str:
+    if _is_generic(elementarytype):
+        return str(elementarytype)
+
+    if isinstance(elementarytype, str):
+        return elementarytype
+
+    return elementarytype.__qualname__
+
+
+def format_generic_type(generictype: GenericType | str) -> str:
+    if isinstance(generictype, str):
+        return generictype
+
+    origin_str = (
+        generictype.origin
+        if isinstance(generictype.origin, str)
+        else format_ptype(generictype.origin)
+    )
+    generics_str = (
+        "[" + ", ".join([format_generic_type(x) for x in generictype.args]) + "]"
+        if generictype.args
+        else ""
+    )
+    return f"{origin_str}{generics_str}"
+
+
+def format_type(generic_type: GenericType, is_portmapping: bool) -> str:
     out = generic_type
 
-    if isinstance(out, ForwardRef):
-        out = out.__forward_arg__
-
     if is_portmapping:
-        return f"{out}"
+        return f"{format_generic_type(out)}"
 
-    return f"TKR[{out}]"
+    return f"TKR[{format_generic_type(out)}]"
 
 
-def format_annotation(
-    port_id: PortID, ptype: str | ForwardRef, is_portmaping: bool
-) -> str:
+def format_annotation(port_id: PortID, ptype: GenericType, is_portmaping: bool) -> str:
     return f"{port_id}: {format_type(ptype, is_portmaping)} {NO_QA_STR}"
 
 
@@ -36,11 +59,13 @@ def format_model(model: Model) -> str:
     outs_str = "\n    ".join(outs)
 
     bases = ["NamedTuple"] if is_portmapping else ["Struct", "Protocol"]
-    if model.generics:
-        bases.append(format_generics([str(x) for x in model.generics]))
+    if generics_from_generictype(model.t):
+        bases.append(
+            format_generics([str(x) for x in generics_from_generictype(model.t)])
+        )
 
     return f"""
-class {model.name}({", ".join(bases)}):
+class {model.t.origin}({", ".join(bases)}):
     {outs_str}
 """
 
@@ -51,10 +76,10 @@ def format_method(namespace_name: str, fn: Method) -> str:
     class_name = format_type(fn.return_type, fn.return_type_is_portmapping)
 
     bases = ["NamedTuple"]
-    if fn.generics:
-        bases.append(format_generics(fn.generics))
+    if generics_from_generictype(fn.name):
+        bases.append(format_generics(generics_from_generictype(fn.name)))
 
-    return f"""class {fn.name}({", ".join(bases)}):
+    return f"""class {fn.name.origin}({", ".join(bases)}):
     {ins_str}
 
     @staticmethod
@@ -75,7 +100,7 @@ def format_typevars(generics: set[str]) -> str:
 
 
 def format_models(models: set[Model]) -> str:
-    ms = sorted(list(models), key=lambda x: x.name)
+    ms = sorted(list(models), key=lambda x: str(x.t.origin))
     return "\n\n".join([format_model(x) for x in ms])
 
 

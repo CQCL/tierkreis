@@ -5,13 +5,15 @@ from tierkreis.controller.executor.hpc.job_spec import (
     pjsub_large_spec,
     pjsub_small_spec,
 )
+from tierkreis.controller.executor.hpc.pbs import generate_pbs_script
+from tierkreis.controller.executor.hpc.pjsub import generate_pjsub_script
 from tierkreis.controller.executor.hpc.protocol import TemplateAdapter
+from tierkreis.controller.executor.hpc.slurm import generate_slurm_script
 
-_template_dir = "./tierkreis/tierkreis/controller/executor/hpc"
 
-PJSUB_ADAPTER = TemplateAdapter("pjsub.jinja", "pjsub", template_dir=_template_dir)
-PBS_ADAPTER = TemplateAdapter("pbs.jinja", "qsub", template_dir=_template_dir)
-SLURM_ADAPTER = TemplateAdapter("slurm.jinja", "sbatch", template_dir=_template_dir)
+PJSUB_ADAPTER = TemplateAdapter(generate_pjsub_script, "pjsub")
+PBS_ADAPTER = TemplateAdapter(generate_pbs_script, "qsub")
+SLURM_ADAPTER = TemplateAdapter(generate_slurm_script, "sbatch")
 
 PJSUB_EXECUTOR_SMALL = partial(
     HpcExecutor, adapter=PJSUB_ADAPTER, spec=pjsub_small_spec()

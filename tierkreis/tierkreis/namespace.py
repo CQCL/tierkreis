@@ -14,7 +14,6 @@ WorkerFunction = Callable[..., PModel]
 class Namespace:
     name: str
     methods: list[Method] = field(default_factory=lambda: [])
-    generics: set[str] = field(default_factory=lambda: set())
     models: set[Model] = field(default_factory=lambda: set())
 
     def _add_model_from_type(self, t: type) -> None:
@@ -40,8 +39,6 @@ class Namespace:
         in_annotations = {k: v for k, v in annotations.items() if k != "return"}
         ins = [TypeDecl(k, GenericType.from_type(t)) for k, t in in_annotations.items()]
         out = annotations["return"]
-
-        self.generics.update(generics)
 
         for _, annotation in in_annotations.items():
             if not is_ptype(annotation):

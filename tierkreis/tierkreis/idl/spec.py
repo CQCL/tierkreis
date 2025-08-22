@@ -21,7 +21,6 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
         model = next(x for x in models if x.t == f.return_type)
         f.return_type_is_portmapping = model.is_portmapping
         namespace.methods.append(f)
-        namespace.generics.update(f.name.generics())
 
     return namespace
 

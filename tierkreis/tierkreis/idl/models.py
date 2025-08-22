@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from types import NoneType
-from typing import Mapping, Self, Sequence, get_args, get_origin
+from typing import Mapping, Self, Sequence, TypeVar, get_args, get_origin
 
 from tierkreis.controller.data.types import _is_generic
 from tierkreis.exceptions import TierkreisError
@@ -25,6 +25,9 @@ class GenericType:
 
     @classmethod
     def from_type(cls, t: type) -> "Self":
+        if _is_generic(t):
+            return cls(str(t), [])
+
         args, origin = get_args(t), get_origin(t)
         if not args:
             return cls(t, [])
@@ -32,8 +35,8 @@ class GenericType:
         if args and origin:
             subargs = []
             for arg in args:
-                if isinstance(arg, str):
-                    subargs.append(arg)
+                if isinstance(arg, TypeVar) or isinstance(arg, TypeVar):
+                    subargs.append(str(arg))
                 else:
                     subargs.append(cls.from_type(arg))
 

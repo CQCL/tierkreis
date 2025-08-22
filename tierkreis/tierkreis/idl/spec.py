@@ -16,16 +16,13 @@ from tierkreis.namespace import Namespace
 def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     models = args[0]
     interface = args[1]
-    namespace = Namespace(interface.name)
-
-    [namespace.models.add(m) for m in models]
-
+    namespace = Namespace(interface.name, models=set(models))
     for f in interface.methods:
         model = next(
             x for x in models if format_ident(x.name, x.generics) == f.return_type
         )
         f.return_type_is_portmapping = model.is_portmapping
-        namespace.methods[f.name] = f
+        namespace.methods.append(f)
         namespace.generics.update(f.generics)
 
     return namespace

@@ -10,14 +10,10 @@ logger = getLogger(__name__)
 WorkerFunction = Callable[..., PModel]
 
 
-class TierkreisWorkerError(TierkreisError):
-    pass
-
-
 @dataclass
 class Namespace:
     name: str
-    methods: dict[str, Method] = field(default_factory=lambda: {})
+    methods: list[Method] = field(default_factory=lambda: [])
     generics: set[str] = field(default_factory=lambda: set())
     models: set[Model] = field(default_factory=lambda: set())
 
@@ -55,5 +51,5 @@ class Namespace:
             raise TierkreisError(f"Expected PModel found {out}")
 
         method = Method(name, generics, ins, format_ptype(out), is_portmapping(out))
-        self.methods[method.name] = method
+        self.methods.append(method)
         [self._add_model_from_type(t) for t in annotations.values()]

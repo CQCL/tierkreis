@@ -8,9 +8,9 @@ from typing import NamedTuple, Sequence
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import portmapping
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
-from tierkreis.namespace import TierkreisWorkerError
+from tierkreis.worker.worker import TierkreisWorkerError
 from tierkreis.worker.storage.protocol import WorkerStorage
-from tierkreis.worker.worker import Worker
+from tierkreis import Worker
 
 
 logger = getLogger(__name__)

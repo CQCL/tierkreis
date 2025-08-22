@@ -32,6 +32,10 @@ def handle_unhandled_exception(
     )
 
 
+class TierkreisWorkerError(TierkreisError):
+    pass
+
+
 class Worker:
     """A worker bundles a set of functionality under a common namespace.
 
@@ -64,7 +68,7 @@ class Worker:
         self.name = name
         self.functions = {}
         self.types = {}
-        self.namespace = Namespace(name=self.name, methods={})
+        self.namespace = Namespace(name=self.name, methods=[])
         if storage is None:
             self.storage: WorkerStorage = WorkerFileStorage()
         else:

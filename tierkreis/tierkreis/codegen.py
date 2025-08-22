@@ -80,7 +80,7 @@ def format_models(models: set[Model]) -> str:
 
 
 def format_namespace(namespace: Namespace) -> str:
-    functions = [format_method(namespace.name, f) for f in namespace.methods.values()]
+    functions = [format_method(namespace.name, f) for f in namespace.methods]
     functions_str = "\n\n".join(functions)
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""

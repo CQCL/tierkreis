@@ -9,7 +9,6 @@ from tierkreis.idl.models import Method, Model, TypeDecl
 
 logger = getLogger(__name__)
 WorkerFunction = Callable[..., PModel]
-type MethodName = str
 
 
 class TierkreisWorkerError(TierkreisError):
@@ -20,7 +19,6 @@ class TierkreisWorkerError(TierkreisError):
 class Namespace:
     name: str
     methods: dict[str, Method] = field(default_factory=lambda: {})
-    types: dict[MethodName, dict[PortID, type]] = field(default_factory=lambda: {})
     generics: set[str] = field(default_factory=lambda: set())
     models: set[Model] = field(default_factory=lambda: set())
 
@@ -50,12 +48,9 @@ class Namespace:
 
         self.generics.update(generics)
 
-        for k, annotation in in_annotations.items():
+        for _, annotation in in_annotations.items():
             if not is_ptype(annotation):
                 raise TierkreisError(f"Expected PType found {annotation} {annotations}")
-            existing = self.types.get(name, {})
-            existing[k] = annotation
-            self.types[name] = existing
 
         if not is_portmapping(out) and not is_ptype(out) and out is not None:
             raise TierkreisError(f"Expected PModel found {out}")

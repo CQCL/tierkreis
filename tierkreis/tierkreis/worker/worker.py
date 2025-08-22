@@ -19,6 +19,7 @@ from tierkreis.worker.storage.protocol import WorkerStorage
 
 logger = getLogger(__name__)
 PrimitiveTask = Callable[[WorkerCallArgs, WorkerStorage], None]
+type MethodName = str
 
 
 def handle_unhandled_exception(
@@ -56,11 +57,13 @@ class Worker:
     """
 
     functions: dict[str, Callable[[WorkerCallArgs], None]]
+    types: dict[MethodName, dict[PortID, type]]
     namespace: Namespace
 
     def __init__(self, name: str, storage: WorkerStorage | None = None) -> None:
         self.name = name
         self.functions = {}
+        self.types = {}
         self.namespace = Namespace(name=self.name, methods={})
         if storage is None:
             self.storage: WorkerStorage = WorkerFileStorage()
@@ -74,13 +77,22 @@ class Worker:
         bs = {k: self.storage.read_input(p) for k, p in inputs.items()}
         args = {}
         for k, b in bs.items():
-            args[k] = ptype_from_bytes(b, self.namespace.types[f.__name__][k])
+            args[k] = ptype_from_bytes(b, self.types[f.__name__][k])
         return args
 
     def _save_results(self, outputs: dict[PortID, Path], results: PModel):
         d = dict_from_pmodel(results)
         for result_name, path in outputs.items():
             self.storage.write_output(path, bytes_from_ptype(d[result_name]))
+
+    def add_types(self, func: WorkerFunction) -> None:
+        name = func.__name__
+        annotations = func.__annotations__
+        in_annotations = {k: v for k, v in annotations.items() if k != "return"}
+        for k, annotation in in_annotations.items():
+            existing = self.types.get(name, {})
+            existing[k] = annotation
+            self.types[name] = existing
 
     def primitive_task(
         self,
@@ -100,6 +112,7 @@ class Worker:
 
         def function_decorator(func: WorkerFunction) -> None:
             self.namespace.add_function(func)
+            self.add_types(func)
 
             def wrapper(node_definition: WorkerCallArgs):
                 kwargs = self._load_args(func, node_definition.inputs)

@@ -6,7 +6,7 @@ https://typespec.io/docs/language-basics/interfaces/
 as well as an extra decorator @portmapping.
 """
 
-from tierkreis.idl.models import Interface, Method, Model, TypeDecl
+from tierkreis.idl.models import Interface, Method, Model, TypedArg
 
 from tierkreis.idl.parser import lit, seq
 from tierkreis.idl.type_symbols import generic_t, ident, type_symbol
@@ -25,7 +25,7 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
     return namespace
 
 
-type_decl = ((ident << lit(":")) & type_symbol).map(lambda x: TypeDecl(*x))
+type_decl = ((ident << lit(":")) & type_symbol).map(lambda x: TypedArg(*x))
 model = seq(
     lit("@portmapping").opt().map(lambda x: x is not None) << lit("model"),
     generic_t,

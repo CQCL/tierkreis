@@ -1,12 +1,13 @@
-from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import _is_generic, format_ptype
-from tierkreis.idl.models import ElementaryType, GenericType, Method, Model
+from tierkreis.idl.models import GenericType, Method, Model, TypedArg
 from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
-def format_generic_type(generictype: GenericType | str, include_bound: bool) -> str:
+def format_generic_type(
+    generictype: GenericType | str, include_bound: bool, is_tkr: bool
+) -> str:
     bound_str = ": PType" if include_bound else ""
     if isinstance(generictype, str):
         return generictype + bound_str
@@ -20,50 +21,45 @@ def format_generic_type(generictype: GenericType | str, include_bound: bool) -> 
         else format_ptype(generictype.origin)
     )
     generics_str = (
-        "["
-        + ", ".join([format_generic_type(x, include_bound) for x in generictype.args])
-        + "]"
+        f"[{', '.join([format_generic_type(x, include_bound, False) for x in generictype.args])}]"
         if generictype.args
         else ""
     )
+
+    if is_tkr:
+        return f"TKR[{origin_str}{generics_str}]"
+
     return f"{origin_str}{generics_str}"
 
 
-def format_type(generic_type: GenericType, is_portmapping: bool) -> str:
-    out = generic_type
-
-    if is_portmapping:
-        return f"{format_generic_type(out, False)}"
-
-    return f"TKR[{format_generic_type(out, False)}]"
-
-
-def format_annotation(port_id: PortID, ptype: GenericType, is_portmaping: bool) -> str:
-    return f"{port_id}: {format_type(ptype, is_portmaping)} {NO_QA_STR}"
+def format_typed_arg(typed_arg: TypedArg, is_portmaping: bool) -> str:
+    return f"{typed_arg.name}: {format_generic_type(typed_arg.t, False, not is_portmaping)} {NO_QA_STR}"
 
 
 def format_model(model: Model) -> str:
     is_portmapping = model.is_portmapping
-    outs = [format_annotation(x.name, x.t, not is_portmapping) for x in model.decls]
+    outs = [format_typed_arg(x, not is_portmapping) for x in model.decls]
     outs.sort()
     outs_str = "\n    ".join(outs)
 
     bases = ["NamedTuple"] if is_portmapping else ["Struct", "Protocol"]
 
     return f"""
-class {format_generic_type(model.t, True)}({", ".join(bases)}):
+class {format_generic_type(model.t, True, False)}({", ".join(bases)}):
     {outs_str}
 """
 
 
 def format_method(namespace_name: str, fn: Method) -> str:
-    ins = [format_annotation(x.name, x.t, False) for x in fn.args]
+    ins = [format_typed_arg(x, False) for x in fn.args]
     ins_str = "\n    ".join(ins)
-    class_name = format_type(fn.return_type, fn.return_type_is_portmapping)
+    class_name = format_generic_type(
+        fn.return_type, False, not fn.return_type_is_portmapping
+    )
 
     bases = ["NamedTuple"]
 
-    return f"""class {format_generic_type(fn.name, True)}({", ".join(bases)}):
+    return f"""class {format_generic_type(fn.name, True, False)}({", ".join(bases)}):
     {ins_str}
 
     @staticmethod
@@ -75,22 +71,12 @@ def format_method(namespace_name: str, fn: Method) -> str:
         return "{namespace_name}" """
 
 
-def format_typevar(name: str) -> str:
-    return f'{name} = TypeVar("{name}", bound=PType)'
-
-
-def format_typevars(generics: set[str]) -> str:
-    return "\n".join([format_typevar(x) for x in sorted(list(generics))])
-
-
-def format_models(models: set[Model]) -> str:
-    ms = sorted(list(models), key=lambda x: str(x.t.origin))
-    return "\n\n".join([format_model(x) for x in ms])
-
-
 def format_namespace(namespace: Namespace) -> str:
     functions = [format_method(namespace.name, f) for f in namespace.methods]
     functions_str = "\n\n".join(functions)
+
+    models = sorted(list(namespace.models), key=lambda x: str(x.t.origin))
+    models_str = "\n\n".join([format_model(x) for x in models])
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
@@ -99,7 +85,7 @@ from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType, Struct
 
-{format_models(namespace.models)}
+{models_str}
 
 {functions_str}
     '''

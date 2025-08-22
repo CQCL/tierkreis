@@ -45,7 +45,7 @@ class GenericType:
         raise TierkreisError(f"Expected generic type. Got {t}")
 
     @staticmethod
-    def generics_inner(t: "GenericType | str"):
+    def _generics(t: "GenericType | str"):
         if _is_generic(t):
             return str(t)
 
@@ -57,18 +57,18 @@ class GenericType:
 
         outs = []
         for arg in t.args:
-            outs.extend(GenericType.generics_inner(arg))
+            outs.extend(GenericType._generics(arg))
         return outs
 
     def generics(self) -> list[str]:
-        return GenericType.generics_inner(self)
+        return GenericType._generics(self)
 
 
 type Generics = list[str]
 
 
 @dataclass
-class TypeDecl:
+class TypedArg:
     name: str
     t: GenericType
 
@@ -76,7 +76,7 @@ class TypeDecl:
 @dataclass
 class Method:
     name: GenericType
-    args: list[TypeDecl]
+    args: list[TypedArg]
     return_type: GenericType
     return_type_is_portmapping: bool = False
 
@@ -91,12 +91,7 @@ class Interface:
 class Model:
     is_portmapping: bool
     t: GenericType
-    decls: list[TypeDecl]
+    decls: list[TypedArg]
 
     def __hash__(self) -> int:
         return hash(self.t.origin)
-
-
-def format_ident(name: str, generics: list[str]):
-    g = f"[{', '.join(generics)}]" if generics else ""
-    return f"{name}{g}"

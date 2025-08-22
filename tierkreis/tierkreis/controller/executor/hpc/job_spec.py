@@ -24,9 +24,8 @@ class ContainerSpec(BaseModel):
     image: str
     engine: str  # e.g. singularity, docker, enroot?
     name: str | None = None
-    command: str | None = None
-    args: list[str] | None = None
-    environment: dict[str, str] | None = Field(default_factory=dict)
+    extra_args: dict[str, str | None] = Field(default_factory=dict)
+    env_file: str | None = None
 
 
 class JobSpec(BaseModel):

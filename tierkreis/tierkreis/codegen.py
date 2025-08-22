@@ -1,7 +1,6 @@
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import _is_generic, format_ptype
 from tierkreis.idl.models import ElementaryType, GenericType, Method, Model
-from tierkreis.idl.python import generics_from_generictype
 from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
@@ -59,10 +58,8 @@ def format_model(model: Model) -> str:
     outs_str = "\n    ".join(outs)
 
     bases = ["NamedTuple"] if is_portmapping else ["Struct", "Protocol"]
-    if generics_from_generictype(model.t):
-        bases.append(
-            format_generics([str(x) for x in generics_from_generictype(model.t)])
-        )
+    if model.t.generics():
+        bases.append(format_generics([str(x) for x in model.t.generics()]))
 
     return f"""
 class {model.t.origin}({", ".join(bases)}):
@@ -76,8 +73,8 @@ def format_method(namespace_name: str, fn: Method) -> str:
     class_name = format_type(fn.return_type, fn.return_type_is_portmapping)
 
     bases = ["NamedTuple"]
-    if generics_from_generictype(fn.name):
-        bases.append(format_generics(generics_from_generictype(fn.name)))
+    if gs := fn.name.generics():
+        bases.append(format_generics(gs))
 
     return f"""class {fn.name.origin}({", ".join(bases)}):
     {ins_str}

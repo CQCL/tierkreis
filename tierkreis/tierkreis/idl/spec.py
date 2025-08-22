@@ -9,7 +9,6 @@ as well as an extra decorator @portmapping.
 from tierkreis.idl.models import Interface, Method, Model, TypeDecl
 
 from tierkreis.idl.parser import lit, seq
-from tierkreis.idl.python import generics_from_generictype
 from tierkreis.idl.type_symbols import generic_t, ident, type_symbol
 from tierkreis.namespace import Namespace
 
@@ -22,7 +21,7 @@ def create_spec(args: tuple[list[Model], Interface]) -> Namespace:
         model = next(x for x in models if x.t == f.return_type)
         f.return_type_is_portmapping = model.is_portmapping
         namespace.methods.append(f)
-        namespace.generics.update(generics_from_generictype(f.name))
+        namespace.generics.update(f.name.generics())
 
     return namespace
 

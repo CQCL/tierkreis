@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field
 from logging import getLogger
 from typing import Callable, get_args, get_origin
-from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import Struct, format_ptype, is_ptype
 from tierkreis.exceptions import TierkreisError

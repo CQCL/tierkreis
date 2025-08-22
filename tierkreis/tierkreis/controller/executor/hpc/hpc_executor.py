@@ -20,9 +20,9 @@ class HpcExecutor:
         self.spec = spec
         self.adapter = adapter
 
-    def run(self, launcher_name: str, node_definition_path: Path) -> None:
+    def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         launcher_path = self.launchers_path / launcher_name
-        self.errors_path = node_definition_path.parent / "errors"
+        self.errors_path = worker_call_args_path.parent / "errors"
 
         self.spec.error_path = self.errors_path
         self.spec.output_path = self.logs_path
@@ -34,9 +34,9 @@ class HpcExecutor:
             filemode="a",
             level=logging.INFO,
         )
-        logger.info("START %s %s", launcher_name, node_definition_path)
+        logger.info("START %s %s", launcher_name, worker_call_args_path)
 
-        self.spec.command += " " + str(node_definition_path)
+        self.spec.command += " " + str(worker_call_args_path)
 
         with NamedTemporaryFile(
             mode="w",

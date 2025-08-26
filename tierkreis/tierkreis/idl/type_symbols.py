@@ -65,6 +65,3 @@ def type_symbol(ins: str) -> tuple[GenericType, str]:
         | record_t
         | generic_t
     )(ins)
-
-
-# type_symbol = type_t_inner.map(lambda x: format_ptype(x))

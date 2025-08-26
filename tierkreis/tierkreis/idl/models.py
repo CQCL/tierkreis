@@ -14,7 +14,7 @@ type ElementaryType = (
     | type[NoneType]
     | type[Mapping]
     | type[Sequence]
-    | str  # Custom type e.g. ForwardRef
+    | str  # Custom type e.g. forward reference
 )
 
 

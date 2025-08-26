@@ -4,7 +4,6 @@ from tierkreis.codegen import format_namespace
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.models import GenericType
 from tierkreis.namespace import Namespace
-from tierkreis.idl.spec import spec
 from tierkreis.idl.type_symbols import type_symbol
 import tests.idl.namespace1
 
@@ -41,9 +40,8 @@ def test_type_t(type_symb: str, expected: type):
 
 @pytest.mark.parametrize("path,expected", typespecs)
 def test_namespace(path: Path, expected: Namespace):
-    with open(path) as fh:
-        namespace = spec(fh.read())
-    assert format_namespace(namespace[0]) == format_namespace(expected)
+    namespace = Namespace.from_spec_file(path)
+    assert format_namespace(namespace) == format_namespace(expected)
 
 
 @pytest.mark.parametrize("type_symb", type_symbols_for_failure)

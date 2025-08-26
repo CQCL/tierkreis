@@ -1,10 +1,12 @@
 from dataclasses import dataclass, field
 from logging import getLogger
-from typing import Callable, get_args, get_origin
+from pathlib import Path
+from typing import Callable, Self, get_args, get_origin
 from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import Struct, is_ptype
 from tierkreis.exceptions import TierkreisError
-from tierkreis.idl.models import GenericType, Method, Model, TypedArg
+from tierkreis.idl.spec import spec
+from tierkreis.idl.models import GenericType, Interface, Method, Model, TypedArg
 
 logger = getLogger(__name__)
 WorkerFunction = Callable[..., PModel]
@@ -55,3 +57,21 @@ class Namespace:
         )
         self.methods.append(method)
         [self._add_model_from_type(t) for t in annotations.values()]
+
+    @classmethod
+    def from_spec_file(cls, path: Path) -> "Namespace":
+        with open(path) as fh:
+            namespace_spec = spec(fh.read())
+            return cls._from_spec(namespace_spec[0])
+
+    @classmethod
+    def _from_spec(cls, args: tuple[list[Model], Interface]) -> "Self":
+        models = args[0]
+        interface = args[1]
+        namespace = cls(interface.name, models=set(models))
+        for f in interface.methods:
+            model = next(x for x in models if x.t == f.return_type)
+            f.return_type_is_portmapping = model.is_portmapping
+            namespace.methods.append(f)
+
+        return namespace

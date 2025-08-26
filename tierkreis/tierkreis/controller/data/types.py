@@ -135,6 +135,10 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     elif annotation in get_args(ElementaryType.__value__):
         return True
 
+    origin = get_origin(annotation)
+    if origin is not None:
+        return is_ptype(origin) and all(is_ptype(x) for x in get_args(annotation))
+
     else:
         return False
 

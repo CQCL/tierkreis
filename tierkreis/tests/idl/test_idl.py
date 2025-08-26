@@ -3,7 +3,6 @@ import pytest
 from tierkreis.codegen import format_namespace
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.models import GenericType
-from tierkreis.idl.parser import ParserError
 from tierkreis.namespace import Namespace
 from tierkreis.idl.spec import spec
 from tierkreis.idl.type_symbols import type_symbol

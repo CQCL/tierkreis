@@ -58,6 +58,9 @@ def type_symbol(ins: str) -> tuple[GenericType, str]:
         | bool_t
         | none_t
         | string_t
+        | decimal_t
+        | unknown_t
+        | date_t
         | array_t
         | record_t
         | generic_t

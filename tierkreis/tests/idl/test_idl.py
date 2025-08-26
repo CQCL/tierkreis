@@ -1,7 +1,9 @@
 from pathlib import Path
 import pytest
 from tierkreis.codegen import format_namespace
+from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.models import GenericType
+from tierkreis.idl.parser import ParserError
 from tierkreis.namespace import Namespace
 from tierkreis.idl.spec import spec
 from tierkreis.idl.type_symbols import type_symbol
@@ -28,6 +30,7 @@ type_symbols = [
         ),
     ),
 ]
+type_symbols_for_failure = ["decimal", "unknown", "duration"]
 dir = Path(__file__).parent
 typespecs = [(dir / "namespace1.tsp", tests.idl.namespace1.expected_namespace)]
 
@@ -42,3 +45,9 @@ def test_namespace(path: Path, expected: Namespace):
     with open(path) as fh:
         namespace = spec(fh.read())
     assert format_namespace(namespace[0]) == format_namespace(expected)
+
+
+@pytest.mark.parametrize("type_symb", type_symbols_for_failure)
+def test_parser_fail(type_symb: str):
+    with pytest.raises(TierkreisError):
+        type_symbol(type_symb)

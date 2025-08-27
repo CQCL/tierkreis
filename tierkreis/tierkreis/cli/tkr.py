@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import argparse
 import importlib
 import json
@@ -48,9 +50,11 @@ def _load_inputs(input_files: list[str]) -> dict[str, PType]:
     return inputs
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        prog="tkr",
+def parse_args(
+    main_parser: argparse._SubParsersAction[argparse.ArgumentParser],
+) -> argparse.ArgumentParser:
+    parser = main_parser.add_parser(
+        name="run",
         description="Tierkreis: a workflow engine for quantum HPC.",
     )
     graph = parser.add_mutually_exclusive_group(required=True)
@@ -119,8 +123,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--uv", action="store_true", help="Use uv worker")
 
-    args = parser.parse_args()
-    return args
+    return parser
 
 
 def run_workflow_args(args: argparse.Namespace):
@@ -150,6 +153,38 @@ def run_workflow_args(args: argparse.Namespace):
     )
 
 
+class TierkreisCli:
+    @staticmethod
+    def add_subcommand(
+        main_parser: argparse._SubParsersAction[argparse.ArgumentParser],
+    ) -> None:
+        parser = parse_args(main_parser)
+        parser.set_defaults(func=TierkreisCli.execute)
+
+    @staticmethod
+    def execute(args: argparse.Namespace) -> None:
+        run_workflow_args(args)
+
+
 def main() -> None:
-    args = parse_args()
-    run_workflow_args(args)
+    parser = argparse.ArgumentParser(
+        prog="tkr",
+        description="The main tierkreis command-line tool.",
+    )
+    subparser = parser.add_subparsers(title="subcommands")
+    TierkreisCli.add_subcommand(subparser)
+    try:
+        from tierkreis_visualization.cli import TierkreisVizCli
+
+        TierkreisVizCli.add_subcommand(subparser)
+    except ImportError:
+        logging.warning("Could not import Tierkreis Visualization CLI")
+        logging.warning(
+            "To install it, please run 'pip install tierkreis-visualization'"
+        )
+    args = parser.parse_args(args=None if sys.argv[1:] else ["--help"])
+    args.func(args)
+
+
+if __name__ == "__main__":
+    main()

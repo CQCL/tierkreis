@@ -72,6 +72,7 @@ def test_load_inputs_invalid() -> None:
 
 default_args = [
     "tkr",
+    "run",
     "--run-id",
     "1860",
     "-v",

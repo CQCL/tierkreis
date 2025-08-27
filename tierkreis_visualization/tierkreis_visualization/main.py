@@ -53,13 +53,17 @@ def start() -> None:
 
 def visualize_graph(
     graph: GraphData,
+    storage: ControllerStorage | None = None,
 ) -> None:
     """Visualize a computation graph in a web browser.
 
     :param graph: The computation graph to visualize.
     :type graph: GraphData
+    :param storage: The storage backend to use for the visualization.
+    :type storage: ControllerStorage | None. Defaults to GraphDataStorage.
     """
-    storage = GraphDataStorage(UUID(int=0), graph=graph)
+    if storage is None:
+        storage = GraphDataStorage(UUID(int=0), graph=graph)
 
     def get_storage(workflow_id: UUID) -> ControllerStorage:
         return storage

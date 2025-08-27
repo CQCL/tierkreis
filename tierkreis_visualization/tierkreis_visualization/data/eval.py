@@ -85,20 +85,28 @@ def get_eval_node(
             definition = None
 
         status = node_status(is_finished, definition, has_error)
-
+        value: str | None = None
         match node.type:
             case "function":
                 name = node.function_name
             case "ifelse":
                 name = node.type
                 add_conditional_edges(storage, node_location, i, node, py_edges)
-            case "const" | "map" | "eval" | "input" | "output" | "loop" | "eifelse":
+            case "map" | "eval" | "input" | "output" | "loop" | "eifelse":
                 name = node.type
+            case "const":
+                name = node.type
+                # if not isinstance(node.value, GraphData):
+                value = node.value
             case _:
                 assert_never(node)
 
         pynode = PyNode(
-            id=i, status=status, function_name=name, node_location=new_location
+            id=i,
+            status=status,
+            function_name=name,
+            node_location=new_location,
+            value=value,
         )
         pynodes.append(pynode)
 

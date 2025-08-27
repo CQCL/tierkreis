@@ -66,6 +66,22 @@ function getHandlesFromEdges(id: number, edges: PyEdge[]) {
   return { inputs, outputs };
 }
 
+function parseNodeValue(value: unknown): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  if (typeof value === "string") {
+    if (value.length > 5) {
+      return value.slice(0, 5) + "...";
+    }
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return JSON.stringify(value, replacer, 2);
+  }
+  return null;
+}
+
 export function parseNodes(
   nodes: PyNode[],
   edges: PyEdge[],
@@ -89,6 +105,7 @@ export function parseNodes(
       label: node.function_name,
       setInfo: setInfo,
       pinned: false,
+      value: parseNodeValue(node.value),
     },
     parentId: parentId ? `${parentId}` : undefined,
   }));

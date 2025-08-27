@@ -45,6 +45,12 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
                 style={{ whiteSpace: "normal", wordBreak: "break-word" }}
               >
                 {data.title == "Function" ? data.name : data.title}
+                {data.value && (
+                  <span className="text-xs text-muted-foreground">
+                    {" "}
+                    - {data.value}
+                  </span>
+                )}
               </CardTitle>
             </CardHeader>
             <CardContent>

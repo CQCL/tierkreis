@@ -6,6 +6,7 @@ export type PyNode = {
   status: "Not started" | "Started" | "Error" | "Finished";
   function_name: string;
   node_location: string;
+  value?: unknown;
 };
 export type BackendNode = Node<{
   name: string;
@@ -21,5 +22,6 @@ export type BackendNode = Node<{
   setInfo: (arg: InfoProps) => void;
   label?: string;
   pinned: boolean;
+  value: string | null;
 }>;
 export type AppNode = BackendNode;

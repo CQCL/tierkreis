@@ -92,12 +92,19 @@ def get_eval_node(
             case "ifelse":
                 name = node.type
                 add_conditional_edges(storage, node_location, i, node, py_edges)
-            case "map" | "eval" | "input" | "output" | "loop" | "eifelse":
+            case "map" | "eval" | "input" | "loop" | "eifelse":
                 name = node.type
             case "const":
                 name = node.type
-                # if not isinstance(node.value, GraphData):
                 value = node.value
+            case "output":
+                name = node.type
+                if len(node.inputs) == 1:
+                    (idx, p) = next(iter(node.inputs.values()))
+                    try:
+                        value = json.loads(storage.read_output(node_location.N(idx), p))
+                    except (FileNotFoundError, TierkreisError):
+                        value = None
             case _:
                 assert_never(node)
 

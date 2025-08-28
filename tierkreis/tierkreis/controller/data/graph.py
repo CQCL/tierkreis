@@ -6,7 +6,7 @@ from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
 from tierkreis.controller.data.location import Loc, OutputLoc
-from tierkreis.controller.data.types import PType
+from tierkreis.controller.data.types import PType, ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
 
 logger = logging.getLogger(__name__)
@@ -228,8 +228,15 @@ def _unwrap_graph(node: NodeDef, node_type: str) -> GraphData:
         raise TierkreisError(
             f"Cannot convert location to node. Reason: {node_type} does not wrap const"
         )
-    if not isinstance(node.value, GraphData):
-        raise TierkreisError(
-            "Cannot convert location to node. Reason: const value is not a graph"
-        )
-    return node.value
+    match node.value:
+        case GraphData() as graph:
+            return graph
+        case bytes() as thunk:
+            return GraphData(**ptype_from_bytes(thunk, dict))
+        case dict() as data:
+            return GraphData(**data)
+
+        case _:
+            raise TierkreisError(
+                "Cannot convert location to node. Reason: const value is not a graph"
+            )

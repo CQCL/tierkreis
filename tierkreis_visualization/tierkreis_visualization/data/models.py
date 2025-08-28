@@ -9,6 +9,7 @@ class PyNode(BaseModel):
     status: NodeStatus
     function_name: str
     node_location: str = ""
+    value: Any | None = None
 
 
 class PyEdge(BaseModel):

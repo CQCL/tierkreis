@@ -85,20 +85,35 @@ def get_eval_node(
             definition = None
 
         status = node_status(is_finished, definition, has_error)
-
+        value: str | None = None
         match node.type:
             case "function":
                 name = node.function_name
             case "ifelse":
                 name = node.type
                 add_conditional_edges(storage, node_location, i, node, py_edges)
-            case "const" | "map" | "eval" | "input" | "output" | "loop" | "eifelse":
+            case "map" | "eval" | "input" | "loop" | "eifelse":
                 name = node.type
+            case "const":
+                name = node.type
+                value = node.value
+            case "output":
+                name = node.type
+                if len(node.inputs) == 1:
+                    (idx, p) = next(iter(node.inputs.values()))
+                    try:
+                        value = json.loads(storage.read_output(node_location.N(idx), p))
+                    except (FileNotFoundError, TierkreisError):
+                        value = None
             case _:
                 assert_never(node)
 
         pynode = PyNode(
-            id=i, status=status, function_name=name, node_location=new_location
+            id=i,
+            status=status,
+            function_name=name,
+            node_location=new_location,
+            value=value,
         )
         pynodes.append(pynode)
 

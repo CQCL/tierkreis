@@ -38,4 +38,18 @@
     if pkgs.stdenv.isDarwin && pkgs.stdenv.isAarch64 then ''
       export RUSTFLAGS="$RUSTFLAGS -C link-arg=-undefined -C link-arg=dynamic_lookup"
     '' else '''';
+
+  scripts.sbatch = {
+    exec = ''
+      if [ -z "$1" ]; then
+        echo "Usage: sbatch <path_to_slurm_script>"
+        echo "Any further arguments will be discarded"
+        exit 1
+      fi
+      SCRIPT_FILE=$(basename "$1")
+      docker cp "$1" slurmctld:/data/"$SCRIPT_FILE"
+      docker exec slurmctld sbatch --chdir=/data /data/"$SCRIPT_FILE"
+    '';
+  };
+
 }

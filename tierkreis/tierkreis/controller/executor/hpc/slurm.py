@@ -74,6 +74,13 @@ def generate_slurm_script(spec: JobSpec) -> str:
 
     # 10. User Command, (prologue), command, (epilogue)
     lines.append("\n# --- User Command ---")
-    lines.append(spec.command)
+    if spec.mpi is not None:
+        if spec.mpi.max_proc_per_node is None:
+            spec.mpi.max_proc_per_node = 1
+        lines.append(
+            f"mpirun -n {spec.resource.nodes * spec.mpi.max_proc_per_node} {spec.command}"
+        )
+    else:
+        lines.append(spec.command)
 
     return "\n".join(lines)

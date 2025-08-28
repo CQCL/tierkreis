@@ -9,7 +9,7 @@ from sys import argv
 
 from tierkreis import Worker
 from tierkreis.worker.storage.filestorage import WorkerFileStorage
-from mpi4py import MPI
+from mpi4py import MPI  # type: ignore
 
 logger = logging.getLogger(__name__)
 storage = WorkerFileStorage(Path("./checkpoints"))

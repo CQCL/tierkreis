@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class MpiSpec(BaseModel):
-    max_proc_per_node: int | None = None
+    max_proc_per_node: int | None = 1
     proc: int | None = None
 
 

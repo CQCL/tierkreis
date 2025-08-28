@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.executor.hpc.job_spec import JobSpec
 from tierkreis.controller.executor.hpc.protocol import HpcAdapter
 from tierkreis.exceptions import TierkreisError
@@ -12,7 +13,11 @@ logger = logging.getLogger(__name__)
 
 class HpcExecutor:
     def __init__(
-        self, registry_path: Path, logs_path: Path, adapter: HpcAdapter, spec: JobSpec
+        self,
+        registry_path: Path,
+        logs_path: Path,
+        adapter: HpcAdapter,
+        spec: JobSpec,
     ) -> None:
         self.launchers_path = registry_path
         self.logs_path = logs_path
@@ -24,22 +29,27 @@ class HpcExecutor:
         launcher_path = self.launchers_path / launcher_name
         self.errors_path = worker_call_args_path.parent / "errors"
 
-        self.spec.error_path = self.errors_path
-        self.spec.output_path = self.logs_path
+        if self.spec.error_path is None:
+            self.spec.error_path = self.errors_path.relative_to(self.launchers_path)
+        if self.spec.output_path is None:
+            self.spec.output_path = self.logs_path.relative_to(self.launchers_path)
 
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
-            # filename=self.logs_path,
+            filename=self.logs_path,
             filemode="a",
             level=logging.INFO,
         )
         logger.info("START %s %s", launcher_name, worker_call_args_path)
 
-        self.spec.command += " " + str(worker_call_args_path)
+        self.spec.command += " " + str(
+            worker_call_args_path.relative_to(self.launchers_path)
+        )
+        self.rewrite_worker_call_args(worker_call_args_path)
 
         with NamedTemporaryFile(
-            mode="w",
+            mode="w+",
             delete=True,
             dir=launcher_path,
             suffix=".sh",
@@ -89,3 +99,20 @@ class HpcExecutor:
 
         logging.info("Wrote batch file to: %s", file_name)
         logging.info("Would invoke %s", " ".join(submission_cmd))
+
+    def rewrite_worker_call_args(self, worker_call_args_path: Path) -> None:
+        with open(worker_call_args_path, "r") as fh:
+            data = WorkerCallArgs.model_validate_json(fh.read())
+        data.output_dir = data.output_dir.relative_to(self.launchers_path)
+        data.done_path = data.done_path.relative_to(self.launchers_path)
+        data.error_path = data.error_path.relative_to(self.launchers_path)
+        if data.logs_path is not None:
+            data.logs_path = data.logs_path.relative_to(self.launchers_path)
+        data.outputs = {
+            k: v.relative_to(self.launchers_path) for k, v in data.outputs.items()
+        }
+        data.inputs = {
+            k: v.relative_to(self.launchers_path) for k, v in data.inputs.items()
+        }
+        with open(worker_call_args_path, "w") as fh:
+            fh.write(data.model_dump_json())

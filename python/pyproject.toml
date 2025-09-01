@@ -12,7 +12,7 @@ authors = [
 
 requires-python = ">=3.10,<3.13"
 dependencies = [
-    "betterproto[compiler]==2.0.0b6",
+    "betterproto==2.0.0b7",
     "grpclib>=0.4.3rc,<0.5",          # pre-release to support python 3.10
     "networkx>=2.6.3,<4",
     "graphviz>=0.20,<0.21",
@@ -44,7 +44,7 @@ markers = ["pytket"]
 
 
 [build-system]
-requires = ["setuptools>=65.5.0", "betterproto[compiler]==2.0.0b6"]
+requires = ["setuptools", "betterproto[compiler]==2.0.0b7"]
 build-backend = "generate_protos"
 backend-path = ["tierkreis/_build"]
 

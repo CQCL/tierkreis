@@ -1,0 +1,15 @@
+{
+  "function_name": "genrsa",
+  "inputs": {
+    "passphrase": "./openssl_worker/passphrase",
+    "numbits": "./openssl_worker/numbits"
+  },
+  "outputs": {
+    "public_key": "./openssl_worker/outputs/public_key",
+    "private_key": "./openssl_worker/outputs/private_key"
+  },
+  "output_dir": "./openssl_worker/outputs",
+  "done_path": "./openssl_worker/_done",
+  "error_path": "./openssl_worker/_error",
+  "logs_path": "./openssl_worker/logs"
+}

@@ -1,6 +1,5 @@
 # An example of using standalone Python builds with multistage images.
 
-# First, build the application in the `/tierkreis/tierkreis/controller/builtins` directory
 FROM ghcr.io/astral-sh/uv:bookworm-slim AS builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
@@ -13,10 +12,9 @@ ENV UV_PYTHON_PREFERENCE=only-managed
 # Install Python before the project for caching
 RUN uv python install 3.12
 
-COPY . /tierkreis
-WORKDIR /tierkreis/tierkreis_workers/pytket_worker/
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --no-dev
+COPY . /hello_world_worker/
+WORKDIR /hello_world_worker/
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --no-dev
 
 # Then, use a final image without uv
 FROM debian:bookworm-slim
@@ -25,10 +23,10 @@ FROM debian:bookworm-slim
 COPY --from=builder --chown=python:python /python /python
 
 # Copy the application from the builder
-COPY --from=builder --chown=app:app /tierkreis/tierkreis_workers/pytket_worker /tierkreis/tierkreis_workers/pytket_worker
+COPY --from=builder --chown=app:app /hello_world_worker /hello_world_worker
 
 # Place executables in the environment at the front of the path
-ENV PATH="/pytket_worker/.venv/bin:$PATH"
+ENV PATH="/hello_world_worker/.venv/bin:$PATH"
 
 # Run the worker by default
-CMD ["python", "/pytket_worker/main.py"]
+ENTRYPOINT ["python", "/hello_world_worker/main.py"]

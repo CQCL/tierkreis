@@ -19,6 +19,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "boto3-stubs[batch,essential]>=1.40.19",
     "ipykernel>=6.29.5",
     "pytest",
 ]
@@ -39,3 +40,8 @@ ignore = []
 
 [project.scripts]
 tkr = "tierkreis.cli.tkr:main"
+
+[project.optional-dependencies]
+aws = [
+    "boto3>=1.40.19",
+]

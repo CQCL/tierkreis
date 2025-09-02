@@ -1,4 +1,6 @@
 from pathlib import Path
+from typing import Callable
+from tierkreis.controller.executor.hpc.hpc_executor import run_hpc_executor
 from tierkreis.controller.executor.hpc.job_spec import JobSpec
 
 
@@ -84,3 +86,22 @@ def generate_slurm_script(spec: JobSpec) -> str:
         lines.append(spec.command)
 
     return "\n".join(lines)
+
+
+class SLURMExecutor:
+    def __init__(
+        self,
+        registry_path: Path,
+        logs_path: Path,
+        spec: JobSpec,
+    ) -> None:
+        self.launchers_path = registry_path
+        self.logs_path = logs_path
+        self.errors_path = logs_path
+        self.spec = spec
+        self.script_fn: Callable[[JobSpec], str] = generate_slurm_script
+        self.command = "sbatch"
+
+    def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
+        self.errors_path = worker_call_args_path.parent / "errors"
+        run_hpc_executor(self, launcher_name, worker_call_args_path)

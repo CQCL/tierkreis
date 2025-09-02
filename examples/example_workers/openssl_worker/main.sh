@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+## To test run ./main.sh ./test/args
+
 worker_call_args_file=$1
 
 echo "START openssl_worker $worker_call_args_file"

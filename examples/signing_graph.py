@@ -33,7 +33,7 @@ if __name__ == "__main__":
     storage.clean_graph_files()
 
     uv = UvExecutor(Path("./example_workers"), storage.logs_path)
-    shell = ShellExecutor(Path("./example_shell_workers"), storage.logs_path)
+    shell = ShellExecutor(Path("./example_workers"), storage.logs_path)
     executor = MultipleExecutor(uv, {"shell": shell}, {"openssl_worker": "shell"})
 
     run_graph(storage, executor, signing_graph().get_data(), {})

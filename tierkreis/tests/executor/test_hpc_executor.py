@@ -1,5 +1,6 @@
 from pathlib import Path
 from uuid import UUID
+import pytest
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
@@ -39,6 +40,7 @@ def job_spec() -> JobSpec:
     )
 
 
+@pytest.mark.skip(reason="Needs slurm setup")
 def test_slurm_with_mpi() -> None:
     g = mpi_graph()
     storage = ControllerFileStorage(

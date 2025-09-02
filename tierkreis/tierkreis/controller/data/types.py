@@ -5,6 +5,7 @@ from itertools import chain
 import json
 from types import NoneType, UnionType
 from typing import (
+    Annotated,
     Any,
     Mapping,
     Protocol,
@@ -115,9 +116,16 @@ def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
     return get_origin(o) is tuple
 
 
+def _is_annotated(o: object) -> bool:
+    return get_origin(o) is Annotated
+
+
 def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
     if _is_generic(annotation):
         return True
+
+    if _is_annotated(annotation):
+        return is_ptype(get_args(annotation)[0])
 
     if (
         _is_union(annotation)

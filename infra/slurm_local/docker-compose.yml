@@ -26,6 +26,7 @@ services:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
       - var_log_slurm:/var/log/slurm
+      - data:/data
     expose:
       - "6819"
     depends_on:
@@ -41,8 +42,9 @@ services:
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
-      - ./slurm_jobdir:/data
+      - ~/.tierkreis:/tmp/tierkreis/
       - var_log_slurm:/var/log/slurm
+      - data:/data
     expose:
       - "6817"
     depends_on:
@@ -58,8 +60,9 @@ services:
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
-      - ./slurm_jobdir:/data
+      - ~/.tierkreis:/tmp/tierkreis/
       - var_log_slurm:/var/log/slurm
+      - data:/data
     expose:
       - "6818"
     depends_on:
@@ -75,7 +78,7 @@ services:
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
-      - ./slurm_jobdir:/data
+      - ~/.tierkreis:/tmp/tierkreis/
       - var_log_slurm:/var/log/slurm
     expose:
       - "6818"
@@ -87,7 +90,7 @@ services:
 volumes:
   etc_munge:
   etc_slurm:
-  slurm_jobdir:
+  data:
   var_lib_mysql:
   var_log_slurm:
 

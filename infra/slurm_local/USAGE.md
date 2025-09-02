@@ -5,9 +5,10 @@ In short:
 
 - install docker
 - From `infra/slurm_local`
+  - create a symlink `ln -s ~/.tierkreis /tmp/tierkreis`
   - build the containers with `docker compose build`
   - ensure the containers are running `docker compose up -d`
-    This will mount `infra/slurm_local/slurm_jobdir` inside the containers on `/data`
+  - This will mount `/tmp/tierkreis` inside the containers on `/tmp/tierkreis/`
 
 To run the test we emulate `sbatch`.
 The devenv contains a script for this, if you want link it to a location in your path to make it available elsewhere.
@@ -32,6 +33,4 @@ pytest tierkreis/tests/executor/test_hpc_executor.py
 
 **Caveats**:
 
-- checkpoints have to be in the shared location
-- absolute paths don't have any validity and have to be rewritten
 - it seems jobfiles don't get deleted correctly, logging is also not working as intended

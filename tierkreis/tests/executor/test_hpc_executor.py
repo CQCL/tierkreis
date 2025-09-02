@@ -1,12 +1,9 @@
 from pathlib import Path
 from uuid import UUID
-import pytest
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
-from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.models import TKR
-from tierkreis.controller.data.types import ptype_from_bytes
 from tierkreis.controller.executor.hpc.adapter import SLURM_EXECUTOR
 from tierkreis.controller.executor.hpc.job_spec import (
     JobSpec,
@@ -17,6 +14,7 @@ from tierkreis.controller.executor.hpc.job_spec import (
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
 from tests.executor.stubs import mpi_rank_info
+from tierkreis.storage import read_outputs
 
 
 def mpi_graph() -> GraphData:
@@ -29,7 +27,7 @@ def mpi_graph() -> GraphData:
 def job_spec() -> JobSpec:
     return JobSpec(
         job_name="test_job",
-        command="--allow-run-as-root /root/.local/bin/uv run slurm_mpi_worker/main.py ",
+        command="--allow-run-as-root /root/.local/bin/uv run /slurm_mpi_worker/main.py ",
         user=UserSpec(
             account="test_usr",
         ),
@@ -41,26 +39,22 @@ def job_spec() -> JobSpec:
     )
 
 
-@pytest.mark.skip(reason="Needs SLURM environment")
 def test_slurm_with_mpi() -> None:
     g = mpi_graph()
     storage = ControllerFileStorage(
         UUID(int=22),
         name="mpi_graph",
-        tierkreis_directory=Path("./infra/slurm_local/slurm_jobdir/checkpoints"),
+        tierkreis_directory=Path("/tmp/tierkreis/checkpoints"),
     )
     executor = SLURM_EXECUTOR(
         spec=job_spec(),
-        registry_path=Path("./infra/slurm_local/slurm_jobdir"),
+        registry_path=Path("/"),
         logs_path=storage.logs_path,
     )
     storage.clean_graph_files()
     run_graph(storage, executor, g, {})
 
-    output_ports = g.nodes[g.output_idx()].inputs.keys()
-    actual_output = {}
-    for port in output_ports:
-        actual_output[port] = ptype_from_bytes(storage.read_output(Loc(), port))
+    output = read_outputs(storage)
 
-    assert "value" in actual_output
-    assert actual_output["value"] is not None
+    assert output is not None
+    assert output == "Rank 0 out of 2 on c1.\nRank 1 out of 2 on c2."

@@ -3,7 +3,6 @@ import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.executor.hpc.job_spec import JobSpec
 from tierkreis.controller.executor.hpc.protocol import HpcAdapter
 from tierkreis.exceptions import TierkreisError
@@ -26,7 +25,6 @@ class HpcExecutor:
         self.adapter = adapter
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
-        launcher_path = self.launchers_path / launcher_name
         self.errors_path = worker_call_args_path.parent / "errors"
 
         if self.spec.error_path is None:
@@ -43,15 +41,11 @@ class HpcExecutor:
         )
         logger.info("START %s %s", launcher_name, worker_call_args_path)
 
-        self.spec.command += " " + str(
-            worker_call_args_path.relative_to(self.launchers_path)
-        )
-        self.rewrite_worker_call_args(worker_call_args_path)
+        self.spec.command += " " + str(worker_call_args_path)
 
         with NamedTemporaryFile(
             mode="w+",
             delete=True,
-            dir=launcher_path,
             suffix=".sh",
             prefix=f"{self.spec.job_name}-",
         ) as script_file:
@@ -62,7 +56,6 @@ class HpcExecutor:
             # with open(self.errors_path, "a") as efh:
             process = subprocess.run(
                 submission_cmd,
-                cwd=launcher_path,
                 start_new_session=True,
                 capture_output=True,
                 universal_newlines=True,
@@ -75,44 +68,3 @@ class HpcExecutor:
                     f"Executor failed with return code {process.returncode}"
                 )
             logger.info("Submitted job with return code %s", process.stdout.rstrip())
-
-    def dry_run(self, launcher_name: str, node_definition_path: Path) -> None:
-        launcher_path = self.launchers_path / launcher_name
-        self.errors_path = node_definition_path.parent / "errors"
-
-        self.spec.error_path = self.errors_path
-        self.spec.output_path = self.logs_path
-
-        logging.basicConfig(
-            format="%(asctime)s: %(message)s",
-            datefmt="%Y-%m-%dT%H:%M:%S%z",
-            filename=self.logs_path,
-            filemode="a",
-            level=logging.INFO,
-        )
-        logger.info("START %s %s", launcher_name, node_definition_path)
-
-        self.spec.command += " " + str(node_definition_path)
-        file_name = launcher_path / f"{self.spec.job_name}.sh"
-        self.adapter.generate_script(self.spec, file_name)
-        submission_cmd = [self.adapter.command, str(file_name)]
-
-        logging.info("Wrote batch file to: %s", file_name)
-        logging.info("Would invoke %s", " ".join(submission_cmd))
-
-    def rewrite_worker_call_args(self, worker_call_args_path: Path) -> None:
-        with open(worker_call_args_path, "r") as fh:
-            data = WorkerCallArgs.model_validate_json(fh.read())
-        data.output_dir = data.output_dir.relative_to(self.launchers_path)
-        data.done_path = data.done_path.relative_to(self.launchers_path)
-        data.error_path = data.error_path.relative_to(self.launchers_path)
-        if data.logs_path is not None:
-            data.logs_path = data.logs_path.relative_to(self.launchers_path)
-        data.outputs = {
-            k: v.relative_to(self.launchers_path) for k, v in data.outputs.items()
-        }
-        data.inputs = {
-            k: v.relative_to(self.launchers_path) for k, v in data.inputs.items()
-        }
-        with open(worker_call_args_path, "w") as fh:
-            fh.write(data.model_dump_json())

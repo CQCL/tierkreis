@@ -1,5 +1,5 @@
 import { InfoProps } from "@/components/types";
-import { type Node } from "@xyflow/react";
+import { Edge, type Node } from "@xyflow/react";
 
 export type PyNode = {
   id: string | number;
@@ -19,9 +19,9 @@ export type BackendNode = Node<{
   node_location: string;
   id: string;
   title: string;
-  setInfo: (arg: InfoProps) => void;
   label?: string;
   pinned: boolean;
   value: string | null;
+  setInfo?: (info: InfoProps) => void;
 }>;
 export type AppNode = BackendNode;

@@ -8,6 +8,8 @@ import {
   ReactFlow,
   useReactFlow,
   OnNodeDrag,
+  ReactFlowProvider,
+  useNodes,
 } from "@xyflow/react";
 import { useParams } from "react-router";
 
@@ -77,70 +79,89 @@ const Main = (props: {
   setInfo: (arg: InfoProps) => void;
 }) => {
   // Client node state (not definition)
-  const [nodes, setNodes] = useState(props.initialNodes);
-  const [edges, setEdges] = useState(props.initialEdges);
+
+  const reactFlowInstance = useReactFlow<BackendNode, Edge>();
+  props.initialNodes.map((node) => {
+    node.data.setInfo = props.setInfo;
+  });
+
   React.useEffect(() => {
     saveGraph({
       key: props.workflow_id,
-      nodes,
-      edges,
+      nodes: reactFlowInstance.getNodes(),
+      edges: reactFlowInstance.getEdges(),
       start_time: props.workflow_start,
     });
-  }, [edges, nodes, props.workflow_id, props.workflow_start]);
+  }, [reactFlowInstance, props.workflow_id, props.workflow_start]);
   const onNodesChange: OnNodesChange<BackendNode> = useCallback(
     (changes) =>
-      setNodes((nodesSnapshot) => applyNodeChanges(changes, nodesSnapshot)),
-    []
+      reactFlowInstance.setNodes((nodesSnapshot) =>
+        applyNodeChanges(changes, nodesSnapshot)
+      ),
+    [reactFlowInstance]
   );
   const onEdgesChange: OnEdgesChange = useCallback(
     (changes) =>
-      setEdges((edgesSnapshot) => applyEdgeChanges(changes, edgesSnapshot)),
-    []
+      reactFlowInstance.setEdges((edgesSnapshot) =>
+        applyEdgeChanges(changes, edgesSnapshot)
+      ),
+    [reactFlowInstance]
   );
   const onNodeDrag: OnNodeDrag = useCallback((_, node) => {
     node.data.pinned = true;
   }, []);
-  const reactFlowInstance = useReactFlow();
   React.useEffect(() => {
     const url = `${URL}/${props.workflow_id}/nodes/-`;
     const ws = new WebSocket(url);
-    const edges = reactFlowInstance.getEdges();
-    const nodes = reactFlowInstance.getNodes() as BackendNode[];
     ws.onmessage = (event) => {
-      const graph = parseGraph(
-        JSON.parse(event.data),
-        props.workflow_id,
-        props.setInfo
-      );
-      const nodesMap = new Map(nodes.map((node) => [node.id, node]));
+      console.log("Received WebSocket message:");
+      const nodes = reactFlowInstance.getNodes();
+      const edges = reactFlowInstance.getEdges();
+      console.log({ edges, nodes });
+      const graph = parseGraph(JSON.parse(event.data), props.workflow_id);
+      let nodesMap = new Map();
+      if (nodes) {
+        nodesMap = new Map(nodes.map((node) => [node.id, node]));
+      }
       const newNodes = bottomUpLayout(graph.nodes, graph.edges);
+      const hiddenEdges = new Set<string>();
       newNodes.forEach((node) => {
         const existingNode = nodesMap.get(node.id);
         if (existingNode) {
+          if (existingNode.type === "group") {
+            hiddenEdges.add(existingNode.id);
+            return;
+          }
           existingNode.data = {
             ...existingNode.data,
             status: node.data.status,
           };
           existingNode.position = {
-            ...(reactFlowInstance.getNode(node.id)?.position ?? node.position),
+            ...(nodes.find((n) => n.id === node.id)?.position ?? node.position),
           };
         } else {
+          node.data.setInfo = props.setInfo;
           nodesMap.set(node.id, node);
         }
       });
-      setNodes(Array.from(nodesMap.values()));
+
       const edgeIds = new Set(edges.map((edge) => edge.id));
       const newEdges = graph.edges.filter((edge) => !edgeIds.has(edge.id));
-      if (newEdges.length > 0) {
-        setEdges([...edges, ...newEdges]);
-      }
+      console.log(hiddenEdges);
+      const oldEdges = [...edges, ...newEdges].filter(
+        (edge) => !hiddenEdges.has(edge.source) && !hiddenEdges.has(edge.target)
+      );
+      console.log("new nodes", Array.from(nodesMap.values()));
+      console.log("old edges", oldEdges);
+      reactFlowInstance.setNodes(Array.from(nodesMap.values()));
+      reactFlowInstance.setEdges([...oldEdges]);
     };
     return () => {
       if (ws.readyState == WebSocket.OPEN) {
         ws.close();
       }
     };
-  }, [props, reactFlowInstance, setNodes, setEdges]);
+  }, [props, reactFlowInstance, props.setInfo]);
 
   return (
     <Layout
@@ -149,10 +170,8 @@ const Main = (props: {
       info={props.infoProps}
     >
       <ReactFlow<BackendNode, Edge>
-        nodes={nodes}
-        edges={edges}
-        defaultNodes={nodes}
-        defaultEdges={edges}
+        defaultNodes={props.initialNodes}
+        defaultEdges={props.initialEdges}
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onEdgesChange={onEdgesChange}
@@ -165,8 +184,13 @@ const Main = (props: {
           <SidebarTrigger style={{ fill: "none" }} />
           <ControlButton
             onClick={() => {
-              setEdges(edges);
-              setNodes(bottomUpLayout(nodes, reactFlowInstance.getEdges()));
+              reactFlowInstance.setEdges(reactFlowInstance.getEdges());
+              reactFlowInstance.setNodes(
+                bottomUpLayout(
+                  reactFlowInstance.getNodes(),
+                  reactFlowInstance.getEdges()
+                )
+              );
               reactFlowInstance.fitView({ padding: 0.1 });
             }}
           >
@@ -180,7 +204,6 @@ const Main = (props: {
 
 export default function App() {
   const { workflowId: workflow_id_url } = useParams();
-
   const workflowsQuery = useSuspenseQuery<Workflow[]>({
     queryKey: ["workflows", URL],
     queryFn: async () => {
@@ -221,7 +244,6 @@ export default function App() {
     type: "Logs",
     content: logs.data,
   });
-
   const graphQuery = useSuspenseQuery({
     queryKey: ["workflowGraph", workflow_id],
     queryFn: async () => {
@@ -234,13 +256,13 @@ export default function App() {
       }
       return response.json();
     },
-    select: (data) => parseGraph(data, workflow_id, setInfo),
+    select: (data) => parseGraph(data, workflow_id),
   });
 
   const remoteGraph = graphQuery.data;
-  const workflow_start = workflowsQuery.data.find(
-    (workflow) => workflow.id == workflow_id
-  )?.start_time || "";
+  const workflow_start =
+    workflowsQuery.data.find((workflow) => workflow.id == workflow_id)
+      ?.start_time || "";
   const localGraph = loadGraph({ key: workflow_id });
   if (workflow_start && workflow_start != localGraph?.start_time) {
     deleteGraph({ key: workflow_id });
@@ -277,7 +299,6 @@ export default function App() {
       edges: mergedEdges,
     };
   })();
-
   return (
     <Main
       key={workflow_id}

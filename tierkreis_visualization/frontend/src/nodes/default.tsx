@@ -35,7 +35,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               const target = event.target as HTMLElement;
               if (target.closest("button") === null) {
                 if (data.title == "Function") {
-                  data.setInfo({ type: "Logs", content: logs ? logs : "" });
+                  data.setInfo?.({ type: "Logs", content: logs ? logs : "" });
                 }
               }
             }}
@@ -64,7 +64,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
                   variant="destructive"
                   style={{ zIndex: 5 }}
                   onClick={() =>
-                    data.setInfo({
+                    data.setInfo?.({
                       type: "Errors",
                       content: errors ? errors : "",
                     })

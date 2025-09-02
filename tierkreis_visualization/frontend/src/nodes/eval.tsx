@@ -118,13 +118,7 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
       .then((data) => {
-        const nodes = parseNodes(
-          data.nodes,
-          data.edges,
-          workflowId,
-          node_data.setInfo,
-          parentId
-        );
+        const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
         const edges = parseEdges(data.edges, parentId);
         const oldEdges = reactFlowInstance.getEdges();
         const oldNodes = reactFlowInstance.getNodes();
@@ -160,19 +154,21 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
             id={node_data.id}
           />
           <div className="flex items-center justify-center">
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={() =>
-                loadChildren(
-                  node_data.workflowId,
-                  node_data.node_location,
-                  node_data.id
-                )
-              }
-            >
-              <Plus />
-            </Button>
+            {node_data.status != "Not started" && (
+              <Button
+                variant="secondary"
+                size="icon"
+                onClick={() =>
+                  loadChildren(
+                    node_data.workflowId,
+                    node_data.node_location,
+                    node_data.id
+                  )
+                }
+              >
+                <Plus />
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>

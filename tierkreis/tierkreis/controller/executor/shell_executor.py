@@ -23,13 +23,19 @@ class ShellExecutor:
         if not launcher_path.exists():
             raise TierkreisError(f"Launcher not found: {launcher_name}.")
 
-        if not launcher_path.is_file():
-            raise TierkreisError(f"Expected launcher file. Found: {launcher_path}.")
+        if launcher_path.is_dir() and not (launcher_path / "main.sh").exists():
+            raise TierkreisError(f"Expected launcher file. Got {launcher_path}.")
+
+        if launcher_path.is_dir() and not (launcher_path / "main.sh").is_file():
+            raise TierkreisError(f"Expected launcher file. Got {launcher_path}/main.sh")
+
+        if launcher_path.is_dir() and (launcher_path / "main.sh").is_file():
+            launcher_path = launcher_path / "main.sh"
 
         with open(self.logs_path, "a") as lfh:
             with open(self.errors_path, "a") as efh:
                 subprocess.Popen(
-                    [f"{self.launchers_path}/{launcher_name}", worker_call_args_path],
+                    [launcher_path, worker_call_args_path],
                     start_new_session=True,
                     stderr=efh,
                     stdout=lfh,

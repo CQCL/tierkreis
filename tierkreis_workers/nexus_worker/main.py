@@ -86,6 +86,42 @@ def submit(circuits: list[Circuit], n_shots: int) -> ExecuteJobRef:
 
 
 @worker.task()
+def upload_circuits(
+    project_name: str, list_circ: list[Circuit]
+) -> list[ExecutionProgram]:
+    """Upload circuits by repeatedly calling qnx.circuits.upload."""
+    setup_project()
+    my_project_ref = qnx.projects.get_or_create(name=project_name)
+    qnx.context.set_active_project(my_project_ref)
+
+    my_circuit_refs: list[ExecutionProgram] = []
+    for circ in list_circ:
+        my_circuit_refs.append(
+            qnx.circuits.upload(
+                name=f"My Circuit from {datetime.now()}",
+                circuit=circ,
+                project=my_project_ref,
+            )
+        )
+    return my_circuit_refs
+
+
+@worker.task()
+def start_execute_job(
+    project_name: str,
+    name: str,
+    circuits: list[ExecutionProgram],
+    n_shots: list[int],
+    backend_config: qnx.BackendConfig,
+) -> ExecuteJobRef:
+    "Wrapper around qnx.start_execute_job."
+    setup_project()
+    my_project_ref = qnx.projects.get_or_create(name=project_name)
+    qnx.context.set_active_project(my_project_ref)
+    return qnx.start_execute_job(circuits, n_shots, backend_config, name)
+
+
+@worker.task()
 def check_status(execute_ref: ExecuteJobRef) -> str:
     return _check_status(execute_ref, 30).name
 

@@ -5,6 +5,7 @@ from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
     Struct,
+    _is_annotated,
     _is_generic,
     _is_list,
     _is_mapping,
@@ -17,9 +18,9 @@ from tierkreis.namespace import Namespace
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
-def format_ptype(ptype: type) -> str:
-    if isinstance(ptype, str):
-        return ptype
+def format_ptype(ptype: type[PType]) -> str:
+    if _is_annotated(ptype):
+        return format_ptype(get_args(ptype)[0])
 
     if _is_generic(ptype):
         return str(ptype)

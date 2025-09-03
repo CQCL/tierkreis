@@ -13,6 +13,9 @@ class InMemoryWorkerStorage:
     def __init__(self, controller_storage: ControllerInMemoryStorage) -> None:
         self.controller_storage = controller_storage
 
+    def resolve(self, path: Path | str) -> Path:
+        return Path(path)
+
     def read_call_args(self, path: Path) -> WorkerCallArgs:
         loc = self.controller_storage.path_to_loc(path)[0]
         return self.controller_storage.read_worker_call_args(loc)

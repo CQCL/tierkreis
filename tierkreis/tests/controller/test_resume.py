@@ -13,7 +13,6 @@ from tests.controller.sample_graphdata import (
     simple_loop,
     simple_map,
     simple_partial,
-    factorial,
 )
 from tests.controller.loop_graphdata import loop_multiple_acc
 from tests.controller.typed_graphdata import (
@@ -22,6 +21,7 @@ from tests.controller.typed_graphdata import (
     typed_eval,
     typed_loop,
     typed_map,
+    factorial,
 )
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
@@ -32,7 +32,6 @@ from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
 
-factorial_bytes = factorial().model_dump_json().encode()
 params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (simple_eval(), 12, "simple_eval", 1, {}),
     (simple_loop(), 10, "simple_loop", 2, {}),
@@ -40,11 +39,11 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (maps_in_series(), list(range(0, 81, 4)), "maps_in_series", 4, {}),
     (simple_ifelse(), 1, "simple_ifelse", 6, {"pred": b"true"}),
     (simple_ifelse(), 2, "simple_ifelse", 7, {"pred": b"false"}),
-    (factorial(), 24, "factorial", 8, {"n": b"4", "factorial": factorial_bytes}),
+    (factorial().get_data(), 24, "factorial", 8, {"value": b"4"}),
     (loop_multiple_acc(), {"acc": 6, "acc2": 12, "acc3": 18}, "multi_acc", 9, {}),
     (simple_eagerifelse(), 1, "simple_eagerifelse", 10, {"pred": b"true"}),
     (simple_partial(), 12, "simple_partial", 11, {}),
-    (factorial(), 120, "factorial", 12, {"n": b"5", "factorial": factorial_bytes}),
+    (factorial().get_data(), 120, "factorial", 12, {"value": b"5"}),
     (double_partial(), 6, "double_partial", 13, {}),
     (typed_eval().get_data(), 12, "typed_eval", 14, {}),
     (typed_loop().get_data(), 10, "typed_loop", 15, {}),

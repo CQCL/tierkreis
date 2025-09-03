@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from inspect import isclass
 from typing import Any, Callable, Protocol, overload
 
+from tierkreis.controller.consts import SELF_REF_INDEX
 from tierkreis.controller.data.core import EmptyModel, ValueRef
 from tierkreis.controller.data.graph import (
     Const,
@@ -70,6 +71,11 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
 
     def get_data(self) -> GraphData:
         return self.data
+
+    def ref(self) -> TypedGraphRef[Inputs, Outputs]:
+        return TypedGraphRef(
+            (SELF_REF_INDEX, "value"), self.outputs_type, self.inputs_type
+        )
 
     def outputs(self, outputs: Outputs):
         self.data.add(Output(inputs=dict_from_tmodel(outputs)))

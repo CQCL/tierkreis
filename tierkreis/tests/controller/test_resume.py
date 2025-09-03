@@ -22,6 +22,7 @@ from tests.controller.typed_graphdata import (
     typed_loop,
     typed_map,
     factorial,
+    gcd,
 )
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
@@ -50,6 +51,11 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (typed_map().get_data(), list(range(6, 47, 2)), "typed_map", 16, {}),
     (typed_destructuring().get_data(), list(range(6, 47, 2)), "typed_map", 17, {}),
     (tuple_untuple().get_data(), 3, "tuple_untuple", 18, {}),
+    (gcd().get_data(), 21, "gcd", 19, {"a": 1071, "b": 462}),
+    (gcd().get_data(), 2, "gcd", 20, {"a": 12, "b": 26}),
+    (gcd().get_data(), 24, "gcd", 21, {"a": 48, "b": 360}),
+    (gcd().get_data(), 1, "gcd", 22, {"a": 9357, "b": 5864}),
+    (gcd().get_data(), 3, "gcd", 23, {"a": 3, "b": 0}),
 ]
 ids = [
     "simple_eval",
@@ -69,6 +75,11 @@ ids = [
     "typed_map",
     "typed_destructuring",
     "tuple_untuple",
+    "gcd_1071_462",
+    "gcd_12_26",
+    "gcd_48_360",
+    "gcd_9357_5864",
+    "gcd_3_0",
 ]
 
 storage_classes = [ControllerFileStorage, ControllerInMemoryStorage]

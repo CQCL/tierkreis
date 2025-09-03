@@ -148,6 +148,11 @@ def mean(values: list[float]) -> float:
 
 
 @worker.task()
+def mod(a: int, b: int) -> int:
+    return a % b
+
+
+@worker.task()
 def rand_int(a: int, b: int) -> int:
     return randint(a, b)
 

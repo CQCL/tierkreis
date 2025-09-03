@@ -1,5 +1,5 @@
 from typing import NamedTuple
-from tierkreis.builtins.stubs import iadd, igt, itimes, tuple_impl, untuple
+from tierkreis.builtins.stubs import iadd, igt, itimes, tuple_impl, untuple, mod
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR
@@ -108,4 +108,20 @@ def factorial():
     rec = g.eval(g.ref(), n_minus_one)
     out = g.ifelse(pred, g.task(itimes(g.inputs, rec)), g.const(1))
     g.outputs(out)
+    return g
+
+
+class GCDInput(NamedTuple):
+    a: TKR[int]
+    b: TKR[int]
+
+
+def gcd():
+    g = GraphBuilder(GCDInput, TKR[int])
+
+    pred = g.task(igt(g.inputs.b, g.const(0)))
+    a_mod_b = g.task(mod(g.inputs.a, g.inputs.b))
+    rec = g.eval(g.ref(), GCDInput(a=g.inputs.b, b=a_mod_b))
+
+    g.outputs(g.ifelse(pred, rec, g.inputs.a))
     return g

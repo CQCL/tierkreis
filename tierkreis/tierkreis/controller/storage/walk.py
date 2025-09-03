@@ -2,10 +2,9 @@ from dataclasses import dataclass, field
 from logging import getLogger
 from typing import assert_never
 
-from tierkreis.controller.consts import BODY_PORT, SELF_REF_INDEX
+from tierkreis.controller.consts import BODY_PORT
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.graph import (
-    Const,
     EagerIfElse,
     Eval,
     GraphData,
@@ -57,7 +56,7 @@ def walk_node(
         logger.error(f"\n\n{storage.read_errors(loc)}\n\n")
         return WalkResult([], [], [loc])
 
-    node = graph.nodes[idx] if idx != SELF_REF_INDEX else Const(graph)
+    node = graph.nodes[idx]
     node_run_data = NodeRunData(loc, node, list(node.outputs))
 
     result = WalkResult([], [])

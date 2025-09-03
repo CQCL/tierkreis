@@ -99,3 +99,13 @@ def tuple_untuple():
     ut = g.task(untuple(t))
     g.outputs(g.task(iadd(ut.a, ut.b)))
     return g
+
+
+def factorial():
+    g = GraphBuilder(TKR[int], TKR[int])
+    pred = g.task(igt(g.inputs, g.const(1)))
+    n_minus_one = g.task(iadd(g.const(-1), g.inputs))
+    rec = g.eval(g.ref(), n_minus_one)
+    out = g.ifelse(pred, g.task(itimes(g.inputs, rec)), g.const(1))
+    g.outputs(out)
+    return g

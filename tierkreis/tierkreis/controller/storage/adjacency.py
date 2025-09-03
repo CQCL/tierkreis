@@ -36,9 +36,9 @@ def in_edges(node: NodeDef) -> dict[PortID, ValueRef]:
 def unfinished_inputs(
     storage: ControllerStorage, loc: Loc, node: NodeDef
 ) -> list[ValueRef]:
-    return [
-        x for x in in_edges(node).values() if not storage.is_node_finished(loc.N(x[0]))
-    ]
+    ins = in_edges(node).values()
+    ins = [x for x in ins if x[0] >= 0]  # inputs at -1 already finished
+    return [x for x in ins if not storage.is_node_finished(loc.N(x[0]))]
 
 
 def outputs_iter(storage: ControllerStorage, loc: Loc) -> list[tuple[int, PortID]]:

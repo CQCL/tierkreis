@@ -71,6 +71,9 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
     def get_data(self) -> GraphData:
         return self.data
 
+    def ref(self) -> TypedGraphRef[Inputs, Outputs]:
+        return TypedGraphRef((-1, "body"), self.outputs_type, self.inputs_type)
+
     def outputs(self, outputs: Outputs):
         self.data.add(Output(inputs=dict_from_tmodel(outputs)))
 

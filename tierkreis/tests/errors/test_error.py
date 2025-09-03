@@ -3,51 +3,50 @@ from uuid import UUID
 
 import pytest
 from tests.controller.partial_graphdata import partial_intersection
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
+from tierkreis.controller.data.core import EmptyModel
 from tierkreis.controller.data.location import Loc
+from tierkreis.controller.data.models import TKR
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.exceptions import TierkreisError
-from tierkreis.controller.data.graph import GraphData
+from tests.errors.failing_worker.stubs import fail, wont_fail
 
 
-def will_fail() -> GraphData:
-    graph = GraphData()
-    out = graph.func("failing_worker.fail", {})("fail")
-    graph.output({"fail": out})
+def will_fail_graph():
+    graph = GraphBuilder(EmptyModel, TKR[int])
+    graph.outputs(graph.task(fail()))
     return graph
 
 
-def wont_fail() -> GraphData:
-    graph = GraphData()
-    out = graph.func("failing_worker.wont_fail", {})("wont_fail")
-    graph.output({"wont_fail": out})
+def wont_fail_graph():
+    graph = GraphBuilder(EmptyModel, TKR[int])
+    graph.outputs(graph.task(wont_fail()))
     return graph
 
 
-def fail_in_eval() -> GraphData:
-    graph = GraphData()
-    subgraph_const = graph.const(will_fail())
-    eval = graph.eval(subgraph_const, {})
-    graph.output({"simple_eval_output": eval("fail")})
+def fail_in_eval():
+    graph = GraphBuilder(EmptyModel, TKR[int])
+    graph.outputs(graph.eval(will_fail_graph(), EmptyModel()))
     return graph
 
 
 def test_raise_error() -> None:
-    g = will_fail()
+    g = will_fail_graph()
     storage = ControllerFileStorage(UUID(int=42), name="will_fail")
     executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
     storage.clean_graph_files()
-    run_graph(storage, executor, g, {}, n_iterations=1000)
+    run_graph(storage, executor, g.get_data(), {}, n_iterations=1000)
     assert storage.node_has_error(Loc("-.N0"))
 
 
 def test_raises_no_error() -> None:
-    g = wont_fail()
+    g = wont_fail_graph()
     storage = ControllerFileStorage(UUID(int=43), name="wont_fail")
     executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
     storage.clean_graph_files()
-    run_graph(storage, executor, g, {}, n_iterations=100)
+    run_graph(storage, executor, g.get_data(), {}, n_iterations=100)
     assert not storage.node_has_error(Loc("-.N0"))
 
 
@@ -56,7 +55,7 @@ def test_nested_error() -> None:
     storage = ControllerFileStorage(UUID(int=44), name="eval_will_fail")
     executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
     storage.clean_graph_files()
-    run_graph(storage, executor, g, {}, n_iterations=1000)
+    run_graph(storage, executor, g.get_data(), {}, n_iterations=1000)
     assert (storage.logs_path.parent / "-/errors").exists()
 
 

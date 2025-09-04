@@ -157,5 +157,10 @@ def rand_int(a: int, b: int) -> int:
     return randint(a, b)
 
 
+@worker.task()
+def enumerate_list[T: PType](xs: list[T]) -> list[tuple[int, T]]:
+    return list(enumerate(xs))
+
+
 if __name__ == "__main__":
     worker.app(argv)

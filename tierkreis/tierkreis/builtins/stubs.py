@@ -222,6 +222,19 @@ class mean(NamedTuple):
         return "builtins"
 
 
+class mod(NamedTuple):
+    a: TKR[int]  # noqa: F821 # fmt: skip
+    b: TKR[int]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
 class rand_int(NamedTuple):
     a: TKR[int]  # noqa: F821 # fmt: skip
     b: TKR[int]  # noqa: F821 # fmt: skip

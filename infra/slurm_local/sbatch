@@ -1,9 +1,12 @@
 #!/bin/bash
 if [ -z "$1" ]; then
-    echo "Usage: sbatch <path_to_slurm_script>" vars
+    echo "Usage: sbatch <path_to_slurm_script>"
     echo "Any further arguments will be discarded"
     exit 1
 fi
 SCRIPT_FILE=$(basename "$1")
+
+NODE_PATH=$(sed -n -E '$ s#.*([0-9a-fA-F-]{36}/[^/]+/)definition$#\1#p' "$1")
+WORKFLOW_ID=$(echo "$NODE_PATH" | cut -d'/' -f1)
 docker cp "$1" slurmctld:/data/"$SCRIPT_FILE"
-docker exec slurmctld sbatch --chdir=/data /data/"$SCRIPT_FILE" ${@:2}
+docker exec slurmctld sbatch --output=/root/.tierkreis/checkpoints/"$WORKFLOW_ID"/logs --error=/root/.tierkreis/checkpoints/"$NODE_PATH"errors  --chdir=/data /data/"$SCRIPT_FILE"

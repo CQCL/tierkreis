@@ -35,6 +35,7 @@ def job_spec() -> JobSpec:
         resource=ResourceSpec(nodes=2, memory_gb=None),
         walltime="00:15:00",
         mpi=MpiSpec(max_proc_per_node=1),
+        extra_scheduler_args={"--open-mode=append": None},
     )
 
 

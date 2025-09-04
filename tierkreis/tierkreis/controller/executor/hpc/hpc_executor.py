@@ -49,24 +49,6 @@ def run_hpc_executor(
     ) as script_file:
         generate_script(executor.script_fn, executor.spec, Path(script_file.name))
         submission_cmd = [executor.command, script_file.name]
-        if executor.spec.error_path is None:
-            submission_cmd += [
-                "--error",
-                str(
-                    Path("~/.tierkreis/checkpoints")
-                    / worker_call_args_path.parent.parent
-                    / "errors"
-                ),
-            ]
-        if executor.spec.output_path is None:
-            submission_cmd += [
-                "--output",
-                str(
-                    Path("~/.tierkreis/checkpoints")
-                    / worker_call_args_path.parent.parent
-                    / "logs"
-                ),
-            ]
 
         process = subprocess.run(
             submission_cmd,

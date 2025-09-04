@@ -136,10 +136,11 @@ class Worker:
         """
         node_definition = self.storage.read_call_args(worker_definition_path)
 
+        logs_path = node_definition.logs_path
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
-            filename=node_definition.logs_path,
+            filename=self.storage.resolve(logs_path) if logs_path else None,
             filemode="a",
             level=logging.INFO,
         )

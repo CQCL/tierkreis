@@ -33,7 +33,7 @@ class UvExecutor:
             level=logging.INFO,
         )
         self.errors_path = (
-            self.errors_path.parent.parent / worker_call_args_path.parent / "errors"
+            self.logs_path.parent.parent / worker_call_args_path.parent / "errors"
         )
         logger.info("START %s %s", launcher_name, worker_call_args_path)
 

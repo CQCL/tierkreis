@@ -1,6 +1,5 @@
 from pathlib import Path
 from uuid import UUID
-import pytest
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
@@ -35,12 +34,9 @@ def job_spec() -> JobSpec:
         resource=ResourceSpec(nodes=2, memory_gb=None),
         walltime="00:15:00",
         mpi=MpiSpec(max_proc_per_node=1),
-        error_path=Path("./error.log"),
-        output_path=Path("./output.log"),
     )
 
 
-@pytest.mark.skip(reason="Needs slurm setup")
 def test_slurm_with_mpi() -> None:
     g = mpi_graph()
     storage = ControllerFileStorage(
@@ -48,11 +44,14 @@ def test_slurm_with_mpi() -> None:
         name="mpi_graph",
         do_cleanup=True,
     )
+    sbatch = str(
+        Path(__file__).parent.parent.parent.parent / "infra/slurm_local/sbatch"
+    )
     executor = SLURMExecutor(
         spec=job_spec(),
         registry_path=Path("/"),
         logs_path=storage.logs_path,
-        command="./infra/slurm_local/sbatch",
+        command=sbatch,
     )
     run_graph(storage, executor, g, {})
 

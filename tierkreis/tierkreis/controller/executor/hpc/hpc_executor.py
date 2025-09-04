@@ -29,15 +29,6 @@ def generate_script(
 def run_hpc_executor(
     executor: HPCExecutor, launcher_name: str, worker_call_args_path: Path
 ) -> None:
-    if executor.spec.error_path is None:
-        executor.spec.error_path = executor.errors_path.relative_to(
-            executor.launchers_path
-        )
-    if executor.spec.output_path is None:
-        executor.spec.output_path = executor.logs_path.relative_to(
-            executor.launchers_path
-        )
-
     logging.basicConfig(
         format="%(asctime)s: %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S%z",
@@ -57,20 +48,34 @@ def run_hpc_executor(
     ) as script_file:
         generate_script(executor.script_fn, executor.spec, Path(script_file.name))
         submission_cmd = [executor.command, script_file.name]
+        if executor.spec.error_path is None:
+            submission_cmd += [
+                "--error",
+                str(
+                    Path("~/.tierkreis/checkpoints")
+                    / worker_call_args_path.parent.parent
+                    / "errors"
+                ),
+            ]
+        if executor.spec.output_path is None:
+            submission_cmd += [
+                "--output",
+                str(
+                    Path("~/.tierkreis/checkpoints")
+                    / worker_call_args_path.parent.parent
+                    / "logs"
+                ),
+            ]
 
-        # with open(logs_path, "a") as lfh:
-        # with open(errors_path, "a") as efh:
         process = subprocess.run(
             submission_cmd,
             start_new_session=True,
             capture_output=True,
             universal_newlines=True,
         )
-        if process.returncode != 0:
-            with open(executor.errors_path, "a") as efh:
-                efh.write("Error from script")
-                efh.write(process.stderr)
-            raise TierkreisError(
-                f"Executor failed with return code {process.returncode}"
-            )
-        logger.info("Submitted job with return code %s", process.stdout.rstrip())
+    if process.returncode != 0:
+        with open(executor.errors_path, "a") as efh:
+            efh.write("Error from script")
+            efh.write(process.stderr)
+        raise TierkreisError(f"Executor failed with return code {process.returncode}")
+    logger.info("Submitted job with return code %s", process.stdout.rstrip())

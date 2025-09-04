@@ -107,5 +107,7 @@ class PBSExecutor:
         self.command = command
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
-        self.errors_path = worker_call_args_path.parent / "errors"
+        self.errors_path = (
+            self.logs_path.parent.parent / worker_call_args_path.parent / "errors"
+        )
         run_hpc_executor(self, launcher_name, worker_call_args_path)

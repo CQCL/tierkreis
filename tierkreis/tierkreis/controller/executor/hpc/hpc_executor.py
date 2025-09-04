@@ -35,6 +35,7 @@ def run_hpc_executor(
         filename=executor.logs_path,
         filemode="a",
         level=logging.INFO,
+        force=True,
     )
     logger.info("START %s %s", launcher_name, worker_call_args_path)
 

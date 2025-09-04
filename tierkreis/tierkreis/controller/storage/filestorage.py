@@ -105,7 +105,7 @@ class ControllerFileStorage:
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
     ) -> Path:
-        node_definition_path = self._worker_call_args_path(node_location)
+        call_args_path = self._worker_call_args_path(node_location)
         node_definition = WorkerCallArgs(
             function_name=function_name,
             inputs={
@@ -121,13 +121,13 @@ class ControllerFileStorage:
             error_path=self._error_path(node_location).relative_to(self.tkr_dir),
             logs_path=self.logs_path.relative_to(self.tkr_dir),
         )
-        with open(node_definition_path, "w+") as fh:
+        with open(call_args_path, "w+") as fh:
             fh.write(node_definition.model_dump_json())
 
         if (parent := node_location.parent()) is not None:
             self._metadata_path(parent).touch()
 
-        return node_definition_path
+        return call_args_path.relative_to(self.tkr_dir)
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         node_definition_path = self._worker_call_args_path(node_location)

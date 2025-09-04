@@ -42,8 +42,9 @@ services:
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
-      - ~/.tierkreis:/tmp/tierkreis/
+      - ~/.tierkreis:/root/.tierkreis/
       - var_log_slurm:/var/log/slurm
+      - ../../tierkreis:/tierkreis
       - data:/data
     expose:
       - "6817"
@@ -60,8 +61,9 @@ services:
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
-      - ~/.tierkreis:/tmp/tierkreis/
+      - ~/.tierkreis:/root/.tierkreis/
       - var_log_slurm:/var/log/slurm
+      - ../../tierkreis:/tierkreis
       - data:/data
     expose:
       - "6818"
@@ -78,8 +80,10 @@ services:
     volumes:
       - etc_munge:/etc/munge
       - etc_slurm:/etc/slurm
-      - ~/.tierkreis:/tmp/tierkreis/
+      - ~/.tierkreis:/root/.tierkreis/
       - var_log_slurm:/var/log/slurm
+      - ../../tierkreis:/tierkreis
+      - data:/data
     expose:
       - "6818"
     depends_on:

@@ -22,7 +22,7 @@ if [ -z "$1" ]; then
 fi
 SCRIPT_FILE=$(basename "$1")
 docker cp "$1" slurmctld:/data/"$SCRIPT_FILE"
-docker exec slurmctld sbatch --chdir=/data /data/"$SCRIPT_FILE"
+docker exec slurmctld sbatch --chdir=/data /data/"$SCRIPT_FILE" {@:2}
 ```
 
 Run the test:
@@ -33,4 +33,4 @@ pytest tierkreis/tests/executor/test_hpc_executor.py
 
 **Caveats**:
 
-- it seems jobfiles don't get deleted correctly, logging is also not working as intended
+- mpi workers is nondeterministic due to allocation from slurm

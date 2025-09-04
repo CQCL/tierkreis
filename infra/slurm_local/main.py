@@ -1,18 +1,17 @@
 # /// script
 # requires-python = ">=3.12"
 # dependencies = ["tierkreis", "mpi4py"]
+# [tool.uv.sources]
+# tierkreis = { path = "/tierkreis", editable = true }
 # ///
 import logging
-from pathlib import Path
 import socket
 from sys import argv
 
 from tierkreis import Worker
-from tierkreis.worker.storage.filestorage import WorkerFileStorage
 from mpi4py import MPI  # type: ignore
 
 logger = logging.getLogger(__name__)
-storage = WorkerFileStorage(Path("./checkpoints"))
 worker = Worker("slurm_mpi_worker")
 
 comm = MPI.COMM_WORLD

@@ -46,17 +46,17 @@ def test_slurm_with_mpi() -> None:
     storage = ControllerFileStorage(
         UUID(int=22),
         name="mpi_graph",
-        tierkreis_directory=Path("/tmp/tierkreis/checkpoints"),
+        do_cleanup=True,
     )
     executor = SLURMExecutor(
         spec=job_spec(),
         registry_path=Path("/"),
         logs_path=storage.logs_path,
+        command="./infra/slurm_local/sbatch",
     )
-    storage.clean_graph_files()
     run_graph(storage, executor, g, {})
 
-    output = read_outputs(storage)
+    output = read_outputs(g, storage)
 
     assert output is not None
     assert output == "Rank 0 out of 2 on c1.\nRank 1 out of 2 on c2."

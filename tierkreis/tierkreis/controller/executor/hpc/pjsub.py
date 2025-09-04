@@ -87,13 +87,14 @@ class PJSUBExecutor:
         registry_path: Path,
         logs_path: Path,
         spec: JobSpec,
+        command: str = "pjsub",
     ) -> None:
         self.launchers_path = registry_path
         self.logs_path = logs_path
         self.errors_path = logs_path
         self.spec = spec
         self.script_fn: Callable[[JobSpec], str] = generate_pjsub_script
-        self.command = "pjsub"
+        self.command = command
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         self.errors_path = worker_call_args_path.parent / "errors"

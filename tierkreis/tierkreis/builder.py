@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from inspect import isclass
-from typing import Any, Callable, Protocol, overload
+from typing import Any, Callable, Protocol, overload, runtime_checkable
 
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.controller.data.models import (
@@ -13,6 +13,7 @@ from tierkreis.controller.data.models import (
 )
 from tierkreis.controller.data.types import PType
 from tierkreis.controller.data.graph import GraphData, ValueRef
+from tierkreis.exceptions import TierkreisError
 
 
 @dataclass
@@ -22,6 +23,7 @@ class TList[T: TModel]:
     _value: T
 
 
+@runtime_checkable
 class Function[Out](TNamedModel, Protocol):
     @property
     def namespace(self) -> str: ...
@@ -96,13 +98,25 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
             inputs_type=graph.inputs_type,
         )
 
-    def task[Out: TModel](self, f: Function[Out]) -> Out:
-        name = f"{f.namespace}.{f.__class__.__name__}"
-        ins = dict_from_tmodel(f)
-        idx, _ = self.data.func(name, ins)("dummy")
-        OutModel = f.out()
-        outputs = [(idx, x) for x in model_fields(OutModel)]
-        return init_tmodel(OutModel, outputs)
+    @overload
+    def task(self, f: str, input: TKR[bytes]) -> TKR[bytes]: ...
+    @overload
+    def task[Out: TModel](self, f: Function[Out]) -> Out: ...
+
+    def task[Out: TModel](self, f: Any, input: TKR[bytes] | None = None) -> Any:
+        if isinstance(f, str) and isinstance(input, TKR):
+            idx, _ = self.data.func(f, {"input": input.value_ref()})("dummy")
+            return TKR(idx, "output")
+
+        if isinstance(f, Function):
+            name = f"{f.namespace}.{f.__class__.__name__}"
+            ins = dict_from_tmodel(f)
+            idx, _ = self.data.func(name, ins)("dummy")
+            OutModel = f.out()
+            outputs = [(idx, x) for x in model_fields(OutModel)]
+            return init_tmodel(OutModel, outputs)
+
+        raise TierkreisError(f"Invalid args to `task`: {f} {input}")
 
     @overload
     def eval[A: TModel, B: TModel](self, body: TypedGraphRef[A, B], a: A) -> B: ...

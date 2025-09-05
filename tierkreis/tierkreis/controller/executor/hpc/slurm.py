@@ -45,9 +45,8 @@ def generate_slurm_script(spec: JobSpec) -> str:
     lines.append("\n# --- Output and Error Handling ---")
     if spec.error_path is not None:
         lines.append(f"{_COMMAND_PREFIX} --error={spec.error_path}")
-    if spec.output_path is None:
-        spec.output_path = Path(f"./{spec.job_name}.o%j")
-    lines.append(f"{_COMMAND_PREFIX} --output={spec.output_path}")
+    if spec.output_path is not None:
+        lines.append(f"{_COMMAND_PREFIX} --output={spec.output_path}")
 
     # 6. MPI, #TODO check if this makes sense
     if spec.mpi is not None:

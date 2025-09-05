@@ -1,12 +1,15 @@
 #!/bin/bash
-if [ -z "$1" ]; then
-    echo "Usage: sbatch <path_to_slurm_script>"
+if [ -z "$5" ]; then
+    echo "Usage: sbatch <path_to_slurm_script>" -o output.log -e error.log script_file
     echo "Any further arguments will be discarded"
     exit 1
 fi
-SCRIPT_FILE=$(basename "$1")
+SCRIPT_FILE=$(basename "$5")
 
-NODE_PATH=$(sed -n -E '$ s#.*([0-9a-fA-F-]{36}/[^/]+/)definition$#\1#p' "$1")
+NODE_PATH=$(sed -n -E '$ s#.*([0-9a-fA-F-]{36}/[^/]+)/definition$#\1#p' "$5")
 WORKFLOW_ID=$(echo "$NODE_PATH" | cut -d'/' -f1)
-docker cp "$1" slurmctld:/data/"$SCRIPT_FILE"
-docker exec slurmctld sbatch --output=/root/.tierkreis/checkpoints/"$WORKFLOW_ID"/logs --error=/root/.tierkreis/checkpoints/"$NODE_PATH"errors  --chdir=/data /data/"$SCRIPT_FILE"
+docker cp "$5" slurmctld:/data/"$SCRIPT_FILE"
+docker exec slurmctld sh -c 'rm -rf /data/*.log && \
+ln -s $HOME/.tierkreis/checkpoints/$2/logs /data/logs.log && \
+ln -s $HOME/.tierkreis/checkpoints/$3/errors /data/errors.log  && \
+sbatch --output=logs.log --error=errors.log --chdir=/data /data/$1' sh "$SCRIPT_FILE" "$WORKFLOW_ID" "$NODE_PATH"

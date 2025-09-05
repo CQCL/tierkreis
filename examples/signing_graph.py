@@ -33,7 +33,7 @@ def stdinout_graph():
     g = GraphBuilder(EmptyModel, TKR[str])
     message = g.const("dummymessage")
     passphrase = g.const(b"dummypassphrase")
-    private_key = g.task("openssl_worker.genrsa", passphrase)
+    private_key = g.task("genrsa.exec", passphrase)
     signing_result = g.task(sign(private_key, passphrase, message)).hex_signature
     g.outputs(signing_result)
     return g
@@ -56,10 +56,9 @@ if __name__ == "__main__":
 
     storage.clean_graph_files()
     stdinout = StdInOut(registry_path, storage.logs_path)
-    executor = MultipleExecutor(
-        uv, {"stdinout": stdinout}, {"openssl_worker": "stdinout"}
-    )
+    executor = MultipleExecutor(uv, {"stdinout": stdinout}, {"genrsa": "stdinout"})
     run_graph(storage, executor, stdinout_graph().get_data(), {})
     out = read_outputs(stdinout_graph().get_data(), storage)
+    assert isinstance(out, str)
     print(out)
-    assert False
+    assert len(out) == 1024

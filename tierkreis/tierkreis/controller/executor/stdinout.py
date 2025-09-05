@@ -23,16 +23,14 @@ class StdInOut:
         if not launcher_path.exists():
             raise TierkreisError(f"Launcher not found: {launcher_name}.")
 
-        if launcher_path.is_dir() and not (launcher_path / "stdinout.sh").exists():
+        if launcher_path.is_dir() and not (launcher_path / "main.sh").exists():
             raise TierkreisError(f"Expected launcher file. Got {launcher_path}.")
 
-        if launcher_path.is_dir() and not (launcher_path / "stdinout.sh").is_file():
-            raise TierkreisError(
-                f"Expected launcher file. Got {launcher_path}/stdinout.sh"
-            )
+        if launcher_path.is_dir() and not (launcher_path / "main.sh").is_file():
+            raise TierkreisError(f"Expected launcher file. Got {launcher_path}/main.sh")
 
-        if launcher_path.is_dir() and (launcher_path / "stdinout.sh").is_file():
-            launcher_path = launcher_path / "stdinout.sh"
+        if launcher_path.is_dir() and (launcher_path / "main.sh").is_file():
+            launcher_path = launcher_path / "main.sh"
 
         with open(worker_call_args_path) as fh:
             call_args = WorkerCallArgs(**json.load(fh))

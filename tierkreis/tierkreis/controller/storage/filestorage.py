@@ -35,6 +35,7 @@ class ControllerFileStorage:
         do_cleanup: bool = False,
     ) -> None:
         self.workflow_id = workflow_id
+        self.tkr_dir = tierkreis_directory
         self.workflow_dir: Path = tierkreis_directory / str(workflow_id)
         self.workflow_dir.mkdir(parents=True, exist_ok=True)
         self.logs_path = self.workflow_dir / "logs"
@@ -104,25 +105,29 @@ class ControllerFileStorage:
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
     ) -> Path:
-        node_definition_path = self._worker_call_args_path(node_location)
+        call_args_path = self._worker_call_args_path(node_location)
         node_definition = WorkerCallArgs(
             function_name=function_name,
             inputs={
-                k: self._output_path(loc, port) for k, (loc, port) in inputs.items()
+                k: self._output_path(loc, port).relative_to(self.tkr_dir)
+                for k, (loc, port) in inputs.items()
             },
-            outputs={k: self._output_path(node_location, k) for k in output_list},
-            output_dir=self._outputs_dir(node_location),
-            done_path=self._done_path(node_location),
-            error_path=self._error_path(node_location),
-            logs_path=self.logs_path,
+            outputs={
+                k: self._output_path(node_location, k).relative_to(self.tkr_dir)
+                for k in output_list
+            },
+            output_dir=self._outputs_dir(node_location).relative_to(self.tkr_dir),
+            done_path=self._done_path(node_location).relative_to(self.tkr_dir),
+            error_path=self._error_path(node_location).relative_to(self.tkr_dir),
+            logs_path=self.logs_path.relative_to(self.tkr_dir),
         )
-        with open(node_definition_path, "w+") as fh:
+        with open(call_args_path, "w+") as fh:
             fh.write(node_definition.model_dump_json())
 
         if (parent := node_location.parent()) is not None:
             self._metadata_path(parent).touch()
 
-        return node_definition_path
+        return call_args_path.relative_to(self.tkr_dir)
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         node_definition_path = self._worker_call_args_path(node_location)

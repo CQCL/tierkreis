@@ -12,24 +12,28 @@ class WorkerFileStorage:
     ) -> None:
         self.tierkreis_dir = tierkreis_dir
 
+    def resolve(self, path: Path | str) -> Path:
+        path = Path(path)
+        return path if path.is_absolute() else self.tierkreis_dir / path
+
     def read_call_args(self, path: Path) -> WorkerCallArgs:
-        with open(path, "r") as fh:
+        with open(self.resolve(path), "r") as fh:
             return WorkerCallArgs(**json.loads(fh.read()))
 
     def read_input(self, path: Path) -> bytes:
-        with open(path, "rb") as fh:
+        with open(self.resolve(path), "rb") as fh:
             return fh.read()
 
     def write_output(self, path: Path, value: bytes) -> None:
-        with open(path, "wb+") as fh:
+        with open(self.resolve(path), "wb+") as fh:
             fh.write(value)
 
     def glob(self, path_string: str) -> list[str]:
-        return glob(path_string)
+        return glob(str(self.resolve(path_string)))
 
     def mark_done(self, path: Path) -> None:
-        path.touch()
+        self.resolve(path).touch()
 
     def write_error(self, path: Path, error_logs: str) -> None:
-        with open(path, "w+") as f:
+        with open(self.resolve(path), "w+") as f:
             f.write(error_logs)

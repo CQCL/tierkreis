@@ -38,4 +38,5 @@
     if pkgs.stdenv.isDarwin && pkgs.stdenv.isAarch64 then ''
       export RUSTFLAGS="$RUSTFLAGS -C link-arg=-undefined -C link-arg=dynamic_lookup"
     '' else '''';
+
 }

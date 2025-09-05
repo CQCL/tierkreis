@@ -1,6 +1,7 @@
 from pathlib import Path
 from uuid import UUID
 from tierkreis.builder import GraphBuilder
+from tierkreis.controller.executor.stdinout import StdInOut
 from tierkreis.models import TKR, EmptyModel
 from tierkreis.storage import FileStorage, read_outputs
 from tierkreis.executor import MultipleExecutor, UvExecutor, ShellExecutor
@@ -28,6 +29,16 @@ def signing_graph():
     return g
 
 
+def stdinout_graph():
+    g = GraphBuilder(EmptyModel, TKR[str])
+    message = g.const("dummymessage")
+    passphrase = g.const(b"dummypassphrase")
+    private_key = g.task("openssl_worker.genrsa", passphrase)
+    signing_result = g.task(sign(private_key, passphrase, message)).hex_signature
+    g.outputs(signing_result)
+    return g
+
+
 if __name__ == "__main__":
     storage = FileStorage(UUID(int=105))
     storage.clean_graph_files()
@@ -42,3 +53,13 @@ if __name__ == "__main__":
     is_verified = read_outputs(signing_graph().get_data(), storage)
     print(is_verified)
     assert is_verified
+
+    storage.clean_graph_files()
+    stdinout = StdInOut(registry_path, storage.logs_path)
+    executor = MultipleExecutor(
+        uv, {"stdinout": stdinout}, {"openssl_worker": "stdinout"}
+    )
+    run_graph(storage, executor, stdinout_graph().get_data(), {})
+    out = read_outputs(stdinout_graph().get_data(), storage)
+    print(out)
+    assert False

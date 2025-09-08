@@ -10,6 +10,7 @@ from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.storage.adjacency import outputs_iter
+from tierkreis.runner.commands import TouchError
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
@@ -68,12 +69,14 @@ def run_builtin(def_path: Path, logs_path: Path) -> None:
         )
 
 
-def run_command(command: str, call_args_path: Path) -> None:
+def run_command(cmd: str, call_args_path: Path) -> None:
     with open(call_args_path) as fh:
         call_args = WorkerCallArgs(**json.load(fh))
 
+    cmd = TouchError(str(call_args.error_path.parent / "_error"))(cmd)
+
     with open(call_args.logs_path or call_args.error_path, "a") as lfh:
-        with open(call_args.logs_path or call_args.error_path, "a") as efh:
+        with open(call_args.error_path, "a") as efh:
             proc = subprocess.Popen(
                 ["bash"],
                 start_new_session=True,
@@ -81,7 +84,8 @@ def run_command(command: str, call_args_path: Path) -> None:
                 stderr=efh,
                 stdout=lfh,
             )
-            proc.communicate(f"{command} ".encode(), timeout=10)
+            proc.communicate(f"{cmd} ".encode(), timeout=10)
+            proc.communicate(None, timeout=10)
 
 
 def start(

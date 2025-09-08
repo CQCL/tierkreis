@@ -22,16 +22,6 @@ PrimitiveTask = Callable[[WorkerCallArgs, WorkerStorage], None]
 type MethodName = str
 
 
-def handle_unhandled_exception(
-    exc_type: type[BaseException],
-    exc_value: BaseException,
-    exc_traceback: TracebackType | None,
-):
-    logger.critical(
-        "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
-    )
-
-
 class TierkreisWorkerError(TierkreisError):
     pass
 
@@ -73,7 +63,18 @@ class Worker:
             self.storage: WorkerStorage = WorkerFileStorage()
         else:
             self.storage = storage
-        sys.excepthook = handle_unhandled_exception
+        sys.excepthook = self.handle_unhandled_exception
+
+    def handle_unhandled_exception(
+        self,
+        exc_type: type[BaseException],
+        exc_value: BaseException,
+        exc_traceback: TracebackType | None,
+    ):
+        logger.critical(
+            "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
+        )
+        raise TierkreisError("Unhandled exception in worker. See logs for details.")
 
     def _load_args(
         self, f: WorkerFunction, inputs: dict[str, Path]
@@ -160,6 +161,8 @@ class Worker:
         except Exception as err:
             logger.error("encountered error", exc_info=err)
             self.storage.write_error(node_definition.error_path, str(err))
+            self.storage.mark_error(node_definition.error_path.parent / "_error")
+            raise TierkreisError("Error in worker. See logs for details.")
 
     def write_stubs(self, stubs_path: Path) -> None:
         """Writes the type stubs to stubs_path.

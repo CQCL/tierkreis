@@ -23,6 +23,14 @@ class TouchDone:
         return f"{inner_command} && touch {self.done_path}"
 
 
+class TouchError:
+    def __init__(self, error_path: str) -> None:
+        self.error_path = error_path
+
+    def __call__(self, inner_command: str) -> str:
+        return f"{inner_command} || touch {self.error_path}"
+
+
 class UvRun:
     def __init__(self, uv_project_directory: str) -> None:
         self.project_dir = uv_project_directory

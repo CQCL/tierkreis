@@ -9,17 +9,6 @@ class ControllerExecutor(Protocol):
 
     """
 
-    def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
-        """Run the node defined by the node_definition path.
-
-        Specifies the worker to run by its launcher name.
-        For example the function "builtins.iadd" will call the builtins worker's iadd function.
-        The call arguments for the function call are retrieved retrieved from its location.
-
-        :param launcher_name: module description of launcher to run.
-        :type launcher_name: str
-        :param worker_call_args_path: Location of the worker call args.
-        :type worker_call_args_path: Path
-        """
-
-    ...
+    def command(self, launcher_name: str, worker_call_args_path: Path) -> str:
+        """A command passed to subprocess that runs the worker."""
+        ...

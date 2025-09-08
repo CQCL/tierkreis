@@ -21,11 +21,7 @@ class InMemoryExecutor:
         self.registry_path = registry_path
         self.storage = storage
 
-    def run(
-        self,
-        launcher_name: str,
-        worker_call_args_path: Path,
-    ) -> None:
+    def command(self, launcher_name: str, worker_call_args_path: Path) -> str:
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
@@ -49,3 +45,5 @@ class InMemoryExecutor:
         module.worker.storage = worker_storage
         module.worker.functions[call_args.function_name](call_args)
         self.storage.mark_node_finished(node_location)
+
+        return 'echo "Node started by in-memory executor."'

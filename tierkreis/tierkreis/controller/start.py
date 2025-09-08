@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import json
 from logging import getLogger
 import logging
 from pathlib import Path
@@ -13,7 +14,7 @@ from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
 from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
-from tierkreis.controller.data.location import Loc, OutputLoc
+from tierkreis.controller.data.location import Loc, OutputLoc, WorkerCallArgs
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
@@ -67,6 +68,22 @@ def run_builtin(def_path: Path, logs_path: Path) -> None:
         )
 
 
+def run_command(command: str, call_args_path: Path) -> None:
+    with open(call_args_path) as fh:
+        call_args = WorkerCallArgs(**json.load(fh))
+
+    with open(call_args.logs_path or call_args.error_path, "a") as lfh:
+        with open(call_args.logs_path or call_args.error_path, "a") as efh:
+            proc = subprocess.Popen(
+                ["bash"],
+                start_new_session=True,
+                stdin=subprocess.PIPE,
+                stderr=efh,
+                stdout=lfh,
+            )
+            proc.communicate(f"{command} ".encode(), timeout=10)
+
+
 def start(
     storage: ControllerStorage, executor: ControllerExecutor, node_run_data: NodeRunData
 ) -> None:
@@ -92,15 +109,17 @@ def start(
         )
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
 
-        if isinstance(storage, ControllerInMemoryStorage) and isinstance(
+        is_in_memory = isinstance(storage, ControllerInMemoryStorage) and isinstance(
             executor, InMemoryExecutor
-        ):
-            executor.run(launcher_name, call_args_path)
-
+        )
+        if is_in_memory:
+            # In-memory executor is an exception: it runs the command itself.
+            executor.command(launcher_name, call_args_path)
         elif launcher_name == "builtins":
             run_builtin(call_args_path, storage.logs_path)
         else:
-            executor.run(launcher_name, call_args_path)
+            cmd = executor.command(launcher_name, call_args_path)
+            run_command(cmd, call_args_path)
 
     elif node.type == "input":
         input_loc = parent.N(-1)

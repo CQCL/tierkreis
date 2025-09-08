@@ -38,7 +38,7 @@ def main() -> None:
 
     # Look for workers in the `example_workers` directory.
     registry_path = Path(__file__).parent / "example_workers"
-    executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
+    executor = UvExecutor(registry_path=registry_path)
     print("Starting workflow at location:", storage.logs_path)
     run_graph(
         storage,

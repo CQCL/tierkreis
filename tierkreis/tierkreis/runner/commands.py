@@ -28,7 +28,7 @@ class UvRun:
         self.project_dir = uv_project_directory
 
     def __call__(self, inner_command: str) -> str:
-        return f"uv run --project {self.project_dir} {inner_command}"
+        return f"uv run --no-active --project {self.project_dir} {inner_command}"
 
 
 class DockerRun:

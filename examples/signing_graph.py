@@ -1,6 +1,6 @@
 from pathlib import Path
 from uuid import UUID
-from tierkreis.builder import GraphBuilder
+from tierkreis.builder import GraphBuilder, script
 from tierkreis.controller.executor.stdinout import StdInOut
 from tierkreis.models import TKR, EmptyModel
 from tierkreis.storage import FileStorage, read_outputs
@@ -33,7 +33,7 @@ def stdinout_graph():
     g = GraphBuilder(EmptyModel, TKR[str])
     message = g.const("dummymessage")
     passphrase = g.const(b"dummypassphrase")
-    private_key = g.task("genrsa.exec", passphrase)
+    private_key = g.task(script("genrsa", passphrase))
     signing_result = g.task(sign(private_key, passphrase, message)).hex_signature
     g.outputs(signing_result)
     return g

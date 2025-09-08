@@ -5,6 +5,7 @@
   packages = [
     pkgs.just
     pkgs.graphviz
+    pkgs.openmpi
   ] ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs.darwin.apple_sdk; [
     frameworks.CoreServices
     frameworks.CoreFoundation
@@ -32,6 +33,8 @@
     bun.install.enable = true;
     directory = "./tierkreis_visualization";
   };
+
+  languages.cplusplus.enable = true;
 
   # This allows building the type-check (pyo3) module on MacOSX "Apple Silicon"
   enterShell =

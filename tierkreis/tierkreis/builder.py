@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from inspect import isclass
-from time import time
 from typing import Any, Callable, NamedTuple, Protocol, overload, runtime_checkable
 
 from tierkreis.controller.data.core import EmptyModel

@@ -19,9 +19,8 @@ class ShellExecutor:
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         launcher_path = self.launchers_path / launcher_name
-        self.errors_path = (
-            self.errors_path.parent.parent / worker_call_args_path.parent / "errors"
-        )
+        self.errors_path = worker_call_args_path.parent / "errors"
+
         if not launcher_path.exists():
             raise TierkreisError(f"Launcher not found: {launcher_name}.")
 

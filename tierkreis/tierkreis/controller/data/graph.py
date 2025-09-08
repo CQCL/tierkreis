@@ -123,12 +123,15 @@ class GraphData(BaseModel):
     def map(
         self,
         body: ValueRef,
-        input_idx: NodeIndex,
-        in_port: PortID,
-        out_port: PortID,
         inputs: dict[PortID, ValueRef],
     ) -> Callable[[PortID], ValueRef]:
         return self.add(Map(body, inputs))
+
+    def if_else(self, pred: ValueRef, if_true: ValueRef, if_false: ValueRef):
+        return self.add(IfElse(pred, if_true, if_false))
+
+    def eager_if_else(self, pred: ValueRef, if_true: ValueRef, if_false: ValueRef):
+        return self.add(EagerIfElse(pred, if_true, if_false))
 
     def output(self, inputs: dict[PortID, ValueRef]) -> None:
         self.add(Output(inputs))

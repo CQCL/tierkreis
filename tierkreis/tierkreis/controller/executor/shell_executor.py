@@ -3,7 +3,9 @@ import subprocess
 from pathlib import Path
 
 from tierkreis.controller.data.location import WorkerCallArgs
+from tierkreis.controller.executor.run_command import run_command
 from tierkreis.exceptions import TierkreisError
+from tierkreis.runner.commands import WithCallArgs
 
 
 class ShellExecutor:
@@ -28,27 +30,8 @@ class ShellExecutor:
         if launcher_path.is_dir() and not (launcher_path / "main.sh").exists():
             raise TierkreisError(f"Expected launcher file. Got {launcher_path}.")
 
-        if launcher_path.is_dir() and not (launcher_path / "main.sh").is_file():
-            raise TierkreisError(f"Expected launcher file. Got {launcher_path}/main.sh")
-
-        if launcher_path.is_dir() and (launcher_path / "main.sh").is_file():
-            launcher_path = launcher_path / "main.sh"
-
-        with open(self.workflow_dir.parent / worker_call_args_path) as fh:
+        with open(worker_call_args_path) as fh:
             call_args = WorkerCallArgs(**json.load(fh))
 
-        done_path = self.workflow_dir.parent / call_args.done_path
-
-        with open(self.workflow_dir.parent / self.logs_path, "a") as lfh:
-            with open(self.workflow_dir.parent / self.errors_path, "a") as efh:
-                proc = subprocess.Popen(
-                    ["bash"],
-                    start_new_session=True,
-                    stdin=subprocess.PIPE,
-                    stderr=efh,
-                    stdout=lfh,
-                )
-                proc.communicate(
-                    f"{launcher_path} {worker_call_args_path} && touch {done_path}".encode(),
-                    timeout=3,
-                )
+        cmd = WithCallArgs(str(worker_call_args_path))
+        run_command(cmd(f"{self.launchers_path}/{launcher_name}"), call_args)

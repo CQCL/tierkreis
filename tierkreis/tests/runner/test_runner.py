@@ -1,5 +1,5 @@
 import subprocess
-from tierkreis.runner.uv_run import DockerRun, UvRun
+from tierkreis.runner.commands import DockerRun, UvRun
 
 
 def test_runner():

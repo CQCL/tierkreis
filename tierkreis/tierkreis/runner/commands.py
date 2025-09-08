@@ -1,6 +1,3 @@
-from typing import Any
-
-
 class StdOutIn:
     def __init__(self, input_file: str, output_file: str) -> None:
         self.input = input_file
@@ -14,8 +11,16 @@ class WithCallArgs:
     def __init__(self, call_args_path: str) -> None:
         self.call_args_path = call_args_path
 
-    def __call__(self, inner_command: str) -> Any:
+    def __call__(self, inner_command: str) -> str:
         return f"{inner_command} {self.call_args_path}"
+
+
+class TouchDone:
+    def __init__(self, done_path: str) -> None:
+        self.done_path = done_path
+
+    def __call__(self, inner_command: str) -> str:
+        return f"{inner_command} && touch {self.done_path}"
 
 
 class UvRun:

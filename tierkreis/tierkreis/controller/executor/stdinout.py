@@ -45,7 +45,7 @@ class StdInOut:
                     start_new_session=True,
                     stdin=subprocess.PIPE,
                     stderr=efh,
-                    stdout=subprocess.PIPE,
+                    stdout=lfh,
                 )
                 proc.communicate(
                     f"{launcher_path} <{input_file} >{output_file} && touch {call_args.done_path}".encode(),

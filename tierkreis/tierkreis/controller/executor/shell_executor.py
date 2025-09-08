@@ -1,6 +1,8 @@
+import json
 import subprocess
 from pathlib import Path
 
+from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.exceptions import TierkreisError
 
 
@@ -32,11 +34,19 @@ class ShellExecutor:
         if launcher_path.is_dir() and (launcher_path / "main.sh").is_file():
             launcher_path = launcher_path / "main.sh"
 
+        with open(worker_call_args_path) as fh:
+            call_args = WorkerCallArgs(**json.load(fh))
+
         with open(self.logs_path, "a") as lfh:
             with open(self.errors_path, "a") as efh:
-                subprocess.Popen(
-                    [launcher_path, worker_call_args_path],
+                proc = subprocess.Popen(
+                    ["bash"],
                     start_new_session=True,
+                    stdin=subprocess.PIPE,
                     stderr=efh,
                     stdout=lfh,
+                )
+                proc.communicate(
+                    f"{launcher_path} {worker_call_args_path} && touch {call_args.done_path}".encode(),
+                    timeout=3,
                 )

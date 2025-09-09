@@ -12,10 +12,11 @@ class ShellExecutor:
     Implements: :py:class:`tierkreis.controller.executor.protocol.ControllerExecutor`
     """
 
-    def __init__(self, registry_path: Path, logs_path: Path) -> None:
+    def __init__(self, registry_path: Path, workflow_dir: Path) -> None:
         self.launchers_path = registry_path
-        self.logs_path = logs_path
-        self.errors_path = logs_path
+        self.logs_path = workflow_dir / "logs"
+        self.errors_path = workflow_dir / "logs"
+        self.workflow_dir = workflow_dir
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         launcher_path = self.launchers_path / launcher_name
@@ -33,11 +34,13 @@ class ShellExecutor:
         if launcher_path.is_dir() and (launcher_path / "main.sh").is_file():
             launcher_path = launcher_path / "main.sh"
 
-        with open(worker_call_args_path) as fh:
+        with open(self.workflow_dir.parent / worker_call_args_path) as fh:
             call_args = WorkerCallArgs(**json.load(fh))
 
-        with open(self.logs_path, "a") as lfh:
-            with open(self.errors_path, "a") as efh:
+        done_path = self.workflow_dir.parent / call_args.done_path
+
+        with open(self.workflow_dir.parent / self.logs_path, "a") as lfh:
+            with open(self.workflow_dir.parent / self.errors_path, "a") as efh:
                 proc = subprocess.Popen(
                     ["bash"],
                     start_new_session=True,
@@ -46,6 +49,6 @@ class ShellExecutor:
                     stdout=lfh,
                 )
                 proc.communicate(
-                    f"{launcher_path} {worker_call_args_path} && touch {call_args.done_path}".encode(),
+                    f"{launcher_path} {worker_call_args_path} && touch {done_path}".encode(),
                     timeout=3,
                 )

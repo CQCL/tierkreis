@@ -46,7 +46,7 @@ if __name__ == "__main__":
     registry_path = Path(__file__).parent / "example_workers"
 
     uv = UvExecutor(registry_path, storage.logs_path)
-    shell = ShellExecutor(registry_path, storage.logs_path)
+    shell = ShellExecutor(registry_path, storage.workflow_dir)
     executor = MultipleExecutor(uv, {"shell": shell}, {"openssl_worker": "shell"})
 
     run_graph(storage, executor, signing_graph().get_data(), {})
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     assert is_verified
 
     storage.clean_graph_files()
-    stdinout = StdInOut(registry_path, storage.logs_path)
+    stdinout = StdInOut(registry_path, storage.workflow_dir)
     executor = MultipleExecutor(uv, {"stdinout": stdinout}, {"genrsa": "stdinout"})
     run_graph(storage, executor, stdinout_graph().get_data(), {})
     out = read_outputs(stdinout_graph().get_data(), storage)

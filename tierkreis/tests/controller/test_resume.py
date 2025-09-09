@@ -112,9 +112,7 @@ def test_resume_eval(
 ):
     g = graph
     storage = storage_class(UUID(int=id), name=name)
-    executor = ShellExecutor(
-        Path("./python/examples/launchers"), logs_path=storage.logs_path
-    )
+    executor = ShellExecutor(Path("./python/examples/launchers"), Path(""))
     if isinstance(storage, ControllerInMemoryStorage):
         executor = InMemoryExecutor(Path("./tierkreis/tierkreis"), storage=storage)
     storage.clean_graph_files()

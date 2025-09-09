@@ -27,5 +27,7 @@ class StdInOutExecutor:
 
         cmd = StdOutIn(input_file, output_file)(cmd)
         cmd = TouchDone(paths.done_path(loc))(cmd)
-        cmd = HandleError(paths.error_path(loc))(cmd)
+        cmd = HandleError(
+            paths.error_path(loc), paths.error_logs_path(loc), paths.logs_path()
+        )(cmd)
         return cmd

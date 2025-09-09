@@ -27,11 +27,15 @@ class TouchDone:
 
 
 class HandleError:
-    def __init__(self, error_path: Path) -> None:
+    def __init__(
+        self, error_path: Path, error_logs_path: Path, logs_path: Path
+    ) -> None:
         self.error_path = error_path
+        self.error_logs_path = error_logs_path
+        self.logs_path = logs_path
 
     def __call__(self, inner_command: str) -> str:
-        return f"{inner_command} || touch {self.error_path}"
+        return f"{inner_command} 2>{self.error_logs_path} 1>{self.logs_path} || touch {self.error_path}"
 
 
 class UvRun:

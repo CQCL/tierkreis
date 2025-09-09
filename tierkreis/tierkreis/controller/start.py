@@ -44,8 +44,6 @@ def start_nodes(
 
 
 def run_command(cmd: str, loc: Loc, paths: Paths) -> None:
-    cmd = HandleError(paths.error_path(loc))(cmd)
-
     with open(paths.outputs_dir(loc).parent / "command", "w+") as fh:
         fh.write(cmd)
 

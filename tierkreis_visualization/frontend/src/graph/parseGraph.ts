@@ -96,6 +96,8 @@ export function parseNodes(
       name: node.function_name,
       status: node.status,
       handles: getHandlesFromEdges(Number(node.id), edges),
+      hidden_handles: undefined,
+      hidden_edges: undefined,
       workflowId: workflowId,
       node_location: node.node_location,
       title: getTitle(node.function_name),
@@ -104,8 +106,7 @@ export function parseNodes(
       pinned: false,
       value: parseNodeValue(node.value),
       setInfo: undefined,
-      setNodes: undefined,
-      setEdges: undefined,
+      is_expanded: false,
     },
     parentId: parentId ? `${parentId}` : undefined,
   }));

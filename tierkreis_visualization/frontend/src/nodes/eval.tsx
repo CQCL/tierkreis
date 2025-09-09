@@ -8,7 +8,7 @@ import { URL } from "@/data/constants";
 import { parseEdges, parseNodes } from "@/graph/parseGraph";
 import { bottomUpLayout } from "@/graph/layoutGraph";
 import { type BackendNode } from "./types";
-import { Plus } from "lucide-react";
+import { Minus, Plus } from "lucide-react";
 
 function replaceEval(
   nodeId: string,
@@ -20,7 +20,7 @@ function replaceEval(
   // replaces an eval node with its nested subgraph
   const oldEdgesCopy: Edge[] = JSON.parse(JSON.stringify(oldEdges));
   // we only care about the last part of the id as number
-  const nodesToRemove = [nodeId];
+  const nodesToRemove: string[] = [];
   newNodes.sort(
     (a, b) =>
       Number(a.id.substring(a.id.lastIndexOf(":"), a.id.length)) -
@@ -90,25 +90,111 @@ function replaceEval(
       }
     }
   });
-  const groupNode = {
-    id: nodeId,
-    type: "group",
-    position: { x: 0, y: 0 },
-    data: {},
-    parentId: oldNodes.find((node) => node.id === nodeId)?.parentId,
-  } as BackendNode;
-  oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
+  oldNodes = oldNodes
+    .map((node) => {
+      if (nodesToRemove.includes(node.id)) {
+        return undefined;
+      }
+      if (node.id === nodeId) {
+        const handles = node.data.handles.inputs.filter(
+          (handle) => !handle.includes("body")
+        );
+        node.position = { x: 0, y: 0 };
+        node.data.hidden_handles = {
+          inputs: handles,
+          outputs: node.data.handles.outputs,
+        };
+        node.data.hidden_edges = oldEdges.filter(
+          (edge) =>
+            (edge.target === nodeId || edge.source === nodeId) &&
+            edge.label !== "Graph Body"
+        );
+        node.data.handles = { inputs: [], outputs: [] };
+        node.data.is_expanded = true;
+      }
+      return node;
+    })
+    .filter((node): node is BackendNode => node !== undefined);
   const tmpEdges = oldEdgesCopy.filter(
     (edge) => edge.target !== nodeId && edge.source !== nodeId
   );
   return {
-    nodes: [groupNode, ...oldNodes, ...newNodes],
+    nodes: [...oldNodes, ...newNodes],
     edges: [...tmpEdges, ...newEdges],
+  };
+}
+
+function hideChildren(
+  nodeId: string,
+  oldNodes: BackendNode[],
+  oldEdges: Edge[]
+) {
+  let hidden_edges: Edge[] = [];
+  oldNodes = oldNodes
+    .map((node) => {
+      if (node.parentId?.startsWith(nodeId)) {
+        return undefined;
+      }
+      if (node.id === nodeId) {
+        hidden_edges = node.data.hidden_edges ?? [];
+        node.position = { x: 0, y: 0 };
+        node.data.handles = node.data.hidden_handles ?? {
+          inputs: [],
+          outputs: [],
+        };
+        node.data.is_expanded = false;
+        node.style = {
+          width: 180,
+          height: 130,
+        };
+      }
+      return node;
+    })
+    .filter((node): node is BackendNode => node !== undefined);
+
+  oldEdges.filter(
+    (edge) =>
+      edge.target.startsWith(nodeId + ":") &&
+      edge.source.startsWith(nodeId + ":")
+  );
+  return {
+    nodes: [...oldNodes],
+    edges: [...oldEdges, ...hidden_edges],
   };
 }
 
 export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
   const reactFlowInstance = useReactFlow<BackendNode, Edge>();
+  if (node_data.is_expanded) {
+    const collapseSelf = (nodeId: string) => {
+      const oldEdges = reactFlowInstance.getEdges();
+      const oldNodes = reactFlowInstance.getNodes();
+      const { nodes: newNodes, edges: newEdges } = hideChildren(
+        nodeId,
+        oldNodes,
+        oldEdges
+      );
+      const positionedNodes = bottomUpLayout(newNodes, newEdges);
+      reactFlowInstance.setNodes(positionedNodes);
+      reactFlowInstance.setEdges(newEdges);
+    };
+    return (
+      <NodeStatusIndicator status={node_data.status}>
+        <div className="grid justify-items-end">
+          <Button
+            className="z-index-5"
+            variant="secondary"
+            size="icon"
+            onClick={() => {
+              collapseSelf(node_data.id);
+            }}
+          >
+            <Minus />
+          </Button>
+        </div>
+      </NodeStatusIndicator>
+    );
+  }
   const loadChildren = async (
     workflowId: string,
     node_location: string,
@@ -137,6 +223,7 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
         reactFlowInstance.setEdges(newEdges);
       });
   };
+
   return (
     <NodeStatusIndicator status={node_data.status}>
       <Card className="w-[180px]">

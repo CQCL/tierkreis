@@ -15,6 +15,11 @@ export type BackendNode = Node<{
     inputs: string[];
     outputs: string[];
   };
+  hidden_handles?: {
+    inputs: string[];
+    outputs: string[];
+  };
+  hidden_edges?: Edge[];
   workflowId: string;
   node_location: string;
   id: string;
@@ -23,5 +28,6 @@ export type BackendNode = Node<{
   pinned: boolean;
   value: string | null;
   setInfo?: (info: InfoProps) => void;
+  is_expanded: boolean;
 }>;
 export type AppNode = BackendNode;

@@ -4,7 +4,6 @@ import dagre from "@dagrejs/dagre";
 import { Edge } from "@xyflow/react";
 import { nodeHeight, nodeWidth } from "@/data/constants";
 import { CSSProperties } from "react";
-import { InfoProps } from "@/components/types";
 
 function nodeType(function_name: string) {
   if (function_name.match(/^L?\d+$/)) {
@@ -71,8 +70,8 @@ function parseNodeValue(value: unknown): string | null {
     return null;
   }
   if (typeof value === "string") {
-    if (value.length > 5) {
-      return value.slice(0, 5) + "...";
+    if (value.length > 10) {
+      return value.slice(0, 10) + "...";
     }
     return value;
   }

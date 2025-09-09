@@ -4,7 +4,7 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from time import time_ns
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from tierkreis.controller.data.core import PortID
@@ -52,9 +52,17 @@ class ControllerFileStorage:
         if self.workflow_dir.exists():
             shutil.move(self.workflow_dir, tmp_dir)
 
+    def _write(
+        self, path: Path, contents: str | bytes, mode: Literal["w+", "wb+"] = "w+"
+    ) -> None:
+        with open(path, mode) as fh:
+            fh.write(contents)
+
     def write_node_def(self, node_location: Loc, node: NodeDef):
-        with open(self.paths.nodedef_path(node_location), "w+") as fh:
-            fh.write(NodeDefModel(root=node).model_dump_json())
+        self._write(
+            self.paths.nodedef_path(node_location),
+            NodeDefModel(root=node).model_dump_json(),
+        )
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
         with open(self.paths.nodedef_path(node_location)) as fh:
@@ -83,8 +91,7 @@ class ControllerFileStorage:
             error_path=self.paths.error_path(node_location).relative_to(self.tkr_dir),
             logs_path=self.logs_path.relative_to(self.tkr_dir),
         )
-        with open(call_args_path, "w+") as fh:
-            fh.write(node_definition.model_dump_json())
+        self._write(call_args_path, node_definition.model_dump_json())
 
         if (parent := node_location.parent()) is not None:
             self.paths.metadata_path(parent).touch()
@@ -121,8 +128,7 @@ class ControllerFileStorage:
         self, node_location: Loc, output_name: PortID, value: bytes
     ) -> Path:
         output_path = self.paths.output_path(node_location, output_name)
-        with open(output_path, "wb+") as fh:
-            fh.write(bytes(value))
+        self._write(output_path, bytes(value), "wb+")
         return output_path
 
     def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
@@ -136,8 +142,7 @@ class ControllerFileStorage:
             return fh.read()
 
     def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
-        with open(self.paths.error_logs_path(node_location), "w+") as fh:
-            fh.write(error_logs)
+        self._write(self.paths.error_logs_path(node_location), error_logs)
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
         dir_list = list(self.paths.outputs_dir(node_location).iterdir())
@@ -160,12 +165,10 @@ class ControllerFileStorage:
             self.paths.metadata_path(parent).touch()
 
     def write_metadata(self, node_location: Loc) -> None:
-        with open(self.paths.metadata_path(node_location), "w+") as fh:
-            fh.write(
-                json.dumps(
-                    {"name": self.name, "start_time": datetime.now().isoformat()}
-                )
-            )
+        self._write(
+            self.paths.metadata_path(node_location),
+            json.dumps({"name": self.name, "start_time": datetime.now().isoformat()}),
+        )
 
     def read_metadata(self, node_location: Loc) -> dict[str, Any]:
         with open(self.paths.metadata_path(node_location)) as fh:

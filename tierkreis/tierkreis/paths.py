@@ -19,7 +19,6 @@ class Paths:
 
     def _create_path(self, node_location: Loc, names: list[str]) -> Path:
         path = self.workflow_dir / str(node_location) / "/".join(names)
-        path.parent.mkdir(parents=True, exist_ok=True)
         return path
 
     def nodedef_path(self, node_location: Loc) -> Path:

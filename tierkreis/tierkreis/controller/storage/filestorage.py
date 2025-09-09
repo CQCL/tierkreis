@@ -55,6 +55,7 @@ class ControllerFileStorage:
     def _write(
         self, path: Path, contents: str | bytes, mode: Literal["w+", "wb+"] = "w+"
     ) -> None:
+        path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, mode) as fh:
             fh.write(contents)
 
@@ -92,6 +93,7 @@ class ControllerFileStorage:
             logs_path=self.logs_path.relative_to(self.tkr_dir),
         )
         self._write(call_args_path, node_definition.model_dump_json())
+        self.paths.outputs_dir(node_location).mkdir(parents=True, exist_ok=True)
 
         if (parent := node_location.parent()) is not None:
             self.paths.metadata_path(parent).touch()

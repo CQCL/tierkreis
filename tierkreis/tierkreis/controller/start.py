@@ -44,7 +44,7 @@ def start_nodes(
 
 
 def run_command(cmd: str, loc: Loc, paths: Paths) -> None:
-    cmd = HandleError(str(paths.error_path(loc)))(cmd)
+    cmd = HandleError(paths.error_path(loc))(cmd)
 
     with open(paths.logs_path(), "a") as lfh:
         with open(paths.error_logs_path(loc), "a") as efh:

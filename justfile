@@ -41,6 +41,7 @@ examples:
   {{uvrun}} examples/hamiltonian_graph.py
   {{uvrun}} examples/qsci_graph.py
   {{uvrun}} examples/signing_graph.py
+  {{uvrun}} examples/mpi_worker/mpi_graph.py
 
 stubs-generate dir:
   #!/usr/bin/env bash

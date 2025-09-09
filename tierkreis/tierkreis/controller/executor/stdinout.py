@@ -26,8 +26,8 @@ class StdInOutExecutor:
         cmd = f"{self.launchers_path}/{launcher_name}"
 
         cmd = StdOutIn(input_file, output_file)(cmd)
-        cmd = TouchDone(paths.done_path(loc))(cmd)
         cmd = HandleError(
             paths.error_path(loc), paths.error_logs_path(loc), paths.logs_path()
         )(cmd)
+        cmd = TouchDone(paths.done_path(loc))(cmd)
         return cmd

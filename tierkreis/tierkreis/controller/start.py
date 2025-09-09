@@ -5,6 +5,7 @@ import sys
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.executor.builtins import BuiltinsExecutor
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.storage.adjacency import outputs_iter
 from tierkreis.paths import Paths
@@ -90,11 +91,10 @@ def start(
             # In-memory executor is an exception: it runs the command itself.
             executor.command(launcher_name, storage.paths.workflow_id, loc, call_args)
         elif launcher_name == "builtins":
-            run_command(
-                f"{sys.executable} {PACKAGE_PATH}/tierkreis/builtins/main.py {args_path}",
-                loc,
-                storage.paths,
+            cmd = BuiltinsExecutor().command(
+                launcher_name, storage.paths.workflow_id, loc, call_args
             )
+            run_command(cmd, loc, storage.paths)
         else:
             cmd = executor.command(
                 launcher_name, storage.paths.workflow_id, loc, call_args

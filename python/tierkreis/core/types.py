@@ -266,8 +266,9 @@ class TierkreisType(ABC):
             result = VecType(element)
         elif name == "struct":
             struct_type = cast(pg.StructType, out_type)
+            _, struct_type_name = betterproto.which_one_of(struct_type, "name_opt")
             result = StructType(
-                Row.from_proto_rowtype(struct_type.shape), struct_type.name or None
+                Row.from_proto_rowtype(struct_type.shape), struct_type_name
             )
         elif name == "map":
             map_type = cast(pg.PairType, out_type)

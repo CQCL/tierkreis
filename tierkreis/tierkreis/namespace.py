@@ -70,8 +70,9 @@ class Namespace:
         interface = args[1]
         namespace = cls(interface.name, models=set(models))
         for f in interface.methods:
-            model = next(x for x in models if x.t == f.return_type)
-            f.return_type_is_portmapping = model.is_portmapping
+            model = next((x for x in models if x.t == f.return_type), None)
+            if model is not None:
+                f.return_type_is_portmapping = model.is_portmapping
             namespace.methods.append(f)
 
         return namespace

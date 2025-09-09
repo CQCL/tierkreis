@@ -16,7 +16,7 @@ class HPCExecutor(Protocol):
     errors_path: Path
     spec: JobSpec
     script_fn: Callable[[JobSpec], str]
-    command: str
+    sbatch_command: str
 
 
 def generate_script(
@@ -40,7 +40,7 @@ def run_hpc_executor(
     logger.info("START %s %s", launcher_name, worker_call_args_path)
 
     executor.spec.command += " " + str(worker_call_args_path)
-    submission_cmd = [executor.command]
+    submission_cmd = [executor.sbatch_command]
     if executor.spec.output_path is None:
         submission_cmd += ["-o", str(executor.logs_path)]
     else:

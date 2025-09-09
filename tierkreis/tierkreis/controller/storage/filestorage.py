@@ -15,6 +15,7 @@ from tierkreis.controller.data.location import (
     WorkerCallArgs,
 )
 from tierkreis.exceptions import TierkreisError
+from tierkreis.paths import Paths
 
 
 class ControllerFileStorage:
@@ -42,46 +43,7 @@ class ControllerFileStorage:
         self.name = name
         if do_cleanup:
             self.clean_graph_files()
-
-    def _nodedef_path(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "nodedef"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _worker_call_args_path(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "definition"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _metadata_path(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "_metadata"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _outputs_dir(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "outputs"
-        path.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _output_path(self, node_location: Loc, port_name: PortID) -> Path:
-        path = self._outputs_dir(node_location) / port_name
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _done_path(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "_done"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _error_path(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "_error"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
-
-    def _error_logs_path(self, node_location: Loc) -> Path:
-        path = self.workflow_dir / str(node_location) / "errors"
-        path.parent.mkdir(parents=True, exist_ok=True)
-        return path
+        self.paths = Paths(workflow_id, tierkreis_directory)
 
     def clean_graph_files(self) -> None:
         uid = os.getuid()
@@ -91,11 +53,11 @@ class ControllerFileStorage:
             shutil.move(self.workflow_dir, tmp_dir)
 
     def write_node_def(self, node_location: Loc, node: NodeDef):
-        with open(self._nodedef_path(node_location), "w+") as fh:
+        with open(self.paths.nodedef_path(node_location), "w+") as fh:
             fh.write(NodeDefModel(root=node).model_dump_json())
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        with open(self._nodedef_path(node_location)) as fh:
+        with open(self.paths.nodedef_path(node_location)) as fh:
             return NodeDefModel(**json.load(fh)).root
 
     def write_worker_call_args(
@@ -105,32 +67,32 @@ class ControllerFileStorage:
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
     ) -> Path:
-        call_args_path = self._worker_call_args_path(node_location)
+        call_args_path = self.paths.worker_call_args_path(node_location)
         node_definition = WorkerCallArgs(
             function_name=function_name,
             inputs={
-                k: self._output_path(loc, port).relative_to(self.tkr_dir)
+                k: self.paths.output_path(loc, port).relative_to(self.tkr_dir)
                 for k, (loc, port) in inputs.items()
             },
             outputs={
-                k: self._output_path(node_location, k).relative_to(self.tkr_dir)
+                k: self.paths.output_path(node_location, k).relative_to(self.tkr_dir)
                 for k in output_list
             },
-            output_dir=self._outputs_dir(node_location).relative_to(self.tkr_dir),
-            done_path=self._done_path(node_location).relative_to(self.tkr_dir),
-            error_path=self._error_path(node_location).relative_to(self.tkr_dir),
+            output_dir=self.paths.outputs_dir(node_location).relative_to(self.tkr_dir),
+            done_path=self.paths.done_path(node_location).relative_to(self.tkr_dir),
+            error_path=self.paths.error_path(node_location).relative_to(self.tkr_dir),
             logs_path=self.logs_path.relative_to(self.tkr_dir),
         )
         with open(call_args_path, "w+") as fh:
             fh.write(node_definition.model_dump_json())
 
         if (parent := node_location.parent()) is not None:
-            self._metadata_path(parent).touch()
+            self.paths.metadata_path(parent).touch()
 
         return call_args_path.relative_to(self.tkr_dir)
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
-        node_definition_path = self._worker_call_args_path(node_location)
+        node_definition_path = self.paths.worker_call_args_path(node_location)
         with open(node_definition_path, "r") as fh:
             return WorkerCallArgs(**json.load(fh))
 
@@ -141,10 +103,10 @@ class ControllerFileStorage:
         old_location: Loc,
         old_port: PortID,
     ) -> None:
-        new_dir = self._output_path(new_location, new_port)
+        new_dir = self.paths.output_path(new_location, new_port)
         new_dir.parent.mkdir(parents=True, exist_ok=True)
         try:
-            os.link(self._output_path(old_location, old_port), new_dir)
+            os.link(self.paths.output_path(old_location, old_port), new_dir)
         except FileNotFoundError as e:
             raise TierkreisError(
                 f"Could not link {e.filename} to {e.filename2}."
@@ -158,47 +120,47 @@ class ControllerFileStorage:
     def write_output(
         self, node_location: Loc, output_name: PortID, value: bytes
     ) -> Path:
-        output_path = self._output_path(node_location, output_name)
+        output_path = self.paths.output_path(node_location, output_name)
         with open(output_path, "wb+") as fh:
             fh.write(bytes(value))
         return output_path
 
     def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
-        with open(self._output_path(node_location, output_name), "rb") as fh:
+        with open(self.paths.output_path(node_location, output_name), "rb") as fh:
             return fh.read()
 
     def read_errors(self, node_location: Loc) -> str:
-        if not self._error_logs_path(node_location).exists():
+        if not self.paths.error_logs_path(node_location).exists():
             return ""
-        with open(self._error_logs_path(node_location), "r") as fh:
+        with open(self.paths.error_logs_path(node_location), "r") as fh:
             return fh.read()
 
     def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
-        with open(self._error_logs_path(node_location), "w+") as fh:
+        with open(self.paths.error_logs_path(node_location), "w+") as fh:
             fh.write(error_logs)
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
-        dir_list = list(self._outputs_dir(node_location).iterdir())
+        dir_list = list(self.paths.outputs_dir(node_location).iterdir())
         dir_list.sort()
         return [x.name for x in dir_list if x.is_file()]
 
     def is_node_started(self, node_location: Loc) -> bool:
-        return Path(self._nodedef_path(node_location)).exists()
+        return Path(self.paths.nodedef_path(node_location)).exists()
 
     def is_node_finished(self, node_location: Loc) -> bool:
-        return self._done_path(node_location).exists()
+        return self.paths.done_path(node_location).exists()
 
     def node_has_error(self, node_location: Loc) -> bool:
-        return self._error_path(node_location).exists()
+        return self.paths.error_path(node_location).exists()
 
     def mark_node_finished(self, node_location: Loc) -> None:
-        self._done_path(node_location).touch()
+        self.paths.done_path(node_location).touch()
 
         if (parent := node_location.parent()) is not None:
-            self._metadata_path(parent).touch()
+            self.paths.metadata_path(parent).touch()
 
     def write_metadata(self, node_location: Loc) -> None:
-        with open(self._metadata_path(node_location), "w+") as fh:
+        with open(self.paths.metadata_path(node_location), "w+") as fh:
             fh.write(
                 json.dumps(
                     {"name": self.name, "start_time": datetime.now().isoformat()}
@@ -206,5 +168,5 @@ class ControllerFileStorage:
             )
 
     def read_metadata(self, node_location: Loc) -> dict[str, Any]:
-        with open(self._metadata_path(node_location)) as fh:
+        with open(self.paths.metadata_path(node_location)) as fh:
             return json.load(fh)

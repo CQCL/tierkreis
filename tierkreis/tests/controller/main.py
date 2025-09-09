@@ -5,7 +5,6 @@
 # [tool.uv.sources]
 # tierkreis = { path = "../../../tierkreis", editable = true }
 # ///
-from pathlib import Path
 from time import sleep
 from sys import argv
 
@@ -20,10 +19,5 @@ def sleep_and_return[T](*, output: T) -> Value[T]:
     return Value(value=output)
 
 
-def main() -> None:
-    node_definition_path = argv[1]
-    worker.run(Path(node_definition_path))
-
-
 if __name__ == "__main__":
-    main()
+    worker.app(argv)

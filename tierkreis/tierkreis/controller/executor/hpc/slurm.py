@@ -100,10 +100,14 @@ class SLURMExecutor:
         self.errors_path = logs_path
         self.spec = spec
         self.script_fn: Callable[[JobSpec], str] = generate_slurm_script
-        self.command = command
+        self.sbatch_command = command
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         self.errors_path = (
             self.logs_path.parent.parent / worker_call_args_path.parent / "errors"
         )
         run_hpc_executor(self, launcher_name, worker_call_args_path)
+
+    def command(self, launcher_name: str, worker_call_args_path: Path) -> str:
+        self.run(launcher_name, worker_call_args_path)
+        return 'echo "Already run."'

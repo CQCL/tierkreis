@@ -2049,6 +2049,7 @@ version = "2.0.1"
 source = { editable = "tierkreis" }
 dependencies = [
     { name = "pydantic" },
+    { name = "pydantic-settings" },
 ]
 
 [package.dev-dependencies]
@@ -2061,7 +2062,10 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "pydantic", specifier = "~=2.5" }]
+requires-dist = [
+    { name = "pydantic", specifier = "~=2.5" },
+    { name = "pydantic-settings", specifier = ">=2.10.1" },
+]
 
 [package.metadata.requires-dev]
 build = [{ name = "build", extras = ["uv"] }]

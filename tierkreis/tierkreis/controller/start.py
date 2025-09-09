@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import json
 from logging import getLogger
 import logging
 from pathlib import Path
@@ -10,12 +9,13 @@ from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.storage.adjacency import outputs_iter
+from tierkreis.paths import Paths
 from tierkreis.runner.commands import TouchError
 from typing_extensions import assert_never
 
 from tierkreis.consts import PACKAGE_PATH
 from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
-from tierkreis.controller.data.location import Loc, OutputLoc, WorkerCallArgs
+from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
@@ -69,14 +69,11 @@ def run_builtin(def_path: Path, logs_path: Path) -> None:
         )
 
 
-def run_command(cmd: str, call_args_path: Path) -> None:
-    with open(call_args_path) as fh:
-        call_args = WorkerCallArgs(**json.load(fh))
+def run_command(cmd: str, loc: Loc, paths: Paths) -> None:
+    cmd = TouchError(str(paths.error_path(loc)))(cmd)
 
-    cmd = TouchError(str(call_args.error_path.parent / "_error"))(cmd)
-
-    with open(call_args.logs_path or call_args.error_path, "a") as lfh:
-        with open(call_args.error_path, "a") as efh:
+    with open(paths.logs_path(), "a") as lfh:
+        with open(paths.error_logs_path(loc), "a") as efh:
             proc = subprocess.Popen(
                 ["bash"],
                 start_new_session=True,
@@ -123,7 +120,7 @@ def start(
             run_builtin(call_args_path, storage.logs_path)
         else:
             cmd = executor.command(launcher_name, call_args_path)
-            run_command(cmd, call_args_path)
+            run_command(cmd, node_location, storage.paths)
 
     elif node.type == "input":
         input_loc = parent.N(-1)

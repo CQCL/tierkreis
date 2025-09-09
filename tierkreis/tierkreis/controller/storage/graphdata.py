@@ -18,6 +18,7 @@ from tierkreis.controller.data.location import (
 )
 from tierkreis.exceptions import TierkreisError
 from tierkreis.controller.storage.in_memory import NodeData
+from tierkreis.paths import Paths
 
 
 class GraphDataStorage:
@@ -32,6 +33,7 @@ class GraphDataStorage:
         self.nodes: dict[Loc, NodeData] = {}
         self.graph = graph
         self.logs_path = Path("")
+        self.paths = Paths(workflow_id)
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None:
         raise NotImplementedError("GraphDataStorage is read only storage.")

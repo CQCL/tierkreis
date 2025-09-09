@@ -44,7 +44,7 @@ class LoopOutput(TNamedModel, Protocol):
 
 
 def script(script_name: str, input: TKR[bytes]) -> Function[TKR[bytes]]:
-    class tmp(NamedTuple):
+    class exec_script(NamedTuple):
         input: TKR[bytes]
 
         @staticmethod
@@ -55,7 +55,7 @@ def script(script_name: str, input: TKR[bytes]) -> Function[TKR[bytes]]:
         def namespace(self) -> str:
             return script_name
 
-    return tmp(input=input)
+    return exec_script(input=input)
 
 
 class GraphBuilder[Inputs: TModel, Outputs: TModel]:

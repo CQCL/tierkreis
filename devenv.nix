@@ -6,6 +6,7 @@
     pkgs.just
     pkgs.graphviz
     pkgs.openmpi
+    pkgs.nlohmann_json
   ] ++ lib.optionals pkgs.stdenv.isDarwin (with pkgs.darwin.apple_sdk; [
     frameworks.CoreServices
     frameworks.CoreFoundation
@@ -31,7 +32,7 @@
     enable = true;
     bun.enable = true;
     bun.install.enable = true;
-    directory = "./tierkreis_visualization";
+    directory = "./tierkreis_visualization/frontend";
   };
 
   languages.cplusplus.enable = true;

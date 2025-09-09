@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <numeric>
-#include "json.hpp"
+#include <nlohmann/json.hpp>
 #include <mpi.h>
 
 // Use the nlohmann namespace for JSON parsing

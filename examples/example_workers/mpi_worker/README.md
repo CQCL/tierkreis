@@ -12,7 +12,7 @@ To showcase how to include cpp applications into tierkreis.
 ## MPI project
 
 To build and run, make sure you have `mpi` and `n_lohmann/json` installed on your machine.
-Make sure the target will have the same name as the interface defined in the typespec
+Make sure the target will have the same name as the interface defined in the typespec.
 
 ```sh
 mkdir build && cd build

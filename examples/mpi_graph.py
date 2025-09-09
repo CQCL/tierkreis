@@ -3,7 +3,7 @@
 # dependencies = ["tierkreis"]
 #
 # [tool.uv.sources]
-# tierkreis = { path = "../../tierkreis", editable = true }
+# tierkreis = { path = "../tierkreis", editable = true }
 # ///
 import json
 from pathlib import Path
@@ -17,16 +17,17 @@ from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.exceptions import TierkreisError
 from tierkreis.storage import read_outputs
 
-from stubs import double
+from example_workers.mpi_worker.stubs import double
 
 
 class CustomExecutor:
     def __init__(
-        self, registry_path: Path, logs_path: Path, n_processes: int = 4
+        self, registry_path: Path, workflow_dir: Path, n_processes: int = 4
     ) -> None:
         self.launchers_path = registry_path
-        self.logs_path = logs_path
-        self.errors_path = logs_path
+        self.logs_path = workflow_dir / "logs"
+        self.errors_path = workflow_dir / "logs"
+        self.workflow_dir = workflow_dir
         self.command = [
             "mpirun",
             "-n",
@@ -35,13 +36,18 @@ class CustomExecutor:
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         launcher_path = self.launchers_path / launcher_name
-        self.errors_path = worker_call_args_path.parent / "errors"
+        self.errors_path = (
+            self.workflow_dir.parent / worker_call_args_path.parent / "errors"
+        )
         if not launcher_path.exists():
             raise TierkreisError(f"Launcher not found: {launcher_name}.")
 
         if not launcher_path.is_file():
             raise TierkreisError(f"Expected launcher file. Found: {launcher_path}.")
-        self.command += [str(launcher_path), str(worker_call_args_path)]
+        self.command += [
+            str(launcher_path),
+            str(self.workflow_dir.parent / worker_call_args_path),
+        ]
         with open(self.logs_path, "a") as lfh:
             with open(self.errors_path, "a") as efh:
                 subprocess.Popen(
@@ -63,8 +69,10 @@ def run() -> None:
     workflow_id = UUID(int=25)
     storage = ControllerFileStorage(workflow_id, name="mpi_builder", do_cleanup=True)
     graph = mpi_doubler()
-    registry_path = Path(__file__).parent / "build"
-    executor = CustomExecutor(registry_path=registry_path, logs_path=storage.logs_path)
+    registry_path = Path(__file__).parent / "example_workers/mpi_worker/build"
+    executor = CustomExecutor(
+        registry_path=registry_path, workflow_dir=storage.workflow_dir
+    )
     inputs = json.dumps([10, 20, 30, 40])
     run_graph(storage, executor, graph.data, inputs)
     output = read_outputs(graph, storage)

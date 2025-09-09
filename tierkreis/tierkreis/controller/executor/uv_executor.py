@@ -5,7 +5,7 @@ from uuid import UUID
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.consts import BASH_TKR_DIR
 from tierkreis.paths import Paths
-from tierkreis.runner.commands import UvRun, WithCallArgs
+from tierkreis.runner.commands import HandleError, TouchDone, UvRun, WithCallArgs
 
 logger = logging.getLogger(__name__)
 
@@ -24,4 +24,6 @@ class UvExecutor:
         cmd = f"{self.launchers_path}/{launcher_name}/main.py"
         cmd = WithCallArgs(paths.worker_call_args_path(loc))(cmd)
         cmd = UvRun(f"{self.launchers_path}/{launcher_name}")(cmd)
+        cmd = TouchDone(paths.done_path(loc))(cmd)
+        cmd = HandleError(paths.error_path(loc))(cmd)
         return cmd

@@ -3,7 +3,7 @@ from uuid import UUID
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.consts import BASH_TKR_DIR
 from tierkreis.paths import Paths
-from tierkreis.runner.commands import WithCallArgs, TouchDone
+from tierkreis.runner.commands import HandleError, WithCallArgs, TouchDone
 
 
 class ShellExecutor:
@@ -20,4 +20,5 @@ class ShellExecutor:
         cmd = f"{self.launchers_path}/{launcher_name}/main.sh"
         cmd = WithCallArgs(paths.worker_call_args_path(loc))(cmd)
         cmd = TouchDone(paths.done_path(loc))(cmd)
+        cmd = HandleError(paths.error_path(loc))(cmd)
         return cmd

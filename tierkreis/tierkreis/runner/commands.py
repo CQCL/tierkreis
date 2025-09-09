@@ -27,7 +27,7 @@ class TouchDone:
 
 
 class HandleError:
-    def __init__(self, error_path: str) -> None:
+    def __init__(self, error_path: Path) -> None:
         self.error_path = error_path
 
     def __call__(self, inner_command: str) -> str:

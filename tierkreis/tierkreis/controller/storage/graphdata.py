@@ -53,7 +53,7 @@ class GraphDataStorage:
         function_name: str,
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
-    ) -> Path:
+    ) -> WorkerCallArgs:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:

@@ -86,7 +86,7 @@ class ControllerInMemoryStorage:
         function_name: str,
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
-    ) -> Path:
+    ) -> WorkerCallArgs:
         node_path = self.loc_to_path(node_location)
         call_args = WorkerCallArgs(
             function_name=function_name,
@@ -106,7 +106,7 @@ class ControllerInMemoryStorage:
         if (parent := node_location.parent()) is not None:
             self.nodes[self.loc_to_path(parent)].metadata = {}
 
-        return node_path
+        return call_args
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         if result := self.nodes[self.loc_to_path(node_location)].call_args:

@@ -79,7 +79,8 @@ def start(
         name = node.function_name
         launcher_name = ".".join(name.split(".")[:-1])
         name = name.split(".")[-1]
-        args_path = storage.write_worker_call_args(loc, name, ins, output_list)
+        call_args = storage.write_worker_call_args(loc, name, ins, output_list)
+        args_path = storage.paths.worker_call_args_path(loc)
         logger.debug(f"Executing {(str(loc), name, ins, output_list)}")
 
         is_in_memory = isinstance(storage, ControllerInMemoryStorage) and isinstance(
@@ -87,7 +88,7 @@ def start(
         )
         if is_in_memory:
             # In-memory executor is an exception: it runs the command itself.
-            executor.command(launcher_name, storage.paths.workflow_id, loc)
+            executor.command(launcher_name, storage.paths.workflow_id, loc, call_args)
         elif launcher_name == "builtins":
             run_command(
                 f"{sys.executable} {PACKAGE_PATH}/tierkreis/builtins/main.py {args_path}",
@@ -95,7 +96,9 @@ def start(
                 storage.paths,
             )
         else:
-            cmd = executor.command(launcher_name, storage.paths.workflow_id, loc)
+            cmd = executor.command(
+                launcher_name, storage.paths.workflow_id, loc, call_args
+            )
             run_command(cmd, loc, storage.paths)
 
     elif node.type == "input":

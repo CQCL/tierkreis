@@ -62,7 +62,7 @@ class ControllerStorage(Protocol):
         function_name: str,
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
-    ) -> Path:
+    ) -> WorkerCallArgs:
         """Stores the call arguments for the function node at the given location.
 
         Function nodes will always be invoked by a worker.

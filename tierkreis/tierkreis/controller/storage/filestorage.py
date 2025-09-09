@@ -75,7 +75,7 @@ class ControllerFileStorage:
         function_name: str,
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
-    ) -> Path:
+    ) -> WorkerCallArgs:
         call_args_path = self.paths.worker_call_args_path(node_location)
         node_definition = WorkerCallArgs(
             function_name=function_name,
@@ -98,7 +98,7 @@ class ControllerFileStorage:
         if (parent := node_location.parent()) is not None:
             self.paths.metadata_path(parent).touch()
 
-        return call_args_path.relative_to(self.tkr_dir)
+        return node_definition
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         node_definition_path = self.paths.worker_call_args_path(node_location)

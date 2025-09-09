@@ -8,6 +8,7 @@ import { URL } from "@/data/constants";
 import { parseEdges, parseNodes } from "@/graph/parseGraph";
 import { bottomUpLayout } from "@/graph/layoutGraph";
 import { type BackendNode } from "./types";
+import { hideChildren } from "./hide_children";
 import { Minus, Plus } from "lucide-react";
 
 function replaceEval(
@@ -90,6 +91,8 @@ function replaceEval(
       }
     }
   });
+  // remove the body nodes (might not want to do that in the future)
+  // update the internal state of the eval node
   oldNodes = oldNodes
     .map((node) => {
       if (nodesToRemove.includes(node.id)) {
@@ -121,45 +124,6 @@ function replaceEval(
   return {
     nodes: [...oldNodes, ...newNodes],
     edges: [...tmpEdges, ...newEdges],
-  };
-}
-
-function hideChildren(
-  nodeId: string,
-  oldNodes: BackendNode[],
-  oldEdges: Edge[]
-) {
-  let hidden_edges: Edge[] = [];
-  oldNodes = oldNodes
-    .map((node) => {
-      if (node.parentId?.startsWith(nodeId)) {
-        return undefined;
-      }
-      if (node.id === nodeId) {
-        hidden_edges = node.data.hidden_edges ?? [];
-        node.position = { x: 0, y: 0 };
-        node.data.handles = node.data.hidden_handles ?? {
-          inputs: [],
-          outputs: [],
-        };
-        node.data.is_expanded = false;
-        node.style = {
-          width: 180,
-          height: 130,
-        };
-      }
-      return node;
-    })
-    .filter((node): node is BackendNode => node !== undefined);
-
-  oldEdges.filter(
-    (edge) =>
-      edge.target.startsWith(nodeId + ":") &&
-      edge.source.startsWith(nodeId + ":")
-  );
-  return {
-    nodes: [...oldNodes],
-    edges: [...oldEdges, ...hidden_edges],
   };
 }
 

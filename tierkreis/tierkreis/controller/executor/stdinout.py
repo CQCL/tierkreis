@@ -6,7 +6,7 @@ from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.exceptions import TierkreisError
 
 
-class ShellExecutor:
+class StdInOut:
     """Executes workers in an unix shell.
 
     Implements: :py:class:`tierkreis.controller.executor.protocol.ControllerExecutor`
@@ -21,7 +21,6 @@ class ShellExecutor:
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         launcher_path = self.launchers_path / launcher_name
         self.errors_path = worker_call_args_path.parent / "errors"
-
         if not launcher_path.exists():
             raise TierkreisError(f"Launcher not found: {launcher_name}.")
 
@@ -37,6 +36,8 @@ class ShellExecutor:
         with open(self.workflow_dir.parent / worker_call_args_path) as fh:
             call_args = WorkerCallArgs(**json.load(fh))
 
+        input_file = self.workflow_dir.parent / list(call_args.inputs.values())[0]
+        output_file = self.workflow_dir.parent / list(call_args.outputs.values())[0]
         done_path = self.workflow_dir.parent / call_args.done_path
 
         with open(self.workflow_dir.parent / self.logs_path, "a") as lfh:
@@ -49,6 +50,6 @@ class ShellExecutor:
                     stdout=lfh,
                 )
                 proc.communicate(
-                    f"{launcher_path} {worker_call_args_path} && touch {done_path}".encode(),
+                    f"{launcher_path} <{input_file} >{output_file} && touch {done_path}".encode(),
                     timeout=3,
                 )

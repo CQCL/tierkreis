@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from inspect import isclass
-from typing import Any, Callable, Protocol, overload
+from typing import Any, Callable, NamedTuple, Protocol, overload, runtime_checkable
 
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.controller.data.models import (
@@ -22,6 +22,7 @@ class TList[T: TModel]:
     _value: T
 
 
+@runtime_checkable
 class Function[Out](TNamedModel, Protocol):
     @property
     def namespace(self) -> str: ...
@@ -40,6 +41,21 @@ class TypedGraphRef[Ins: TModel, Outs: TModel]:
 class LoopOutput(TNamedModel, Protocol):
     @property
     def should_continue(self) -> TKR[bool]: ...
+
+
+def script(script_name: str, input: TKR[bytes]) -> Function[TKR[bytes]]:
+    class exec_script(NamedTuple):
+        input: TKR[bytes]
+
+        @staticmethod
+        def out() -> type[TKR[bytes]]:
+            return TKR[bytes]
+
+        @property
+        def namespace(self) -> str:
+            return script_name
+
+    return exec_script(input=input)
 
 
 class GraphBuilder[Inputs: TModel, Outputs: TModel]:

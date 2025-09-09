@@ -142,8 +142,6 @@ class Worker:
 
         function(node_definition)
 
-        self.storage.mark_done(node_definition.done_path)
-
     def write_stubs(self, stubs_path: Path) -> None:
         """Writes the type stubs to stubs_path.
 

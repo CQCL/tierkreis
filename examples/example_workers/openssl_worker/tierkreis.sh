@@ -3,7 +3,7 @@
 # Boilerplate for reading WorkerCallArgs in Bash.
 
 worker_call_args_file=$1
-checkpoints_directory=~/.tierkreis/checkpoints
+checkpoints_directory=${TKR_DIR:-~/.tierkreis/checkpoints}
 
 echo "START openssl_worker $worker_call_args_file"
 echo $(jq "." $worker_call_args_file)

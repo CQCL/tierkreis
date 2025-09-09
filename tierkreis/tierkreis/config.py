@@ -3,7 +3,7 @@ from pydantic_settings import BaseSettings
 
 
 class Settings(BaseSettings):
-    tkr_checkpoints: Path = Path.home() / ".tierkreis" / "checkpoints"
+    tkr_dir: Path = Path.home() / ".tierkreis"
 
 
 CONFIG = Settings()

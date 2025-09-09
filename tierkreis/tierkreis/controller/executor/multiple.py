@@ -1,5 +1,6 @@
-from pathlib import Path
+from uuid import UUID
 
+from tierkreis.controller.data.location import Loc
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.exceptions import TierkreisError
 
@@ -20,11 +21,11 @@ class MultipleExecutor:
         self.executors = executors
         self.assignments = assignments
 
-    def command(self, launcher_name: str, worker_call_args_path: Path) -> str:
+    def command(self, launcher_name: str, workflow_id: UUID, loc: Loc) -> str:
         executor_name = self.assignments.get(launcher_name, None)
         # If there is no assignment for the worker, use the default.
         if executor_name is None:
-            return self.default.command(launcher_name, worker_call_args_path)
+            return self.default.command(launcher_name, workflow_id, loc)
 
         executor = self.executors.get(executor_name)
         if executor is None:
@@ -32,4 +33,4 @@ class MultipleExecutor:
                 f"{launcher_name} is assigned to non-existent executor name: {executor_name}."
             )
 
-        return executor.command(launcher_name, worker_call_args_path)
+        return executor.command(launcher_name, workflow_id, loc)

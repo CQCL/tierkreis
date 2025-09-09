@@ -43,7 +43,7 @@ class ControllerFileStorage:
         self.name = name
         if do_cleanup:
             self.clean_graph_files()
-        self.paths = Paths(workflow_id, tierkreis_directory)
+        self.paths = Paths(workflow_id, tierkreis_directory.parent)
 
     def clean_graph_files(self) -> None:
         uid = os.getuid()

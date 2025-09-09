@@ -1,5 +1,8 @@
+from pathlib import Path
+
+
 class StdOutIn:
-    def __init__(self, input_file: str, output_file: str) -> None:
+    def __init__(self, input_file: Path, output_file: Path) -> None:
         self.input = input_file
         self.output = output_file
 
@@ -8,7 +11,7 @@ class StdOutIn:
 
 
 class WithCallArgs:
-    def __init__(self, call_args_path: str) -> None:
+    def __init__(self, call_args_path: Path) -> None:
         self.call_args_path = call_args_path
 
     def __call__(self, inner_command: str) -> str:
@@ -16,14 +19,14 @@ class WithCallArgs:
 
 
 class TouchDone:
-    def __init__(self, done_path: str) -> None:
+    def __init__(self, done_path: Path) -> None:
         self.done_path = done_path
 
     def __call__(self, inner_command: str) -> str:
         return f"{inner_command} && touch {self.done_path}"
 
 
-class TouchError:
+class HandleError:
     def __init__(self, error_path: str) -> None:
         self.error_path = error_path
 

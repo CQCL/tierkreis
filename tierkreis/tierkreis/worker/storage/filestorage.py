@@ -37,6 +37,3 @@ class WorkerFileStorage:
     def write_error(self, path: Path, error_logs: str) -> None:
         with open(self.resolve(path), "w+") as f:
             f.write(error_logs)
-
-    def mark_error(self, path: Path) -> None:
-        path.touch()

@@ -1,6 +1,10 @@
 import logging
 from pathlib import Path
+from uuid import UUID
 
+from tierkreis.controller.data.location import Loc
+from tierkreis.controller.executor.consts import BASH_TKR_DIR
+from tierkreis.paths import Paths
 from tierkreis.runner.commands import UvRun, WithCallArgs
 
 logger = logging.getLogger(__name__)
@@ -15,8 +19,9 @@ class UvExecutor:
     def __init__(self, registry_path: Path) -> None:
         self.launchers_path = registry_path
 
-    def command(self, launcher_name: str, worker_call_args_path: Path) -> str:
+    def command(self, launcher_name: str, workflow_id: UUID, loc: Loc) -> str:
+        paths = Paths(workflow_id, Path(BASH_TKR_DIR))
         cmd = f"{self.launchers_path}/{launcher_name}/main.py"
-        cmd = WithCallArgs(str(worker_call_args_path))(cmd)
+        cmd = WithCallArgs(paths.worker_call_args_path(loc))(cmd)
         cmd = UvRun(f"{self.launchers_path}/{launcher_name}")(cmd)
         return cmd

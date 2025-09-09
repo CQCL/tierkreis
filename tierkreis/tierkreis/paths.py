@@ -6,10 +6,8 @@ from tierkreis.controller.data.location import Loc
 
 
 class Paths:
-    def __init__(
-        self, workflow_id: UUID, checkpoints_dir: Path = CONFIG.tkr_checkpoints
-    ) -> None:
-        self.checkpoints_dir = checkpoints_dir
+    def __init__(self, workflow_id: UUID, tkr_dir: Path = CONFIG.tkr_dir) -> None:
+        self.checkpoints_dir = tkr_dir / "checkpoints"
         self.workflow_id = workflow_id
         self.workflow_dir = self.checkpoints_dir / str(workflow_id)
 

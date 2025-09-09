@@ -161,7 +161,6 @@ class Worker:
         except Exception as err:
             logger.error("encountered error", exc_info=err)
             self.storage.write_error(node_definition.error_path, str(err))
-            self.storage.mark_error(node_definition.error_path.parent / "_error")
             raise TierkreisError("Error in worker. See logs for details.")
 
     def write_stubs(self, stubs_path: Path) -> None:

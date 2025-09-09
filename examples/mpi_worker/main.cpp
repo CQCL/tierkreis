@@ -19,17 +19,17 @@ void parse_json(const std::string &call_args_path, json &call_args)
   std::ifstream call_args_file(call_args_path);
   if (!call_args_file.is_open()) // check if open is necessary for << syntax
   {
-    std::cout << "Error: Could not open configuration file: " << call_args_path << std::endl;
+    std::cerr << "Error: Could not open configuration file: " << call_args_path << std::endl;
     MPI_Abort(MPI_COMM_WORLD, 1);
     return;
   }
   try
   {
-    call_args_file >> call_args;
+    call_args = json::parse(call_args_file);
   }
   catch (json::parse_error &e)
   {
-    std::cout << "Error: JSON parsing failed: " << e.what() << std::endl;
+    std::cerr << "Error: JSON parsing failed: " << e.what() << std::endl;
     MPI_Abort(MPI_COMM_WORLD, 1);
     return;
   }
@@ -46,7 +46,8 @@ void parse_input(const json &call_args, std::vector<int> &input_data, int world_
     std::cout << "parsing input: " << key << " at: " << path << std::endl;
     json data;
     parse_json(path, data);
-    auto ret = data.template get<std::vector<int>>();
+    auto tmp = data.template get<std::string>();
+    std::vector<int> ret = json::parse(tmp);
     input_data.resize(ret.size());
     std::copy(ret.begin(), ret.end(), input_data.begin());
   }
@@ -70,7 +71,7 @@ void write_output(const json &call_args, const std::vector<int> &gathered_data)
     std::ofstream output_file(out_path);
     if (!output_file.is_open())
     {
-      std::cout << "Error: Could not open output file for writing: " << out_path << std::endl;
+      std::cerr << "Error: Could not open output file for writing: " << out_path << std::endl;
       MPI_Abort(MPI_COMM_WORLD, 1);
       return;
     }
@@ -87,7 +88,7 @@ void write_output(const json &call_args, const std::vector<int> &gathered_data)
   }
   else
   {
-    std::cout << "Error: Could not create done file at " << done_file_path << std::endl;
+    std::cerr << "Error: Could not create done file at " << done_file_path << std::endl;
   }
 }
 

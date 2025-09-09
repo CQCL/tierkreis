@@ -8,8 +8,6 @@ import {
   ReactFlow,
   useReactFlow,
   OnNodeDrag,
-  ReactFlowProvider,
-  useNodes,
 } from "@xyflow/react";
 import { useParams } from "react-router";
 
@@ -19,7 +17,7 @@ import { URL } from "@/data/constants";
 import { parseGraph } from "@/graph/parseGraph";
 import { Background, ControlButton, Controls } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { Network } from "lucide-react";
+import { FolderSync, Network } from "lucide-react";
 import React, { useCallback, useState } from "react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -195,6 +193,13 @@ const Main = (props: {
             }}
           >
             <Network style={{ fill: "none" }} />
+          </ControlButton>
+          <ControlButton
+            onClick={() => {
+              localStorage.clear();
+            }}
+          >
+            <FolderSync style={{ fill: "none" }} />
           </ControlButton>
         </Controls>
       </ReactFlow>

@@ -21,8 +21,8 @@ class ShellExecutor:
         paths = Paths(workflow_id, Path(BASH_TKR_DIR))
         cmd = f"{self.launchers_path}/{launcher_name}/main.sh"
         cmd = WithCallArgs(paths.worker_call_args_path(loc))(cmd)
+        cmd = TouchDone(paths.done_path(loc))(cmd)
         cmd = HandleError(
             paths.error_path(loc), paths.error_logs_path(loc), paths.logs_path()
         )(cmd)
-        cmd = TouchDone(paths.done_path(loc))(cmd)
         return cmd

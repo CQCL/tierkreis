@@ -26,8 +26,8 @@ class UvExecutor:
         cmd = f"{self.launchers_path}/{launcher_name}/main.py"
         cmd = WithCallArgs(paths.worker_call_args_path(loc))(cmd)
         cmd = UvRun(f"{self.launchers_path}/{launcher_name}")(cmd)
+        cmd = TouchDone(paths.done_path(loc))(cmd)
         cmd = HandleError(
             paths.error_path(loc), paths.error_logs_path(loc), paths.logs_path()
         )(cmd)
-        cmd = TouchDone(paths.done_path(loc))(cmd)
         return cmd

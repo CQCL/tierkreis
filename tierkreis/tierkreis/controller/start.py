@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 import logging
 import subprocess
-import sys
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
@@ -11,7 +10,6 @@ from tierkreis.controller.storage.adjacency import outputs_iter
 from tierkreis.paths import Paths
 from typing_extensions import assert_never
 
-from tierkreis.consts import PACKAGE_PATH
 from tierkreis.controller.data.graph import Eval, GraphData, NodeDef
 from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.executor.protocol import ControllerExecutor
@@ -81,7 +79,6 @@ def start(
         launcher_name = ".".join(name.split(".")[:-1])
         name = name.split(".")[-1]
         call_args = storage.write_worker_call_args(loc, name, ins, output_list)
-        args_path = storage.paths.worker_call_args_path(loc)
         logger.debug(f"Executing {(str(loc), name, ins, output_list)}")
 
         is_in_memory = isinstance(storage, ControllerInMemoryStorage) and isinstance(

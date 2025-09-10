@@ -1,5 +1,7 @@
 from pathlib import Path
 
+from tierkreis.controller.executor.consts import BASH_TKR_DIR
+
 
 class StdOutIn:
     def __init__(self, input_file: Path, output_file: Path) -> None:
@@ -47,8 +49,9 @@ class UvRun:
 
 
 class DockerRun:
-    def __init__(self, container_name: str) -> None:
+    def __init__(self, container_name: str, tkr_dir: str = BASH_TKR_DIR) -> None:
         self.container = container_name
+        self.tkr_dir = tkr_dir
 
     def __call__(self, inner_command: str) -> str:
-        return f'docker run {self.container} bash -c "{inner_command}"'
+        return f"docker run -d -v {self.tkr_dir}:/root/.tierkreis {self.container} bash -c '{inner_command}'"

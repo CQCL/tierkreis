@@ -97,7 +97,7 @@ def symbolic_execution() -> GraphBuilder:
 def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
     spec = JobSpec(
         job_name="tierkreis_test_job",
-        command="uv run --no-workspace main.py",
+        command="uv run --exact --isolated --no_workspace main.py",
         user=UserSpec(account="ra010014"),  # WARNING: this wants the group name!
         resource=ResourceSpec(nodes=2, memory_gb=None, gpus_per_node=None),
         walltime="00:15:00",

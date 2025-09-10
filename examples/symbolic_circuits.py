@@ -98,7 +98,7 @@ def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
     spec = JobSpec(
         job_name="tierkreis_test_job",
         command="~/.local/bin_aarch64/uv run main.py ",
-        user=UserSpec(account=os.environ.get("USER")),
+        user=UserSpec(account="ra010014"),  # WARNING: this wants the group name!
         resource=ResourceSpec(nodes=2, memory_gb=None),
         walltime="00:15:00",
         output_path=Path(logs_path),

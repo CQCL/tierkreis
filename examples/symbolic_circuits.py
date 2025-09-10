@@ -108,7 +108,7 @@ def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
         spec=spec,
         registry_path=registry_path,
         logs_path=logs_path,
-        command="pjsub --no-check-directory",
+        command="pjsub",
     )
 
 

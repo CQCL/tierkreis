@@ -169,9 +169,18 @@ class ControllerFileStorage:
 
     def read_errors(self, node_location: Loc) -> str:
         if not self._error_logs_path(node_location).exists():
+            if self._error_path(node_location).exists():
+                print(self._error_path(node_location))
+                with open(self._error_path(node_location), "r") as fh:
+                    return fh.read()
             return ""
         with open(self._error_logs_path(node_location), "r") as fh:
-            return fh.read()
+            errors = fh.read()
+        if errors == "":
+            if self._error_path(node_location).exists():
+                with open(self._error_path(node_location), "r") as fh:
+                    return fh.read()
+        return errors
 
     def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
         with open(self._error_logs_path(node_location), "w+") as fh:

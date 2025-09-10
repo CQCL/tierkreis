@@ -9,7 +9,9 @@
 # tierkreis = { path = "../tierkreis", editable = true }
 # ///
 import json
+import os
 from pathlib import Path
+from sys import argv
 from typing import NamedTuple
 from uuid import UUID
 
@@ -18,6 +20,9 @@ from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.executor.hpc.hpc_executor import HPCExecutor
+from tierkreis.controller.executor.hpc.job_spec import JobSpec, ResourceSpec, UserSpec
+from tierkreis.controller.executor.hpc.pjsub import PJSUBExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
@@ -89,7 +94,21 @@ def symbolic_execution() -> GraphBuilder:
     return g
 
 
-def main() -> None:
+def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
+    spec = JobSpec(
+        job_name="test_job",
+        command="--allow-run-as-root ~/.local/bin_aarch64/uv run main.py ",
+        user=UserSpec(account=os.environ.get("USER")),
+        resource=ResourceSpec(nodes=2, memory_gb=None),
+        walltime="00:15:00",
+        extra_scheduler_args={"--open-mode=append": None},
+        output_path=Path(logs_path),
+        error_path=Path(logs_path),
+    )
+    return PJSUBExecutor(spec=spec, registry_path=Path("/"), logs_path=logs_path)
+
+
+def main(use_pjsub: bool) -> None:
     """Configure our workflow execution and run it to completion."""
     ansatz = build_ansatz()
 
@@ -105,8 +124,10 @@ def main() -> None:
         registry_path=registry_path, logs_path=storage.logs_path
     )
     common_registry_path = Path(__file__).parent.parent / "tierkreis_workers"
-    common_executor = UvExecutor(
-        registry_path=common_registry_path, logs_path=storage.logs_path
+    common_executor = (
+        pjsub_uv_executor(registry_path, storage.logs_path)
+        if use_pjsub
+        else UvExecutor(registry_path=common_registry_path, logs_path=storage.logs_path)
     )
     multi_executor = MultipleExecutor(
         common_executor,
@@ -132,4 +153,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    use_pjsub = len(argv) > 1 and argv[1] == "pjsub"
+    main(use_pjsub)

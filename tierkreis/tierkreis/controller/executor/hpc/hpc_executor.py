@@ -39,6 +39,10 @@ def run_hpc_executor(
     )
     logger.info("START %s %s", launcher_name, worker_call_args_path)
 
+    executor.spec.command = (
+        f"cd {executor.launchers_path}/{launcher_name} && {executor.spec.command}"
+    )
+
     executor.spec.command += " " + str(worker_call_args_path)
     submission_cmd = [executor.command]
     if executor.spec.output_path is None:

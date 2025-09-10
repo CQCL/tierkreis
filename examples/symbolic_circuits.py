@@ -104,7 +104,12 @@ def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
         output_path=Path(logs_path),
         error_path=Path("./test_errors"),
     )
-    return PJSUBExecutor(spec=spec, registry_path=registry_path, logs_path=logs_path)
+    return PJSUBExecutor(
+        spec=spec,
+        registry_path=registry_path,
+        logs_path=logs_path,
+        command="pjsub --no-check-directory",
+    )
 
 
 def main(use_pjsub: bool) -> None:

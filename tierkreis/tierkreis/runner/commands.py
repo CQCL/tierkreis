@@ -3,6 +3,9 @@ from pathlib import Path
 from tierkreis.controller.executor.consts import BASH_TKR_DIR
 
 
+# TODO: base class that leaves __call__ abstract but implements run
+
+
 class StdOutIn:
     def __init__(self, input_file: Path, output_file: Path) -> None:
         self.input = input_file

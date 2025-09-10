@@ -3,7 +3,7 @@ from pathlib import Path
 from tierkreis.controller.executor.consts import BASH_TKR_DIR
 
 
-# TODO: base class that leaves __call__ abstract but implements run
+# TODO: base class that leaves __call__ abstract but implements command
 
 
 class StdOutIn:

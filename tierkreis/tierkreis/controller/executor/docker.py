@@ -13,13 +13,10 @@ from tierkreis.runner.commands import (
 
 
 class DockerExecutor:
-    """Executes workers in an unix shell.
+    """Executes workers in a docker container.
 
     Implements: :py:class:`tierkreis.controller.executor.protocol.ControllerExecutor`
     """
-
-    def __init__(self, container_name: str) -> None:
-        self.container_name = container_name
 
     def command(
         self, launcher_name: str, workflow_id: UUID, loc: Loc, call_args: WorkerCallArgs
@@ -32,5 +29,5 @@ class DockerExecutor:
         cmd = HandleError(
             paths.error_path(loc), paths.error_logs_path(loc), paths.logs_path()
         )(cmd)
-        cmd = DockerRun(self.container_name)(cmd)
+        cmd = DockerRun(f"tkr_{launcher_name}")(cmd)
         return cmd

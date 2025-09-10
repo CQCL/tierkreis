@@ -84,8 +84,6 @@ def generate_pjsub_script(spec: JobSpec) -> str:
     lines.append("\n# --- User Command ---")
     lines.append(spec.command)
 
-    print("\n".join(lines))
-
     return "\n".join(lines)
 
 

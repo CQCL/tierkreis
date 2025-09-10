@@ -72,7 +72,6 @@ def run_hpc_executor(
             universal_newlines=True,
         )
     if process.returncode != 0:
-        breakpoint()
         with open(executor.errors_path, "a") as efh:
             efh.write("Error from script")
             efh.write(process.stderr)

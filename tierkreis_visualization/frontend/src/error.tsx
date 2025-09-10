@@ -1,5 +1,5 @@
 import { Link, useRouteError, isRouteErrorResponse } from "react-router";
-import MyLogo from "../public/Quantinuum Logo__horizontal black.svg"; //
+import MyLogo from "./quantinuum_logo.svg"; //
 
 export default function ErrorPage() {
   const error = useRouteError();

@@ -21,3 +21,11 @@ A sequence of tutorials that cover the fundamentals of writing and operating Tie
 [Hello world worker](worker/hello_world.md)
 
 [Complex types in Tierkreis Python workers](worker/complex_types.md)
+
+## Executors
+
+[Overview](executors/overview.md)
+
+[Shell Executors](executors/shell.md)
+
+[HPC Executors](executors/hpc.md)

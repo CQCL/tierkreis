@@ -10,6 +10,7 @@ Currently the following executors are available for the use
 | ---------------- | :-------------------------------------: | :-----: | :----------------------------------------------------------------------------------: |
 | UVExecutor       | Python based with dependency management |    ✔    |                           Default for python based workers                           |
 | ShellExecutor    |                 Scripts                 |    ✔    |                                  Runs shell scripts                                  |
+| StdInOut         |                 Scripts                 |    ✔    |                 Runs shell scripts with single input and output file                 |
 | InMemoryExecutor |                 Python                  |    ✔    | Runs in the same memory spaces as the controller, does not work for external workers |
 | SLURMExecutor    |                   Any                   |    ✔    |                        Wraps a command in a SLURM submission                         |
 | PJSUBExecutor    |                   Any                   |   ❌    |                        Wraps a command in a PJSUB submission                         |

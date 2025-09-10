@@ -1,7 +1,11 @@
 from pathlib import Path
 from typing import Callable
+from uuid import UUID
+from tierkreis.controller.data.location import Loc, WorkerCallArgs
+from tierkreis.controller.executor.consts import BASH_TKR_DIR
 from tierkreis.controller.executor.hpc.hpc_executor import run_hpc_executor
 from tierkreis.controller.executor.hpc.job_spec import JobSpec
+from tierkreis.paths import Paths
 
 
 _COMMAND_PREFIX = "#SBATCH"
@@ -100,10 +104,17 @@ class SLURMExecutor:
         self.errors_path = logs_path
         self.spec = spec
         self.script_fn: Callable[[JobSpec], str] = generate_slurm_script
-        self.command = command
+        self.sbatch_command = command
 
     def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
         self.errors_path = (
             self.logs_path.parent.parent / worker_call_args_path.parent / "errors"
         )
         run_hpc_executor(self, launcher_name, worker_call_args_path)
+
+    def command(
+        self, launcher_name: str, workflow_id: UUID, loc: Loc, call_args: WorkerCallArgs
+    ) -> str:
+        paths = Paths(workflow_id, Path(BASH_TKR_DIR))
+        self.run(launcher_name, paths.worker_call_args_path(loc))
+        return 'echo "Already run."'

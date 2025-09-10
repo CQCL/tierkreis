@@ -1,9 +1,12 @@
 import logging
 import importlib.util
 from pathlib import Path
+from uuid import UUID
 
-from tierkreis.controller.data.location import Loc
+from tierkreis.config import CONFIG
+from tierkreis.controller.data.location import Loc, WorkerCallArgs
 from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
+from tierkreis.paths import Paths
 from tierkreis.worker.storage.in_memory import InMemoryWorkerStorage
 from tierkreis.exceptions import TierkreisError
 
@@ -21,11 +24,13 @@ class InMemoryExecutor:
         self.registry_path = registry_path
         self.storage = storage
 
-    def run(
-        self,
-        launcher_name: str,
-        worker_call_args_path: Path,
-    ) -> None:
+    def command(
+        self, launcher_name: str, workflow_id: UUID, loc: Loc, call_args: WorkerCallArgs
+    ) -> str:
+        paths = Paths(workflow_id, CONFIG.tkr_dir)
+        worker_call_args_path = paths.worker_call_args_path(loc).relative_to(
+            CONFIG.tkr_dir / "checkpoints"
+        )
         logging.basicConfig(
             format="%(asctime)s: %(message)s",
             datefmt="%Y-%m-%dT%H:%M:%S%z",
@@ -33,8 +38,6 @@ class InMemoryExecutor:
             level=logging.INFO,
         )
         logger.info("START %s %s", launcher_name, worker_call_args_path)
-        node_location = Loc(str(worker_call_args_path))
-        call_args = self.storage.read_worker_call_args(node_location)
 
         spec = importlib.util.spec_from_file_location(
             "in_memory", self.registry_path / launcher_name / "main.py"
@@ -48,4 +51,6 @@ class InMemoryExecutor:
         worker_storage = InMemoryWorkerStorage(self.storage)
         module.worker.storage = worker_storage
         module.worker.functions[call_args.function_name](call_args)
-        self.storage.mark_node_finished(node_location)
+        self.storage.mark_node_finished(loc)
+
+        return 'echo "Node started by in-memory executor."'

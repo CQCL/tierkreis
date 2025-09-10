@@ -1,7 +1,7 @@
 from pathlib import Path
 from uuid import UUID
 from tierkreis.builder import GraphBuilder, script
-from tierkreis.controller.executor.stdinout import StdInOut
+from tierkreis.controller.executor.stdinout import StdInOutExecutor
 from tierkreis.models import TKR, EmptyModel
 from tierkreis.storage import FileStorage, read_outputs
 from tierkreis.executor import MultipleExecutor, UvExecutor, ShellExecutor
@@ -45,8 +45,8 @@ if __name__ == "__main__":
 
     registry_path = Path(__file__).parent / "example_workers"
 
-    uv = UvExecutor(registry_path, storage.logs_path)
-    shell = ShellExecutor(registry_path, storage.workflow_dir)
+    uv = UvExecutor(registry_path)
+    shell = ShellExecutor(registry_path)
     executor = MultipleExecutor(uv, {"shell": shell}, {"openssl_worker": "shell"})
 
     run_graph(storage, executor, signing_graph().get_data(), {})
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     assert is_verified
 
     storage.clean_graph_files()
-    stdinout = StdInOut(registry_path, storage.workflow_dir)
+    stdinout = StdInOutExecutor(registry_path)
     executor = MultipleExecutor(uv, {"stdinout": stdinout}, {"genrsa": "stdinout"})
     run_graph(storage, executor, stdinout_graph().get_data(), {})
     out = read_outputs(stdinout_graph().get_data(), storage)

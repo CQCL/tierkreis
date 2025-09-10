@@ -3,8 +3,6 @@ from logging import getLogger
 from pathlib import Path
 import shutil
 import subprocess
-import sys
-from types import TracebackType
 from typing import Callable
 
 from tierkreis.codegen import format_namespace
@@ -20,16 +18,6 @@ from tierkreis.worker.storage.protocol import WorkerStorage
 logger = getLogger(__name__)
 PrimitiveTask = Callable[[WorkerCallArgs, WorkerStorage], None]
 type MethodName = str
-
-
-def handle_unhandled_exception(
-    exc_type: type[BaseException],
-    exc_value: BaseException,
-    exc_traceback: TracebackType | None,
-):
-    logger.critical(
-        "Unhandled exception", exc_info=(exc_type, exc_value, exc_traceback)
-    )
 
 
 class TierkreisWorkerError(TierkreisError):
@@ -73,7 +61,6 @@ class Worker:
             self.storage: WorkerStorage = WorkerFileStorage()
         else:
             self.storage = storage
-        sys.excepthook = handle_unhandled_exception
 
     def _load_args(
         self, f: WorkerFunction, inputs: dict[str, Path]
@@ -146,20 +133,14 @@ class Worker:
         )
         logger.info(node_definition.model_dump())
 
-        try:
-            function = self.functions.get(node_definition.function_name, None)
-            if function is None:
-                raise TierkreisError(
-                    f"{self.name}: function name {node_definition.function_name} not found"
-                )
-            logger.info(f"running: {node_definition.function_name}")
+        function = self.functions.get(node_definition.function_name, None)
+        if function is None:
+            raise TierkreisError(
+                f"{self.name}: function name {node_definition.function_name} not found"
+            )
+        logger.info(f"running: {node_definition.function_name}")
 
-            function(node_definition)
-
-            self.storage.mark_done(node_definition.done_path)
-        except Exception as err:
-            logger.error("encountered error", exc_info=err)
-            self.storage.write_error(node_definition.error_path, str(err))
+        function(node_definition)
 
     def write_stubs(self, stubs_path: Path) -> None:
         """Writes the type stubs to stubs_path.

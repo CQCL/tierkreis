@@ -101,13 +101,9 @@ def main() -> None:
 
     # Look for workers in the `example_workers` directory.
     registry_path = Path(__file__).parent / "example_workers"
-    custom_executor = UvExecutor(
-        registry_path=registry_path, logs_path=storage.logs_path
-    )
+    custom_executor = UvExecutor(registry_path=registry_path)
     common_registry_path = Path(__file__).parent.parent / "tierkreis_workers"
-    common_executor = UvExecutor(
-        registry_path=common_registry_path, logs_path=storage.logs_path
-    )
+    common_executor = UvExecutor(registry_path=common_registry_path)
     multi_executor = MultipleExecutor(
         common_executor,
         executors={"custom": custom_executor},

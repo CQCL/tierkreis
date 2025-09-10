@@ -49,7 +49,7 @@ def test_eagerifelse_long_running(input: dict[str, PType], output: int) -> None:
     storage = ControllerFileStorage(UUID(int=150), name="eagerifelse_long_running")
 
     registry_path = Path(__file__).parent.parent
-    executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
+    executor = UvExecutor(registry_path=registry_path)
 
     storage.clean_graph_files()
     run_graph(storage, executor, g, input, n_iterations=20000)
@@ -60,7 +60,7 @@ def test_eagerifelse_long_running(input: dict[str, PType], output: int) -> None:
 def test_eagerifelse_nodes() -> None:
     g = simple_eagerifelse()
     storage = ControllerFileStorage(UUID(int=150), name="simple_if_else")
-    executor = ShellExecutor(Path("./python/examples/launchers"), storage.workflow_dir)
+    executor = ShellExecutor(Path("./python/examples/launchers"))
     storage.clean_graph_files()
     run_graph(storage, executor, g, {"pred": b"true"})
     assert storage.is_node_finished(Loc("-.N3"))
@@ -70,7 +70,7 @@ def test_eagerifelse_nodes() -> None:
 def test_ifelse_nodes():
     g = simple_ifelse()
     storage = ControllerFileStorage(UUID(int=151), name="simple_if_else")
-    executor = ShellExecutor(Path("./python/examples/launchers"), storage.workflow_dir)
+    executor = ShellExecutor(Path("./python/examples/launchers"))
     storage.clean_graph_files()
     run_graph(storage, executor, g, {"pred": b"true"})
     assert storage.is_node_finished(Loc("-.N1"))

@@ -35,7 +35,7 @@ def fail_in_eval():
 def test_raise_error() -> None:
     g = will_fail_graph()
     storage = ControllerFileStorage(UUID(int=42), name="will_fail")
-    executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
+    executor = UvExecutor(Path(__file__).parent)
     storage.clean_graph_files()
     run_graph(storage, executor, g.get_data(), {}, n_iterations=1000)
     assert storage.node_has_error(Loc("-.N0"))
@@ -44,7 +44,7 @@ def test_raise_error() -> None:
 def test_raises_no_error() -> None:
     g = wont_fail_graph()
     storage = ControllerFileStorage(UUID(int=43), name="wont_fail")
-    executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
+    executor = UvExecutor(Path(__file__).parent)
     storage.clean_graph_files()
     run_graph(storage, executor, g.get_data(), {}, n_iterations=100)
     assert not storage.node_has_error(Loc("-.N0"))
@@ -53,7 +53,7 @@ def test_raises_no_error() -> None:
 def test_nested_error() -> None:
     g = fail_in_eval()
     storage = ControllerFileStorage(UUID(int=44), name="eval_will_fail")
-    executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
+    executor = UvExecutor(Path(__file__).parent)
     storage.clean_graph_files()
     run_graph(storage, executor, g.get_data(), {}, n_iterations=1000)
     assert (storage.logs_path.parent / "-/errors").exists()
@@ -63,7 +63,7 @@ def test_partial_graph_intersection() -> None:
     with pytest.raises(TierkreisError):
         g = partial_intersection()
         storage = ControllerFileStorage(UUID(int=45), name="partial_intersection_fails")
-        executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
+        executor = UvExecutor(Path(__file__).parent)
         storage.clean_graph_files()
         run_graph(storage, executor, g, {}, n_iterations=1000)
         assert (storage.logs_path.parent / "-/errors").exists()

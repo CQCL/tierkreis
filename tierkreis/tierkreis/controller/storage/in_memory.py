@@ -17,6 +17,7 @@ from tierkreis.controller.data.location import (
     WorkerCallArgs,
 )
 from tierkreis.exceptions import TierkreisError
+from tierkreis.paths import Paths
 
 
 class NodeData(BaseModel):
@@ -53,6 +54,7 @@ class ControllerInMemoryStorage:
         self.logs_path.touch()
         self.name = name
         self.nodes: dict[Path, NodeData] = defaultdict(lambda: NodeData())
+        self.paths = Paths(workflow_id)
 
     def loc_to_path(self, location: Loc, port: PortID | None = None) -> Path:
         # Directly convert, not a real filesystem path
@@ -84,7 +86,7 @@ class ControllerInMemoryStorage:
         function_name: str,
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
-    ) -> Path:
+    ) -> WorkerCallArgs:
         node_path = self.loc_to_path(node_location)
         call_args = WorkerCallArgs(
             function_name=function_name,
@@ -104,7 +106,7 @@ class ControllerInMemoryStorage:
         if (parent := node_location.parent()) is not None:
             self.nodes[self.loc_to_path(parent)].metadata = {}
 
-        return node_path
+        return call_args
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
         if result := self.nodes[self.loc_to_path(node_location)].call_args:

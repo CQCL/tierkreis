@@ -41,9 +41,9 @@ def run_workflow(
     if registry_path is None:
         registry_path = Path(__file__).parent
     if use_uv_worker:
-        executor = UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
+        executor = UvExecutor(registry_path=registry_path)
     else:
-        executor = ShellExecutor(registry_path, storage.workflow_dir)
+        executor = ShellExecutor(registry_path=registry_path)
 
     logging.info("Starting workflow at location: %s", storage.logs_path)
 

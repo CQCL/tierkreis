@@ -25,7 +25,7 @@ class DockerExecutor:
         self, launcher_name: str, workflow_id: UUID, loc: Loc, call_args: WorkerCallArgs
     ) -> str:
         paths = Paths(workflow_id, Path(BASH_TKR_DIR))
-        cmd = f"main.py"
+        cmd = "main.py"
         cmd = WithCallArgs(paths.worker_call_args_path(loc))(cmd)
         cmd = UvRun(".")(cmd)
         cmd = TouchDone(paths.done_path(loc))(cmd)

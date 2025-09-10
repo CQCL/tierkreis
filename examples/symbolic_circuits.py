@@ -96,14 +96,13 @@ def symbolic_execution() -> GraphBuilder:
 
 def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
     spec = JobSpec(
-        job_name="test_job",
-        command="--allow-run-as-root ~/.local/bin_aarch64/uv run main.py ",
+        job_name="tierkreis_test_job",
+        command="~/.local/bin_aarch64/uv run main.py ",
         user=UserSpec(account=os.environ.get("USER")),
         resource=ResourceSpec(nodes=2, memory_gb=None),
         walltime="00:15:00",
-        extra_scheduler_args={"--open-mode=append": None},
         output_path=Path(logs_path),
-        error_path=Path(logs_path),
+        error_path=Path("./test_errors"),
     )
     return PJSUBExecutor(spec=spec, registry_path=Path("/"), logs_path=logs_path)
 

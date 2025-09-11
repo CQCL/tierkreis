@@ -92,11 +92,13 @@ def symbolic_execution() -> GraphBuilder:
     return g
 
 
-def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
+def pjsub_uv_executor(
+    group_name: str, registry_path: Path, logs_path: Path
+) -> PJSUBExecutor:
     spec = JobSpec(
         job_name="tkr_symbolic_ciruits",
+        account=group_name,
         command="env UV_PROJECT_ENVIRONMENT=compute_venv uv run main.py",
-        user=UserSpec(account="ra010014"),  # WARNING: this wants the group name!
         resource=ResourceSpec(nodes=1, memory_gb=None, gpus_per_node=None),
         walltime="00:15:00",
         output_path=Path(logs_path),
@@ -111,7 +113,7 @@ def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
     )
 
 
-def main(use_pjsub: bool) -> None:
+def main(pjsub_group_name: str | None) -> None:
     """Configure our workflow execution and run it to completion."""
     ansatz = build_ansatz()
 
@@ -124,8 +126,8 @@ def main(use_pjsub: bool) -> None:
     # Look for workers in the `example_workers` directory.
     registry_path = Path(__file__).parent / "example_workers"
     custom_executor = (
-        pjsub_uv_executor(registry_path, storage.logs_path)
-        if use_pjsub
+        pjsub_uv_executor(pjsub_group_name, registry_path, storage.logs_path)
+        if pjsub_group_name is not None
         else UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
     )
     common_registry_path = Path(__file__).parent.parent / "tierkreis_workers"
@@ -156,5 +158,5 @@ def main(use_pjsub: bool) -> None:
 
 
 if __name__ == "__main__":
-    use_pjsub = len(argv) > 1 and argv[1] == "pjsub"
-    main(use_pjsub)
+    pjsub_group_name = argv[1] if len(argv) > 1 else None
+    main(pjsub_group_name)

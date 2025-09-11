@@ -42,8 +42,8 @@ def generate_pjsub_script(spec: JobSpec) -> str:
     # 4. User settings
     lines.append("\n# --- User Details ---")
     if spec.user is not None:
-        if spec.user.account is not None:
-            lines.append(f"{_COMMAND_PREFIX} -g {spec.user.account}")
+        if spec.account is not None:
+            lines.append(f"{_COMMAND_PREFIX} -g {spec.account}")
         if spec.user.mail is not None:
             lines.append(f"{_COMMAND_PREFIX} -m e")  # end only
             lines.append(f"{_COMMAND_PREFIX} --mail-list {spec.user.mail}")

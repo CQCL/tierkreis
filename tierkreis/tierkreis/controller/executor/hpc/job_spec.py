@@ -16,7 +16,6 @@ class ResourceSpec(BaseModel):
 
 
 class UserSpec(BaseModel):
-    account: str | None = None
     mail: str | None = None  # some clusters require this
 
 
@@ -32,6 +31,8 @@ class JobSpec(BaseModel):
     job_name: str
     command: str  # used instead of popen.input
     resource: ResourceSpec
+    account: str | None = None
+    """Account or group used to submit this job."""
     mpi: MpiSpec | None = None
     user: UserSpec | None = None
     container: ContainerSpec | None = None
@@ -49,11 +50,9 @@ def pjsub_large_spec() -> JobSpec:
     uv_path = Path.home() / ".local" / f"bin_{arch}" / "uv"
     return JobSpec(
         job_name="pjsub_large",
+        account="hp240496",
         command=f"{str(uv_path)} run main.py",
         queue="q-QTM-M",
-        user=UserSpec(
-            account="hp240496",
-        ),
         resource=ResourceSpec(nodes=32),
         environment={
             "VIRTUAL_ENVIRONMENT": "",
@@ -75,10 +74,8 @@ def pjsub_small_spec() -> JobSpec:
     uv_path = Path.home() / ".local" / f"bin_{arch}" / "uv"
     return JobSpec(
         job_name="pjsub_small",
+        account="hp240496",
         command=f"{str(uv_path)} run main.py",
-        user=UserSpec(
-            account="hp240496",
-        ),
         resource=ResourceSpec(nodes=1),
         environment={
             "VIRTUAL_ENVIRONMENT": "",

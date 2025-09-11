@@ -73,6 +73,7 @@ def run_hpc_executor(
         )
     if process.returncode != 0:
         with open(executor.errors_path, "a") as efh:
+            breakpoint()
             efh.write("Error from script")
             efh.write(process.stderr)
         raise TierkreisError(f"Executor failed with return code {process.returncode}")

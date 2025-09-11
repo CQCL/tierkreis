@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class HPCExecutor(Protocol):
-    launchers_path: Path
+    launchers_path: Path | None
     logs_path: Path
     errors_path: Path
     spec: JobSpec
@@ -39,6 +39,11 @@ def run_hpc_executor(
     )
     logger.info("START %s %s", launcher_name, worker_call_args_path)
 
+    if executor.launchers_path:
+        executor.spec.command = (
+            f"cd {executor.launchers_path}/{launcher_name} && {executor.spec.command}"
+        )
+
     executor.spec.command += " " + str(worker_call_args_path)
     submission_cmd = [executor.command]
     if executor.spec.output_path is None:
@@ -49,6 +54,8 @@ def run_hpc_executor(
         submission_cmd += ["-e", str(executor.errors_path)]
     else:
         submission_cmd += ["-e", str(executor.spec.error_path)]
+    if executor.spec.include_no_check_directory_flag:
+        submission_cmd += ["--no-check-directory"]
 
     with NamedTemporaryFile(
         mode="w+",
@@ -67,6 +74,7 @@ def run_hpc_executor(
         )
     if process.returncode != 0:
         with open(executor.errors_path, "a") as efh:
+            breakpoint()
             efh.write("Error from script")
             efh.write(process.stderr)
         raise TierkreisError(f"Executor failed with return code {process.returncode}")

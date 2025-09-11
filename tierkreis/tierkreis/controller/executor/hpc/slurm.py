@@ -34,9 +34,9 @@ def generate_slurm_script(spec: JobSpec) -> str:
 
     # 4. User settings
     lines.append("\n# --- User Details ---")
+    if spec.account is not None:
+        lines.append(f"{_COMMAND_PREFIX} --account={spec.account}")
     if spec.user is not None:
-        if spec.user.account is not None:
-            lines.append(f"{_COMMAND_PREFIX} --account={spec.user.account}")
         if spec.user.mail is not None:
             lines.append(f"{_COMMAND_PREFIX} --mail-type=END")  # end only
             lines.append(f"{_COMMAND_PREFIX} --mail-user={spec.user.mail}")
@@ -90,7 +90,7 @@ def generate_slurm_script(spec: JobSpec) -> str:
 class SLURMExecutor:
     def __init__(
         self,
-        registry_path: Path,
+        registry_path: Path | None,
         logs_path: Path,
         spec: JobSpec,
         command: str = "sbatch",

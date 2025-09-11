@@ -10,6 +10,7 @@
 # ///
 import json
 from pathlib import Path
+from sys import argv
 from typing import NamedTuple
 from uuid import UUID
 
@@ -18,6 +19,8 @@ from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.executor.hpc.job_spec import JobSpec, ResourceSpec
+from tierkreis.controller.executor.hpc.pjsub import PJSUBExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
@@ -89,7 +92,23 @@ def symbolic_execution() -> GraphBuilder:
     return g
 
 
-def main() -> None:
+def pjsub_uv_executor(
+    group_name: str, registry_path: Path, logs_path: Path
+) -> PJSUBExecutor:
+    spec = JobSpec(
+        job_name="tkr_symbolic_ciruits",
+        account=group_name,
+        command="env UV_PROJECT_ENVIRONMENT=compute_venv uv run main.py",
+        resource=ResourceSpec(nodes=1, memory_gb=None, gpus_per_node=None),
+        walltime="00:15:00",
+        output_path=Path(logs_path),
+        error_path=Path(logs_path),
+        include_no_check_directory_flag=True,
+    )
+    return PJSUBExecutor(spec=spec, registry_path=registry_path, logs_path=logs_path)
+
+
+def main(pjsub_group_name: str | None) -> None:
     """Configure our workflow execution and run it to completion."""
     ansatz = build_ansatz()
 
@@ -101,8 +120,10 @@ def main() -> None:
 
     # Look for workers in the `example_workers` directory.
     registry_path = Path(__file__).parent / "example_workers"
-    custom_executor = UvExecutor(
-        registry_path=registry_path, logs_path=storage.logs_path
+    custom_executor = (
+        pjsub_uv_executor(pjsub_group_name, registry_path, storage.logs_path)
+        if pjsub_group_name is not None
+        else UvExecutor(registry_path=registry_path, logs_path=storage.logs_path)
     )
     common_registry_path = Path(__file__).parent.parent / "tierkreis_workers"
     common_executor = UvExecutor(
@@ -132,4 +153,5 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    pjsub_group_name = argv[1] if len(argv) > 1 else None
+    main(pjsub_group_name)

@@ -17,6 +17,5 @@ installation.md
 core_concepts.md
 getting_started.md
 visualization.md
-hpc.md
 apidocs/index
 ```

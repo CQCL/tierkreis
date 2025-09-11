@@ -158,7 +158,7 @@ from tierkreis.storage import FileStorage, read_outputs
 from tierkreis.executor import ShellExecutor
 
 storage = FileStorage(UUID(int=99), name="Graph inputs and outputs")
-executor = ShellExecutor(Path("."), storage.workflow_dir)
+executor = ShellExecutor(Path("."), logs_path=storage.logs_path)
 
 storage.clean_graph_files()
 run_graph(storage, executor, f.get_data(), 10)

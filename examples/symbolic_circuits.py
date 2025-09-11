@@ -105,12 +105,7 @@ def pjsub_uv_executor(
         error_path=Path(logs_path),
         include_no_check_directory_flag=True,
     )
-    return PJSUBExecutor(
-        spec=spec,
-        registry_path=registry_path,
-        logs_path=logs_path,
-        command="pjsub",
-    )
+    return PJSUBExecutor(spec=spec, registry_path=registry_path, logs_path=logs_path)
 
 
 def main(pjsub_group_name: str | None) -> None:

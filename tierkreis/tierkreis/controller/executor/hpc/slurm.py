@@ -90,7 +90,7 @@ def generate_slurm_script(spec: JobSpec) -> str:
 class SLURMExecutor:
     def __init__(
         self,
-        registry_path: Path,
+        registry_path: Path | None,
         logs_path: Path,
         spec: JobSpec,
         command: str = "sbatch",

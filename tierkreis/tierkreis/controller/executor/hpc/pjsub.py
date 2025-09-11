@@ -86,7 +86,7 @@ def generate_pjsub_script(spec: JobSpec) -> str:
 class PJSUBExecutor:
     def __init__(
         self,
-        registry_path: Path,
+        registry_path: Path | None,
         logs_path: Path,
         spec: JobSpec,
         command: str = "pjsub",

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class HPCExecutor(Protocol):
-    launchers_path: Path
+    launchers_path: Path | None
     logs_path: Path
     errors_path: Path
     spec: JobSpec
@@ -39,9 +39,10 @@ def run_hpc_executor(
     )
     logger.info("START %s %s", launcher_name, worker_call_args_path)
 
-    executor.spec.command = (
-        f"cd {executor.launchers_path}/{launcher_name} && {executor.spec.command}"
-    )
+    if executor.launchers_path:
+        executor.spec.command = (
+            f"cd {executor.launchers_path}/{launcher_name} && {executor.spec.command}"
+        )
 
     executor.spec.command += " " + str(worker_call_args_path)
     submission_cmd = [executor.command]

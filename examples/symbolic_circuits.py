@@ -104,7 +104,6 @@ def pjsub_uv_executor(
         output_path=Path(logs_path),
         error_path=Path(logs_path),
         include_no_check_directory_flag=True,
-        extra_scheduler_args={"-z": "jid"},
     )
     return PJSUBExecutor(spec=spec, registry_path=registry_path, logs_path=logs_path)
 

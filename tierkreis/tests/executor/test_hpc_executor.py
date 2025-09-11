@@ -51,7 +51,7 @@ def test_slurm_with_mpi() -> None:
     )
     executor = SLURMExecutor(
         spec=job_spec(),
-        registry_path=Path("/"),
+        registry_path=None,
         logs_path=storage.logs_path,
         command=sbatch,
     )

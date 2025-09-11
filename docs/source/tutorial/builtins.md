@@ -94,7 +94,7 @@ As a placeholder we create a simple `ShellExecutor`, also provided by the Tierkr
 from pathlib import Path
 from tierkreis.executor import ShellExecutor
 
-executor = ShellExecutor(Path("."), logs_path=storage.logs_path)
+executor = ShellExecutor(Path("."), workflow_dir=storage.workflow_dir)
 ```
 
 With the storage and executor specified we can now run a graph using `run_graph`:

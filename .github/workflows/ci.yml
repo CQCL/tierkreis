@@ -11,18 +11,17 @@ env:
   UV_VERSION: "0.6.6"
 
 jobs:
-
   lint:
     name: Lint
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python-version: ['3.12']
+        python-version: ["3.12"]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: '0'
+          fetch-depth: "0"
 
       - name: Set up uv & venv
         uses: astral-sh/setup-uv@v5
@@ -44,13 +43,13 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python-version: ['3.12']
+        python-version: ["3.12"]
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          fetch-depth: '0'
+          fetch-depth: "0"
 
       - name: Set up uv & venv
         uses: astral-sh/setup-uv@v5
@@ -72,3 +71,11 @@ jobs:
         with:
           name: pytest-results-${{ matrix.python-version }}
           path: htmlcov/
+
+      - name: Check examples do not error
+        run: |
+          just examples
+
+      - name: Check docs do not error
+        run: |
+          just docs

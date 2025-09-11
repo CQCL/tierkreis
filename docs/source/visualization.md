@@ -31,7 +31,7 @@ tierkreis_visualziation.main.start()
 
 Alternatively in you can use `visualize_graph`
 
-```pyhton
+```py
 from tierkreis.builder import GraphBuilder
 import tierkreis-visualization
 

@@ -41,7 +41,6 @@ class JobSpec(BaseModel):
     error_path: Path | None = None
     extra_scheduler_args: dict[str, str | None] = Field(default_factory=dict)
     environment: dict[str, str] = Field(default_factory=dict)
-    include_no_check_directory_flag: bool = False
 
 
 def pjsub_large_spec() -> JobSpec:

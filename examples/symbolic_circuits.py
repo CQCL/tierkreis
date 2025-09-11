@@ -101,7 +101,7 @@ def pjsub_uv_executor(registry_path: Path, logs_path: Path) -> PJSUBExecutor:
         walltime="00:15:00",
         output_path=Path(logs_path),
         error_path=Path(logs_path),
-        extra_scheduler_args={"--no-check-directory": None},
+        include_no_check_directory_flag=True,
     )
     return PJSUBExecutor(
         spec=spec,

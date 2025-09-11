@@ -53,6 +53,8 @@ def run_hpc_executor(
         submission_cmd += ["-e", str(executor.errors_path)]
     else:
         submission_cmd += ["-e", str(executor.spec.error_path)]
+    if executor.spec.include_no_check_directory_flag:
+        submission_cmd += ["--no-check-directory"]
 
     with NamedTemporaryFile(
         mode="w+",

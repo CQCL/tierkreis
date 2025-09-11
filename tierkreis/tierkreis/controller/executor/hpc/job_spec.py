@@ -61,7 +61,6 @@ def pjsub_large_spec() -> JobSpec:
         },
         walltime="03:00:00",
         extra_scheduler_args={
-            "--no-check-directory": None,
             "-z": "jid",
             "--llio": "sharedtmp-size=64Gi",
         },
@@ -83,7 +82,6 @@ def pjsub_small_spec() -> JobSpec:
         },
         walltime="00:15:00",
         extra_scheduler_args={
-            "--no-check-directory": None,
             "-z": "jid",
             "--llio": "sharedtmp-size=10Gi",
         },

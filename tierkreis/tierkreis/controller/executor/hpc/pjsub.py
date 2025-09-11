@@ -3,15 +3,11 @@ from functools import partial
 from pathlib import Path
 from typing import Callable
 
-# from typing import Callable
-# from tierkreis.controller.executor.hpc.hpc_executor import run_hpc_executor
 from tierkreis.controller.executor.hpc.hpc_executor import run_hpc_executor
 from tierkreis.controller.executor.hpc.job_spec import (
     JobSpec,
     pjsub_large_spec,
     pjsub_small_spec,
-    # pjsub_large_spec,
-    # pjsub_small_spec,
 )
 
 
@@ -83,8 +79,6 @@ def generate_pjsub_script(spec: JobSpec) -> str:
     # 10. User Command, (prologue), command, (epilogue)
     lines.append("\n# --- User Command ---")
     lines.append(spec.command)
-
-    print("\n".join(lines))
 
     return "\n".join(lines)
 

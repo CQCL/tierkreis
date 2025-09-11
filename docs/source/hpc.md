@@ -9,5 +9,3 @@ In cases where none of the following examples are useful, a custom executor can 
 To use the HPC cluster file system we just use the built-in Tierkreis `FileStorage` as usual.
 
 [pjsub on Fugaku](./hpc/pjsub-fugaku.md)
-
-[local Slurm cluster](./hpc/slurm-local.md)

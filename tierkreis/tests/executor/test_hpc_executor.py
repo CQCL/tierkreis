@@ -9,7 +9,6 @@ from tierkreis.controller.executor.hpc.job_spec import (
     JobSpec,
     MpiSpec,
     ResourceSpec,
-    UserSpec,
 )
 from tierkreis.controller.executor.hpc.slurm import SLURMExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
@@ -28,10 +27,8 @@ def mpi_graph() -> GraphData:
 def job_spec() -> JobSpec:
     return JobSpec(
         job_name="test_job",
+        account="test_usr",
         command="--allow-run-as-root /root/.local/bin/uv run /slurm_mpi_worker/main.py ",
-        user=UserSpec(
-            account="test_usr",
-        ),
         resource=ResourceSpec(nodes=2, memory_gb=None),
         walltime="00:15:00",
         mpi=MpiSpec(max_proc_per_node=1),

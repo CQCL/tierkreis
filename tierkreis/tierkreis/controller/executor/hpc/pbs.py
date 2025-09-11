@@ -39,8 +39,8 @@ def generate_pbs_script(spec: JobSpec) -> str:
     # 4. User settings
     lines.append("\n# --- User Details ---")
     if spec.user is not None:
-        if spec.user.account is not None:
-            lines.append(f"{_COMMAND_PREFIX} -A {spec.user.account}")
+        if spec.account is not None:
+            lines.append(f"{_COMMAND_PREFIX} -A {spec.account}")
         if spec.user.mail is not None:
             lines.append(f"{_COMMAND_PREFIX} -m e")  # end only
             lines.append(f"{_COMMAND_PREFIX} -M {spec.user.mail}")

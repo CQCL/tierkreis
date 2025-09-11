@@ -1,8 +1,6 @@
 #!/usr/bin/env bash
 
-## To test run ./main.sh ./test/args
-
-. "$(dirname "$0")/tierkreis.sh"
+## To test run source ./test/tierkreis.sh ./test/args && ./main.sh
 
 numbits=$(cat $input_numbits_file)
 openssl genrsa -out $output_private_key_file -aes128 -passout "file:$input_passphrase_file" $numbits

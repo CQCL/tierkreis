@@ -18,7 +18,12 @@ class ShellExecutor:
         self.errors_path = workflow_dir / "logs"
         self.workflow_dir = workflow_dir
 
-    def run(self, launcher_name: str, worker_call_args_path: Path) -> None:
+    def run(
+        self,
+        launcher_name: str,
+        worker_call_args_path: Path,
+        export_values: bool = False,
+    ) -> None:
         launcher_path = self.launchers_path / launcher_name
         self.errors_path = worker_call_args_path.parent / "errors"
 
@@ -37,6 +42,10 @@ class ShellExecutor:
         with open(self.workflow_dir.parent / worker_call_args_path) as fh:
             call_args = WorkerCallArgs(**json.load(fh))
 
+        env = self._create_env(call_args, self.workflow_dir.parent, export_values)
+        env["worker_call_args_file"] = str(
+            self.workflow_dir.parent / worker_call_args_path
+        )
         done_path = self.workflow_dir.parent / call_args.done_path
 
         with open(self.workflow_dir.parent / self.logs_path, "a") as lfh:
@@ -47,8 +56,37 @@ class ShellExecutor:
                     stdin=subprocess.PIPE,
                     stderr=efh,
                     stdout=lfh,
+                    env=env,
                 )
                 proc.communicate(
                     f"{launcher_path} {worker_call_args_path} && touch {done_path}".encode(),
                     timeout=3,
                 )
+
+    def _create_env(
+        self, call_args: WorkerCallArgs, base_dir: Path, export_values: bool
+    ) -> dict[str, str]:
+        env = {
+            "checkpoints_directory": str(base_dir),
+            "function_name": str(base_dir / call_args.function_name),
+            "done_path": str(base_dir / call_args.done_path),
+            "error_path": str(base_dir / call_args.error_path),
+            "output_dir": str(base_dir / call_args.output_dir),
+        }
+        if call_args.logs_path is not None:
+            env["logs_path"] = str(base_dir / call_args.logs_path)
+        else:
+            env["logs_path"] = str(self.logs_path)
+        env |= {
+            f"output_{k}_file": str(base_dir / v) for k, v in call_args.outputs.items()
+        }
+        env |= {
+            f"input_{k}_file": str(base_dir / v) for k, v in call_args.inputs.items()
+        }
+        if not export_values:
+            return env
+        values = {}
+        for k, v in call_args.inputs.items():
+            with open(v) as fh:
+                values[f"input_{k}_value"] = fh.read()
+        return env

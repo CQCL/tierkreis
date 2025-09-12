@@ -60,7 +60,7 @@ class ShellExecutor:
                 )
                 proc.communicate(
                     f"{launcher_path} {worker_call_args_path} && touch {done_path}".encode(),
-                    timeout=3,
+                    timeout=10,
                 )
 
     def _create_env(

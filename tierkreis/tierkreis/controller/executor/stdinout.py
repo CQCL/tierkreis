@@ -51,5 +51,5 @@ class StdInOut:
                 )
                 proc.communicate(
                     f"{launcher_path} <{input_file} >{output_file} && touch {done_path}".encode(),
-                    timeout=3,
+                    timeout=10,
                 )

@@ -32,5 +32,5 @@ jobs:
       - name: Setup just
         uses: extractions/setup-just@v3
 
-      - name: Lint project
+      - name: ${{ inputs.command_name }}
         run: ${{ inputs.command }}

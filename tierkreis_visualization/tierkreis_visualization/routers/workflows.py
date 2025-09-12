@@ -3,7 +3,7 @@ import logging
 from typing import Any, assert_never
 from uuid import UUID
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, status
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from starlette.responses import JSONResponse, PlainTextResponse
@@ -70,8 +70,16 @@ def list_workflows(request: Request):
 @router.get("/all")
 def list_all_workflows(request: Request):
     storage_type = request.app.state.storage_type
-    workflows = get_workflows(storage_type)
-    return JSONResponse([workflow.model_dump(mode="json") for workflow in workflows])
+    try:
+        workflows = get_workflows(storage_type)
+        return JSONResponse(
+            [workflow.model_dump(mode="json") for workflow in workflows]
+        )
+    except FileNotFoundError:
+        return JSONResponse(
+            "Workflow not found, make sure the workflow exists in the workflow directory.",
+            status_code=status.HTTP_404_NOT_FOUND,
+        )
 
 
 class NodeResponse(BaseModel):

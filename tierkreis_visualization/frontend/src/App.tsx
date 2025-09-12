@@ -214,7 +214,8 @@ export default function App() {
     queryFn: async () => {
       const response = await fetch(`${URL}/all`);
       if (!response.ok) {
-        throw new Error("Network response was not ok");
+        const text = await response.json();
+        throw new Error(`${text}`);
       }
       return response.json();
     },

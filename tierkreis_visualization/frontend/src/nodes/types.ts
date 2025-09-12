@@ -29,5 +29,7 @@ export type BackendNode = Node<{
   value: string | null;
   setInfo?: (info: InfoProps) => void;
   is_expanded: boolean;
+  isTooltipOpen: boolean;
+  onTooltipOpenChange: (open: boolean) => void;
 }>;
 export type AppNode = BackendNode;

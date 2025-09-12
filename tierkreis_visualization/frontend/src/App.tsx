@@ -17,7 +17,7 @@ import { URL } from "@/data/constants";
 import { parseGraph } from "@/graph/parseGraph";
 import { Background, ControlButton, Controls } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { FolderSync, Network } from "lucide-react";
+import { Eye, EyeClosed, FolderSync, Network } from "lucide-react";
 import React, { useCallback, useState } from "react";
 
 import { SidebarTrigger } from "@/components/ui/sidebar";
@@ -79,10 +79,20 @@ const Main = (props: {
   // Client node state (not definition)
 
   const reactFlowInstance = useReactFlow<BackendNode, Edge>();
+  const [tooltipsOpen, setAreTooltipsOpen] = useState(false);
   props.initialNodes.map((node) => {
     node.data.setInfo = props.setInfo;
+    node.data.onTooltipOpenChange = setAreTooltipsOpen;
+    node.data.isTooltipOpen = tooltipsOpen;
   });
-
+  const handleToggleTooltips = () => {
+    setAreTooltipsOpen((prev) => !prev);
+    reactFlowInstance.getNodes().forEach((node) => {
+      reactFlowInstance.updateNodeData(node.id, {
+        isTooltipOpen: tooltipsOpen,
+      });
+    });
+  };
   React.useEffect(() => {
     saveGraph({
       key: props.workflow_id,
@@ -160,7 +170,6 @@ const Main = (props: {
       }
     };
   }, [props, reactFlowInstance, props.setInfo]);
-
   return (
     <Layout
       workflows={props.workflows}
@@ -200,6 +209,13 @@ const Main = (props: {
             }}
           >
             <FolderSync style={{ fill: "none" }} />
+          </ControlButton>
+          <ControlButton onClick={handleToggleTooltips}>
+            {tooltipsOpen ? (
+              <Eye style={{ fill: "none" }} />
+            ) : (
+              <EyeClosed style={{ fill: "none" }} />
+            )}
           </ControlButton>
         </Controls>
       </ReactFlow>

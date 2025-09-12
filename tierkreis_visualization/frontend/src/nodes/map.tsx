@@ -172,10 +172,14 @@ export function MapNode({ data: node_data }: NodeProps<BackendNode>) {
           <InputHandleArray
             handles={node_data.handles.inputs}
             id={node_data.id}
+            isOpen={node_data.isTooltipOpen}
+            onOpenChange={node_data.onTooltipOpenChange}
           />
           <OutputHandleArray
             handles={node_data.handles.outputs}
             id={node_data.id}
+            isOpen={node_data.isTooltipOpen}
+            onOpenChange={node_data.onTooltipOpenChange}
           />
         </CardContent>
       </Card>

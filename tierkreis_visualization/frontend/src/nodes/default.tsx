@@ -65,8 +65,18 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <InputHandleArray handles={data.handles.inputs} id={data.id} />
-            <OutputHandleArray handles={data.handles.outputs} id={data.id} />
+            <InputHandleArray
+              handles={data.handles.inputs}
+              id={data.id}
+              isOpen={data.isTooltipOpen}
+              onOpenChange={data.onTooltipOpenChange}
+            />
+            <OutputHandleArray
+              handles={data.handles.outputs}
+              id={data.id}
+              isOpen={data.isTooltipOpen}
+              onOpenChange={data.onTooltipOpenChange}
+            />
           </CardContent>
           <CardFooter className="flex items-center justify-center">
             {data.status == "Error" && (

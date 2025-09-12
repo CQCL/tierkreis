@@ -107,6 +107,8 @@ export function parseNodes(
       value: parseNodeValue(node.value),
       setInfo: undefined,
       is_expanded: false,
+      isTooltipOpen: false,
+      onTooltipOpenChange: () => {},
     },
     parentId: parentId ? `${parentId}` : undefined,
   }));

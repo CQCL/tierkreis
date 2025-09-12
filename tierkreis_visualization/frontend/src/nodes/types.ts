@@ -1,5 +1,5 @@
 import { InfoProps } from "@/components/types";
-import { type Node } from "@xyflow/react";
+import { Edge, type Node } from "@xyflow/react";
 
 export type PyNode = {
   id: string | number;
@@ -7,6 +7,8 @@ export type PyNode = {
   function_name: string;
   node_location: string;
   value?: unknown;
+  started_time: string;
+  finished_time: string;
 };
 export type BackendNode = Node<{
   name: string;
@@ -15,13 +17,23 @@ export type BackendNode = Node<{
     inputs: string[];
     outputs: string[];
   };
+  hidden_handles?: {
+    inputs: string[];
+    outputs: string[];
+  };
+  hidden_edges?: Edge[];
   workflowId: string;
   node_location: string;
   id: string;
   title: string;
-  setInfo: (arg: InfoProps) => void;
   label?: string;
   pinned: boolean;
   value: string | null;
+  setInfo?: (info: InfoProps) => void;
+  is_expanded: boolean;
+  isTooltipOpen: boolean;
+  onTooltipOpenChange: (open: boolean) => void;
+  started_time: string;
+  finished_time: string;
 }>;
 export type AppNode = BackendNode;

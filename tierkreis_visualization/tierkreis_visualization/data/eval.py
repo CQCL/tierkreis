@@ -85,6 +85,8 @@ def get_eval_node(
             definition = None
 
         status = node_status(is_finished, definition, has_error)
+        started_time = storage.read_started_time(new_location) or ""
+        finished_time = storage.read_finished_time(new_location) or ""
         value: str | None = None
         match node.type:
             case "function":
@@ -92,7 +94,7 @@ def get_eval_node(
             case "ifelse":
                 name = node.type
                 add_conditional_edges(storage, node_location, i, node, py_edges)
-            case "map" | "eval" | "input" | "loop" | "eifelse":
+            case "map" | "eval" | "loop" | "eifelse":
                 name = node.type
             case "const":
                 name = node.type
@@ -105,6 +107,9 @@ def get_eval_node(
                         value = json.loads(storage.read_output(node_location.N(idx), p))
                     except (FileNotFoundError, TierkreisError):
                         value = None
+            case "input":
+                name = node.type
+                value = node.name
             case _:
                 assert_never(node)
 
@@ -114,6 +119,8 @@ def get_eval_node(
             function_name=name,
             node_location=new_location,
             value=value,
+            started_time=started_time,
+            finished_time=finished_time,
         )
         pynodes.append(pynode)
 

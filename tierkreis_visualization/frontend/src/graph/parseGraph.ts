@@ -4,7 +4,6 @@ import dagre from "@dagrejs/dagre";
 import { Edge } from "@xyflow/react";
 import { nodeHeight, nodeWidth } from "@/data/constants";
 import { CSSProperties } from "react";
-import { InfoProps } from "@/components/types";
 
 function nodeType(function_name: string) {
   if (function_name.match(/^L?\d+$/)) {
@@ -71,8 +70,8 @@ function parseNodeValue(value: unknown): string | null {
     return null;
   }
   if (typeof value === "string") {
-    if (value.length > 5) {
-      return value.slice(0, 5) + "...";
+    if (value.length > 10) {
+      return value.slice(0, 10) + "...";
     }
     return value;
   }
@@ -86,7 +85,6 @@ export function parseNodes(
   nodes: PyNode[],
   edges: PyEdge[],
   workflowId: string,
-  setInfo: (arg: InfoProps) => void,
   parentId?: string
 ): AppNode[] {
   // child nodes prepend their parents id eg. [0,1,2] => [0:0,0:1,0:2]
@@ -98,14 +96,21 @@ export function parseNodes(
       name: node.function_name,
       status: node.status,
       handles: getHandlesFromEdges(Number(node.id), edges),
+      hidden_handles: undefined,
+      hidden_edges: undefined,
       workflowId: workflowId,
       node_location: node.node_location,
       title: getTitle(node.function_name),
       id: (parentId ? `${parentId}:` : "") + node.id.toString(),
       label: node.function_name,
-      setInfo: setInfo,
       pinned: false,
       value: parseNodeValue(node.value),
+      setInfo: undefined,
+      is_expanded: false,
+      isTooltipOpen: false,
+      onTooltipOpenChange: () => {},
+      started_time: node.started_time,
+      finished_time: node.finished_time,
     },
     parentId: parentId ? `${parentId}` : undefined,
   }));
@@ -162,16 +167,9 @@ export function parseEdges(edges: PyEdge[], parentId?: string): Edge[] {
 export function parseGraph(
   data: { nodes: PyNode[]; edges: PyEdge[] },
   workflowId: string,
-  setInfo: (arg: InfoProps) => void,
   parentId?: string
 ) {
-  const nodes = parseNodes(
-    data.nodes,
-    data.edges,
-    workflowId,
-    setInfo,
-    parentId
-  );
+  const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
   const edges = parseEdges(data.edges, parentId);
   return { nodes, edges };
 }

@@ -24,7 +24,14 @@ def get_map_node(
     map_eles = outputs_iter(storage, parent.N(first_ref[0]))
     nodes: list[PyNode] = []
     for i, ele in map_eles:
-        node = PyNode(id=i, status="Started", function_name=ele, node_location=loc.M(i))
+        node = PyNode(
+            id=i,
+            status="Started",
+            function_name=ele,
+            node_location=loc.M(i),
+            started_time=storage.read_started_time(loc.M(i)) or "",
+            finished_time=storage.read_finished_time(loc.M(i)) or "",
+        )
         if check_error(loc.M(i), errored_nodes):
             node.status = "Error"
         elif storage.is_node_finished(loc.M(i)):

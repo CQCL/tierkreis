@@ -10,6 +10,8 @@ class PyNode(BaseModel):
     function_name: str
     node_location: str = ""
     value: Any | None = None
+    started_time: str
+    finished_time: str
 
 
 class PyEdge(BaseModel):

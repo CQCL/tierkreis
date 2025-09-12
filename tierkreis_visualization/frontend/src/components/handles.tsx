@@ -7,7 +7,12 @@ import {
 import { Handle, Position } from "@xyflow/react";
 
 // I have no idea about the style, but it seems to be working now
-export const InputHandleArray = ({ handles, id }: HandleProps) => {
+export const InputHandleArray = ({
+  handles,
+  id,
+  isOpen,
+  onOpenChange,
+}: HandleProps) => {
   return (
     <div
       style={{
@@ -33,7 +38,7 @@ export const InputHandleArray = ({ handles, id }: HandleProps) => {
             }}
           >
             <>
-              <Tooltip>
+              <Tooltip open={isOpen} onOpenChange={onOpenChange}>
                 <TooltipTrigger asChild>
                   <Handle
                     type="target"
@@ -61,7 +66,12 @@ export const InputHandleArray = ({ handles, id }: HandleProps) => {
   );
 };
 
-export const OutputHandleArray = ({ handles, id }: HandleProps) => {
+export const OutputHandleArray = ({
+  handles,
+  id,
+  isOpen,
+  onOpenChange,
+}: HandleProps) => {
   return (
     <div
       style={{
@@ -87,7 +97,7 @@ export const OutputHandleArray = ({ handles, id }: HandleProps) => {
             }}
           >
             <>
-              <Tooltip>
+              <Tooltip open={isOpen} onOpenChange={onOpenChange}>
                 <TooltipTrigger asChild>
                   <Handle
                     type="source"

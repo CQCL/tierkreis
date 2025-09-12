@@ -11,4 +11,6 @@ export interface Workflow {
 export interface HandleProps {
   handles: string[];
   id: string;
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
 }

@@ -5,11 +5,6 @@ steps:
     matrix:
       python-version: ["3.12"]
   steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: "0"
-
     - name: Set up uv & venv
       uses: astral-sh/setup-uv@v5
       with:

@@ -12,9 +12,12 @@ env:
 
 jobs:
   lint:
-    name: Test
+    name: lint
     runs-on: ubuntu-24.04
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup action
         uses: ./.github/actions/setup
 
@@ -23,13 +26,16 @@ jobs:
           just lint
 
   test:
-    name: Test
+    name: test
     runs-on: ubuntu-24.04
     strategy:
       matrix:
         python-version: ["3.12"]
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup action
         uses: ./.github/actions/setup
 
@@ -45,6 +51,9 @@ jobs:
         python-version: ["3.12"]
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup action
         uses: ./.github/actions/setup
 
@@ -60,6 +69,9 @@ jobs:
         python-version: ["3.12"]
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Setup action
         uses: ./.github/actions/setup
 

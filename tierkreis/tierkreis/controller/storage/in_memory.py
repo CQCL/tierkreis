@@ -29,6 +29,8 @@ class NodeData(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     error_logs: str = ""
     outputs: dict[PortID, bytes | None] = Field(default_factory=dict)
+    started: str | None = None
+    finished: str | None = None
 
 
 class ControllerInMemoryStorage:
@@ -72,6 +74,9 @@ class ControllerInMemoryStorage:
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None:
         self.nodes[self.loc_to_path(node_location)].definition = node
+        self.nodes[self.loc_to_path(node_location)].started = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
         if result := self.nodes[self.loc_to_path(node_location)].definition:
@@ -126,6 +131,9 @@ class ControllerInMemoryStorage:
 
     def mark_node_finished(self, node_location: Loc) -> None:
         self.nodes[self.loc_to_path(node_location)].is_done = True
+        self.nodes[self.loc_to_path(node_location)].finished = datetime.now().strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
 
     def is_node_finished(self, node_location: Loc) -> bool:
         return self.nodes[self.loc_to_path(node_location)].is_done
@@ -175,6 +183,12 @@ class ControllerInMemoryStorage:
             "name": self.name,
             "start_time": datetime.now().isoformat(),
         }
+
+    def read_started_time(self, node_location: Loc) -> str | None:
+        return self.nodes[self.loc_to_path(node_location)].started
+
+    def read_finished_time(self, node_location: Loc) -> str | None:
+        return self.nodes[self.loc_to_path(node_location)].finished
 
     def clean_graph_files(self) -> None:
         uid = os.getuid()

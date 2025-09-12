@@ -114,6 +114,12 @@ class GraphDataStorage:
     def write_metadata(self, node_location: Loc) -> None:
         raise NotImplementedError("GraphDataStorage is read only storage.")
 
+    def read_started_time(self, node_location: Loc) -> str | None:
+        return None
+
+    def read_finished_time(self, node_location: Loc) -> str | None:
+        return None
+
 
 def _build_node_outputs(node: NodeDef) -> dict[PortID, None | bytes]:
     outputs: dict[PortID, None | bytes] = {val: None for val in node.outputs}

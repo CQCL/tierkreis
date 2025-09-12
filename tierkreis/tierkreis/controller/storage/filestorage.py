@@ -217,3 +217,17 @@ class ControllerFileStorage:
     def read_metadata(self, node_location: Loc) -> dict[str, Any]:
         with open(self._metadata_path(node_location)) as fh:
             return json.load(fh)
+
+    def read_started_time(self, node_location: Loc) -> str | None:
+        node_def = Path(self._nodedef_path(node_location))
+        if not node_def.exists():
+            return None
+        since_epoch = node_def.stat().st_mtime
+        return datetime.fromtimestamp(since_epoch).strftime("%Y-%m-%d %H:%M:%S")
+
+    def read_finished_time(self, node_location: Loc) -> str | None:
+        done = Path(self._done_path(node_location))
+        if not done.exists():
+            return None
+        since_epoch = done.stat().st_mtime
+        return datetime.fromtimestamp(since_epoch).strftime("%Y-%m-%d %H:%M:%S")

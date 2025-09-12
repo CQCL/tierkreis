@@ -12,27 +12,11 @@ env:
 
 jobs:
   lint:
-    name: Lint
+    name: Test
     runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        python-version: ["3.12"]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: "0"
-
-      - name: Set up uv & venv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-glob: uv.lock
-
-      - name: Setup just
-        uses: extractions/setup-just@v3
+      - name: Setup action
+        uses: ./.github/actions/setup
 
       - name: Lint project
         run: |
@@ -46,35 +30,38 @@ jobs:
         python-version: ["3.12"]
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: "0"
+      - name: Setup action
+        uses: ./.github/actions/setup
 
-      - name: Set up uv & venv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-glob: uv.lock
-
-      - name: Setup just
-        uses: extractions/setup-just@v3
-
-      - name: Lint project
+      - name: Test project
         run: |
           just test
 
-      - name: Upload pytest test results
-        uses: actions/upload-artifact@master
-        with:
-          name: pytest-results-${{ matrix.python-version }}
-          path: htmlcov/
+  examples:
+    name: examples
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Setup action
+        uses: ./.github/actions/setup
 
       - name: Check examples do not error
         run: |
           just examples
+
+  docs:
+    name: docs
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+      - name: Setup action
+        uses: ./.github/actions/setup
 
       - name: Check docs do not error
         run: |

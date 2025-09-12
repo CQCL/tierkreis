@@ -71,6 +71,23 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               isOpen={data.isTooltipOpen}
               onOpenChange={data.onTooltipOpenChange}
             />
+            <div className="flex items-center justify-center">
+              {data.status == "Error" && (
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  style={{ zIndex: 5 }}
+                  onClick={() =>
+                    data.setInfo?.({
+                      type: "Errors",
+                      content: errors ? errors : "",
+                    })
+                  }
+                >
+                  <OctagonAlert />
+                </Button>
+              )}
+            </div>
             <OutputHandleArray
               handles={data.handles.outputs}
               id={data.id}
@@ -78,22 +95,18 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               onOpenChange={data.onTooltipOpenChange}
             />
           </CardContent>
-          <CardFooter className="flex items-center justify-center">
-            {data.status == "Error" && (
-              <Button
-                size="sm"
-                variant="destructive"
-                style={{ zIndex: 5 }}
-                onClick={() =>
-                  data.setInfo?.({
-                    type: "Errors",
-                    content: errors ? errors : "",
-                  })
-                }
-              >
-                <OctagonAlert />
-              </Button>
-            )}
+          <CardFooter
+            className="flex justify-content justify-start"
+            style={{ padding: "-5px" }}
+          >
+            <span className="text-[6px] font-mono">
+              Started: {data.started_time} <br></br>
+              {data.finished_time != "" && (
+                <span className="text-[6px] font-mono">
+                  Finished: {data.finished_time}
+                </span>
+              )}
+            </span>
           </CardFooter>
         </div>
       </DialogTrigger>

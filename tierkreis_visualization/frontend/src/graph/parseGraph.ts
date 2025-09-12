@@ -109,6 +109,8 @@ export function parseNodes(
       is_expanded: false,
       isTooltipOpen: false,
       onTooltipOpenChange: () => {},
+      started_time: node.started_time,
+      finished_time: node.finished_time,
     },
     parentId: parentId ? `${parentId}` : undefined,
   }));

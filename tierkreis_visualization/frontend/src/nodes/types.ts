@@ -7,6 +7,8 @@ export type PyNode = {
   function_name: string;
   node_location: string;
   value?: unknown;
+  started_time: string;
+  finished_time: string;
 };
 export type BackendNode = Node<{
   name: string;
@@ -31,5 +33,7 @@ export type BackendNode = Node<{
   is_expanded: boolean;
   isTooltipOpen: boolean;
   onTooltipOpenChange: (open: boolean) => void;
+  started_time: string;
+  finished_time: string;
 }>;
 export type AppNode = BackendNode;

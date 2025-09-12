@@ -1,4 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Edge, useReactFlow, type NodeProps } from "@xyflow/react";
 
 import { InputHandleArray, OutputHandleArray } from "@/components/handles";
@@ -148,7 +154,7 @@ export function MapNode({ data: node_data }: NodeProps<BackendNode>) {
   return (
     <NodeStatusIndicator status={node_data.status}>
       {}
-      <Card className="w-[180px]">
+      <Card className="w-[180px] gap-2">
         <CardHeader>
           <CardTitle>{node_data.title}</CardTitle>
         </CardHeader>
@@ -182,6 +188,19 @@ export function MapNode({ data: node_data }: NodeProps<BackendNode>) {
             onOpenChange={node_data.onTooltipOpenChange}
           />
         </CardContent>
+        <CardFooter
+          className="flex justify-content justify-start"
+          style={{ padding: "-5px" }}
+        >
+          <span className="text-[6px] font-mono">
+            Started: {node_data.started_time} <br></br>
+            {node_data.finished_time != "" && (
+              <span className="text-[6px] font-mono">
+                Finished: {node_data.finished_time}
+              </span>
+            )}
+          </span>
+        </CardFooter>
       </Card>
     </NodeStatusIndicator>
   );

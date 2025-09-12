@@ -85,6 +85,8 @@ def get_eval_node(
             definition = None
 
         status = node_status(is_finished, definition, has_error)
+        started_time = storage.read_started_time(new_location) or ""
+        finished_time = storage.read_finished_time(new_location) or ""
         value: str | None = None
         match node.type:
             case "function":
@@ -117,6 +119,8 @@ def get_eval_node(
             function_name=name,
             node_location=new_location,
             value=value,
+            started_time=started_time,
+            finished_time=finished_time,
         )
         pynodes.append(pynode)
 

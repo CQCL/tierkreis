@@ -1,4 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Edge, getOutgoers, type NodeProps, useReactFlow } from "@xyflow/react";
 
 import { InputHandleArray, OutputHandleArray } from "@/components/handles";
@@ -190,27 +196,17 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
 
   return (
     <NodeStatusIndicator status={node_data.status}>
-      <Card className="w-[180px]">
+      <Card className="w-[180px] gap-2">
         <CardHeader>
-          <CardTitle className="overflow-wrap">{node_data.title}</CardTitle>
+          <CardTitle className="overflow-wrap flex-grow">
+            {node_data.title}
+          </CardTitle>
         </CardHeader>
-
         <CardContent>
-          <InputHandleArray
-            handles={node_data.handles.inputs}
-            id={node_data.id}
-            isOpen={node_data.isTooltipOpen}
-            onOpenChange={node_data.onTooltipOpenChange}
-          />
-          <OutputHandleArray
-            handles={node_data.handles.outputs}
-            id={node_data.id}
-            isOpen={node_data.isTooltipOpen}
-            onOpenChange={node_data.onTooltipOpenChange}
-          />
           <div className="flex items-center justify-center">
             {node_data.status != "Not started" && (
               <Button
+                className="flex-none"
                 variant="secondary"
                 size="icon"
                 onClick={() =>
@@ -225,7 +221,32 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
               </Button>
             )}
           </div>
+          <InputHandleArray
+            handles={node_data.handles.inputs}
+            id={node_data.id}
+            isOpen={node_data.isTooltipOpen}
+            onOpenChange={node_data.onTooltipOpenChange}
+          />
+          <OutputHandleArray
+            handles={node_data.handles.outputs}
+            id={node_data.id}
+            isOpen={node_data.isTooltipOpen}
+            onOpenChange={node_data.onTooltipOpenChange}
+          />
         </CardContent>
+        <CardFooter
+          className="flex justify-content justify-start"
+          style={{ padding: "-5px" }}
+        >
+          <span className="text-[6px] font-mono">
+            Started: {node_data.started_time} <br></br>
+            {node_data.finished_time != "" && (
+              <span className="text-[6px] font-mono">
+                Finished: {node_data.finished_time}
+              </span>
+            )}
+          </span>
+        </CardFooter>
       </Card>
     </NodeStatusIndicator>
   );

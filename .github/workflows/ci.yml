@@ -12,23 +12,23 @@ jobs:
   lint:
     uses: ./.github/workflows/run-command.yml
     with:
-      command-name: lint
+      command_name: lint
       command: just lint
 
   test:
     uses: ./.github/workflows/run-command.yml
     with:
-      command-name: test
+      command_name: test
       command: just test
 
   examples:
     uses: ./.github/workflows/run-command.yml
     with:
-      command-name: examples
+      command_name: examples
       command: just examples
 
   docs:
     uses: ./.github/workflows/run-command.yml
     with:
-      command-name: docs
+      command_name: docs
       command: just docs

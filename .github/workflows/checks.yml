@@ -1,0 +1,34 @@
+name: Python package CI
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  lint:
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command_name: lint
+      command: just lint
+
+  test:
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command_name: test
+      command: just test
+
+  examples:
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command_name: examples
+      command: just examples
+
+  docs:
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command_name: docs
+      command: just docs

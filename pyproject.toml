@@ -26,13 +26,10 @@ test = [
     "pydantic>=2.9.2",
 ]
 docs = [
-    "quantinuum-sphinx",
     "sphinx>=8.2",
     "myst-parser>=4.0.1",
     "sphinx-autodoc2>=0.5.0",
     "myst-nb>=1.3.0",
+    "furo>=2025.7.19",
 ]
 examples = ["pyscf>=2.9.0"]
-
-[tool.uv.sources]
-quantinuum-sphinx = { git = "https://github.com/CQCL/quantinuum-sphinx.git" }

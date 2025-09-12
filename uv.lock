@@ -13,6 +13,7 @@ members = [
 
 [manifest.dependency-groups]
 dev = [
+    { name = "furo", specifier = ">=2025.7.19" },
     { name = "isort", specifier = ">=6.0.1" },
     { name = "myst-nb", specifier = ">=1.3.0" },
     { name = "myst-parser", specifier = ">=4.0.1" },
@@ -22,15 +23,14 @@ dev = [
     { name = "pytest", specifier = ">=6.2,<9" },
     { name = "pytest-asyncio", specifier = ">=0.16,<0.17" },
     { name = "pytest-cov", specifier = ">=5.0,<6" },
-    { name = "quantinuum-sphinx", git = "https://github.com/CQCL/quantinuum-sphinx.git" },
     { name = "ruff", specifier = ">=0.12.5" },
     { name = "sphinx", specifier = ">=8.2" },
     { name = "sphinx-autodoc2", specifier = ">=0.5.0" },
 ]
 docs = [
+    { name = "furo", specifier = ">=2025.7.19" },
     { name = "myst-nb", specifier = ">=1.3.0" },
     { name = "myst-parser", specifier = ">=4.0.1" },
-    { name = "quantinuum-sphinx", git = "https://github.com/CQCL/quantinuum-sphinx.git" },
     { name = "sphinx", specifier = ">=8.2" },
     { name = "sphinx-autodoc2", specifier = ">=0.5.0" },
 ]
@@ -45,6 +45,18 @@ test = [
     { name = "pytest", specifier = ">=6.2,<9" },
     { name = "pytest-asyncio", specifier = ">=0.16,<0.17" },
     { name = "pytest-cov", specifier = ">=5.0,<6" },
+]
+
+[[package]]
+name = "accessible-pygments"
+version = "0.0.5"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pygments" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/bc/c1/bbac6a50d02774f91572938964c582fff4270eee73ab822a4aeea4d8b11b/accessible_pygments-0.0.5.tar.gz", hash = "sha256:40918d3e6a2b619ad424cb91e556bd3bd8865443d9f22f1dcdf79e33c8046872", size = 1377899 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8d/3f/95338030883d8c8b91223b4e21744b04d11b161a3ef117295d8241f50ab4/accessible_pygments-0.0.5-py3-none-any.whl", hash = "sha256:88ae3211e68a1d0b011504b2ffc1691feafce124b845bd072ab6f9f66f34d4b7", size = 1395903 },
 ]
 
 [[package]]
@@ -126,15 +138,15 @@ wheels = [
 
 [[package]]
 name = "beautifulsoup4"
-version = "4.13.4"
+version = "4.13.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "soupsieve" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d8/e4/0c4c39e18fd76d6a628d4dd8da40543d136ce2d1752bd6eeeab0791f4d6b/beautifulsoup4-4.13.4.tar.gz", hash = "sha256:dbb3c4e1ceae6aefebdaf2423247260cd062430a410e38c66f2baa50a8437195", size = 621067 }
+sdist = { url = "https://files.pythonhosted.org/packages/85/2e/3e5079847e653b1f6dc647aa24549d68c6addb4c595cc0d902d1b19308ad/beautifulsoup4-4.13.5.tar.gz", hash = "sha256:5e70131382930e7c3de33450a2f54a63d5e4b19386eab43a5b34d594268f3695", size = 622954 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/50/cd/30110dc0ffcf3b131156077b90e9f60ed75711223f306da4db08eff8403b/beautifulsoup4-4.13.4-py3-none-any.whl", hash = "sha256:9bbbb14bfde9d79f38b8cd5f8c7c85f4b8f2523190ebed90e950a8dea4cb1c4b", size = 187285 },
+    { url = "https://files.pythonhosted.org/packages/04/eb/f4151e0c7377a6e08a38108609ba5cede57986802757848688aeedd1b9e8/beautifulsoup4-4.13.5-py3-none-any.whl", hash = "sha256:642085eaa22233aceadff9c69651bc51e8bf3f874fb6d7104ece2beb24b47c4a", size = 105113 },
 ]
 
 [[package]]
@@ -422,17 +434,18 @@ wheels = [
 
 [[package]]
 name = "furo"
-version = "2024.8.6"
+version = "2025.7.19"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
+    { name = "accessible-pygments" },
     { name = "beautifulsoup4" },
     { name = "pygments" },
     { name = "sphinx" },
     { name = "sphinx-basic-ng" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a0/e2/d351d69a9a9e4badb4a5be062c2d0e87bd9e6c23b5e57337fef14bef34c8/furo-2024.8.6.tar.gz", hash = "sha256:b63e4cee8abfc3136d3bc03a3d45a76a850bada4d6374d24c1716b0e01394a01", size = 1661506 }
+sdist = { url = "https://files.pythonhosted.org/packages/d0/69/312cd100fa45ddaea5a588334d2defa331ff427bcb61f5fe2ae61bdc3762/furo-2025.7.19.tar.gz", hash = "sha256:4164b2cafcf4023a59bb3c594e935e2516f6b9d35e9a5ea83d8f6b43808fe91f", size = 1662054 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/27/48/e791a7ed487dbb9729ef32bb5d1af16693d8925f4366befef54119b2e576/furo-2024.8.6-py3-none-any.whl", hash = "sha256:6cd97c58b47813d3619e63e9081169880fbe331f0ca883c871ff1f3f11814f5c", size = 341333 },
+    { url = "https://files.pythonhosted.org/packages/3a/34/2b07b72bee02a63241d654f5d8af87a2de977c59638eec41ca356ab915cd/furo-2025.7.19-py3-none-any.whl", hash = "sha256:bdea869822dfd2b494ea84c0973937e35d1575af088b6721a29c7f7878adc9e3", size = 342175 },
 ]
 
 [[package]]
@@ -1582,14 +1595,6 @@ wheels = [
 ]
 
 [[package]]
-name = "quantinuum-sphinx"
-version = "0.1.0"
-source = { git = "https://github.com/CQCL/quantinuum-sphinx.git#f72f55749533e73f5ed5beeb5e48f53487ade657" }
-dependencies = [
-    { name = "furo" },
-]
-
-[[package]]
 name = "qwasm"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1824,11 +1829,11 @@ wheels = [
 
 [[package]]
 name = "soupsieve"
-version = "2.7"
+version = "2.8"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/3f/f4/4a80cd6ef364b2e8b65b15816a843c0980f7a5a2b4dc701fc574952aa19f/soupsieve-2.7.tar.gz", hash = "sha256:ad282f9b6926286d2ead4750552c8a6142bc4c783fd66b0293547c8fe6ae126a", size = 103418 }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/e6/21ccce3262dd4889aa3332e5a119a3491a95e8f60939870a3a035aabac0d/soupsieve-2.8.tar.gz", hash = "sha256:e2dd4a40a628cb5f28f6d4b0db8800b8f581b65bb380b97de22ba5ca8d72572f", size = 103472 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/e7/9c/0e6afc12c269578be5c0c1c9f4b49a8d32770a080260c333ac04cc1c832d/soupsieve-2.7-py3-none-any.whl", hash = "sha256:6e60cc5c1ffaf1cebcc12e8188320b72071e922c2e897f737cadce79ad5d30c4", size = 36677 },
+    { url = "https://files.pythonhosted.org/packages/14/a0/bb38d3b76b8cae341dad93a2dd83ab7462e6dbcdd84d43f54ee60a8dc167/soupsieve-2.8-py3-none-any.whl", hash = "sha256:0cc76456a30e20f5d7f2e14a98a4ae2ee4e5abdc7c5ea0aafe795f344bc7984c", size = 36679 },
 ]
 
 [[package]]
@@ -2045,7 +2050,7 @@ wheels = [
 
 [[package]]
 name = "tierkreis"
-version = "2.0.1"
+version = "2.0.2"
 source = { editable = "tierkreis" }
 dependencies = [
     { name = "pydantic" },
@@ -2072,7 +2077,7 @@ dev = [
 
 [[package]]
 name = "tierkreis-visualization"
-version = "0.1.2"
+version = "0.1.3"
 source = { editable = "tierkreis_visualization" }
 dependencies = [
     { name = "fastapi", extra = ["standard"] },
@@ -2093,7 +2098,7 @@ requires-dist = [
 
 [[package]]
 name = "tkr-aer-worker"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "tierkreis_workers/aer_worker" }
 dependencies = [
     { name = "pytket-qiskit" },
@@ -2108,7 +2113,7 @@ requires-dist = [
 
 [[package]]
 name = "tkr-nexus-worker"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "tierkreis_workers/nexus_worker" }
 dependencies = [
     { name = "qnexus" },
@@ -2123,7 +2128,7 @@ requires-dist = [
 
 [[package]]
 name = "tkr-pytket-worker"
-version = "0.1.1"
+version = "0.1.2"
 source = { editable = "tierkreis_workers/pytket_worker" }
 dependencies = [
     { name = "pytket" },

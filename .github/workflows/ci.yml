@@ -10,69 +10,25 @@ on:
 
 jobs:
   lint:
-    name: lint
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup action
-        uses: ./.github/actions/setup
-
-      - name: Lint project
-        run: |
-          just lint
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command-name: lint
+      command: just lint
 
   test:
-    name: test
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup action
-        uses: ./.github/actions/setup
-
-      - name: Test project
-        run: |
-          just test
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command-name: test
+      command: just test
 
   examples:
-    name: examples
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup action
-        uses: ./.github/actions/setup
-
-      - name: Check examples do not error
-        run: |
-          just examples
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command-name: examples
+      command: just examples
 
   docs:
-    name: docs
-    runs-on: ubuntu-24.04
-    strategy:
-      matrix:
-        python-version: ["3.12"]
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup action
-        uses: ./.github/actions/setup
-
-      - name: Check docs do not error
-        run: |
-          just docs
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command-name: docs
+      command: just docs

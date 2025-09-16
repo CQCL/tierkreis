@@ -72,7 +72,7 @@ def generate_pjsub_script(spec: JobSpec) -> str:
     # 8. Environment
     lines.append("\n# --- Environment Setup ---")
     for key, value in spec.environment.items():
-        lines.append(f'{_COMMAND_PREFIX} -X "{key}"="{value}"')
+        lines.append(f'{_COMMAND_PREFIX} -x "{key}"="{value}"')
 
     # 9. Container logic
 

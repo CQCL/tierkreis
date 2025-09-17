@@ -23,20 +23,20 @@ The visualizer is browser based and can be accessed at:
 
 Programmatically the server can be run from python
 
-```python
-import tierkreis-visualization
+```py
+from tierkreis_visualization.main import start
 
-tierkreis_visualziation.main.start()
+start()
 ```
 
 Alternatively in you can use `visualize_graph`
 
 ```py
 from tierkreis.builder import GraphBuilder
-import tierkreis-visualization
+from tierkreis_visualization.main import visualize_graph
 
 graph = GraphBuilder()
-tierkreis_visualziation.main.visualize_graph(graph.get_data())
+visualize_graph(graph.get_data())
 ```
 
 which can also visualize partial graphs.

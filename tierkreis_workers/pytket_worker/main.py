@@ -3,7 +3,7 @@ from sys import argv
 from typing import NamedTuple
 
 
-from default_pass import default_compilation_pass
+from default_pass import default_compilation_pass, default_compilation_pass_ibm
 from tierkreis import Worker
 from pytket.backends.backendresult import BackendResult
 from pytket._tket.circuit import Circuit
@@ -12,6 +12,7 @@ from pytket.pauli import QubitPauliString
 from pytket.passes import BasePass
 from pytket.utils.expectations import expectation_from_counts
 from pytket.utils.measurements import append_pauli_measurement
+from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,35 @@ def compile_circuits_quantinuum(circuits: list[Circuit]) -> list[Circuit]:
     for pytket_circuit in circuits:
         p.apply(pytket_circuit)
     return circuits
+
+
+@worker.task()
+def compile_circuit_ibm(
+    circuit: Circuit, backend_name: str, optimization_level: int = 2
+) -> Circuit:
+    p = default_compilation_pass_ibm(backend_name, optimization_level)
+    p.apply(circuit)
+    return circuit
+
+
+@worker.task()
+def compile_circuits_ibm(
+    circuits: list[Circuit], backend_name: str, optimization_level: int = 2
+) -> list[Circuit]:
+    p = default_compilation_pass_ibm(backend_name, optimization_level)
+    for pytket_circuit in circuits:
+        p.apply(pytket_circuit)
+    return circuits
+
+
+@worker.task()
+def to_qasm_str(circuit: Circuit) -> str:
+    return circuit_to_qasm_str(circuit)
+
+
+@worker.task()
+def from_gasm_str(qasm: str) -> Circuit:
+    return circuit_from_qasm_str(qasm)
 
 
 @worker.task()

@@ -191,16 +191,7 @@ export function MapNode({ data: node_data }: NodeProps<BackendNode>) {
         <CardFooter
           className="flex justify-content justify-start"
           style={{ padding: "-5px" }}
-        >
-          <span className="text-[6px] font-mono">
-            Started: {node_data.started_time} <br></br>
-            {node_data.finished_time != "" && (
-              <span className="text-[6px] font-mono">
-                Finished: {node_data.finished_time}
-              </span>
-            )}
-          </span>
-        </CardFooter>
+        ></CardFooter>
       </Card>
     </NodeStatusIndicator>
   );

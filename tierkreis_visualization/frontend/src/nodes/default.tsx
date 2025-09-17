@@ -98,16 +98,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
           <CardFooter
             className="flex justify-content justify-start"
             style={{ padding: "-5px" }}
-          >
-            <span className="text-[6px] font-mono">
-              Started: {data.started_time} <br></br>
-              {data.finished_time != "" && (
-                <span className="text-[6px] font-mono">
-                  Finished: {data.finished_time}
-                </span>
-              )}
-            </span>
-          </CardFooter>
+          ></CardFooter>
         </div>
       </DialogTrigger>
     </Card>

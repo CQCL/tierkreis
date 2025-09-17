@@ -170,7 +170,6 @@ class ControllerFileStorage:
     def read_errors(self, node_location: Loc) -> str:
         if not self._error_logs_path(node_location).exists():
             if self._error_path(node_location).exists():
-                print(self._error_path(node_location))
                 with open(self._error_path(node_location), "r") as fh:
                     return fh.read()
             return ""
@@ -223,11 +222,11 @@ class ControllerFileStorage:
         if not node_def.exists():
             return None
         since_epoch = node_def.stat().st_mtime
-        return datetime.fromtimestamp(since_epoch).strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.fromtimestamp(since_epoch).isoformat()
 
     def read_finished_time(self, node_location: Loc) -> str | None:
         done = Path(self._done_path(node_location))
         if not done.exists():
             return None
         since_epoch = done.stat().st_mtime
-        return datetime.fromtimestamp(since_epoch).strftime("%Y-%m-%d %H:%M:%S")
+        return datetime.fromtimestamp(since_epoch).isoformat()

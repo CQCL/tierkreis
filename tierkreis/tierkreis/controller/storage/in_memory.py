@@ -74,9 +74,7 @@ class ControllerInMemoryStorage:
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None:
         self.nodes[self.loc_to_path(node_location)].definition = node
-        self.nodes[self.loc_to_path(node_location)].started = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        self.nodes[self.loc_to_path(node_location)].started = datetime.now().isoformat()
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
         if result := self.nodes[self.loc_to_path(node_location)].definition:
@@ -131,9 +129,9 @@ class ControllerInMemoryStorage:
 
     def mark_node_finished(self, node_location: Loc) -> None:
         self.nodes[self.loc_to_path(node_location)].is_done = True
-        self.nodes[self.loc_to_path(node_location)].finished = datetime.now().strftime(
-            "%Y-%m-%d %H:%M:%S"
-        )
+        self.nodes[
+            self.loc_to_path(node_location)
+        ].finished = datetime.now().isoformat()
 
     def is_node_finished(self, node_location: Loc) -> bool:
         return self.nodes[self.loc_to_path(node_location)].is_done

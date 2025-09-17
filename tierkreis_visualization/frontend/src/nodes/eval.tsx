@@ -1,4 +1,10 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Edge, getOutgoers, type NodeProps, useReactFlow } from "@xyflow/react";
 
 import { InputHandleArray, OutputHandleArray } from "@/components/handles";
@@ -8,7 +14,8 @@ import { URL } from "@/data/constants";
 import { parseEdges, parseNodes } from "@/graph/parseGraph";
 import { bottomUpLayout } from "@/graph/layoutGraph";
 import { type BackendNode } from "./types";
-import { Plus } from "lucide-react";
+import { hideChildren } from "./hide_children";
+import { Minus, Plus } from "lucide-react";
 
 function replaceEval(
   nodeId: string,
@@ -20,7 +27,7 @@ function replaceEval(
   // replaces an eval node with its nested subgraph
   const oldEdgesCopy: Edge[] = JSON.parse(JSON.stringify(oldEdges));
   // we only care about the last part of the id as number
-  const nodesToRemove = [nodeId];
+  const nodesToRemove: string[] = [];
   newNodes.sort(
     (a, b) =>
       Number(a.id.substring(a.id.lastIndexOf(":"), a.id.length)) -
@@ -90,25 +97,74 @@ function replaceEval(
       }
     }
   });
-  const groupNode = {
-    id: nodeId,
-    type: "group",
-    position: { x: 0, y: 0 },
-    data: {},
-    parentId: oldNodes.find((node) => node.id === nodeId)?.parentId,
-  } as BackendNode;
-  oldNodes = oldNodes.filter((node) => !nodesToRemove.includes(node.id));
+  // remove the body nodes (might not want to do that in the future)
+  // update the internal state of the eval node
+  oldNodes = oldNodes
+    .map((node) => {
+      if (nodesToRemove.includes(node.id)) {
+        return undefined;
+      }
+      if (node.id === nodeId) {
+        const handles = node.data.handles.inputs.filter(
+          (handle) => !handle.includes("body")
+        );
+        node.position = { x: 0, y: 0 };
+        node.data.hidden_handles = {
+          inputs: handles,
+          outputs: node.data.handles.outputs,
+        };
+        node.data.hidden_edges = oldEdges.filter(
+          (edge) =>
+            (edge.target === nodeId || edge.source === nodeId) &&
+            edge.label !== "Graph Body"
+        );
+        node.data.handles = { inputs: [], outputs: [] };
+        node.data.is_expanded = true;
+      }
+      return node;
+    })
+    .filter((node): node is BackendNode => node !== undefined);
   const tmpEdges = oldEdgesCopy.filter(
     (edge) => edge.target !== nodeId && edge.source !== nodeId
   );
   return {
-    nodes: [groupNode, ...oldNodes, ...newNodes],
+    nodes: [...oldNodes, ...newNodes],
     edges: [...tmpEdges, ...newEdges],
   };
 }
 
 export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
   const reactFlowInstance = useReactFlow<BackendNode, Edge>();
+  if (node_data.is_expanded) {
+    const collapseSelf = (nodeId: string) => {
+      const oldEdges = reactFlowInstance.getEdges();
+      const oldNodes = reactFlowInstance.getNodes();
+      const { nodes: newNodes, edges: newEdges } = hideChildren(
+        nodeId,
+        oldNodes,
+        oldEdges
+      );
+      const positionedNodes = bottomUpLayout(newNodes, newEdges);
+      reactFlowInstance.setNodes(positionedNodes);
+      reactFlowInstance.setEdges(newEdges);
+    };
+    return (
+      <NodeStatusIndicator status={node_data.status}>
+        <div className="grid justify-items-end">
+          <Button
+            className="z-index-5"
+            variant="secondary"
+            size="icon"
+            onClick={() => {
+              collapseSelf(node_data.id);
+            }}
+          >
+            <Minus />
+          </Button>
+        </div>
+      </NodeStatusIndicator>
+    );
+  }
   const loadChildren = async (
     workflowId: string,
     node_location: string,
@@ -118,13 +174,7 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
       .then((data) => {
-        const nodes = parseNodes(
-          data.nodes,
-          data.edges,
-          workflowId,
-          node_data.setInfo,
-          parentId
-        );
+        const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
         const edges = parseEdges(data.edges, parentId);
         const oldEdges = reactFlowInstance.getEdges();
         const oldNodes = reactFlowInstance.getNodes();
@@ -143,38 +193,51 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
         reactFlowInstance.setEdges(newEdges);
       });
   };
+
   return (
     <NodeStatusIndicator status={node_data.status}>
-      <Card className="w-[180px]">
+      <Card className="w-[180px] gap-2">
         <CardHeader>
-          <CardTitle className="overflow-wrap">{node_data.title}</CardTitle>
+          <CardTitle className="overflow-wrap flex-grow">
+            {node_data.title}
+          </CardTitle>
         </CardHeader>
-
         <CardContent>
+          <div className="flex items-center justify-center">
+            {node_data.status != "Not started" && (
+              <Button
+                className="flex-none"
+                variant="secondary"
+                size="icon"
+                onClick={() =>
+                  loadChildren(
+                    node_data.workflowId,
+                    node_data.node_location,
+                    node_data.id
+                  )
+                }
+              >
+                <Plus />
+              </Button>
+            )}
+          </div>
           <InputHandleArray
             handles={node_data.handles.inputs}
             id={node_data.id}
+            isOpen={node_data.isTooltipOpen}
+            onOpenChange={node_data.onTooltipOpenChange}
           />
           <OutputHandleArray
             handles={node_data.handles.outputs}
             id={node_data.id}
+            isOpen={node_data.isTooltipOpen}
+            onOpenChange={node_data.onTooltipOpenChange}
           />
-          <div className="flex items-center justify-center">
-            <Button
-              variant="secondary"
-              size="icon"
-              onClick={() =>
-                loadChildren(
-                  node_data.workflowId,
-                  node_data.node_location,
-                  node_data.id
-                )
-              }
-            >
-              <Plus />
-            </Button>
-          </div>
         </CardContent>
+        <CardFooter
+          className="flex justify-content justify-start"
+          style={{ padding: "-5px" }}
+        ></CardFooter>
       </Card>
     </NodeStatusIndicator>
   );

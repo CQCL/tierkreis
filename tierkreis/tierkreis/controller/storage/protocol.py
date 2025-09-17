@@ -239,3 +239,23 @@ class ControllerStorage(Protocol):
         :type node_location: Loc
         """
         ...
+
+    def read_started_time(self, node_location: Loc) -> str | None:
+        """Reads the start time of a node
+
+        :param node_location: The location of the node
+        :type node_location: Loc
+        :return: A time string when node has started, else None.
+        :rtype: str | None
+        """
+        ...
+
+    def read_finished_time(self, node_location: Loc) -> str | None:
+        """Reads the finish time of a node
+
+        :param node_location: The location of the node
+        :type node_location: Loc
+        :return: A time string when node is completed, else None.
+        :rtype: str | None
+        """
+        ...

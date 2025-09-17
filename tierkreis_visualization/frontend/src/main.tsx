@@ -13,6 +13,7 @@ import App from "./App";
 import { ReactFlowProvider } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import "./index.css";
+import ErrorPage from "./error";
 
 const queryClient = new QueryClient();
 
@@ -33,20 +34,24 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: element,
+    errorElement: <ErrorPage></ErrorPage>,
   },
   {
     path: "/:workflowId",
     element: element,
     loader: workflowId,
+    errorElement: <ErrorPage></ErrorPage>,
   },
   {
     path: "*/:workflowId",
     element: element,
     loader: workflowId,
+    errorElement: <ErrorPage></ErrorPage>,
   },
   {
     path: "*",
     element: element,
+    errorElement: <ErrorPage></ErrorPage>,
   },
 ]);
 

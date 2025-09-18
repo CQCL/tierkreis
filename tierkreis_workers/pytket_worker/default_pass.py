@@ -14,6 +14,8 @@ from pytket.passes import (
 )
 from pytket.passes.resizeregpass import scratch_reg_resize_pass
 from pytket.circuit import OpType
+from pytket.extensions.qiskit.backends.ibm import IBMQBackend
+from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
 
 
 def _gate_set() -> set[OpType]:
@@ -25,12 +27,10 @@ def two_qubit_gate_set() -> set[OpType]:
 
     Submitted circuits must contain only one of these.
     """
-    return _gate_set() & set([OpType.ZZPhase, OpType.ZZMax, OpType.TK2])
+    return _gate_set() & {OpType.ZZPhase, OpType.ZZMax, OpType.TK2}
 
 
 def default_compilation_pass() -> BasePass:
-    optimisation_level: int = 3
-    assert optimisation_level in range(4)
     passlist = [
         DecomposeBoxes(),
         scratch_reg_resize_pass(),
@@ -94,3 +94,17 @@ def default_compilation_pass() -> BasePass:
     passlist.append(RemovePhaseOps())
     passlist.append(FlattenRelabelRegistersPass("q"))
     return SequencePass(passlist, strict=False)
+
+
+def default_compilation_pass_ibm(
+    backend_name: str, optimization_level: int = 2
+) -> BasePass:
+    backend = IBMQBackend(backend_name)
+    return backend.default_compilation_pass(optimization_level)
+
+
+def default_compilation_pass_quantinuum(
+    backend_name: str, optimization_level: int = 2
+) -> BasePass:
+    backend = QuantinuumBackend(backend_name)
+    return backend.default_compilation_pass(optimization_level)

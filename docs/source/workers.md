@@ -1,0 +1,62 @@
+# Worker Libraries
+
+Tierkreis workers come in three flavors:
+
+- Builtin workers, provided by Tierkreis itself
+- User defined workers, by using the `@worker.task()` annotation or writing external ones
+- Prepackaged workers from the Tierkreis developers
+
+This document outlines the functionality of the prepackaged workers.
+Currently there are three workers provided as separate packages on pypi:
+
+- Qiskit Aer
+- Pytket
+- Quantinuum Nexus
+
+## Qiskit Aer
+
+The qiskit simulation backend aer for local simulation of quantum circuits.
+
+**Installation**
+
+```sh
+pip install tkr-aer-worker
+```
+
+**Example**
+
+See the example `hamiltonian_graph.py`.
+
+## Pytket
+
+The pytket compiler suit to optimize circuits.
+The worker only contains a subset of common operations.
+For a custom compilation pipeline it is advised to build your own worker.
+
+**Installation**
+
+```sh
+pip install tkr-pytket-worker
+```
+
+**Authentication**
+Certain backends, such as the IBMQ backend require authentication.
+The worker uses the default mechanism provided by the service.
+For example, to use IBMQ services, the credentials are expected to be stored in a file `_file` TODO
+
+**Example**
+
+See the example `hamiltonian_graph.py`.
+
+## Quantinuum Nexus
+
+Interface to the Quantinuum Nexus platform.
+
+**Installation**
+
+```sh
+pip insall tkr-nexus-worker
+```
+
+**Authentication**
+tbd.

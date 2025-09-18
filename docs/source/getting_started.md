@@ -16,11 +16,18 @@ A sequence of tutorials that cover the fundamentals of writing and operating Tie
 
 ## Worker examples
 
+Tutorials on writing workers that provide additional tasks.
+For worker libraries see [this document](workers.md)
+
 ### Tierkreis Python library
 
 [Hello world worker](worker/hello_world.md)
 
 [Complex types in Tierkreis Python workers](worker/complex_types.md)
+
+### Other Workers
+
+[External workers with an IDL](worker/external_workers.md)
 
 ## Executors
 

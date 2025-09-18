@@ -1,5 +1,4 @@
 from sys import argv
-from typing import Sequence
 
 from compile_circuit import (
     MINIMAL_GATE_SET,
@@ -62,7 +61,7 @@ def compile(
     input_format: str = "TKET",
     optimization_level: int = 2,
     gate_set: list[str] | None = None,
-    coupling_map: Sequence[tuple[int, int]] | None = None,
+    coupling_map: list[tuple[int, int]] | None = None,
     output_format: str = "TKET",
     optimization_pass: BasePass | None = None,
 ) -> Circuit | str | bytes:

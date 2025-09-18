@@ -90,6 +90,7 @@ def compile_circuit(
     gate_set: set[OpType] = MINIMAL_GATE_SET,
     coupling_map: Sequence[tuple[int, int]] | None = None,
     output_format: CircuitFormat = CircuitFormat.TKET,
+    optimization_pass: BasePass | None = None,
 ) -> Circuit | str | bytes:
     # Circuit type: Circuit: TKET, str: QASM2, bytes: QIR
     if isinstance(circuit, str):
@@ -113,7 +114,8 @@ def compile_circuit(
         arch = FullyConnected(len(qubits))
 
     # Provide choice of alternative optimization passes
-    optimization_pass = _default_pass(optimization.value, arch, gate_set)
+    if optimization_pass is None:
+        optimization_pass = _default_pass(optimization.value, arch, gate_set)
     optimization_pass.apply(circuit)
 
     match output_format:

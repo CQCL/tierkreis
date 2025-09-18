@@ -1,5 +1,12 @@
 from sys import argv
+from typing import Sequence
 
+from compile_circuit import (
+    MINIMAL_GATE_SET,
+    CircuitFormat,
+    OptimizationLevel,
+    compile_circuit,
+)
 from default_pass import (
     default_compilation_pass,
     default_compilation_pass_ibm,
@@ -7,6 +14,7 @@ from default_pass import (
 )
 from pytket._tket.circuit import Circuit
 from pytket.backends.backendresult import BackendResult
+from pytket.circuit import OpType
 from pytket.passes import BasePass
 from pytket.pauli import QubitPauliString
 from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
@@ -46,6 +54,35 @@ def optimise_phase_gadgets(circuit: Circuit) -> Circuit:
 def apply_pass(circuit: Circuit, compiler_pass: BasePass) -> Circuit:
     compiler_pass.apply(circuit)
     return circuit
+
+
+@worker.task()
+def compile(
+    circuit: Circuit | str | bytes,
+    input_format: str = "TKET",
+    optimization_level: int = 2,
+    gate_set: list[str] | None = None,
+    coupling_map: Sequence[tuple[int, int]] | None = None,
+    output_format: str = "TKET",
+    optimization_pass: BasePass | None = None,
+) -> Circuit | str | bytes:
+    # Enums are currently not available, so we use strings and parse
+
+    if gate_set is None:
+        gate_set_op = MINIMAL_GATE_SET
+    else:
+        op_types = {op_type.name: op_type for op_type in OpType}
+        gate_set_op = set(op_types[gate] for gate in gate_set)
+
+    return compile_circuit(
+        circuit,
+        CircuitFormat(input_format),
+        OptimizationLevel(optimization_level),
+        gate_set_op,
+        coupling_map,
+        CircuitFormat(output_format),
+        optimization_pass,
+    )
 
 
 @worker.task()

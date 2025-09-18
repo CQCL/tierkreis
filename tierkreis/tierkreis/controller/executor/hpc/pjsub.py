@@ -80,6 +80,9 @@ def generate_pjsub_script(spec: JobSpec) -> str:
     lines.append("\n# --- User Command ---")
     lines.append(spec.command)
 
+    with open("./script", "w+") as fh:
+        fh.write("\n".join(lines))
+
     return "\n".join(lines)
 
 

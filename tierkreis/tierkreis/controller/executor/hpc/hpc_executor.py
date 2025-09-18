@@ -39,31 +39,30 @@ def run_hpc_executor(
     )
     logger.info("START %s %s", launcher_name, worker_call_args_path)
 
+    spec = executor.spec.model_copy()
     if executor.launchers_path:
-        executor.spec.command = (
-            f"cd {executor.launchers_path}/{launcher_name} && {executor.spec.command}"
-        )
+        spec.command = f"cd {executor.launchers_path}/{launcher_name} && {spec.command}"
 
-    executor.spec.command += " " + str(worker_call_args_path)
+    spec.command += " " + str(worker_call_args_path)
     submission_cmd = [executor.command]
-    if executor.spec.output_path is None:
+    if spec.output_path is None:
         submission_cmd += ["-o", str(executor.logs_path)]
     else:
-        submission_cmd += ["-o", str(executor.spec.output_path)]
-    if executor.spec.error_path is None:
+        submission_cmd += ["-o", str(spec.output_path)]
+    if spec.error_path is None:
         submission_cmd += ["-e", str(executor.errors_path)]
     else:
-        submission_cmd += ["-e", str(executor.spec.error_path)]
-    if executor.spec.include_no_check_directory_flag:
+        submission_cmd += ["-e", str(spec.error_path)]
+    if spec.include_no_check_directory_flag:
         submission_cmd += ["--no-check-directory"]
 
     with NamedTemporaryFile(
         mode="w+",
         delete=True,
         suffix=".sh",
-        prefix=f"{executor.spec.job_name}-",
+        prefix=f"{spec.job_name}-",
     ) as script_file:
-        generate_script(executor.script_fn, executor.spec, Path(script_file.name))
+        generate_script(executor.script_fn, spec, Path(script_file.name))
         submission_cmd.append(script_file.name)
 
         process = subprocess.run(

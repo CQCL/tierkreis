@@ -14,7 +14,8 @@ from pytket.passes import (
 )
 from pytket.passes.resizeregpass import scratch_reg_resize_pass
 from pytket.circuit import OpType
-from pytket.extensions.qiskit import IBMQBackend
+from pytket.extensions.qiskit.backends.ibm import IBMQBackend
+from pytket.extensions.quantinuum import QuantinuumBackend
 
 
 def _gate_set() -> set[OpType]:
@@ -99,4 +100,11 @@ def default_compilation_pass_ibm(
     backend_name: str, optimization_level: int = 2
 ) -> BasePass:
     backend = IBMQBackend(backend_name)
+    return backend.default_compilation_pass(optimization_level)
+
+
+def default_compilation_pass_quantinuum(
+    backend_name: str, optimization_level: int = 2
+) -> BasePass:
+    backend = QuantinuumBackend(backend_name)
     return backend.default_compilation_pass(optimization_level)

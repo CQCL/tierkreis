@@ -1,26 +1,25 @@
-import logging
 from sys import argv
-from typing import NamedTuple
 
-
-from default_pass import default_compilation_pass, default_compilation_pass_ibm
-from tierkreis import Worker
-from pytket.backends.backendresult import BackendResult
+from default_pass import (
+    default_compilation_pass,
+    default_compilation_pass_ibm,
+    default_compilation_pass_quantinuum,
+)
 from pytket._tket.circuit import Circuit
-from pytket.transform import Transform
-from pytket.pauli import QubitPauliString
+from pytket.backends.backendresult import BackendResult
 from pytket.passes import BasePass
+from pytket.pauli import QubitPauliString
+from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
+from pytket.qir.conversion.api import pytket_to_qir
+from pytket.transform import Transform
 from pytket.utils.expectations import expectation_from_counts
 from pytket.utils.measurements import append_pauli_measurement
-from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
+from pytket_qirpass import qir_to_pytket
+from tierkreis.exceptions import TierkreisError
 
-logger = logging.getLogger(__name__)
+from tierkreis import Worker
 
 worker = Worker("pytket_worker")
-
-
-class CircuitsResult(NamedTuple):
-    circuits: list[Circuit]
 
 
 @worker.task()
@@ -65,7 +64,7 @@ def compile_circuits_quantinuum(circuits: list[Circuit]) -> list[Circuit]:
 
 
 @worker.task()
-def compile_circuit_ibm(
+def compile_tket_circuit_ibm(
     circuit: Circuit, backend_name: str, optimization_level: int = 2
 ) -> Circuit:
     p = default_compilation_pass_ibm(backend_name, optimization_level)
@@ -74,10 +73,29 @@ def compile_circuit_ibm(
 
 
 @worker.task()
-def compile_circuits_ibm(
+def compile_tket_circuits_ibm(
     circuits: list[Circuit], backend_name: str, optimization_level: int = 2
 ) -> list[Circuit]:
     p = default_compilation_pass_ibm(backend_name, optimization_level)
+    for pytket_circuit in circuits:
+        p.apply(pytket_circuit)
+    return circuits
+
+
+@worker.task()
+def compile_tket_circuit_quantinuum(
+    circuit: Circuit, backend_name: str, optimization_level: int = 2
+) -> Circuit:
+    p = default_compilation_pass_quantinuum(backend_name, optimization_level)
+    p.apply(circuit)
+    return circuit
+
+
+@worker.task()
+def compile_tket_circuits_quantinuum(
+    circuits: list[Circuit], backend_name: str, optimization_level: int = 2
+) -> list[Circuit]:
+    p = default_compilation_pass_quantinuum(backend_name, optimization_level)
     for pytket_circuit in circuits:
         p.apply(pytket_circuit)
     return circuits
@@ -91,6 +109,19 @@ def to_qasm_str(circuit: Circuit) -> str:
 @worker.task()
 def from_gasm_str(qasm: str) -> Circuit:
     return circuit_from_qasm_str(qasm)
+
+
+@worker.task()
+def to_qir_bytes(circuit: Circuit) -> bytes:
+    ret = pytket_to_qir(circuit)
+    if not isinstance(ret, bytes):
+        raise TierkreisError("Error when converting Circuit to QIR.")
+    return ret
+
+
+@worker.task()
+def from_qir_bytes(qir: bytes) -> Circuit:
+    return qir_to_pytket(qir)
 
 
 @worker.task()

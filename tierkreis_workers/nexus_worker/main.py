@@ -80,6 +80,15 @@ def get_backend_results(execute_job_ref: ExecuteJobRef) -> list[BackendResult]:
 
 @worker.task()
 def submit(circuits: list[Circuit], n_shots: int) -> ExecuteJobRef:
+    """Submits a list of circuits for execution to the backend.
+
+    :param circuits: The circuits to simulate.
+    :type circuits: list[Circuit]
+    :param n_shots:  Number of shots.
+    :type n_shots: int
+    :return: The reference to a ExecuteJob in Nexus.
+    :rtype: ExecuteJobRef
+    """
     return execute_circuits(
         circuits, n_shots=n_shots, backend_name="H1-1LE", project_name="Riken-Test"
     )
@@ -87,11 +96,25 @@ def submit(circuits: list[Circuit], n_shots: int) -> ExecuteJobRef:
 
 @worker.task()
 def check_status(execute_ref: ExecuteJobRef) -> str:
+    """Checks the status of a job reference on nexus.
+
+    :param execute_ref: The job reference to check.
+    :type execute_ref: ExecuteJobRef
+    :return: The status of the job.
+    :rtype: str
+    """
     return _check_status(execute_ref, 30).name
 
 
 @worker.task()
 def get_results(execute_ref: ExecuteJobRef) -> list[BackendResult]:
+    """Get's the result of a finished job of Nexus.
+
+    :param execute_ref: The job reference to fetch.
+    :type execute_ref: ExecuteJobRef
+    :return: The aggregated results of all circuits in the job.
+    :rtype: list[BackendResult]
+    """
     return get_backend_results(execute_ref)
 
 

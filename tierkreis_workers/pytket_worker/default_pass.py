@@ -15,7 +15,7 @@ from pytket.passes import (
 from pytket.passes.resizeregpass import scratch_reg_resize_pass
 from pytket.circuit import OpType
 from pytket.extensions.qiskit.backends.ibm import IBMQBackend
-from pytket.extensions.quantinuum import QuantinuumBackend
+from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
 
 
 def _gate_set() -> set[OpType]:

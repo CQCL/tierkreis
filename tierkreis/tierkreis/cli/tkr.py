@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from tierkreis.cli.run_workflow import run_workflow
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.types import PType, ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
@@ -22,7 +23,7 @@ def _import_from_path(module_name: str, file_path: str) -> Any:
     return module
 
 
-def load_graph(graph_input: str) -> GraphData:
+def load_graph(graph_input: str) -> GraphData | GraphBuilder:
     if ":" not in graph_input:
         raise TierkreisError(f"Invalid argument: {graph_input}")
     module_name, function_name = graph_input.split(":")
@@ -31,7 +32,9 @@ def load_graph(graph_input: str) -> GraphData:
         module = _import_from_path("graph_module", module_name)
     else:
         module = importlib.import_module(module_name, __package__)
-    build_submission_graph: Callable[[], GraphData] = getattr(module, function_name)
+    build_submission_graph: Callable[[], GraphData | GraphBuilder] = getattr(
+        module, function_name
+    )
 
     return build_submission_graph()
 
@@ -64,7 +67,7 @@ def parse_args(
     graph.add_argument(
         "-g",
         "--graph-location",
-        help="Fully qualifying name of a Callable () -> GraphData. "
+        help="Fully qualifying name of a Callable () -> GraphBuilder. "
         + "Example: tierkreis.cli.sample_graph:simple_eval"
         + "Or a path to a python file and function."
         + "Example: examples/hello_world/hello_world_graph.py:hello_graph",

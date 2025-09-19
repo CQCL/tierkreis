@@ -23,6 +23,7 @@ from typing import (
 from pydantic import BaseModel
 from pydantic._internal._generics import get_args as pydantic_get_args
 from tierkreis.controller.data.core import RestrictedNamedTuple
+from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
 
 
@@ -185,6 +186,17 @@ def bytes_from_ptype(ptype: PType) -> bytes:
 
 
 def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
+    # if _is_union(annotation):
+    #     for t in get_args(annotation):
+    #         try:
+    #             return coerce_from_annotation(ser, t)
+    #         except:
+    #             print(f"Tried deserialising as {t}")
+    #     raise TierkreisError(f"Could not deserialise {ser} as {annotation}")
+
+    if _is_annotated(annotation):
+        return coerce_from_annotation(ser, get_args(annotation)[0])
+
     origin = get_origin(annotation)
     if origin is None:
         origin = annotation

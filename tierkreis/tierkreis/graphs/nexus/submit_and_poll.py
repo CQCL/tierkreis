@@ -3,7 +3,7 @@ from typing import NamedTuple
 from tierkreis.builder import GraphBuilder
 from tierkreis.builtins.stubs import tkr_sleep
 from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis_workers.nexus_worker.stubs import (
+from example_workers.nexus_worker.stubs import (
     upload_circuit,
     start_execute_job,
     is_running,

@@ -1,6 +1,7 @@
 import logging
 from time import sleep
 
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.graph import Eval, GraphData
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
@@ -18,11 +19,14 @@ logger = logging.getLogger(__name__)
 def run_graph(
     storage: ControllerStorage,
     executor: ControllerExecutor,
-    g: GraphData,
+    g: GraphData | GraphBuilder,
     graph_inputs: dict[str, PType] | PType,
     n_iterations: int = 10000,
     polling_interval_seconds: float = 0.01,
 ) -> None:
+    if isinstance(g, GraphBuilder):
+        g = g.get_data()
+
     if not isinstance(graph_inputs, dict):
         graph_inputs = {"value": graph_inputs}
     remaining_inputs = g.remaining_inputs({k for k in graph_inputs.keys()})

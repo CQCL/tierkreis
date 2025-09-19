@@ -1,13 +1,8 @@
 from typing import NamedTuple
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis_workers.nexus_worker.stubs import (
-    upload_circuit,
-    start_execute_job,
-    status,
-    get_results,
-)
-from tierkreis.builtins.stubs import enumerate_list, unzip, concat
+from tierkreis_workers.nexus_worker.stubs import upload_circuit
+
 
 type Circuit = OpaqueType["pytket._tket.circuit.Circuit"]
 type BackendResult = OpaqueType["pytket.backends.backendresult.BackendResult"]
@@ -15,14 +10,8 @@ type ExecuteJobRef = OpaqueType["qnexus.models.references.ExecuteJobRef"]
 type ExecutionProgram = OpaqueType["qnexus.models.references.ExecutionProgram"]
 
 
-class NamedCircuit(NamedTuple):
-    name: str
-    circuit: Circuit
-
-
 class UploadCircuitInputs(NamedTuple):
     project_name: TKR[str]
-    circuit_name: TKR[str]
     circuit: TKR[Circuit]
 
 
@@ -35,13 +24,7 @@ def upload_circuit_graph():
 
 class UploadCircuitsInputs(NamedTuple):
     project_name: TKR[str]
-    circuits: TKR[NamedCircuit]
-
-
-class NameCircuitInputs(NamedTuple):
-    idx: TKR[str]
-    circuit_name_prefix: TKR[str]
-    circuit: TKR[Circuit]
+    circuits: TKR[Circuit]
 
 
 def upload_circuits():

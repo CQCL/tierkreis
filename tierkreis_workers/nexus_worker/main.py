@@ -17,12 +17,11 @@ worker = Worker("nexus_worker")
 
 
 @worker.task()
-def upload_circuit(
-    project_name: str, circuit_name: str, circ: Circuit
-) -> ExecutionProgram:
+def upload_circuit(project_name: str, circ: Circuit) -> ExecutionProgram:
     """Wrapper around `qnx.circuits.upload`."""
 
     my_project_ref = qnx.projects.get_or_create(name=project_name)
+    circuit_name = circ.name if circ.name else f"circuit_{datetime.now()}"
     qnx.context.set_active_project(my_project_ref)
     return qnx.circuits.upload(name=circuit_name, circuit=circ, project=my_project_ref)
 

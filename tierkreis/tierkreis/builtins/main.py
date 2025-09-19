@@ -3,6 +3,7 @@ from pathlib import Path
 from random import randint
 import statistics
 from sys import argv
+from time import sleep
 from typing import NamedTuple, Sequence
 
 from tierkreis.controller.data.location import WorkerCallArgs
@@ -34,6 +35,11 @@ def itimes(a: int, b: int) -> int:
 def igt(a: int, b: int) -> bool:
     logger.debug(f"igt {a} {b}")
     return a > b
+
+
+@worker.task()
+def neg(a: bool) -> bool:
+    return not a
 
 
 @worker.task()
@@ -155,6 +161,12 @@ def mod(a: int, b: int) -> int:
 @worker.task()
 def rand_int(a: int, b: int) -> int:
     return randint(a, b)
+
+
+@worker.task()
+def tkr_sleep(delay_seconds: float) -> bool:
+    sleep(delay_seconds)
+    return True
 
 
 if __name__ == "__main__":

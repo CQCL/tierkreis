@@ -59,6 +59,18 @@ class igt(NamedTuple):
         return "builtins"
 
 
+class neg(NamedTuple):
+    a: TKR[bool]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
 class impl_and(NamedTuple):
     a: TKR[bool]  # noqa: F821 # fmt: skip
     b: TKR[bool]  # noqa: F821 # fmt: skip
@@ -242,6 +254,18 @@ class rand_int(NamedTuple):
     @staticmethod
     def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
         return TKR[int]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_sleep(NamedTuple):
+    delay_seconds: TKR[float]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

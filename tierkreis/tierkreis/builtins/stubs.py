@@ -246,15 +246,3 @@ class rand_int(NamedTuple):
     @property
     def namespace(self) -> str:
         return "builtins"
-
-
-class enumerate_list(NamedTuple, Generic[T]):
-    xs: TKR[list[T]]  # noqa: F821 # fmt: skip
-
-    @staticmethod
-    def out() -> type[TKR[list[tuple[int, T]]]]:  # noqa: F821 # fmt: skip
-        return TKR[list[tuple[int, T]]]  # noqa: F821 # fmt: skip
-
-    @property
-    def namespace(self) -> str:
-        return "builtins"

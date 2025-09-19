@@ -33,12 +33,12 @@ class start_execute_job(NamedTuple):
         return "nexus_worker"
 
 
-class status(NamedTuple):
+class is_running(NamedTuple):
     execute_ref: TKR[OpaqueType["qnexus.models.references.ExecuteJobRef"]]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip
-        return TKR[str]  # noqa: F821 # fmt: skip
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

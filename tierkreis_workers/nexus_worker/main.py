@@ -12,6 +12,8 @@ from qnexus.models import QuantinuumConfig
 from qnexus.models.references import ExecuteJobRef, ExecutionProgram
 from time import sleep
 
+from tierkreis.exceptions import TierkreisError
+
 logger = logging.getLogger(__name__)
 worker = Worker("nexus_worker")
 
@@ -42,14 +44,19 @@ def start_execute_job(
 
 
 @worker.task()
-def status(execute_ref: ExecuteJobRef) -> str:
+def is_running(execute_ref: ExecuteJobRef) -> bool:
     """Wrapper around `qnx.jobs.status`."""
 
     try:
-        return str(qnx.jobs.status(execute_ref).status)
+        st = str(qnx.jobs.status(execute_ref).status)
     except ResourceFetchFailed as exc:
         print(exc)
-        return str(StatusEnum.SUBMITTED)
+        return True
+
+    if st in [StatusEnum.CANCELLING, StatusEnum.CANCELLED, StatusEnum.ERROR]:
+        raise TierkreisError(f"Job status was {st}")
+
+    return st not in [StatusEnum.COMPLETED]
 
 
 @worker.task()

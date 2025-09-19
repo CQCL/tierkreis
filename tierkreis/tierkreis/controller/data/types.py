@@ -98,7 +98,12 @@ class TierkreisDecoder(json.JSONDecoder):
 
 
 def _is_union(o: object) -> bool:
-    return get_origin(o) == UnionType or get_origin(o) == Union
+    return (
+        get_origin(o) == UnionType
+        or get_origin(o) == Union
+        or o == Union
+        or o == UnionType
+    )
 
 
 def _is_generic(o) -> TypeIs[type[TypeVar]]:
@@ -117,16 +122,12 @@ def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
     return get_origin(o) is tuple
 
 
-def _is_annotated(o: object) -> bool:
-    return get_origin(o) is Annotated
-
-
 def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
+    if get_origin(annotation) is Annotated:
+        return is_ptype(get_args(annotation)[0])
+
     if _is_generic(annotation):
         return True
-
-    if _is_annotated(annotation):
-        return is_ptype(get_args(annotation)[0])
 
     if (
         _is_union(annotation)
@@ -186,17 +187,6 @@ def bytes_from_ptype(ptype: PType) -> bytes:
 
 
 def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
-    # if _is_union(annotation):
-    #     for t in get_args(annotation):
-    #         try:
-    #             return coerce_from_annotation(ser, t)
-    #         except:
-    #             print(f"Tried deserialising as {t}")
-    #     raise TierkreisError(f"Could not deserialise {ser} as {annotation}")
-
-    if _is_annotated(annotation):
-        return coerce_from_annotation(ser, get_args(annotation)[0])
-
     origin = get_origin(annotation)
     if origin is None:
         origin = annotation

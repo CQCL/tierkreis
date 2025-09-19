@@ -5,7 +5,6 @@ from tierkreis.controller.data.types import (
     DictConvertible,
     ListConvertible,
     Struct,
-    _is_annotated,
     _is_generic,
     _is_list,
     _is_mapping,
@@ -19,12 +18,6 @@ NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
 def format_ptype(ptype: type) -> str:
-    print(ptype)
-    print([x for x in get_args(ptype)])
-    print(get_origin(ptype))
-    if _is_annotated(ptype):
-        return format_ptype(get_args(ptype)[0])
-
     if _is_generic(ptype):
         return str(ptype)
 

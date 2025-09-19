@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from types import NoneType
-from typing import Mapping, Self, Sequence, TypeVar, get_args, get_origin
+from typing import Annotated, Mapping, Self, Sequence, TypeVar, get_args, get_origin
 
 from tierkreis.controller.data.types import _is_generic
 from tierkreis.exceptions import TierkreisError
@@ -25,6 +25,9 @@ class GenericType:
 
     @classmethod
     def from_type(cls, t: type) -> "Self":
+        if get_origin(t) is Annotated:
+            return cls.from_type(get_args(t)[0])
+
         if _is_generic(t):
             return cls(str(t), [])
 

@@ -4,6 +4,7 @@ from sys import argv
 from tierkreis import Worker
 
 import qnexus as qnx
+from qnexus import BackendConfig
 from pytket._tket.circuit import Circuit
 from pytket.backends.backendresult import BackendResult
 from pytket.backends.status import StatusEnum
@@ -34,7 +35,7 @@ def start_execute_job(
     job_name: str,
     circuits: list[ExecutionProgram],
     n_shots: list[int],
-    backend_config: qnx.BackendConfig,
+    backend_config: BackendConfig,
 ) -> ExecuteJobRef:
     "Wrapper around `qnx.start_execute_job`."
 

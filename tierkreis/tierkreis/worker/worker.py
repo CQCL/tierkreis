@@ -5,7 +5,7 @@ import shutil
 import subprocess
 import sys
 from types import TracebackType
-from typing import Callable
+from typing import Annotated, Callable, get_args, get_origin
 
 from tierkreis.codegen import format_namespace
 from tierkreis.controller.data.core import PortID

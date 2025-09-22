@@ -1,3 +1,4 @@
+# ruff: noqa: F821
 from typing import NamedTuple
 from tierkreis.builder import GraphBuilder
 from tierkreis.builtins.stubs import tkr_sleep

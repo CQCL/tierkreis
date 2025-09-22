@@ -194,7 +194,7 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
         for t in get_args(annotation):
             try:
                 return coerce_from_annotation(ser, t)
-            except:
+            except AssertionError:
                 print(f"Tried deserialising as {t}")
         raise TierkreisError(f"Could not deserialise {ser} as {annotation}")
 

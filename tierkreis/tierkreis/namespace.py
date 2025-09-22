@@ -30,8 +30,8 @@ class Namespace:
 
         annotations = origin.__annotations__
         portmapping_flag = True if is_portmapping(origin) else False
-        decls = [TypedArg(k, GenericType.from_type(t)) for k, t in annotations.items()]
-        model = Model(portmapping_flag, GenericType(t.__qualname__, args), decls)
+        decls = [TypedArg(k, GenericType.from_type(x)) for k, x in annotations.items()]
+        model = Model(portmapping_flag, GenericType.from_type(t), decls)
         self.models.add(model)
 
     def add_function(self, func: WorkerFunction) -> None:

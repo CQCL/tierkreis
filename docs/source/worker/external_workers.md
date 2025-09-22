@@ -11,7 +11,7 @@ For full example without stubs you can have a look at the `signing_graph.py` exm
 
 ## IDL
 
-A TypeSpec defines the inputs and outputs of the tasks in your workers.
+A TypeSpec file can be used to define the inputs and outputs of the tasks in your workers.  
 Tierkreis is restricted to a subset of the full specification:
 
 - Interfaces: defining the available tasks in your worker
@@ -40,7 +40,7 @@ model Creature<T> {
 interface TestNamespace {
   foo(age: integer, name: string): Person;
   bar(): Dog;
-  baz<T>(c: Creature<T>): Creatur<T>;
+  baz<T>(c: Creature<T>): Creature<T>;
 }
 ```
 
@@ -53,30 +53,16 @@ This is currently only available through a python script:
 # dependencies = ["tierkreis"]
 # ///
 
-import logging
 from pathlib import Path
-import shutil
-import subprocess
-from tierkreis.codegen import format_namespace, Namespace
-
-
-def write_stubs(namespace: Namespace, stubs_path: Path) -> None:
-    with open(stubs_path, "w+") as fh:
-        fh.write(format_namespace(namespace))
-
-    ruff_binary = shutil.which("ruff")
-    if ruff_binary:
-        subprocess.run([ruff_binary, "format", stubs_path])
-        subprocess.run([ruff_binary, "check", "--fix", stubs_path])
-    else:
-        logging.warning("No ruff binary found. Stubs will contain raw codegen.")
+from tierkreis import Worker
+from tierkreis.codegen import Namespace
 
 
 if __name__ == "__main__":
-    namespace = Namespace.from_spec_file(
-        Path("<path to your spec file>")
-    )
-    write_stubs(namespace, Path("<path to the generated stubs>"))
+    tsp_path = Path("<path to your spec file>")
+    namespace = Namespace.from_spec_file(tsp_path)
+    worker.namespace = namespace
+    worker.write_stubs(tsp_path.parent / "stubs.py")
 ```
 
 ## Parsing Inputs and Outputs
@@ -179,8 +165,4 @@ void write_output(const json &call_args, const std::vector<int> &gathered_data)
     std::cerr << "Error: Could not create done file at " << done_file_path << std::endl;
   }
 }
-```
-
-```
-
 ```

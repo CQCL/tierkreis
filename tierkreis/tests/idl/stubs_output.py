@@ -15,10 +15,10 @@ class B(Struct, Protocol):
     name: dict[str, str]  # noqa: F821 # fmt: skip
 
 
-class C[T: PType](NamedTuple):
-    a: TKR[list[int]]  # noqa: F821 # fmt: skip
-    b: TKR[B]  # noqa: F821 # fmt: skip
-    t: TKR[T]  # noqa: F821 # fmt: skip
+class C[T: PType](Struct, Protocol):
+    a: list[int]  # noqa: F821 # fmt: skip
+    b: B  # noqa: F821 # fmt: skip
+    t: T  # noqa: F821 # fmt: skip
 
 
 class foo(NamedTuple):
@@ -48,8 +48,8 @@ class z[T: PType](NamedTuple):
     b: TKR[B]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[C[T]]:  # noqa: F821 # fmt: skip
-        return C[T]  # noqa: F821 # fmt: skip
+    def out() -> type[TKR[C[T]]]:  # noqa: F821 # fmt: skip
+        return TKR[C[T]]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

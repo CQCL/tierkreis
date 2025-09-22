@@ -17,7 +17,6 @@ class B(NamedTuple):
     age: int
 
 
-@portmapping
 class C[T: PType](NamedTuple):
     a: list[int]
     b: B

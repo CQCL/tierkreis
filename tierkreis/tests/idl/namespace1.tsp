@@ -9,7 +9,6 @@ model B {
   age: uint8;
 }
 
-@portmapping
 model C<T> {
   a: Array<integer>;
   b: B;

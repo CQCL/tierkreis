@@ -33,6 +33,7 @@ def main():
             "n_shots": [30] * len(circuits),
             "backend_config": aer_config,
         },
+        polling_interval_seconds=0.1,
     )
 
 

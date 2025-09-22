@@ -49,7 +49,7 @@ def is_running(execute_ref: ExecuteJobRef) -> bool:
     """Wrapper around `qnx.jobs.status`."""
 
     try:
-        st = str(qnx.jobs.status(execute_ref).status)
+        st = qnx.jobs.status(execute_ref).status
     except ResourceFetchFailed as exc:
         print(exc)
         return True
@@ -57,7 +57,7 @@ def is_running(execute_ref: ExecuteJobRef) -> bool:
     if st in [StatusEnum.CANCELLING, StatusEnum.CANCELLED, StatusEnum.ERROR]:
         raise TierkreisError(f"Job status was {st}")
 
-    return st not in [StatusEnum.COMPLETED]
+    return st != StatusEnum.COMPLETED
 
 
 @worker.task()

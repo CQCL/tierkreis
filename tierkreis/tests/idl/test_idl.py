@@ -41,6 +41,8 @@ def test_type_t(type_symb: str, expected: type):
 @pytest.mark.parametrize("path,expected", typespecs)
 def test_namespace(path: Path, expected: Namespace):
     namespace = Namespace.from_spec_file(path)
+    with open(Path(__file__).parent / "stubs_output.py", "w+") as fh:
+        fh.write(format_namespace(namespace))
     assert format_namespace(namespace) == format_namespace(expected)
 
 

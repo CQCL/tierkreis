@@ -23,13 +23,13 @@ from tierkreis.controller.executor.uv_executor import UvExecutor
 
 from tierkreis.builtins.stubs import untuple, itimes, iadd, unzip, zip_impl
 from tierkreis.graphs.fold import FoldFunctionInput, FoldGraphInputs, fold_graph
-from example_workers.pytket_worker.stubs import (
+from tierkreis.prepackaged.pytket_worker import (
     append_pauli_measurement_impl,
     optimise_phase_gadgets,
     expectation,
 )
 
-from example_workers.aer_worker.stubs import submit_single
+from tierkreis.prepackaged.aer_worker import submit_single
 from example_workers.substitution_worker.stubs import substitute
 
 root_loc = Loc()

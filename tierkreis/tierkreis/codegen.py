@@ -1,3 +1,4 @@
+from inspect import isclass
 from types import NoneType
 from typing import get_args, get_origin
 from pydantic import BaseModel
@@ -18,35 +19,19 @@ NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
 def format_ptype(ptype: type) -> str:
+    if isinstance(ptype, str):
+        return ptype
+
     if _is_generic(ptype):
         return str(ptype)
 
-    if _is_union(ptype):
-        args = tuple([format_ptype(x) for x in get_args(ptype)])
-        return " | ".join(args)
-
-    if _is_tuple(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"tuple[{', '.join(args)}]"
-
-    if _is_list(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"list[{', '.join(args)}]"
-
-    if _is_mapping(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"dict[{', '.join(args)}]"
-
-    origin = get_origin(ptype)
-    if origin is not None:  # Custom generic
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"{format_ptype(origin)}[{', '.join(args)}]"
-
-    if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
-        return ptype.__qualname__
-
-    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
+    if isclass(ptype) and issubclass(
+        ptype, (DictConvertible, ListConvertible, BaseModel)
+    ):
         return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
+
+    if _is_union(ptype):
+        return "Union"
 
     return ptype.__qualname__
 
@@ -126,7 +111,7 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
-from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol
+from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol, Union
 from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType, Struct

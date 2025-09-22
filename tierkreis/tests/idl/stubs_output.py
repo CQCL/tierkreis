@@ -45,7 +45,7 @@ class bar(NamedTuple):
 
 
 class z[T: PType](NamedTuple):
-    b: TKR[B]  # noqa: F821 # fmt: skip
+    c: TKR[C[T]]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[C[T]]]:  # noqa: F821 # fmt: skip

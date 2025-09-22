@@ -13,7 +13,7 @@ author = "Quantinuum"
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = ["autodoc2", "quantinuum_sphinx", "myst_nb"]
+extensions = ["autodoc2", "myst_nb"]
 autodoc2_packages = [
     "../../tierkreis/tierkreis",
     "../../tierkreis_workers/aer_worker",

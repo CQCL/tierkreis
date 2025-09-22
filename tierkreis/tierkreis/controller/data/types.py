@@ -1,3 +1,4 @@
+import logging
 from base64 import b64decode, b64encode
 import collections.abc
 from inspect import isclass
@@ -61,6 +62,7 @@ type ElementaryType = (
     | BaseModel
 )
 type JsonType = Container[ElementaryType]
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -195,7 +197,7 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
             try:
                 return coerce_from_annotation(ser, t)
             except AssertionError:
-                print(f"Tried deserialising as {t}")
+                logger.info(f"Tried deserialising as {t}")
         raise TierkreisError(f"Could not deserialise {ser} as {annotation}")
 
     origin = get_origin(annotation)

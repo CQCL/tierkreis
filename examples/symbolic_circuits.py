@@ -26,12 +26,12 @@ from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.executor.uv_executor import UvExecutor
 
 from example_workers.substitution_worker.stubs import substitute
-from tierkreis.prepackaged.pytket_worker import (
+from tierkreis.pytket_worker import (
     add_measure_all,
     optimise_phase_gadgets,
     expectation,
 )
-from tierkreis.prepackaged.aer_worker import submit_single
+from tierkreis.aer_worker import submit_single
 
 root_loc = Loc()
 

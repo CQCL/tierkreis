@@ -28,8 +28,8 @@ from example_workers.qsci_worker.stubs import (
     energy_from_results,
     state_prep,
 )
-from tierkreis.prepackaged.aer_worker import submit_single
-from tierkreis.prepackaged.pytket_worker import compile_circuit_quantinuum
+from tierkreis.aer_worker import submit_single
+from tierkreis.pytket_worker import compile_circuit_quantinuum
 
 root_loc = Loc()
 

@@ -2,6 +2,7 @@ from pathlib import Path
 import uuid
 import logging
 
+from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.location import Loc
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 def run_workflow(
-    graph: GraphData,
+    graph: GraphData | GraphBuilder,
     inputs: dict[str, PType],
     name: str | None = None,
     run_id: int | None = None,
@@ -56,6 +57,14 @@ def run_workflow(
         polling_interval_seconds,
     )
     if print_output:
-        all_outputs = graph.nodes[graph.output_idx()].inputs
+        if isinstance(graph, GraphData):
+            nodes = graph.nodes
+            output_idx = graph.output_idx()
+        else:
+            graph_data = graph.get_data()
+            nodes = graph_data.nodes
+            output_idx = graph_data.output_idx()
+
+        all_outputs = nodes[output_idx].inputs
         for output in all_outputs:
             print(f"{output}: {storage.read_output(Loc(), output)}")

@@ -1,5 +1,14 @@
 from typing import NamedTuple
-from tierkreis.builtins.stubs import iadd, igt, itimes, tuple_impl, untuple, mod
+from tierkreis.builtins.stubs import (
+    test_,
+    test__,
+    iadd,
+    igt,
+    itimes,
+    tuple_impl,
+    untuple,
+    mod,
+)
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR
@@ -124,4 +133,12 @@ def gcd():
     rec = g.eval(g.ref(), GCDInput(a=g.inputs.b, b=a_mod_b))
 
     g.outputs(g.ifelse(pred, rec, g.inputs.a))
+    return g
+
+
+def union_test():
+    g = GraphBuilder(EmptyModel, TKR[int])
+    e = g.task(test_(g.const(1), g.const("2")))
+    f = g.task(test__(e))
+    g.outputs(f)
     return g

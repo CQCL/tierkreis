@@ -6,6 +6,8 @@ from sys import argv
 from time import sleep
 from typing import NamedTuple, Sequence
 
+from pydantic import BaseModel
+
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import portmapping
 from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
@@ -167,6 +169,31 @@ def rand_int(a: int, b: int) -> int:
 def tkr_sleep(delay_seconds: float) -> bool:
     sleep(delay_seconds)
     return True
+
+
+class A(BaseModel):
+    a: int
+    b: str
+    c: list[int] | None = None
+
+
+class B(BaseModel):
+    a: int
+    b: str
+    d: dict[str, int] | None = None
+
+
+@worker.task()
+def test_(a: int, b: str) -> A | B:
+    return B(a=a, b=b)
+
+
+@worker.task()
+def test__(val: A | B) -> int:
+    if isinstance(val, A):
+        return 0
+    elif isinstance(val, B):
+        return -1
 
 
 if __name__ == "__main__":

@@ -23,6 +23,7 @@ from tests.controller.typed_graphdata import (
     typed_map,
     factorial,
     gcd,
+    union_test,
 )
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
@@ -69,6 +70,7 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (gcd().get_data(), 24, "gcd", 21, {"a": 48, "b": 360}),
     (gcd().get_data(), 1, "gcd", 22, {"a": 9357, "b": 5864}),
     (gcd().get_data(), 3, "gcd", 23, {"a": 3, "b": 0}),
+    (union_test().get_data(), -1, "union_test", 24, {}),
 ]
 ids = [
     "simple_eval",
@@ -94,6 +96,7 @@ ids = [
     "gcd_48_360",
     "gcd_9357_5864",
     "gcd_3_0",
+    "union_test",
 ]
 
 storage_classes = [ControllerFileStorage, ControllerInMemoryStorage]

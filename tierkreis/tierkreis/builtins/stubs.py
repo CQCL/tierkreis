@@ -1,7 +1,7 @@
 """Code generated from builtins namespace. Please do not edit."""
 
-from typing import NamedTuple
-from tierkreis.controller.data.models import TKR
+from typing import NamedTuple, Union
+from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType
 
 
@@ -266,6 +266,31 @@ class tkr_sleep(NamedTuple):
     @staticmethod
     def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
         return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class test_(NamedTuple):
+    a: TKR[int]  # noqa: F821 # fmt: skip
+    b: TKR[str]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Union[OpaqueType["__main__.A"], OpaqueType["__main__.B"]]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[OpaqueType["__main__.A"], OpaqueType["__main__.B"]]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class test__(NamedTuple):
+    val: TKR[Union[OpaqueType["__main__.A"], OpaqueType["__main__.B"]]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

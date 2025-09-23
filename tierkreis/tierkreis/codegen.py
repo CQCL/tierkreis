@@ -1,55 +1,23 @@
-from types import NoneType
-from typing import get_args, get_origin
+from inspect import isclass
 from pydantic import BaseModel
-from tierkreis.controller.data.types import (
-    DictConvertible,
-    ListConvertible,
-    Struct,
-    _is_generic,
-    _is_list,
-    _is_mapping,
-    _is_tuple,
-    _is_union,
-)
+from tierkreis.controller.data.types import DictConvertible, ListConvertible, _is_union
 from tierkreis.idl.models import GenericType, Method, Model, TypedArg
 from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
 
-def format_ptype(ptype: type) -> str:
+def format_ptype(ptype: type | str) -> str:
     if isinstance(ptype, str):
         return ptype
 
-    if _is_generic(ptype):
-        return str(ptype)
+    if isclass(ptype) and issubclass(
+        ptype, (DictConvertible, ListConvertible, BaseModel)
+    ):
+        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 
     if _is_union(ptype):
-        args = tuple([format_ptype(x) for x in get_args(ptype)])
-        return " | ".join(args)
-
-    if _is_tuple(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"tuple[{', '.join(args)}]"
-
-    if _is_list(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"list[{', '.join(args)}]"
-
-    if _is_mapping(ptype):
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"dict[{', '.join(args)}]"
-
-    origin = get_origin(ptype)
-    if origin is not None:  # Custom generic
-        args = [format_ptype(x) for x in get_args(ptype)]
-        return f"{format_ptype(origin)}[{', '.join(args)}]"
-
-    if issubclass(ptype, (bool, int, float, str, bytes, NoneType, Struct)):
-        return ptype.__qualname__
-
-    if issubclass(ptype, (DictConvertible, ListConvertible, BaseModel)):
-        return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
+        return "Union"
 
     return ptype.__qualname__
 
@@ -59,26 +27,16 @@ def format_generic_type(
 ) -> str:
     bound_str = ": PType" if include_bound else ""
     if isinstance(generictype, str):
-        return generictype + bound_str
+        out = generictype + bound_str
+        return f"TKR[{out}]" if is_tkr else out
 
-    if _is_generic(generictype):
-        return str(generictype) + bound_str
+    origin_str = format_ptype(generictype.origin)
 
-    origin_str = (
-        generictype.origin
-        if isinstance(generictype.origin, str)
-        else format_ptype(generictype.origin)
-    )
-    generics_str = (
-        f"[{', '.join([format_generic_type(x, include_bound, False) for x in generictype.args])}]"
-        if generictype.args
-        else ""
-    )
+    generics = [format_generic_type(x, include_bound, False) for x in generictype.args]
+    generics_str = f"[{', '.join(generics)}]" if generictype.args else ""
 
-    if is_tkr:
-        return f"TKR[{origin_str}{generics_str}]"
-
-    return f"{origin_str}{generics_str}"
+    out = f"{origin_str}{generics_str}"
+    return f"TKR[{out}]" if is_tkr else out
 
 
 def format_typed_arg(typed_arg: TypedArg, is_portmaping: bool) -> str:
@@ -129,7 +87,7 @@ def format_namespace(namespace: Namespace) -> str:
 
     return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
 
-from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol
+from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol, Union
 from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType, Struct

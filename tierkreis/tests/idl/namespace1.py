@@ -17,7 +17,6 @@ class B(NamedTuple):
     age: int
 
 
-@portmapping
 class C[T: PType](NamedTuple):
     a: list[int]
     b: B
@@ -29,7 +28,7 @@ def foo(a: int, b: str) -> A: ...
 @worker.task()
 def bar() -> B: ...
 @worker.task()
-def z[T: PType](a: C[T]) -> C[T]: ...
+def z[T: PType](c: C[T]) -> C[T]: ...
 
 
 expected_namespace = worker.namespace

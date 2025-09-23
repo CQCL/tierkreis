@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from logging import getLogger
 from pathlib import Path
-from typing import Callable, Self, get_args, get_origin
+from typing import Callable, Self, get_origin
 from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import Struct, is_ptype
 from tierkreis.exceptions import TierkreisError
@@ -19,7 +19,6 @@ class Namespace:
     models: set[Model] = field(default_factory=lambda: set())
 
     def _add_model_from_type(self, t: type) -> None:
-        args = get_args(t)
         origin = get_origin(t)
 
         if is_ptype(t) and not isinstance(t, Struct) and not isinstance(origin, Struct):
@@ -30,8 +29,8 @@ class Namespace:
 
         annotations = origin.__annotations__
         portmapping_flag = True if is_portmapping(origin) else False
-        decls = [TypedArg(k, GenericType.from_type(t)) for k, t in annotations.items()]
-        model = Model(portmapping_flag, GenericType(t.__qualname__, args), decls)
+        decls = [TypedArg(k, GenericType.from_type(x)) for k, x in annotations.items()]
+        model = Model(portmapping_flag, GenericType.from_type(t), decls)
         self.models.add(model)
 
     def add_function(self, func: WorkerFunction) -> None:

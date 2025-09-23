@@ -1,3 +1,4 @@
+import logging
 from base64 import b64decode, b64encode
 import collections.abc
 from inspect import isclass
@@ -5,6 +6,7 @@ from itertools import chain
 import json
 from types import NoneType, UnionType
 from typing import (
+    Annotated,
     Any,
     Mapping,
     Protocol,
@@ -22,6 +24,7 @@ from typing import (
 from pydantic import BaseModel
 from pydantic._internal._generics import get_args as pydantic_get_args
 from tierkreis.controller.data.core import RestrictedNamedTuple
+from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
 
 
@@ -59,6 +62,7 @@ type ElementaryType = (
     | BaseModel
 )
 type JsonType = Container[ElementaryType]
+logger = logging.getLogger(__name__)
 
 
 @runtime_checkable
@@ -96,7 +100,12 @@ class TierkreisDecoder(json.JSONDecoder):
 
 
 def _is_union(o: object) -> bool:
-    return get_origin(o) == UnionType or get_origin(o) == Union
+    return (
+        get_origin(o) == UnionType
+        or get_origin(o) == Union
+        or o == Union
+        or o == UnionType
+    )
 
 
 def _is_generic(o) -> TypeIs[type[TypeVar]]:
@@ -116,6 +125,9 @@ def _is_tuple(o: object) -> TypeIs[type[tuple[Any, ...]]]:
 
 
 def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
+    if get_origin(annotation) is Annotated:
+        return is_ptype(get_args(annotation)[0])
+
     if _is_generic(annotation):
         return True
 
@@ -177,6 +189,17 @@ def bytes_from_ptype(ptype: PType) -> bytes:
 
 
 def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
+    if get_origin(annotation) is Annotated:
+        return coerce_from_annotation(ser, get_args(annotation)[0])
+
+    if _is_union(annotation):
+        for t in get_args(annotation):
+            try:
+                return coerce_from_annotation(ser, t)
+            except AssertionError:
+                logger.info(f"Tried deserialising as {t}")
+        raise TierkreisError(f"Could not deserialise {ser} as {annotation}")
+
     origin = get_origin(annotation)
     if origin is None:
         origin = annotation

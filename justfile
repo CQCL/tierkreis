@@ -61,6 +61,6 @@ generate:
   mkdir -p examples/example_workers/aer_worker
   mkdir -p examples/example_workers/nexus_worker
   mkdir -p examples/example_workers/pytket_worker
-  cp 'tierkreis_workers/aer_worker/stubs.py' examples/example_workers/aer_worker/stubs.py
-  cp 'tierkreis_workers/nexus_worker/stubs.py' examples/example_workers/nexus_worker/stubs.py
-  cp 'tierkreis_workers/pytket_worker/stubs.py' examples/example_workers/pytket_worker/stubs.py
+  cp 'tierkreis_workers/aer_worker/stubs.py' tierkreis/tierkreis/aer_worker.py
+  cp 'tierkreis_workers/nexus_worker/stubs.py' tierkreis/tierkreis/nexus_worker.py
+  cp 'tierkreis_workers/pytket_worker/stubs.py' tierkreis/tierkreis/pytket_worker.py

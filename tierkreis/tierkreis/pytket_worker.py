@@ -1,6 +1,6 @@
 """Code generated from pytket_worker namespace. Please do not edit."""
 
-from typing import NamedTuple
+from typing import NamedTuple, Union
 from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 
@@ -56,17 +56,17 @@ class apply_pass(NamedTuple):
 
 
 class compile(NamedTuple):
-    circuit: TKR[UnionType[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]  # noqa: F821 # fmt: skip
+    circuit: TKR[Union[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]  # noqa: F821 # fmt: skip
     input_format: TKR[str]  # noqa: F821 # fmt: skip
     optimization_level: TKR[int]  # noqa: F821 # fmt: skip
-    gate_set: TKR[UnionType[list[str], NoneType]]  # noqa: F821 # fmt: skip
-    coupling_map: TKR[UnionType[list[tuple[int, int]], NoneType]]  # noqa: F821 # fmt: skip
+    gate_set: TKR[Union[list[str], NoneType]]  # noqa: F821 # fmt: skip
+    coupling_map: TKR[Union[list[tuple[int, int]], NoneType]]  # noqa: F821 # fmt: skip
     output_format: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_pass: TKR[UnionType[OpaqueType["pytket._tket.passes.BasePass"], NoneType]]  # noqa: F821 # fmt: skip
+    optimization_pass: TKR[Union[OpaqueType["pytket._tket.passes.BasePass"], NoneType]]  # noqa: F821 # fmt: skip
 
     @staticmethod
-    def out() -> type[TKR[UnionType[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]]:  # noqa: F821 # fmt: skip
-        return TKR[UnionType[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]  # noqa: F821 # fmt: skip
+    def out() -> type[TKR[Union[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

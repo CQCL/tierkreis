@@ -23,6 +23,8 @@ The qiskit simulation backend aer for local simulation of quantum circuits.
 pip install tkr-aer-worker
 ```
 
+will install an executable Python script `tkr_aer_worker` into your virtual environment.
+
 **Example**
 
 See the example `hamiltonian_graph.py`.
@@ -39,6 +41,8 @@ For a custom compilation pipeline it is advised to build your own worker.
 pip install tkr-pytket-worker
 ```
 
+will install an executable Python script `tkr_pytket_worker` into your virtual environment.
+
 **Authentication**
 Certain backends, such as the IBMQ backend require authentication.
 The worker uses the default mechanism provided by the service.
@@ -51,12 +55,4 @@ See the example `hamiltonian_graph.py`.
 ## Quantinuum Nexus
 
 Interface to the Quantinuum Nexus platform.
-
-**Installation**
-
-```sh
-pip insall tkr-nexus-worker
-```
-
-**Authentication**
-The worker uses the default mechanism provided by the `qnexus` Python package. For more details, please see the README in the `tkr-nexus-worker` package.
+More detailed docs [here](worker/nexus_worker.md).

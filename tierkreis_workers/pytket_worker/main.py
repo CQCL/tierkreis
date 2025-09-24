@@ -349,5 +349,9 @@ def expectation(backend_result: BackendResult) -> float:
     return expectation
 
 
-if __name__ == "__main__":
+def main():
     worker.app(argv)
+
+
+if __name__ == "__main__":
+    main()

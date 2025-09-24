@@ -7,6 +7,10 @@ requires-python = ">=3.12"
 dependencies = [
     "tierkreis",
     "pytket",
+    "pytket-qiskit",
+    "pytket-quantinuum",
+    "pytket-qir",
+    "pytket-qirpass",
 ]
 
 [build-system]

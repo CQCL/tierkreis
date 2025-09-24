@@ -16,9 +16,18 @@ author = "Quantinuum"
 extensions = ["autodoc2", "myst_nb"]
 autodoc2_packages = [
     "../../tierkreis/tierkreis",
-    "../../tierkreis_workers/aer_worker",
-    "../../tierkreis_workers/nexus_worker",
-    "../../tierkreis_workers/pytket_worker",
+    {
+        "path": "../../tierkreis_workers/aer_worker/main.py",
+        "module": "aer_worker",
+    },
+    {
+        "path": "../../tierkreis_workers/nexus_worker/main.py",
+        "module": "nexus_worker",
+    },
+    {
+        "path": "../../tierkreis_workers/pytket_worker/main.py",
+        "module": "pytket_worker",
+    },
 ]
 autodoc2_hidden_objects = ["private"]
 

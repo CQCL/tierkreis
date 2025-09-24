@@ -3,7 +3,8 @@
 Tierkreis does not put any restrictions on workers except the general [contract](../executors/overview.md).
 This means that you can also write workers in your preferred language and interface it with Tierkreis.
 To incorporate the worker into a Tierkreis graph, you can either describe the interface using a subset of [TypeSpec](https://typespec.io) to generate stubs for your worker or use the untyped functions in the graph builder.
-To run the worker you may use one of the existing executors; for most cases, if you can run your code as a commandline script, the [ShellWorker](../executors/shell.md) i s appropriate.
+To run the worker you may use one of the existing executors;
+In the common case when you can run your code as a commandline script, the [ShellWorker](../executors/shell.md) is appropriate.
 Alternatively you can write your own executor to launch the worker process.
 
 For a full example without stubs you can have a look at the `signing_graph.py` example.
@@ -13,11 +14,11 @@ For a full example without stubs you can have a look at the `signing_graph.py` e
 A TypeSpec file can be used to define the inputs and outputs of the tasks in your workers.  
 Tierkreis is restricted to a subset of the full specification:
 
-- Interfaces: defining the available tasks in your worker
+- Interfaces: defining the available tasks in your worker. Currently, Tierkreis allows only **one** interface definition for a worker, which **must** have the same name as the directory it is placed in.
 - Models: to define the types of the task in- and outputs
   Additionally, you may use the `@portmapping` decorator on models to indicate tasks with multiple outputs.
 
-For example you could define the following interface in `namespace.tsp`
+For example you could define the following interface in `TestNamespace/namespace.tsp`
 
 ```tsp
 @portmapping

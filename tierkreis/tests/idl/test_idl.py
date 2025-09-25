@@ -1,12 +1,10 @@
 from pathlib import Path
 import pytest
-from tierkreis.codegen import format_namespace
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.models import GenericType
 from tierkreis.namespace import Namespace
 from tierkreis.idl.type_symbols import type_symbol
 import tests.idl.namespace1
-from tierkreis.worker.worker import Worker
 
 type_symbols = [
     ("uint8", GenericType(int, [])),
@@ -42,14 +40,12 @@ def test_type_t(type_symb: str, expected: type):
 @pytest.mark.parametrize("path,expected", typespecs)
 def test_namespace(path: Path, expected: Namespace):
     namespace = Namespace.from_spec_file(path)
-    assert format_namespace(namespace) == format_namespace(expected)
+    assert namespace.stubs() == expected.stubs()
 
     # Write stubs to file.
     # This file will be subject to linting.
     # Also a change in this file can indicate an unexpectedly breaking change.
-    worker = Worker("dummy_worker")
-    worker.namespace = namespace
-    worker.write_stubs(Path(__file__).parent / "stubs_output.py")
+    namespace.write_stubs(Path(__file__).parent / "stubs_output.py")
 
 
 @pytest.mark.parametrize("type_symb", type_symbols_for_failure)

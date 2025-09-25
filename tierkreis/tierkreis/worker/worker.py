@@ -7,7 +7,6 @@ import sys
 from types import TracebackType
 from typing import Callable
 
-from tierkreis.codegen import format_namespace
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
@@ -168,7 +167,7 @@ class Worker:
         :type stubs_path: Path
         """
         with open(stubs_path, "w+") as fh:
-            fh.write(format_namespace(self.namespace))
+            fh.write(self.namespace.stubs())
 
         ruff_binary = shutil.which("ruff")
         if ruff_binary:

@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from logging import getLogger
 from pathlib import Path
 from typing import Callable, Self, get_origin
+from tierkreis.codegen import format_method, format_model
 from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import Struct, is_ptype
 from tierkreis.exceptions import TierkreisError
@@ -75,3 +76,22 @@ class Namespace:
             namespace.methods.append(f)
 
         return namespace
+
+    def stubs(self) -> str:
+        functions = [format_method(self.name, f) for f in self.methods]
+        functions_str = "\n\n".join(functions)
+
+        models = sorted(list(self.models), key=lambda x: str(x.t.origin))
+        models_str = "\n\n".join([format_model(x) for x in models])
+
+        return f'''"""Code generated from {self.name} namespace. Please do not edit."""
+
+from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol, Union
+from types import NoneType
+from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.data.types import PType, Struct
+
+{models_str}
+
+{functions_str}
+'''

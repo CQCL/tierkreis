@@ -1,6 +1,5 @@
 from pathlib import Path
 import pytest
-from tierkreis.codegen import format_namespace
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.models import GenericType
 from tierkreis.namespace import Namespace
@@ -42,7 +41,7 @@ def test_type_t(type_symb: str, expected: type):
 @pytest.mark.parametrize("path,expected", typespecs)
 def test_namespace(path: Path, expected: Namespace):
     namespace = Namespace.from_spec_file(path)
-    assert format_namespace(namespace) == format_namespace(expected)
+    assert namespace.stubs() == expected.stubs()
 
     # Write stubs to file.
     # This file will be subject to linting.

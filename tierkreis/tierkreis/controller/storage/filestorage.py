@@ -34,8 +34,8 @@ class FileSystemBackend:
     def _exists(self, path: Path) -> bool:
         return path.exists()
 
-    def _iterdir(self, dir: Path) -> list[Path]:
-        return list(dir.iterdir())
+    def _list_output_paths(self, output_dir: Path) -> list[Path]:
+        return [x for x in output_dir.iterdir() if x.is_file()]
 
     def _link(self, src: Path, dst: Path) -> None:
         dst.parent.mkdir(parents=True, exist_ok=True)
@@ -54,7 +54,7 @@ class FileSystemBackend:
         path.touch()
 
     def _stat(self, path: Path) -> StatResult:
-        return path.stat()
+        return StatResult(path.stat().st_mtime)
 
     def _write(self, path: Path, value: bytes) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)

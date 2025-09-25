@@ -17,11 +17,9 @@ from pytket.circuit import OpType
 from pytket.passes import BasePass
 from pytket.pauli import QubitPauliString
 from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
-from pytket.qir.conversion.api import pytket_to_qir
 from pytket.transform import Transform
 from pytket.utils.expectations import expectation_from_counts
 from pytket.utils.measurements import append_pauli_measurement
-from pytket_qirpass import qir_to_pytket
 from tierkreis.exceptions import TierkreisError
 
 from tierkreis import Worker
@@ -318,6 +316,10 @@ def to_qir_bytes(circuit: Circuit) -> bytes:
     :return: The circuit as QIR bytecode.
     :rtype: bytes
     """
+    try:
+        from pytket.qir.conversion.api import pytket_to_qir
+    except ModuleNotFoundError:
+        raise TierkreisError("Could not resolve pytket.qir")
     ret = pytket_to_qir(circuit)
     if not isinstance(ret, bytes):
         raise TierkreisError("Error when converting Circuit to QIR.")
@@ -333,6 +335,10 @@ def from_qir_bytes(qir: bytes) -> Circuit:
     :return: The corresponding pytket circuit.
     :rtype: Circuit
     """
+    try:
+        from pytket_qirpass import qir_to_pytket
+    except ModuleNotFoundError:
+        raise TierkreisError("Could not resolve pytket_qirpass")
     return qir_to_pytket(qir)
 
 

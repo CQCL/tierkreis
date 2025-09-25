@@ -270,3 +270,27 @@ class tkr_sleep(NamedTuple):
     @property
     def namespace(self) -> str:
         return "builtins"
+
+
+class tkr_encode(NamedTuple):
+    string: TKR[str]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bytes]]:  # noqa: F821 # fmt: skip
+        return TKR[bytes]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_decode(NamedTuple):
+    bytes: TKR[bytes]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip
+        return TKR[str]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"

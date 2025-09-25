@@ -151,5 +151,9 @@ def submit(circuits: list[Circuit], n_shots: int) -> ExecuteJobRef:
     return execute_job_ref
 
 
-if __name__ == "__main__":
+def main():
     worker.app(argv)
+
+
+if __name__ == "__main__":
+    main()

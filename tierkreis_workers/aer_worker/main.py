@@ -39,5 +39,9 @@ def submit_single(circuit: Circuit, n_shots: int) -> BackendResult:
     return AerBackend().run_circuit(circuit, n_shots=n_shots)
 
 
-if __name__ == "__main__":
+def main():
     worker.app(argv)
+
+
+if __name__ == "__main__":
+    main()

@@ -5,6 +5,24 @@ A Tierkreis worker that interacts with the Quantinuum Nexus API.
 The Nexus worker largely wraps the functionality from [the qnexus library](https://pypi.org/project/qnexus/).
 In addition to the elementary tasks exposed, there are also prepackaged graphs to make using the Nexus worker more convenient.
 
+## Installation
+
+```sh
+pip install tkr-nexus-worker
+```
+
+will install an executable Python script `tkr_nexus_worker` into your virtual environment.
+
+## Authentication
+
+The worker uses the default mechanism provided by the `qnexus` Python package.
+
+```bash
+uv run python -c "from qnexus.client.auth import login; login()"
+```
+
+will put the a token in the appropriate filesystem location for subsequent operations to use.
+
 ## Elementary tasks
 
 The Nexus worker exposes the following elementary tasks to the user.

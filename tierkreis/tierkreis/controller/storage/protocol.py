@@ -18,7 +18,8 @@ class ControllerStorage(Protocol):
     For this purpose the protocol exposes *read_...* and *write_...* functions.
     """
 
-    logs_path: Path
+    @property
+    def logs_path(self) -> Path: ...
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None:
         """Stores the definition of the node defined at the given location.

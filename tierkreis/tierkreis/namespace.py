@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from logging import getLogger
 from pathlib import Path
+import shutil
+import subprocess
 from typing import Callable, Self, get_origin
 from tierkreis.codegen import format_method, format_model
 from tierkreis.controller.data.models import PModel, is_portmapping
@@ -95,3 +97,19 @@ from tierkreis.controller.data.types import PType, Struct
 
 {functions_str}
 '''
+
+    def write_stubs(self, stubs_path: Path) -> None:
+        """Writes the type stubs to stubs_path.
+
+        :param stubs_path: The location to write to.
+        :type stubs_path: Path
+        """
+        with open(stubs_path, "w+") as fh:
+            fh.write(self.stubs())
+
+        ruff_binary = shutil.which("ruff")
+        if ruff_binary:
+            subprocess.run([ruff_binary, "format", stubs_path])
+            subprocess.run([ruff_binary, "check", "--fix", stubs_path])
+        else:
+            logger.warning("No ruff binary found. Stubs will contain raw codegen.")

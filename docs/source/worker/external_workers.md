@@ -61,9 +61,7 @@ from tierkreis.namespace import Namespace
 if __name__ == "__main__":
     tsp_path = Path("<path to your spec file>")
     namespace = Namespace.from_spec_file(tsp_path)
-    worker = Worker("TestNamespace") # same name as interface
-    worker.namespace = namespace
-    worker.write_stubs(tsp_path.parent / "stubs.py")
+    namespace.write_stubs(tsp_path.parent / "stubs.py")
 ```
 
 ## Parsing Inputs and Outputs

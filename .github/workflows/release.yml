@@ -11,20 +11,13 @@ jobs:
       id-token: write
     strategy:
       matrix:
-        python-version: ['3.12']
+        python-version: ["3.12"]
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - name: Build frontend assets
+        uses: ./.github/workflows/run-command.yml
         with:
-          fetch-depth: '0'
-
-      - name: Set up uv & venv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: ${{ env.UV_VERSION }}
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-glob: uv.lock
+          command_name: prod
+          command: just prod
 
       - name: Build package
         run: |

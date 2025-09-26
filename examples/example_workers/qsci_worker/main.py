@@ -1,10 +1,3 @@
-# /// script
-# requires-python = ">=3.12"
-# dependencies = ["pydantic", "pytket", "pytket-qiskit", "tierkreis"]
-#
-# [tool.uv.sources]
-# tierkreis = { path = "../../../tierkreis", editable = true }
-# ///
 import logging
 from sys import argv
 from typing import Counter, NamedTuple, cast

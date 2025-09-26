@@ -11,7 +11,7 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import Loc, WorkerCallArgs
-from tierkreis.controller.storage.protocol import ControllerStorage
+from tierkreis.controller.storage.base import TKRStorage
 from tierkreis.exceptions import TierkreisError
 from watchfiles import awatch  # type: ignore
 
@@ -46,7 +46,7 @@ async def handle_websocket(
     websocket: WebSocket,
     workflow_id: UUID,
     node_location_str: str,
-    storage: ControllerStorage,
+    storage: TKRStorage,
 ) -> None:
     node_location = parse_node_location(node_location_str)
     # currently we are watching the entire workflow in the frontend
@@ -90,14 +90,12 @@ def parse_node_location(node_location_str: str) -> Loc:
     return Loc(node_location_str)
 
 
-def get_errored_nodes(storage: ControllerStorage) -> list[Loc]:
+def get_errored_nodes(storage: TKRStorage) -> list[Loc]:
     errored_nodes = storage.read_errors(Loc("-"))
     return [parse_node_location(node) for node in errored_nodes.split("\n")]
 
 
-def get_node_data(
-    workflow_id: UUID, loc: Loc, storage: ControllerStorage
-) -> dict[str, Any]:
+def get_node_data(workflow_id: UUID, loc: Loc, storage: TKRStorage) -> dict[str, Any]:
     errored_nodes = get_errored_nodes(storage)
 
     try:
@@ -167,9 +165,7 @@ def get_node_data(
     return ctx
 
 
-async def node_stream(
-    workflow_id: UUID, node_location: Loc, storage: ControllerStorage
-):
+async def node_stream(workflow_id: UUID, node_location: Loc, storage: TKRStorage):
     node_path = CONFIG.tierkreis_path / str(workflow_id) / str(node_location)
     async for _changes in awatch(node_path, recursive=False):
         if (node_path / "definition").exists():

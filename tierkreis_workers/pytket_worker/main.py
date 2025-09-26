@@ -355,6 +355,18 @@ def expectation(backend_result: BackendResult) -> float:
     return expectation
 
 
+@worker.task()
+def n_qubits(circuit: Circuit) -> int:
+    """Wrapper for pytket.Circuit.n_qubits.
+
+    :param circuit: The pytket circuit.
+    :type circuit: Circuit
+    :return: The number of qubits in that circuit.
+    :rtype: int
+    """
+    return circuit.n_qubits
+
+
 def main():
     worker.app(argv)
 

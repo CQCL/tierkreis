@@ -211,3 +211,15 @@ class expectation(NamedTuple):
     @property
     def namespace(self) -> str:
         return "pytket_worker"
+
+
+class n_qubits(NamedTuple):
+    circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"

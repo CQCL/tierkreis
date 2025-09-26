@@ -2,7 +2,6 @@ import logging
 import shutil
 import subprocess
 from pathlib import Path
-import time
 
 from tierkreis.exceptions import TierkreisError
 

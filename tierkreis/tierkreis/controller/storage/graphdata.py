@@ -3,6 +3,7 @@ from uuid import UUID
 from typing import Any
 
 
+from pydantic import BaseModel, Field
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.graph import (
     Eval,
@@ -16,11 +17,25 @@ from tierkreis.controller.data.location import (
     WorkerCallArgs,
     get_last_index,
 )
+from tierkreis.controller.storage.base import StatResult, TKRStorage
 from tierkreis.exceptions import TierkreisError
-from tierkreis.controller.storage.in_memory import NodeData
 
 
-class GraphDataStorage:
+class NodeData(BaseModel):
+    """Internal storage class to store all necessary node information."""
+
+    definition: NodeDef | None = None
+    call_args: WorkerCallArgs | None = None
+    is_done: bool = False
+    has_error: bool = False
+    metadata: dict[str, Any] = Field(default_factory=dict)
+    error_logs: str = ""
+    outputs: dict[PortID, bytes | None] = Field(default_factory=dict)
+    started: str | None = None
+    finished: str | None = None
+
+
+class GraphDataStorage(TKRStorage):
     def __init__(
         self,
         workflow_id: UUID,
@@ -31,7 +46,30 @@ class GraphDataStorage:
         self.name = name
         self.nodes: dict[Loc, NodeData] = {}
         self.graph = graph
-        self.logs_path = Path("")
+
+    def delete(self) -> None:
+        raise NotImplementedError("GraphDataStorage is read only storage.")
+
+    def exists(self, path: Path) -> bool:
+        raise NotImplementedError("GraphDataStorage is only for graph construction.")
+
+    def list_output_paths(self, output_dir: Path) -> list[Path]:
+        raise NotImplementedError("GraphDataStorage uses GraphData not paths.")
+
+    def link(self, src: Path, dst: Path) -> None:
+        raise NotImplementedError("GraphDataStorage is read only storage.")
+
+    def read(self, path: Path) -> bytes:
+        raise NotImplementedError("GraphDataStorage uses GraphData not paths.")
+
+    def stat(self, path: Path) -> StatResult:
+        raise NotImplementedError("GraphDataStorage is only for graph construction.")
+
+    def touch(self, path: Path, is_dir: bool = False) -> None:
+        raise NotImplementedError("GraphDataStorage is read only storage.")
+
+    def write(self, path: Path, value: bytes) -> None:
+        raise NotImplementedError("GraphDataStorage is read only storage.")
 
     def write_node_def(self, node_location: Loc, node: NodeDef) -> None:
         raise NotImplementedError("GraphDataStorage is read only storage.")

@@ -61,6 +61,8 @@ def resume_graph(
         if walk_results.errored != []:
             node_errors = "\n".join(x for x in walk_results.errored)
             storage.write_node_errors(Loc(), node_errors)
+            # TODO: add to base class after storage refactor
+            (storage.logs_path.parent / "-" / "_error").touch()
             print("Graph finished with errors.")
             break
         start_nodes(storage, executor, walk_results.inputs_ready)

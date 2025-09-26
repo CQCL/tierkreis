@@ -44,14 +44,20 @@ class UvExecutor:
 
         worker_path = self.launchers_path / launcher_name
         env = {"VIRTUAL_ENVIRONMENT": ""}
+        _error_path = self.errors_path.parent / "_error"
 
         with open(self.logs_path, "a") as lfh:
             with open(self.errors_path, "a") as efh:
-                subprocess.Popen(
-                    [uv_path, "run", "main.py", worker_call_args_path],
+                proc = subprocess.Popen(
+                    ["bash"],
                     start_new_session=True,
-                    cwd=worker_path,
+                    stdin=subprocess.PIPE,
                     stderr=efh,
                     stdout=lfh,
+                    cwd=worker_path,
                     env=env,
+                )
+                proc.communicate(
+                    f"({uv_path} run main.py {worker_call_args_path} || touch {_error_path}) &".encode(),
+                    timeout=10,
                 )

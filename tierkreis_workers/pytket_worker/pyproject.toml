@@ -10,7 +10,7 @@ dependencies = [
     "pytket-qiskit",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 #Some wheels for pyqir are restricted in their arch
 qir = [
     "pytket-quantinuum",

@@ -2223,7 +2223,7 @@ dependencies = [
     { name = "tierkreis" },
 ]
 
-[package.dev-dependencies]
+[package.optional-dependencies]
 qir = [
     { name = "pytket-qir" },
     { name = "pytket-qirpass" },
@@ -2233,16 +2233,13 @@ qir = [
 [package.metadata]
 requires-dist = [
     { name = "pytket" },
+    { name = "pytket-qir", marker = "extra == 'qir'" },
+    { name = "pytket-qirpass", marker = "extra == 'qir'" },
     { name = "pytket-qiskit" },
+    { name = "pytket-quantinuum", marker = "extra == 'qir'" },
     { name = "tierkreis", editable = "tierkreis" },
 ]
-
-[package.metadata.requires-dev]
-qir = [
-    { name = "pytket-qir" },
-    { name = "pytket-qirpass" },
-    { name = "pytket-quantinuum" },
-]
+provides-extras = ["qir"]
 
 [[package]]
 name = "tornado"

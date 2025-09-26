@@ -22,8 +22,6 @@ from pytket.passes import (
 )
 from pytket.placement import GraphPlacement
 from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
-from pytket.qir.conversion.api import pytket_to_qir
-from pytket_qirpass import qir_to_pytket
 from tierkreis.exceptions import TierkreisError
 
 
@@ -100,6 +98,10 @@ def compile_circuit(
             raise TierkreisError("Invalid combination of input type and format.")
     if isinstance(circuit, bytes):
         if input_format == CircuitFormat.QIR:
+            try:
+                from pytket_qirpass import qir_to_pytket
+            except ModuleNotFoundError:
+                raise TierkreisError("Could not resolve pytket_qirpass")
             circuit = qir_to_pytket(circuit)
         else:
             raise TierkreisError("Invalid combination of input type and format.")
@@ -124,6 +126,10 @@ def compile_circuit(
         case CircuitFormat.QASM2:
             return circuit_to_qasm_str(circuit)
         case CircuitFormat.QIR:
+            try:
+                from pytket.qir.conversion.api import pytket_to_qir
+            except ModuleNotFoundError:
+                raise TierkreisError("Could not resolve pytket_qirpass")
             ret = pytket_to_qir(circuit)
             if ret is None:
                 raise TierkreisError("Could not transform circuit to QIR.")

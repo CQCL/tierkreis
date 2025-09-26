@@ -169,5 +169,15 @@ def tkr_sleep(delay_seconds: float) -> bool:
     return True
 
 
+@worker.task()
+def tkr_encode(string: str) -> bytes:
+    return string.encode()
+
+
+@worker.task()
+def tkr_decode(bytes: bytes) -> str:
+    return bytes.decode()
+
+
 if __name__ == "__main__":
     worker.app(argv)

@@ -8,6 +8,11 @@ dependencies = [
     "tierkreis",
     "pytket",
     "pytket-qiskit",
+]
+
+[project.optional-dependencies]
+#Some wheels for pyqir are restricted in their arch
+qir = [
     "pytket-quantinuum",
     "pytket-qir",
     "pytket-qirpass",

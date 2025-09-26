@@ -1,4 +1,4 @@
-uvrun := "uv run"
+uvrun := "uv run --all-extras"
 
 default:
   @just --list

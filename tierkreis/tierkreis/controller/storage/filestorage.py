@@ -4,10 +4,10 @@ from pathlib import Path
 from time import time_ns
 from uuid import UUID
 
-from tierkreis.controller.storage.pathstorage import PathStorageBase, StatResult
+from tierkreis.controller.storage.base import StatResult, TKRStorage
 
 
-class FileSystemBackend:
+class ControllerFileStorage(TKRStorage):
     def __init__(
         self,
         workflow_id: UUID,
@@ -58,6 +58,3 @@ class FileSystemBackend:
         path.parent.mkdir(parents=True, exist_ok=True)
         with open(path, "wb+") as fh:
             fh.write(value)
-
-
-class ControllerFileStorage(FileSystemBackend, PathStorageBase): ...

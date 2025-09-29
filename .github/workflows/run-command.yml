@@ -21,6 +21,10 @@ on:
 
 jobs:
   run:
+    permissions:
+      pages: write
+      id-token: write
+
     name: ${{ inputs.command_name }}
     runs-on: ubuntu-24.04
     strategy:

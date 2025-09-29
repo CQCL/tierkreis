@@ -11,6 +11,10 @@ jobs:
       id-token: write
 
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -20,6 +24,7 @@ jobs:
         with:
           command_name: docs
           command: just docs
+          python_version: ${{ matrix.python-version }}
 
       - name: Upload static files as artifact
         uses: actions/upload-pages-artifact@v3

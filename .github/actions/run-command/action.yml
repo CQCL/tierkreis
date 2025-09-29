@@ -11,7 +11,7 @@ jobs:
       with:
         version: "0.6.6"
         enable-cache: true
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ inputs.python_version }}
         cache-dependency-glob: uv.lock
 
     - name: Setup just

@@ -22,7 +22,6 @@ on:
 jobs:
   run:
     name: ${{ inputs.command_name }}
-    environment: pypi
     runs-on: ubuntu-24.04
     strategy:
       matrix:

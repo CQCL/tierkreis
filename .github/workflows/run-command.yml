@@ -49,6 +49,7 @@ jobs:
         if: inputs.publish_pypi == 'yes'
         with:
           bun-version: "1.2.13"
+          non-cache: true
 
       - name: Setup just
         uses: extractions/setup-just@v3

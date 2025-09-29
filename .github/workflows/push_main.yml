@@ -1,0 +1,15 @@
+name: Merge to main
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  docs:
+    uses: ./.github/workflows/run-command.yml
+    with:
+      command_name: docs
+      command: just docs
+      deploy_docs: true

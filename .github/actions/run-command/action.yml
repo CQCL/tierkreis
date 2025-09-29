@@ -5,7 +5,7 @@ inputs:
     required: true
   command_name:
     required: true
-  command:
+  command_name:
     required: true
 
 jobs:
@@ -19,11 +19,11 @@ jobs:
       with:
         version: "0.6.6"
         enable-cache: true
-        python-version: ${{ github.event.inputs.python_version }}
+        python-version: ${{ inputs.python_version }}
         cache-dependency-glob: uv.lock
 
     - name: Setup just
       uses: extractions/setup-just@v3
 
-    - name: ${{ github.event.inputs.command_name }}
-      run: ${{ github.event.inputs.command }}
+    - name: ${{ inputs.command_name }}
+      run: ${{ inputs.command }}

@@ -28,10 +28,11 @@ docs:
 serve:
 	{{uvrun}} python tierkreis_visualization/main.py
 
-[working-directory:'tierkreis_visualization']
+[working-directory:'tierkreis_visualization/frontend']
 prod:
-	bunx vite build frontend
-	cp -r frontend/dist tierkreis_visualization/static
+	bun build
+  bunx vite build .
+	cp -r dist ../tierkreis_visualization/static
 
 
 examples:

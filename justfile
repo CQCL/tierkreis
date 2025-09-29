@@ -30,7 +30,7 @@ serve:
 
 [working-directory:'tierkreis_visualization']
 prod:
-	bunx --bun vite build frontend
+	bunx vite build frontend
 	cp -r frontend/dist tierkreis_visualization/static
 
 

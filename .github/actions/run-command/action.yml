@@ -1,5 +1,13 @@
 name: Reusable setup for command
 
+inputs:
+  python_version:
+    required: true
+  command_name:
+    required: true
+  command:
+    required: true
+
 jobs:
   using: "composite"
   steps:

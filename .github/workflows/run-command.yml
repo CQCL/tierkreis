@@ -42,6 +42,8 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
         if: inputs.publish_pypi == 'yes'
+        with:
+          bun-version: "1.2.13"
 
       - name: Setup just
         uses: extractions/setup-just@v3

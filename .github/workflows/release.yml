@@ -7,12 +7,23 @@ on:
   push:
 
 jobs:
-  release:
-    permissions:
-      id-token: write
-
+  prepare:
     uses: ./.github/workflows/run-command.yml
     with:
       command_name: release
       command: just prod && uv build --all-packages
       publish_pypi: "yes"
+
+  release:
+    runs-on: ubuntu-24.04
+    permissions:
+      id-token: write
+    needs: prepare
+    steps:
+      - name: Download Python package dist
+        uses: actions/download-artifact@v5
+        with:
+          name: tierkreis-python-package-dist
+          path: dist/
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1

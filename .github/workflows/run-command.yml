@@ -68,6 +68,9 @@ jobs:
         uses: actions/deploy-pages@v4
         if: (inputs.deploy_docs == 'yes') && (matrix.python-version == inputs.current_python_version)
 
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Upload Python package dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: tierkreis-python-package-dist
+          path: dist/
         if: (inputs.publish_pypi == 'yes') && (matrix.python-version == inputs.current_python_version)

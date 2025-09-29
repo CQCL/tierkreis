@@ -8,6 +8,9 @@ on:
 
 jobs:
   docs:
+    permissions:
+      pages: write
+      id-token: write
     uses: ./.github/workflows/run-command.yml
     with:
       command_name: docs

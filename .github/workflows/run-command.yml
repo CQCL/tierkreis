@@ -41,7 +41,6 @@ jobs:
 
       - name: ${{ inputs.command_name }}
         run: ${{ inputs.command }}
-        if: (matrix.python-version == matrix.python-version.last)
 
       - name: Upload static files as artifact
         uses: actions/upload-pages-artifact@v3

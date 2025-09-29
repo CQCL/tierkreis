@@ -40,6 +40,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache-dependency-glob: uv.lock
 
+      - uses: actions/setup-node@v5
+        if: inputs.publish_pypi == 'yes'
+        with:
+          node-version: "24.8.0"
+
       - uses: oven-sh/setup-bun@v2
         if: inputs.publish_pypi == 'yes'
         with:

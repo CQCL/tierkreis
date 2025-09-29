@@ -15,6 +15,9 @@ on:
       publish_pypi:
         type: string
         default: "no"
+      current_python_version:
+        type: string
+        default: "3.13"
 
 jobs:
   run:
@@ -45,14 +48,14 @@ jobs:
 
       - name: Upload static files as artifact
         uses: actions/upload-pages-artifact@v3
-        if: ${{ (inputs.deploy_docs == 'yes') }}
+        if: (inputs.deploy_docs == 'yes') && (matrix.python-version == inputs.current_python_version)
         with:
           path: docs/build/html
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        if: ${{ (inputs.deploy_docs == 'yes') && (matrix.python-version == matrix.python-version.last) }}
+        if: (inputs.deploy_docs == 'yes') && (matrix.python-version == inputs.current_python_version)
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: ${{ (inputs.publish_pypi == 'yes') && (matrix.python-version == matrix.python-version.last) }}
+        if: (inputs.publish_pypi == 'yes') && (matrix.python-version == inputs.current_python_version)

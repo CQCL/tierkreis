@@ -17,5 +17,10 @@ def wont_fail() -> int:
     return 0
 
 
+@worker.task()
+def exit_code_1() -> int:
+    exit(1)
+
+
 if __name__ == "__main__":
     worker.app(argv)

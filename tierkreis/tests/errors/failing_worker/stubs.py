@@ -22,3 +22,13 @@ class wont_fail(NamedTuple):
     @property
     def namespace(self) -> str:
         return "failing_worker"
+
+
+class exit_code_1(NamedTuple):
+    @staticmethod
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "failing_worker"

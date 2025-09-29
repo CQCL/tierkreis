@@ -40,6 +40,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache-dependency-glob: uv.lock
 
+      - uses: oven-sh/setup-bun@v2
+        if: inputs.publish_pypi == 'yes'
+
       - name: Setup just
         uses: extractions/setup-just@v3
 

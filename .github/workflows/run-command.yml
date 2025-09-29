@@ -44,14 +44,14 @@ jobs:
 
       - name: Upload static files as artifact
         uses: actions/upload-pages-artifact@v3
-        if: ${{ inputs.deploy_docs }} && ${{ matrix.python-version == matrix.python-version.last }}
+        if: ${{ inputs.deploy_docs ==true }} && ${{ matrix.python-version == matrix.python-version.last }}
         with:
           path: docs/build/html
 
       - name: Deploy to GitHub Pages
         uses: actions/deploy-pages@v4
-        if: ${{ inputs.deploy_docs }} && ${{ matrix.python-version == matrix.python-version.last }}
+        if: ${{ inputs.deploy_docs == true }} && ${{ matrix.python-version == matrix.python-version.last }}
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        if: ${{ inputs.publish_pypi }} && ${{ matrix.python-version == matrix.python-version.last }}
+        if: ${{ inputs.publish_pypi == true }} && ${{ matrix.python-version == matrix.python-version.last }}

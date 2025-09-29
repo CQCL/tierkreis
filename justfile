@@ -32,7 +32,7 @@ serve:
 prod:
   bun build
   bunx vite build .
-	cp -r dist ../tierkreis_visualization/static
+  cp -r dist ../tierkreis_visualization/static
 
 
 examples:

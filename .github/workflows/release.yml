@@ -16,11 +16,19 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build frontend assets
-        uses: ./.github/workflows/run-command.yml
+      - name: Set up uv & venv
+        uses: astral-sh/setup-uv@v5
         with:
-          command_name: prod
-          command: just prod
+          version: "0.6.6"
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: uv.lock
+
+      - name: Setup just
+        uses: extractions/setup-just@v3
+
+      - name: Build frontend
+        run: just prod
 
       - name: Build package
         run: |

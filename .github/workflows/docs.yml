@@ -2,6 +2,7 @@ on:
   release:
     types: [created]
   workflow_dispatch:
+  push:
 
 jobs:
   docs:
@@ -10,15 +11,27 @@ jobs:
       id-token: write
 
     runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build docs
-        uses: ./.github/workflows/run-command.yml
+      - name: Set up uv & venv
+        uses: astral-sh/setup-uv@v5
         with:
-          command_name: docs
-          command: just docs
+          version: "0.6.6"
+          enable-cache: true
+          python-version: ${{ matrix.python-version }}
+          cache-dependency-glob: uv.lock
+
+      - name: Setup just
+        uses: extractions/setup-just@v3
+
+      - name: Build docs
+        run: just docs
 
       - name: Upload static files as artifact
         uses: actions/upload-pages-artifact@v3

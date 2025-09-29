@@ -2,7 +2,6 @@ from inspect import isclass
 from pydantic import BaseModel
 from tierkreis.controller.data.types import DictConvertible, ListConvertible, _is_union
 from tierkreis.idl.models import GenericType, Method, Model, TypedArg
-from tierkreis.namespace import Namespace
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
 
@@ -76,23 +75,3 @@ def format_method(namespace_name: str, fn: Method) -> str:
     @property
     def namespace(self) -> str:
         return "{namespace_name}" """
-
-
-def format_namespace(namespace: Namespace) -> str:
-    functions = [format_method(namespace.name, f) for f in namespace.methods]
-    functions_str = "\n\n".join(functions)
-
-    models = sorted(list(namespace.models), key=lambda x: str(x.t.origin))
-    models_str = "\n\n".join([format_model(x) for x in models])
-
-    return f'''"""Code generated from {namespace.name} namespace. Please do not edit."""
-
-from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol, Union
-from types import NoneType
-from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis.controller.data.types import PType, Struct
-
-{models_str}
-
-{functions_str}
-    '''

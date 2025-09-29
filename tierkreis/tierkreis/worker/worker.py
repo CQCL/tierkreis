@@ -1,13 +1,10 @@
 import logging
 from logging import getLogger
 from pathlib import Path
-import shutil
-import subprocess
 import sys
 from types import TracebackType
 from typing import Callable
 
-from tierkreis.codegen import format_namespace
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
@@ -161,25 +158,9 @@ class Worker:
             logger.error("encountered error", exc_info=err)
             self.storage.write_error(node_definition.error_path, str(err))
 
-    def write_stubs(self, stubs_path: Path) -> None:
-        """Writes the type stubs to stubs_path.
-
-        :param stubs_path: The location to write to.
-        :type stubs_path: Path
-        """
-        with open(stubs_path, "w+") as fh:
-            fh.write(format_namespace(self.namespace))
-
-        ruff_binary = shutil.which("ruff")
-        if ruff_binary:
-            subprocess.run([ruff_binary, "format", stubs_path])
-            subprocess.run([ruff_binary, "check", "--fix", stubs_path])
-        else:
-            logger.warning("No ruff binary found. Stubs will contain raw codegen.")
-
     def app(self, argv: list[str]) -> None:
         """Wrapper for UV execution."""
         if argv[1] == "--stubs-path":
-            self.write_stubs(Path(argv[2]))
+            self.namespace.write_stubs(Path(argv[2]))
         else:
             self.run(Path(argv[1]))

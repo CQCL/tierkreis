@@ -1,7 +1,10 @@
 from dataclasses import dataclass, field
 from logging import getLogger
 from pathlib import Path
+import shutil
+import subprocess
 from typing import Callable, Self, get_origin
+from tierkreis.codegen import format_method, format_model
 from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import Struct, is_ptype
 from tierkreis.exceptions import TierkreisError
@@ -75,3 +78,38 @@ class Namespace:
             namespace.methods.append(f)
 
         return namespace
+
+    def stubs(self) -> str:
+        functions = [format_method(self.name, f) for f in self.methods]
+        functions_str = "\n\n".join(functions)
+
+        models = sorted(list(self.models), key=lambda x: str(x.t.origin))
+        models_str = "\n\n".join([format_model(x) for x in models])
+
+        return f'''"""Code generated from {self.name} namespace. Please do not edit."""
+
+from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol, Union
+from types import NoneType
+from tierkreis.controller.data.models import TKR, OpaqueType
+from tierkreis.controller.data.types import PType, Struct
+
+{models_str}
+
+{functions_str}
+'''
+
+    def write_stubs(self, stubs_path: Path) -> None:
+        """Writes the type stubs to stubs_path.
+
+        :param stubs_path: The location to write to.
+        :type stubs_path: Path
+        """
+        with open(stubs_path, "w+") as fh:
+            fh.write(self.stubs())
+
+        ruff_binary = shutil.which("ruff")
+        if ruff_binary:
+            subprocess.run([ruff_binary, "format", stubs_path])
+            subprocess.run([ruff_binary, "check", "--fix", stubs_path])
+        else:
+            logger.warning("No ruff binary found. Stubs will contain raw codegen.")

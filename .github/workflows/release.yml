@@ -11,4 +11,4 @@ jobs:
     with:
       command_name: release
       command: just prod && uv build --all-packages
-      publish_pypi: true
+      publish_pypi: "yes"

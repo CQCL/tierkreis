@@ -57,7 +57,7 @@ def run_hpc_executor(
     if spec.include_no_check_directory_flag:
         submission_cmd += ["--no-check-directory"]
 
-    if TKR_DIR_KEY not in spec.environment:
+    if TKR_DIR_KEY not in spec.environment:  # User can override by setting TKR_DIR
         spec.environment[TKR_DIR_KEY] = str(executor.logs_path.parent.parent)
 
     with NamedTemporaryFile(

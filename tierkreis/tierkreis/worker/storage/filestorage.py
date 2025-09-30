@@ -12,7 +12,7 @@ class WorkerFileStorage:
         if tierkreis_dir is not None:
             self.tierkreis_dir = tierkreis_dir
         elif tierkreis_dir_str := os.environ.get(TKR_DIR_KEY):
-            self.tierkreis_dir = Path(tierkreis_dir_str)
+            self.tierkreis_dir = Path(tierkreis_dir_str).resolve()
         else:
             self.tierkreis_dir = Path.home() / ".tierkreis" / "checkpoints"
 

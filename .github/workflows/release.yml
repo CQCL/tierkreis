@@ -1,38 +1,30 @@
+name: Release
+
 on:
+  workflow_dispatch:
   release:
     types: [created]
 
 jobs:
-  pypi-publish:
-    name: Upload all packages to PyPI
+  release:
     runs-on: ubuntu-24.04
-    environment: pypi
     permissions:
       id-token: write
-    strategy:
-      matrix:
-        python-version: ["3.12"]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up uv & venv
-        uses: astral-sh/setup-uv@v5
+      - name: Set up deps
+        uses: ./.github/actions/setup_deps
         with:
-          version: "0.6.6"
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-glob: uv.lock
-
-      - name: Setup just
-        uses: extractions/setup-just@v3
+          include_node: "yes"
 
       - name: Build frontend
         run: just prod
 
-      - name: Build package
-        run: |
-          uv build --all-packages
+      - name: Build Python package
+        run: uv build --all-packages
 
       - name: Publish package distributions to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1

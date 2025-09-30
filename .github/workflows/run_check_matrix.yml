@@ -16,21 +16,16 @@ jobs:
     runs-on: ubuntu-24.04
     strategy:
       matrix:
-        python-version: ["3.12"]
+        python-version: ["3.12", "3.13"]
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up uv & venv
-        uses: astral-sh/setup-uv@v5
+      - name: Setup deps
+        uses: ./.github/actions/setup_deps
         with:
-          version: "0.6.6"
-          enable-cache: true
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-glob: uv.lock
-
-      - name: Setup just
-        uses: extractions/setup-just@v3
+          python_version: ${{ matrix.python-version }}
 
       - name: ${{ inputs.command_name }}
         run: ${{ inputs.command }}

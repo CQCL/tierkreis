@@ -12,7 +12,7 @@ authors = [
     { name = "Philipp Seitz", email = "philipp.seitz@quantinuum.com" },
 ]
 
-requires-python = ">=3.12,<3.13"
+requires-python = ">=3.12"
 dependencies = [
     "pydantic~=2.5",
 ]

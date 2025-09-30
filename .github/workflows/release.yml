@@ -12,7 +12,8 @@ jobs:
       id-token: write
 
     steps:
-      - uses: ./.github/actions/setup_deps
+      - name: Set up deps
+        uses: ./.github/actions/setup_deps
         with:
           include_node: "yes"
 

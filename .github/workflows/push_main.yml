@@ -8,12 +8,22 @@ on:
 
 jobs:
   docs:
+    runs-on: ubuntu-24.04
     permissions:
       pages: write
       id-token: write
 
-    uses: ./.github/workflows/run-command.yml
-    with:
-      command_name: docs
-      command: just docs
-      deploy_docs: "yes"
+    steps:
+      - uses: ./.github/actions/setup_deps
+        with:
+          command_name: docs
+          command: just docs
+          deploy_docs: "yes"
+
+      - name: Upload static files as artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/build/html
+
+      - name: Deploy to GitHub Pages
+        uses: actions/deploy-pages@v4

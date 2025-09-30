@@ -31,46 +31,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up uv & venv
-        uses: astral-sh/setup-uv@v5
-        with:
-          version: "0.6.6"
-          enable-cache: true
-          cache-suffix: ${{ matrix.python-version }}
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-glob: uv.lock
-
-      - uses: actions/setup-node@v5
-        if: inputs.upload_python_artifacts == 'yes'
-        with:
-          node-version: "24.8.0"
-          package-manager-cache: false
-
-      - uses: oven-sh/setup-bun@v2
-        if: inputs.upload_python_artifacts == 'yes'
-        with:
-          bun-version: "1.2.13"
-          no-cache: true
-
-      - name: Setup just
-        uses: extractions/setup-just@v3
+      - name: Setup deps
+        uses: ./.github/actions/setup_deps
 
       - name: ${{ inputs.command_name }}
         run: ${{ inputs.command }}
-
-      - name: Upload static files as artifact
-        uses: actions/upload-pages-artifact@v3
-        if: (inputs.deploy_docs == 'yes') && (matrix.python-version == inputs.current_python_version)
-        with:
-          path: docs/build/html
-
-      - name: Deploy to GitHub Pages
-        uses: actions/deploy-pages@v4
-        if: (inputs.deploy_docs == 'yes') && (matrix.python-version == inputs.current_python_version)
-
-      - name: Upload Python package dist
-        uses: actions/upload-artifact@v4
-        with:
-          name: tierkreis-python-package-dist
-          path: dist/
-        if: (inputs.upload_python_artifacts == 'yes') && (matrix.python-version == inputs.current_python_version)

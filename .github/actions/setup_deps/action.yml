@@ -2,17 +2,27 @@ name: Reusable action for command
 
 inputs:
   command_name:
-    description: "Command name"
+    description: "Command name."
     required: true
     type: string
   command:
-    description: "Command to run"
+    description: "Command to run."
     required: true
     type: string
   python_version:
-    description: "Python version to use"
+    description: "Python version to use."
     required: true
     type: string
+  include_node:
+    description: "Install node, bun etc.."
+    type: string
+    required: false
+    default: "no"
+  include_just:
+    description: "Install the just task runner."
+    type: string
+    required: false
+    default: "yes"
 
 runs:
   using: "composite"
@@ -26,5 +36,20 @@ runs:
         python-version: ${{ inputs.python_version }}
         cache-dependency-glob: uv.lock
 
-    - name: Setup just
+    - name: Set up just
+      if: inputs.include_just == 'yes'
       uses: extractions/setup-just@v3
+
+    - name: Set up node
+      uses: actions/setup-node@v5
+      if: inputs.include_node == 'yes'
+      with:
+        node-version: "24.8.0"
+        package-manager-cache: false
+
+    - name: Set up bun
+      uses: oven-sh/setup-bun@v2
+      if: inputs.include_node == 'yes'
+      with:
+        bun-version: "1.2.13"
+        no-cache: true

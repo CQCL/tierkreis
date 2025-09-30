@@ -12,7 +12,7 @@ on:
       deploy_docs:
         type: string
         default: "no"
-      publish_pypi:
+      upload_python_package:
         type: string
         default: "no"
       current_python_version:
@@ -41,13 +41,13 @@ jobs:
           cache-dependency-glob: uv.lock
 
       - uses: actions/setup-node@v5
-        if: inputs.publish_pypi == 'yes'
+        if: inputs.upload_python_package == 'yes'
         with:
           node-version: "24.8.0"
           package-manager-cache: false
 
       - uses: oven-sh/setup-bun@v2
-        if: inputs.publish_pypi == 'yes'
+        if: inputs.upload_python_package == 'yes'
         with:
           bun-version: "1.2.13"
           no-cache: true
@@ -73,4 +73,4 @@ jobs:
         with:
           name: tierkreis-python-package-dist
           path: dist/
-        if: (inputs.publish_pypi == 'yes') && (matrix.python-version == inputs.current_python_version)
+        if: (inputs.upload_python_package == 'yes') && (matrix.python-version == inputs.current_python_version)

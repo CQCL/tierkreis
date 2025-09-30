@@ -2,7 +2,7 @@ name: Reusable action for command
 
 inputs:
   command_name:
-    description: "Command name."
+    # description: "Command name."
     required: true
     type: string
   command:

@@ -115,7 +115,10 @@ def main(pjsub_group_name: str | None) -> None:
     # Assign a fixed uuid for our workflow.
     workflow_id = UUID(int=101)
     storage = ControllerFileStorage(
-        workflow_id, name="symbolic_circuits", do_cleanup=True
+        workflow_id,
+        name="symbolic_circuits",
+        do_cleanup=True,
+        tierkreis_directory=Path.home() / ".tierkreis" / "checkpoints2",
     )
 
     # Look for workers in the `example_workers` directory.

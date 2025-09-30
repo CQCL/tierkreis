@@ -1,6 +1,6 @@
 [project]
 name = "tkr_pytket_worker"
-version = "0.1.3"
+version = "0.1.4"
 description = "A tierkreis worker for pytket."
 readme = "README.md"
 requires-python = ">=3.12"

@@ -12,6 +12,9 @@ jobs:
       id-token: write
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Set up deps
         uses: ./.github/actions/setup_deps
         with:

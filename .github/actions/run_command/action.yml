@@ -30,4 +30,5 @@ runs:
       uses: extractions/setup-just@v3
 
     - name: ${{ inputs.command_name }}
+      shell: bash
       run: ${{ inputs.command }}

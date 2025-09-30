@@ -21,7 +21,7 @@ shell = ShellExecutor(
 )
 executor = MultipleExecutor(uv, {"shell": shell}, {"openssl_worker": "shell"})
 
-run_graph(storage, executor, signing_graph(), {}, n_iterations=100)
+run_graph(storage, executor, signing_graph(), {}, polling_interval_seconds=0.1)
 out = read_outputs(signing_graph(), storage)
 print(out)
 assert isinstance(out, bool)

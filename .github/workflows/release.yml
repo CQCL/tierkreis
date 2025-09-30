@@ -11,7 +11,7 @@ jobs:
     with:
       command_name: release
       command: just prod && uv build --all-packages
-      upload_python_package: "yes"
+      upload_python_artifacts: "yes"
 
   pypi-publish:
     name: Upload all packages to PyPI

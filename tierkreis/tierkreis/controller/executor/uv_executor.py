@@ -3,6 +3,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
+from tierkreis.consts import TKR_DIR_KEY
 from tierkreis.exceptions import TierkreisError
 
 logger = logging.getLogger(__name__)
@@ -43,7 +44,10 @@ class UvExecutor:
             raise TierkreisError("uv is required to use the uv_executor")
 
         worker_path = self.launchers_path / launcher_name
-        env = {"VIRTUAL_ENVIRONMENT": ""}
+        env = {
+            "VIRTUAL_ENVIRONMENT": "",
+            TKR_DIR_KEY: str(self.logs_path.parent.parent),
+        }
         _error_path = self.errors_path.parent / "_error"
 
         with open(self.logs_path, "a") as lfh:

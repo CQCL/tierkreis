@@ -1,16 +1,20 @@
 import json
 from glob import glob
+import os
 from pathlib import Path
 
+from tierkreis.consts import TKR_DIR_KEY
 from tierkreis.controller.data.location import WorkerCallArgs
 
 
 class WorkerFileStorage:
-    def __init__(
-        self,
-        tierkreis_dir: Path = Path.home() / ".tierkreis" / "checkpoints",
-    ) -> None:
-        self.tierkreis_dir = tierkreis_dir
+    def __init__(self, tierkreis_dir: Path | None = None) -> None:
+        if tierkreis_dir is not None:
+            self.tierkreis_dir = tierkreis_dir
+        elif tierkreis_dir_str := os.environ.get(TKR_DIR_KEY):
+            self.tierkreis_dir = Path(tierkreis_dir_str)
+        else:
+            self.tierkreis_dir = Path.home() / ".tierkreis" / "checkpoints"
 
     def resolve(self, path: Path | str) -> Path:
         path = Path(path)

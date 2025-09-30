@@ -40,6 +40,7 @@ examples:
   {{uvrun}} examples/error_handling_graph.py
   {{uvrun}} examples/symbolic_circuits.py
   {{uvrun}} examples/hamiltonian_graph.py
+  {{uvrun}} examples/non_standard_tkr_dir.py
   {{uvrun}} examples/qsci_graph.py
   {{uvrun}} examples/signing_graph.py
 

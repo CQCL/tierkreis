@@ -2,6 +2,7 @@ import json
 import subprocess
 from pathlib import Path
 
+from tierkreis.consts import TKR_DIR_KEY
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.exceptions import TierkreisError
 
@@ -51,6 +52,7 @@ class ShellExecutor:
         )
         done_path = self.workflow_dir.parent / call_args.done_path
         _error_path = self.errors_path.parent / "_error"
+        env[TKR_DIR_KEY] = str(self.logs_path.parent.parent)
 
         with open(self.workflow_dir.parent / self.logs_path, "a") as lfh:
             with open(self.workflow_dir.parent / self.errors_path, "a") as efh:

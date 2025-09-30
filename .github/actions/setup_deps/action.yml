@@ -11,7 +11,8 @@ inputs:
     type: string
   python_version:
     description: "Python version to use."
-    required: true
+    required: false
+    default: "3.12"
     type: string
   include_node:
     description: "Install node, bun etc.."

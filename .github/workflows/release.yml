@@ -15,7 +15,6 @@ jobs:
       - uses: ./.github/actions/setup_deps
         with:
           include_node: "yes"
-          python_version: "3.12"
 
       - name: Build frontend
         run: just prod

@@ -9,15 +9,6 @@ on:
       command:
         required: true
         type: string
-      deploy_docs:
-        type: string
-        default: "no"
-      upload_python_artifacts:
-        type: string
-        default: "no"
-      current_python_version:
-        type: string
-        default: "3.13"
 
 jobs:
   run:
@@ -33,6 +24,8 @@ jobs:
 
       - name: Setup deps
         uses: ./.github/actions/setup_deps
+        with:
+          python_version: ${{ matrix.python-version }}
 
       - name: ${{ inputs.command_name }}
         run: ${{ inputs.command }}

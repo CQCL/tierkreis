@@ -14,11 +14,11 @@ jobs:
       id-token: write
 
     steps:
-      - uses: ./.github/actions/setup_deps
-        with:
-          command_name: docs
-          command: just docs
-          deploy_docs: "yes"
+      - name: Set up deps
+        uses: ./.github/actions/setup_deps
+
+      - name: Build docs
+        run: just docs
 
       - name: Upload static files as artifact
         uses: actions/upload-pages-artifact@v3

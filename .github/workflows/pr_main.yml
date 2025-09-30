@@ -8,10 +8,19 @@ on:
 
 jobs:
   lint:
-    uses: ./.github/workflows/run-command.yml
-    with:
-      command_name: lint
-      command: just lint
+    runs-on: ubuntu-24.04
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: lint
+        uses: ./.github/actions/run_command
+        with:
+          command_name: lint
+          command: just lint
+          python_version: ${{ matrix.python-version }}
 
   test:
     uses: ./.github/workflows/run-command.yml

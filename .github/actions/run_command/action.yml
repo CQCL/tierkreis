@@ -1,0 +1,33 @@
+name: Reusable action for command
+
+inputs:
+  command_name:
+    description: "Command name"
+    required: true
+    type: string
+  command:
+    description: "Command to run"
+    required: true
+    type: string
+  python_version:
+    description: "Python version to use"
+    required: true
+    type: string
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up uv & venv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "0.6.6"
+        enable-cache: true
+        cache-suffix: ${{ inputs.python_version }}
+        python-version: ${{ inputs.python_version }}
+        cache-dependency-glob: uv.lock
+
+    - name: Setup just
+      uses: extractions/setup-just@v3
+
+    - name: ${{ inputs.command_name }}
+      run: ${{ inputs.command }}

@@ -12,11 +12,14 @@ class ShellExecutor:
     Implements: :py:class:`tierkreis.controller.executor.protocol.ControllerExecutor`
     """
 
-    def __init__(self, registry_path: Path, workflow_dir: Path) -> None:
+    def __init__(
+        self, registry_path: Path, workflow_dir: Path, timeout: int = 10
+    ) -> None:
         self.launchers_path = registry_path
         self.logs_path = workflow_dir / "logs"
         self.errors_path = workflow_dir / "logs"
         self.workflow_dir = workflow_dir
+        self.timeout = timeout
 
     def run(
         self,
@@ -61,7 +64,7 @@ class ShellExecutor:
                 )
                 proc.communicate(
                     f"({launcher_path} {worker_call_args_path} && touch {done_path}|| touch {_error_path})&".encode(),
-                    timeout=10,
+                    timeout=self.timeout,
                 )
 
     def _create_env(

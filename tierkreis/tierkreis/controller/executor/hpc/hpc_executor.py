@@ -4,6 +4,7 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 from typing import Callable, Protocol
 
+from tierkreis.consts import TKR_DIR_KEY
 from tierkreis.controller.executor.hpc.job_spec import JobSpec
 from tierkreis.exceptions import TierkreisError
 
@@ -56,6 +57,9 @@ def run_hpc_executor(
     if spec.include_no_check_directory_flag:
         submission_cmd += ["--no-check-directory"]
 
+    if TKR_DIR_KEY not in spec.environment:  # User can override by setting TKR_DIR
+        spec.environment[TKR_DIR_KEY] = str(executor.logs_path.parent.parent)
+
     with NamedTemporaryFile(
         mode="w+",
         delete=True,
@@ -73,7 +77,6 @@ def run_hpc_executor(
         )
     if process.returncode != 0:
         with open(executor.errors_path, "a") as efh:
-            breakpoint()
             efh.write("Error from script")
             efh.write(process.stderr)
         raise TierkreisError(f"Executor failed with return code {process.returncode}")

@@ -2,10 +2,7 @@ from pathlib import Path
 from quantinuum_schemas.models.backend_config import AerConfig
 from pytket.qasm.qasm import circuit_from_qasm
 from tierkreis.graphs.aer.compile_run import aer_compile_run
-from pathlib import Path
 from uuid import UUID
-from qnexus import AerConfig
-from pytket.qasm.qasm import circuit_from_qasm
 
 from tierkreis.consts import PACKAGE_PATH
 from tierkreis.controller import run_graph

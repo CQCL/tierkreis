@@ -1,3 +1,4 @@
+# ruff: noqa: F821
 from typing import NamedTuple, Union
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR, OpaqueType

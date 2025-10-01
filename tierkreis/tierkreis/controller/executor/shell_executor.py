@@ -14,13 +14,18 @@ class ShellExecutor:
     """
 
     def __init__(
-        self, registry_path: Path, workflow_dir: Path, timeout: int = 10
+        self,
+        registry_path: Path,
+        workflow_dir: Path,
+        timeout: int = 10,
+        env: dict[str, str] | None = None,
     ) -> None:
         self.launchers_path = registry_path
         self.logs_path = workflow_dir / "logs"
         self.errors_path = workflow_dir / "logs"
         self.workflow_dir = workflow_dir
         self.timeout = timeout
+        self.env = env or {}
 
     def run(
         self,
@@ -46,13 +51,15 @@ class ShellExecutor:
         with open(self.workflow_dir.parent / worker_call_args_path) as fh:
             call_args = WorkerCallArgs(**json.load(fh))
 
-        env = self._create_env(call_args, self.workflow_dir.parent, export_values)
+        env = self.env.copy()
+        env.update(self._create_env(call_args, self.workflow_dir.parent, export_values))
         env["worker_call_args_file"] = str(
             self.workflow_dir.parent / worker_call_args_path
         )
         done_path = self.workflow_dir.parent / call_args.done_path
         _error_path = self.errors_path.parent / "_error"
-        env[TKR_DIR_KEY] = str(self.logs_path.parent.parent)
+        if TKR_DIR_KEY not in env:
+            env[TKR_DIR_KEY] = str(self.logs_path.parent.parent)
 
         with open(self.workflow_dir.parent / self.logs_path, "a") as lfh:
             with open(self.workflow_dir.parent / self.errors_path, "a") as efh:

@@ -15,10 +15,13 @@ class UvExecutor:
     Implements: :py:class:`tierkreis.controller.executor.protocol.ControllerExecutor`
     """
 
-    def __init__(self, registry_path: Path, logs_path: Path) -> None:
+    def __init__(
+        self, registry_path: Path, logs_path: Path, env: dict[str, str] | None = None
+    ) -> None:
         self.launchers_path = registry_path
         self.logs_path = logs_path
         self.errors_path = logs_path
+        self.env = env or {}
 
     def run(
         self,
@@ -44,10 +47,12 @@ class UvExecutor:
             raise TierkreisError("uv is required to use the uv_executor")
 
         worker_path = self.launchers_path / launcher_name
-        env = {
-            "VIRTUAL_ENVIRONMENT": "",
-            TKR_DIR_KEY: str(self.logs_path.parent.parent),
-        }
+
+        env = self.env.copy()
+        if "VIRTUAL_ENVIRONMENT" not in env:
+            env["VIRTUAL_ENVIRONMENT"] = ""
+        if TKR_DIR_KEY not in env:
+            env[TKR_DIR_KEY] = str(self.logs_path.parent.parent)
         _error_path = self.errors_path.parent / "_error"
 
         with open(self.logs_path, "a") as lfh:

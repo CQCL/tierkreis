@@ -27,8 +27,8 @@ def main():
             "circuits": circuits,
             "n_shots": [30] * len(circuits),
             "config": config,
-            "optimisation_level": None,
-            "timeout": None,
+            "compilation_optimisation_level": 2,
+            "compilation_timeout": 300,
         },
         polling_interval_seconds=0.1,
     )

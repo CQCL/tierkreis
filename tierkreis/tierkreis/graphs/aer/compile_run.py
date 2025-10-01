@@ -14,8 +14,8 @@ class AerJobInputs(NamedTuple):
     circuits: TKR[list[Circuit]]
     n_shots: TKR[list[int]]
     config: TKR[AerConfig]
-    optimisation_level: TKR[Union[int, None]]
-    timeout: TKR[Union[int, None]]
+    compilation_optimisation_level: TKR[Union[int, None]]
+    compilation_timeout: TKR[Union[int, None]]
 
 
 class CompileCircuitInputs(NamedTuple):
@@ -59,8 +59,8 @@ def aer_compile_run():
         lambda x: CompileCircuitInputs(
             circuit=x,
             config=g.inputs.config,
-            timeout=g.inputs.timeout,
-            optimisation_level=g.inputs.optimisation_level,
+            timeout=g.inputs.compilation_timeout,
+            optimisation_level=g.inputs.compilation_optimisation_level,
         ),
         g.inputs.circuits,
     )

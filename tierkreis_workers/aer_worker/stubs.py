@@ -28,3 +28,15 @@ class submit_single(NamedTuple):
     @property
     def namespace(self) -> str:
         return "aer_worker"
+
+
+class to_qasm3_str(NamedTuple):
+    circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip
+        return TKR[str]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "aer_worker"

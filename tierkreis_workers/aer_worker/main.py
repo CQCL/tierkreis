@@ -52,6 +52,20 @@ def run_circuits(
     return backend.run_circuits(circuits, n_shots)
 
 
+@worker.task()
+def to_qasm3_str(circuit: Circuit) -> str:
+    """Transforms a pytket circuit to a QASM3 string.
+
+    Uses qiskits qasm3 module tket circuit -> qiskit circuit -> QASM3.
+
+    :param circuit: The original pytket circuit.
+    :type circuit: Circuit
+    :return: The circuit in QASM3.
+    :rtype: str
+    """
+    return qasm3.dumps(tk_to_qiskit(circuit))
+
+
 # Deprecated tasks
 
 
@@ -81,20 +95,6 @@ def submit_single(circuit: Circuit, n_shots: int) -> BackendResult:
     :rtype: BackendResult
     """
     return AerBackend().run_circuit(circuit, n_shots=n_shots)
-
-
-@worker.task()
-def to_qasm3_str(circuit: Circuit) -> str:
-    """Transforms a pytket circuit to a QASM3 string.
-
-    Uses qiskits qasm3 module tket circuit -> qiskit circuit -> QASM3.
-
-    :param circuit: The original pytket circuit.
-    :type circuit: Circuit
-    :return: The circuit in QASM3.
-    :rtype: str
-    """
-    return qasm3.dumps(tk_to_qiskit(circuit))
 
 
 def main():

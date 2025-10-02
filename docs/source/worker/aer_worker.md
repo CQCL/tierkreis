@@ -30,6 +30,7 @@ The Aer worker exposes the following elementary tasks to the user.
 - `get_compiled_circuit`. A wrapper around `AerBackend.get_compiled_circuit`, which is intended to be parallelised using a Tierkreis `map`.
 - `run_circuit`. A wrapper around `AerBackend.run_circuit`, which is intended to be parallelised using a Tierkreis `map`.
 - `run_circuits`. A wrapper around `AerBackend.run_circuits`, which performs multiple simulations according to the logic in the `process_circuits` method in [pytket-qiskit](https://github.com/CQCL/pytket-qiskit/blob/main/pytket/extensions/qiskit/backends/aer.py).
+- `to_qasm3_str`. Converts a pytket `Circuit` to QASM3 using the Qiskit qasm3 module.
 
 ## Prepackaged graphs
 

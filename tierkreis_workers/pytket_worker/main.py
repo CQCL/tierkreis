@@ -28,7 +28,7 @@ worker = Worker("pytket_worker")
 
 
 @worker.task()
-def add_measure_all(circuit: Circuit, a: int) -> Circuit:
+def add_measure_all(circuit: Circuit) -> Circuit:
     """Appends final measurements to all qubits.
 
     :param circuit: The original circuit.

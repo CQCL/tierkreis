@@ -34,9 +34,9 @@ The Aer worker exposes the following elementary tasks to the user.
 
 ## Prepackaged graphs
 
-The Tierkreis Python package provides a couple of prepackaged graphs to make it easier to compile and run circuits with Aer.
+The Tierkreis Python package provides a few of prepackaged graphs to make it easier to compile and run circuits with Aer.
 
-`tierkreis.graphs.aer.compile_run.aer_compile_run` is intended for the common use case of compiling a list of circuits in parallel and then running then in parallel.
+`tierkreis.graphs.aer.compile_run.aer_compile_run` is intended for the common use case of compiling a list of circuits in parallel and then running them in parallel.
 It can be included within a custom graph using `GraphBuilder.eval` or run as a standalone graph.
 
 An example use is in `examples/aer_parallel.py` in the [Tierkreis repo](https://github.com/CQCL/tierkreis), which looks like:

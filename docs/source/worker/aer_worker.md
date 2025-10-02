@@ -67,4 +67,4 @@ print(len(res))
 
 ```
 
-The subgraphs `tierkreis.graphs.aer.compile_run.aer_compile` and `tierkreis.graphs.aer.compile_run.aer_run` can also be used if the user wants to do additional customisations.
+The subgraph `tierkreis.graphs.aer.compile_run.aer_compile_run_single` can also be used if the user wants to do additional customisations.

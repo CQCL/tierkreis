@@ -15,15 +15,8 @@ Currently there are three workers provided as separate packages on pypi:
 
 ## Qiskit Aer
 
-The qiskit simulation backend aer for local simulation of quantum circuits.
-
-**Installation**
-
-```sh
-pip install tkr-aer-worker
-```
-
-will install an executable Python script `tkr_aer_worker` into your virtual environment.
+Compile and run quantum circuits locally with Qiskit Aer.
+More detailed docs [here](worker/aer_worker.md).
 
 **Example**
 

@@ -7,10 +7,66 @@ from pytket.backends.backendresult import BackendResult
 from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit
 from pytket.extensions.qiskit.backends.aer import AerBackend
 from qiskit import qasm3
+from quantinuum_schemas.models.backend_config import AerConfig
 
 logger = logging.getLogger(__name__)
-
 worker = Worker("aer_worker")
+
+
+def get_backend(config: AerConfig) -> AerBackend:
+    return AerBackend(
+        simulation_method=config.simulation_method, n_qubits=config.n_qubits
+    )
+
+
+@worker.task()
+def get_compiled_circuit(
+    circuit: Circuit,
+    optimisation_level: int | None,
+    timeout: int | None,
+    config: AerConfig,
+) -> Circuit:
+    backend = get_backend(config)
+    return backend.get_compiled_circuit(
+        circuit, optimisation_level or 2, timeout or 300
+    )
+
+
+@worker.task()
+def run_circuit(
+    circuit: Circuit,
+    n_shots: int,
+    config: AerConfig,
+) -> BackendResult:
+    backend = get_backend(config)
+    return backend.run_circuit(circuit, n_shots)
+
+
+@worker.task()
+def run_circuits(
+    circuits: list[Circuit],
+    n_shots: list[int],
+    config: AerConfig,
+) -> list[BackendResult]:
+    backend = get_backend(config)
+    return backend.run_circuits(circuits, n_shots)
+
+
+@worker.task()
+def to_qasm3_str(circuit: Circuit) -> str:
+    """Transforms a pytket circuit to a QASM3 string.
+
+    Uses qiskits qasm3 module tket circuit -> qiskit circuit -> QASM3.
+
+    :param circuit: The original pytket circuit.
+    :type circuit: Circuit
+    :return: The circuit in QASM3.
+    :rtype: str
+    """
+    return qasm3.dumps(tk_to_qiskit(circuit))
+
+
+# Deprecated tasks
 
 
 @worker.task()
@@ -39,20 +95,6 @@ def submit_single(circuit: Circuit, n_shots: int) -> BackendResult:
     :rtype: BackendResult
     """
     return AerBackend().run_circuit(circuit, n_shots=n_shots)
-
-
-@worker.task()
-def to_qasm3_str(circuit: Circuit) -> str:
-    """Transforms a pytket circuit to a QASM3 string.
-
-    Uses qiskits qasm3 module tket circuit -> qiskit circuit -> QASM3.
-
-    :param circuit: The original pytket circuit.
-    :type circuit: Circuit
-    :return: The circuit in QASM3.
-    :rtype: str
-    """
-    return qasm3.dumps(tk_to_qiskit(circuit))
 
 
 def main():

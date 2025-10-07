@@ -25,7 +25,6 @@ function replaceMap(
 ) {
   // copy over all the inputs and outputs from the map node to its children
   let edges: Edge[] = JSON.parse(JSON.stringify(oldEdges));
-  const nodesToRemove: string[] = [];
   const edgesToRemove: string[] = [];
   const newEdges: Edge[] = [];
   edges.forEach((edge) => {
@@ -70,9 +69,6 @@ function replaceMap(
   // update the internal state of the map node
   oldNodes = oldNodes
     .map((node) => {
-      if (nodesToRemove.includes(node.id)) {
-        return undefined;
-      }
       if (node.id === nodeId) {
         node.position = { x: 0, y: 0 };
         node.data.hidden_handles = node.data.handles;

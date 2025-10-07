@@ -32,7 +32,8 @@ export type BackendNode = Node<{
   setInfo?: (info: InfoProps) => void;
   is_expanded: boolean;
   isTooltipOpen: boolean;
-  onTooltipOpenChange: (open: boolean) => void;
+  hoveredId: string;
+  setHoveredId: (id: string) => void;
   started_time: string;
   finished_time: string;
 }>;

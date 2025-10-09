@@ -109,7 +109,7 @@ def compile_circuit(
     qubits: set[int] = set()
     if coupling_map is not None:
         qubits = set([q for pair in coupling_map for q in pair])
-        if len(qubits) > len(circuit.qubits):
+        if len(qubits) < len(circuit.qubits):
             raise TierkreisError("Circuit does not fit on device.")
         arch = Architecture(coupling_map)
     else:

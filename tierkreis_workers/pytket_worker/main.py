@@ -153,11 +153,11 @@ def compile(
 
     return compile_circuit(
         circuit,
-        CircuitFormat(input_format),
+        CircuitFormat[input_format],
         OptimizationLevel(optimization_level),
         gate_set_op,
         coupling_map,
-        CircuitFormat(output_format),
+        CircuitFormat[output_format],
         optimization_pass,
     )
 

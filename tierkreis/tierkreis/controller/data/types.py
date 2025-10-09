@@ -204,6 +204,9 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
     if origin is None:
         origin = annotation
 
+    if ser is None:
+        return ser
+
     if isinstance(origin, TypeVar):
         # Required to support generic parameters in functions,
         # we can't really make a judgement about what type it

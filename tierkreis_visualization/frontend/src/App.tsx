@@ -80,10 +80,18 @@ const Main = (props: {
 
   const reactFlowInstance = useReactFlow<BackendNode, Edge>();
   const [tooltipsOpen, setAreTooltipsOpen] = useState(false);
+  const [hoveredId, setHoveredId] = useState<string>("");
+
   props.initialNodes.map((node) => {
     node.data.setInfo = props.setInfo;
-    node.data.onTooltipOpenChange = setAreTooltipsOpen;
     node.data.isTooltipOpen = tooltipsOpen;
+    node.data.hoveredId = hoveredId;
+    node.data.setHoveredId = (id) => {
+      reactFlowInstance.updateNodeData(node.id, {
+        hoveredId: id,
+      });
+      setHoveredId(id);
+    };
   });
   const handleToggleTooltips = () => {
     setAreTooltipsOpen((prev) => !prev);
@@ -210,7 +218,11 @@ const Main = (props: {
           >
             <FolderSync style={{ fill: "none" }} />
           </ControlButton>
-          <ControlButton onClick={handleToggleTooltips}>
+          <ControlButton
+            onClick={() => {
+              handleToggleTooltips();
+            }}
+          >
             {tooltipsOpen ? (
               <Eye style={{ fill: "none" }} />
             ) : (

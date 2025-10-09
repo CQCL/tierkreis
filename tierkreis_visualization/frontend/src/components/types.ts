@@ -12,5 +12,6 @@ export interface HandleProps {
   handles: string[];
   id: string;
   isOpen: boolean;
-  onOpenChange: (open: boolean) => void;
+  hoveredId: string;
+  setHoveredId: (id: string) => void;
 }

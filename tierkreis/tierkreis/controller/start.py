@@ -91,7 +91,7 @@ def start(
             node_location, name, ins, output_list
         )
         logger.debug(f"Executing {(str(node_location), name, ins, output_list)}")
-
+        executor = node.executor
         if isinstance(storage, ControllerInMemoryStorage) and isinstance(
             executor, InMemoryExecutor
         ):

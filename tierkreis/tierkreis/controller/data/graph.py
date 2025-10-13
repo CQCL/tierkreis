@@ -7,6 +7,7 @@ from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
 from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.data.types import PType, ptype_from_bytes
+from tierkreis.executor import BuiltInExecutor, Executor
 from tierkreis.exceptions import TierkreisError
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 class Func:
     function_name: str
     inputs: dict[PortID, ValueRef]
+    executor: Executor = field(default_factory=lambda: BuiltInExecutor())
     outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["function"] = field(default="function")
 
@@ -106,9 +108,14 @@ class GraphData(BaseModel):
         return self.add(Const(value))("value")
 
     def func(
-        self, function_name: str, inputs: dict[PortID, ValueRef]
+        self,
+        function_name: str,
+        inputs: dict[PortID, ValueRef],
+        executor: Executor | None = None,
     ) -> Callable[[PortID], ValueRef]:
-        return self.add(Func(function_name, inputs))
+        if executor is None:
+            return self.add(Func(function_name, inputs))
+        return self.add(Func(function_name, inputs, executor))
 
     def eval(
         self, graph: ValueRef, inputs: dict[PortID, ValueRef]

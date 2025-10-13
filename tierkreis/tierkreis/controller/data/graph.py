@@ -7,7 +7,8 @@ from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.core import ValueRef
 from tierkreis.controller.data.location import Loc, OutputLoc
 from tierkreis.controller.data.types import PType, ptype_from_bytes
-from tierkreis.executor import BuiltInExecutor, Executor
+from tierkreis.controller.executor.protocol import ControllerExecutor
+from tierkreis.executor import _Executor, Executor
 from tierkreis.exceptions import TierkreisError
 
 logger = logging.getLogger(__name__)
@@ -17,7 +18,7 @@ logger = logging.getLogger(__name__)
 class Func:
     function_name: str
     inputs: dict[PortID, ValueRef]
-    executor: Executor = field(default_factory=lambda: BuiltInExecutor())
+    executor: Executor = field(default_factory=lambda: _Executor())
     outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["function"] = field(default="function")
 
@@ -111,11 +112,12 @@ class GraphData(BaseModel):
         self,
         function_name: str,
         inputs: dict[PortID, ValueRef],
-        executor: Executor | None = None,
+        executor: ControllerExecutor | None = None,
     ) -> Callable[[PortID], ValueRef]:
         if executor is None:
             return self.add(Func(function_name, inputs))
-        return self.add(Func(function_name, inputs, executor))
+        # We have to die one death with the type so here is probably most reasonablle
+        return self.add(Func(function_name, inputs, executor))  # type: ignore
 
     def eval(
         self, graph: ValueRef, inputs: dict[PortID, ValueRef]

@@ -14,7 +14,7 @@ from tierkreis.controller.data.models import (
 from tierkreis.controller.data.types import PType
 from tierkreis.controller.data.graph import GraphData, ValueRef
 from tierkreis.controller.executor.protocol import ControllerExecutor
-from tierkreis.executor import BuiltInExecutor, Executor
+from tierkreis.executor import _Executor
 
 
 @dataclass
@@ -68,7 +68,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
         self,
         inputs_type: type[Inputs] = EmptyModel,
         outputs_type: type[Outputs] = EmptyModel,
-        default_executor: Executor = BuiltInExecutor(),
+        default_executor: ControllerExecutor = _Executor(),
     ):
         self.default_executor = default_executor
         self._executor = default_executor
@@ -251,7 +251,7 @@ class GraphBuilder[Inputs: TModel, Outputs: TModel]:
 
 
 class Manager:
-    def __init__(self, exec: "ControllerExecutor", builder: GraphBuilder) -> None:
+    def __init__(self, exec: ControllerExecutor, builder: GraphBuilder) -> None:
         self.builder = builder
         self.exec = exec
 

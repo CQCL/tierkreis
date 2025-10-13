@@ -11,7 +11,8 @@ export const InputHandleArray = ({
   handles,
   id,
   isOpen,
-  onOpenChange,
+  hoveredId,
+  setHoveredId,
 }: HandleProps) => {
   return (
     <div
@@ -38,10 +39,21 @@ export const InputHandleArray = ({
             }}
           >
             <>
-              <Tooltip open={isOpen} onOpenChange={onOpenChange}>
-                <TooltipTrigger asChild>
+              <Tooltip
+                open={isOpen || hoveredId === key}
+                //onOpenChange={onOpenChange} for some reason this fixes hover
+              >
+                <TooltipTrigger
+                  style={{ zIndex: 10 }}
+                  onMouseEnter={() => {
+                    console.log(key);
+                    setHoveredId(key);
+                  }}
+                  onMouseLeave={() => setHoveredId("")}
+                >
                   <Handle
                     type="target"
+                    isConnectable={false}
                     id={id + "_" + key.toString()}
                     position={Position.Top}
                     style={{
@@ -70,7 +82,8 @@ export const OutputHandleArray = ({
   handles,
   id,
   isOpen,
-  onOpenChange,
+  hoveredId,
+  setHoveredId,
 }: HandleProps) => {
   return (
     <div
@@ -97,10 +110,21 @@ export const OutputHandleArray = ({
             }}
           >
             <>
-              <Tooltip open={isOpen} onOpenChange={onOpenChange}>
-                <TooltipTrigger asChild>
+              <Tooltip
+                open={isOpen || hoveredId === key}
+                //onOpenChange={onOpenChange} for some reason this fixes hover
+              >
+                <TooltipTrigger
+                  style={{ zIndex: 10 }}
+                  onMouseEnter={() => {
+                    console.log(key);
+                    setHoveredId(key);
+                  }}
+                  onMouseLeave={() => setHoveredId("")}
+                >
                   <Handle
                     type="source"
+                    isConnectable={false}
                     id={id + "_" + key.toString()}
                     position={Position.Bottom}
                     style={{

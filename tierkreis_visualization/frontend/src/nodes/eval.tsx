@@ -27,21 +27,13 @@ function replaceEval(
   // replaces an eval node with its nested subgraph
   const oldEdgesCopy: Edge[] = JSON.parse(JSON.stringify(oldEdges));
   // we only care about the last part of the id as number
-  const nodesToRemove: string[] = [];
   newNodes.sort(
     (a, b) =>
       Number(a.id.substring(a.id.lastIndexOf(":"), a.id.length)) -
       Number(b.id.substring(b.id.lastIndexOf(":"), b.id.length))
   );
   oldEdgesCopy.forEach((edge) => {
-    if (edge.target == nodeId) {
-      if (
-        edge.label === "Graph Body" &&
-        getOutgoers({ id: edge.source }, oldNodes, oldEdgesCopy).length === 1
-      ) {
-        //Only way to identify body is by explicitly setting the label?
-        nodesToRemove.push(edge.source);
-      }
+    if (edge.target == nodeId && edge.label != "Graph Body") {
       // find the correct node which has an output handle of the form id:\dport_name
       let found = false;
       for (const node of newNodes) {
@@ -59,7 +51,7 @@ function replaceEval(
           }
         }
       }
-      if (!found && edge.label !== "Graph Body") {
+      if (!found) {
         // workaround for elements inside map, only works correctly if the unfolded value is mapped to the first input
         const node = newNodes[0];
         const value = edge.targetHandle?.split("_")[1] || "";
@@ -69,6 +61,7 @@ function replaceEval(
       }
     }
     if (edge.source == nodeId) {
+      console.log(edge.label);
       let found = false;
       for (let index = newNodes.length - 1; index >= 0; index--) {
         const node = newNodes[index];
@@ -87,7 +80,7 @@ function replaceEval(
           }
         }
       }
-      if (!found && edge.label !== "Graph Body") {
+      if (!found) {
         // workaround for elements inside map, only works correctly if there is a single output
         const node = newNodes[newNodes.length - 1];
         const value = edge.sourceHandle?.split("_")[1] || "";
@@ -97,20 +90,13 @@ function replaceEval(
       }
     }
   });
-  // remove the body nodes (might not want to do that in the future)
   // update the internal state of the eval node
   oldNodes = oldNodes
     .map((node) => {
-      if (nodesToRemove.includes(node.id)) {
-        return undefined;
-      }
       if (node.id === nodeId) {
-        const handles = node.data.handles.inputs.filter(
-          (handle) => !handle.includes("body")
-        );
         node.position = { x: 0, y: 0 };
         node.data.hidden_handles = {
-          inputs: handles,
+          inputs: node.data.handles.inputs,
           outputs: node.data.handles.outputs,
         };
         node.data.hidden_edges = oldEdges.filter(
@@ -118,14 +104,17 @@ function replaceEval(
             (edge.target === nodeId || edge.source === nodeId) &&
             edge.label !== "Graph Body"
         );
-        node.data.handles = { inputs: [], outputs: [] };
+        console.log(node.data.hidden_edges);
+        node.data.handles = { inputs: ["body"], outputs: [] };
         node.data.is_expanded = true;
       }
       return node;
     })
     .filter((node): node is BackendNode => node !== undefined);
   const tmpEdges = oldEdgesCopy.filter(
-    (edge) => edge.target !== nodeId && edge.source !== nodeId
+    (edge) =>
+      (edge.target !== nodeId && edge.source !== nodeId) ||
+      edge.label === "Graph Body"
   );
   return {
     nodes: [...oldNodes, ...newNodes],
@@ -150,6 +139,12 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
     };
     return (
       <NodeStatusIndicator status={node_data.status}>
+        <InputHandleArray
+          handles={node_data.handles.inputs}
+          id={node_data.id}
+          isOpen={node_data.isTooltipOpen}
+          onOpenChange={node_data.onTooltipOpenChange}
+        />
         <div className="grid justify-items-end">
           <Button
             className="z-index-5"
@@ -226,12 +221,16 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
             id={node_data.id}
             isOpen={node_data.isTooltipOpen}
             onOpenChange={node_data.onTooltipOpenChange}
+            hoveredId={node_data.hoveredId}
+            setHoveredId={node_data.setHoveredId}
           />
           <OutputHandleArray
             handles={node_data.handles.outputs}
             id={node_data.id}
             isOpen={node_data.isTooltipOpen}
             onOpenChange={node_data.onTooltipOpenChange}
+            hoveredId={node_data.hoveredId}
+            setHoveredId={node_data.setHoveredId}
           />
         </CardContent>
         <CardFooter

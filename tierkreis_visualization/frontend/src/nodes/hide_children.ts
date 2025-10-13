@@ -22,7 +22,7 @@ export function hideChildren(
         node.data.is_expanded = false;
         node.style = {
           width: 180,
-          height: 130,
+          height: 124,
         };
       }
       return node;

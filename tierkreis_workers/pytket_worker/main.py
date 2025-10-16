@@ -1,5 +1,6 @@
 from sys import argv
 
+from backend import get_compiled_circuit, run_circuit, run_circuits
 from compile_circuit import (
     MINIMAL_GATE_SET,
     CircuitFormat,
@@ -365,6 +366,10 @@ def n_qubits(circuit: Circuit) -> int:
     :rtype: int
     """
     return circuit.n_qubits
+
+
+for f in [get_compiled_circuit, run_circuit, run_circuits]:
+    worker.task()(f)
 
 
 def main():

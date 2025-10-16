@@ -1,15 +1,15 @@
-import logging
-from sys import argv
+"""Wrappers around pytket backend methods.
+
+For now only support simulators as they are easy to instantiate.
+If we want to support more backends we should try to reuse code from
+https://github.com/quantinuum-dev/mushroom/tree/main/libraries/nexus-pytket
+"""
 
 from qnexus import BackendConfig
-from tierkreis import Worker
 from pytket._tket.circuit import Circuit
 from pytket.backends.backend import Backend
 from pytket.backends.backendresult import BackendResult
 from quantinuum_schemas.models.backend_config import AerConfig, QulacsConfig
-
-logger = logging.getLogger(__name__)
-worker = Worker("pytket_simulators_worker")
 
 
 def get_backend(config: BackendConfig) -> Backend:
@@ -24,10 +24,9 @@ def get_backend(config: BackendConfig) -> Backend:
         case QulacsConfig():
             return QulacsBackend(config.result_type)
         case _:
-            raise NotImplementedError(f"Config {config} is not a supported simulator.")
+            raise NotImplementedError(f"Config {config} is not supported.")
 
 
-@worker.task()
 def get_compiled_circuit(
     circuit: Circuit, optimisation_level: int | None, config: BackendConfig
 ) -> Circuit:
@@ -37,7 +36,6 @@ def get_compiled_circuit(
     )
 
 
-@worker.task()
 def run_circuit(
     circuit: Circuit,
     n_shots: int,
@@ -47,7 +45,6 @@ def run_circuit(
     return backend.run_circuit(circuit, n_shots)
 
 
-@worker.task()
 def run_circuits(
     circuits: list[Circuit],
     n_shots: list[int],
@@ -55,7 +52,3 @@ def run_circuits(
 ) -> list[BackendResult]:
     backend = get_backend(config)
     return backend.run_circuits(circuits, n_shots)
-
-
-if __name__ == "__main__":
-    worker.app(argv)

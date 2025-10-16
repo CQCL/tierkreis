@@ -1,7 +1,7 @@
 from pathlib import Path
 from quantinuum_schemas.models.backend_config import AerConfig, QulacsConfig
 from pytket.qasm.qasm import circuit_from_qasm
-from tierkreis.graphs.simulate.compile_run import aer_compile_run
+from tierkreis.graphs.simulate.compile_run import compile_run
 from uuid import UUID
 
 from tierkreis.consts import PACKAGE_PATH
@@ -14,7 +14,7 @@ circuits = [circuit] * 10
 
 
 def main(config: AerConfig | QulacsConfig):
-    g = aer_compile_run()
+    g = compile_run()
     storage = FileStorage(UUID(int=107), do_cleanup=True)
     executor = UvExecutor(PACKAGE_PATH / ".." / "tierkreis_workers", storage.logs_path)
 
@@ -27,7 +27,6 @@ def main(config: AerConfig | QulacsConfig):
             "n_shots": [30] * len(circuits),
             "config": config,
             "compilation_optimisation_level": 2,
-            "compilation_timeout": 300,
         },
         polling_interval_seconds=0.1,
     )

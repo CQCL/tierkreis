@@ -26,7 +26,7 @@ class AerJobInputsSingle(NamedTuple):
     compilation_timeout: TKR[Union[int, None]]
 
 
-def aer_compile_run_single():
+def compile_run_single():
     g = GraphBuilder(AerJobInputsSingle, TKR[BackendResult])
     circuit_shots = g.task(untuple(g.inputs.circuit_shots))
 
@@ -42,7 +42,7 @@ def aer_compile_run_single():
     return g
 
 
-def aer_compile_run():
+def compile_run():
     g = GraphBuilder(AerJobInputs, TKR[list[BackendResult]])
 
     circuits_shots = g.task(zip_impl(g.inputs.circuits, g.inputs.n_shots))
@@ -56,7 +56,7 @@ def aer_compile_run():
         ),
         circuits_shots,
     )
-    res = g.map(aer_compile_run_single(), inputs)
+    res = g.map(compile_run_single(), inputs)
 
     g.outputs(res)
     return g

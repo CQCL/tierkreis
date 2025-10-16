@@ -1,0 +1,8 @@
+[project]
+name = "pytket-simulators-worker"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pytket-qiskit>=0.69.0",
+    "pytket-qulacs>=0.41.0",
+]

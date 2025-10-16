@@ -1,6 +1,6 @@
 # Pytket worker
 
-A Tierkreis worker that interacts with the Quantinuums `pytket` toolkit.
+A Tierkreis worker that interacts with the Quantinuum's `pytket` toolkit.
 
 The pytket worker largely wraps the functionality from [tket](https://github.com/CQCL/tket).
 
@@ -41,6 +41,15 @@ The pytket worker exposes the following elementary tasks to the user:
 - `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR. Requires optional dependencies `uv sync --groups qir`.
 - `expectation` estimates the expectation value from shot counts.
 - `n_qubits` returns the number of qubits in a const circuit.
+
+The pytket worker exposes the following tasks that are wrappers around some methods shared by pytket `Backend`s.
+Currently they are only intended to be used for the simulators `AerBackend` and `QulacsBackend`.
+
+- `get_compiled_circuit`
+- `run_circuit`
+- `run_circuits`
+
+for an example of using these wrapper methods please see [pytket_simulation](./pytket_simulation.md)
 
 ## Example
 

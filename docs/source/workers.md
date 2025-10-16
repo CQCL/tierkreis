@@ -15,12 +15,8 @@ Currently there are three workers provided as separate packages on pypi:
 
 ## Qiskit Aer
 
-Compile and run quantum circuits locally with Qiskit Aer.
-More detailed docs [here](worker/aer_worker.md).
-
-**Example**
-
-See the example `hamiltonian_graph.py`.
+Deprecated.
+Please use the methods in the pytket worker, which are documented [here](./worker/pytket_simulation.md).
 
 ## Pytket
 

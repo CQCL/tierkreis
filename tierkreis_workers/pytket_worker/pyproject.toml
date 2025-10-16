@@ -8,6 +8,8 @@ dependencies = [
     "tierkreis",
     "pytket",
     "pytket-qiskit",
+    "qnexus",
+
 ]
 
 [project.optional-dependencies]

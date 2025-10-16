@@ -13,7 +13,6 @@ from quantinuum_schemas.models.backend_config import AerConfig, QulacsConfig
 
 
 def get_backend(config: BackendConfig) -> Backend:
-
     match config:
         case AerConfig():
             from pytket.extensions.qiskit.backends.aer import AerBackend

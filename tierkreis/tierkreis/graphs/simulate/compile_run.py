@@ -11,23 +11,21 @@ type BackendResult = OpaqueType["pytket.backends.backendresult.BackendResult"]
 type Circuit = OpaqueType["pytket._tket.circuit.Circuit"]
 
 
-class AerJobInputs(NamedTuple):
+class SimulateJobInputs(NamedTuple):
     circuits: TKR[list[Circuit]]
     n_shots: TKR[list[int]]
     config: TKR[AerConfig | QulacsConfig]
     compilation_optimisation_level: TKR[Union[int, None]]
-    compilation_timeout: TKR[Union[int, None]]
 
 
-class AerJobInputsSingle(NamedTuple):
+class SimulateJobInputsSingle(NamedTuple):
     circuit_shots: TKR[tuple[Circuit, int]]
     config: TKR[AerConfig | QulacsConfig]
     compilation_optimisation_level: TKR[Union[int, None]]
-    compilation_timeout: TKR[Union[int, None]]
 
 
 def compile_run_single():
-    g = GraphBuilder(AerJobInputsSingle, TKR[BackendResult])
+    g = GraphBuilder(SimulateJobInputsSingle, TKR[BackendResult])
     circuit_shots = g.task(untuple(g.inputs.circuit_shots))
 
     compiled_circuit = g.task(
@@ -43,16 +41,15 @@ def compile_run_single():
 
 
 def compile_run():
-    g = GraphBuilder(AerJobInputs, TKR[list[BackendResult]])
+    g = GraphBuilder(SimulateJobInputs, TKR[list[BackendResult]])
 
     circuits_shots = g.task(zip_impl(g.inputs.circuits, g.inputs.n_shots))
 
     inputs = g.map(
-        lambda x: AerJobInputsSingle(
+        lambda x: SimulateJobInputsSingle(
             circuit_shots=x,
             config=g.inputs.config,
             compilation_optimisation_level=g.inputs.compilation_optimisation_level,
-            compilation_timeout=g.inputs.compilation_timeout,
         ),
         circuits_shots,
     )

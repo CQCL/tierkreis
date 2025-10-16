@@ -1675,6 +1675,18 @@ wheels = [
 ]
 
 [[package]]
+name = "pytket-qulacs"
+version = "0.40.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytket" },
+    { name = "qulacs" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/e2/a0e4d07d164af8ac3bb0c4ce65a0823c3ff30ee7e6da4daa4a2e29358574/pytket_qulacs-0.40.0-py3-none-any.whl", hash = "sha256:de13065edacf7e2b0428c375478e752019639c7acf51df735c3b81ed23d88ce1", size = 14051 },
+]
+
+[[package]]
 name = "pytz"
 version = "2025.2"
 source = { registry = "https://pypi.org/simple" }
@@ -1904,6 +1916,25 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/a9/8c/b065a13d0c062228d7eba7d3400a5256bae780fe9ed23d2b3f30cbb59f65/quantinuum_schemas-3.2.6.tar.gz", hash = "sha256:3c1000cb301de8bd2234a8f600e553940c057c0a08761b0b46379991ab896c77", size = 12813 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4c/c8/96070c0f086d00a6f5cb9e244562f59468e43592f21206f92c94931e41f8/quantinuum_schemas-3.2.6-py3-none-any.whl", hash = "sha256:56b9c5318f5768e2a35aa983ef6b2a851a8a92a831d1016b9ac56e54a851668d", size = 15102 },
+]
+
+[[package]]
+name = "qulacs"
+version = "0.6.12"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1c/96/5dfdfc42281b4c110b1156d54f87df87a44f5d8625759e8d38a95a66a457/qulacs-0.6.12.tar.gz", hash = "sha256:ab62ec4244bc8fdf243b66cffec02e31ba4ec183f69aab6946d989fea4f89559", size = 804576 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/91/55/2ddc10aa44dcbd96f389f5e626283376c946f365e7a93290176a14474482/qulacs-0.6.12-cp312-cp312-macosx_10_13_x86_64.whl", hash = "sha256:d7365f8886071f57183ba626c129b794e01f40e08e3e3c05f7979a3011444d16", size = 780547 },
+    { url = "https://files.pythonhosted.org/packages/93/a4/781900269a04f90c83dae853bd4edf0207f7eda28a40dab0877b43c2dabe/qulacs-0.6.12-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:be1eeca7ff073fc0ad93160ee54b0a9228b6c8b0eb87e538ddb9894981eaaf76", size = 681048 },
+    { url = "https://files.pythonhosted.org/packages/b2/cb/b69c2f984e519cba36dcc2f4f22fe2e8c31252395b63332f9b6f6d22595b/qulacs-0.6.12-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2de6a3d97f0eb54f764ddf69a08874515752b750dc9bdfc56d165ac1b405b7ca", size = 969616 },
+    { url = "https://files.pythonhosted.org/packages/15/68/0c95587e1c70df95a2ee17744ecfa7c404af72f5010ac4053ca60ec3bed3/qulacs-0.6.12-cp312-cp312-win_amd64.whl", hash = "sha256:9c3ed2e32962c0dab62aac8a9505a08f23ff97316807e8c72600295e456aaf6a", size = 844784 },
+    { url = "https://files.pythonhosted.org/packages/91/61/b068769cd042cb6f67700fdd24fe13036a381c4e9f2c8c7b80aa37498b1b/qulacs-0.6.12-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:d31d7af9df9e4d57fe539f187069364df77e63e536a5a3f53a214b2541a0f3ef", size = 780652 },
+    { url = "https://files.pythonhosted.org/packages/72/90/bd27f4c66e9d567f4c06fe3296445b70aaf4129c2e3bd110c04a44db42cb/qulacs-0.6.12-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:831443d670a5aa715396a51b8904bf6365ad09b37e4f0f230fcda60fe184e891", size = 680910 },
+    { url = "https://files.pythonhosted.org/packages/05/a0/2cfb4004efaf4b38b3d711fff739bca1615c32a9a85493ec85cf30e7038b/qulacs-0.6.12-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:19937ebb7b3c488da19b6e5e35b3a1dacec35fda1866af60d1a840d858727349", size = 969698 },
 ]
 
 [[package]]
@@ -2550,6 +2581,9 @@ qir = [
     { name = "pytket-qirpass" },
     { name = "pytket-quantinuum" },
 ]
+qulacs = [
+    { name = "pytket-qulacs" },
+]
 
 [package.metadata]
 requires-dist = [
@@ -2558,9 +2592,10 @@ requires-dist = [
     { name = "pytket-qirpass", marker = "extra == 'qir'" },
     { name = "pytket-qiskit" },
     { name = "pytket-quantinuum", marker = "extra == 'qir'" },
+    { name = "pytket-qulacs", marker = "extra == 'qulacs'", specifier = ">=0.40.0" },
     { name = "tierkreis", editable = "tierkreis" },
 ]
-provides-extras = ["qir"]
+provides-extras = ["qir", "qulacs"]
 
 [[package]]
 name = "tornado"

@@ -17,6 +17,9 @@ qir = [
     "pytket-qir",
     "pytket-qirpass",
 ]
+qulacs = [
+    "pytket-qulacs>=0.40.0",
+]
 
 [build-system]
 requires = ["hatchling"]

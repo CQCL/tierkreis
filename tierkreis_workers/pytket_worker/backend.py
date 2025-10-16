@@ -13,15 +13,17 @@ from quantinuum_schemas.models.backend_config import AerConfig, QulacsConfig
 
 
 def get_backend(config: BackendConfig) -> Backend:
-    from pytket.extensions.qiskit.backends.aer import AerBackend
-    from pytket.extensions.qulacs.backends.qulacs_backend import QulacsBackend
 
     match config:
         case AerConfig():
+            from pytket.extensions.qiskit.backends.aer import AerBackend
+
             return AerBackend(
                 simulation_method=config.simulation_method, n_qubits=config.n_qubits
             )
         case QulacsConfig():
+            from pytket.extensions.qulacs.backends.qulacs_backend import QulacsBackend
+
             return QulacsBackend(config.result_type)
         case _:
             raise NotImplementedError(f"Config {config} is not supported.")

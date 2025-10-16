@@ -21,7 +21,7 @@ from typing import (
     runtime_checkable,
 )
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 from pydantic._internal._generics import get_args as pydantic_get_args
 from tierkreis.controller.data.core import RestrictedNamedTuple
 from tierkreis.exceptions import TierkreisError
@@ -196,7 +196,7 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
         for t in get_args(annotation):
             try:
                 return coerce_from_annotation(ser, t)
-            except AssertionError:
+            except (AssertionError, ValidationError):
                 logger.info(f"Tried deserialising as {t}")
         raise TierkreisError(f"Could not deserialise {ser} as {annotation}")
 

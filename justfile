@@ -38,12 +38,12 @@ prod:
 examples:
   {{uvrun}} examples/hello_world_graph.py
   {{uvrun}} examples/error_handling_graph.py
+  {{uvrun}} examples/aer_parallel.py
   {{uvrun}} examples/symbolic_circuits.py
   {{uvrun}} examples/hamiltonian_graph.py
   {{uvrun}} examples/non_standard_tkr_dir.py
   {{uvrun}} examples/qsci_graph.py
   {{uvrun}} examples/signing_graph.py
-  {{uvrun}} examples/simulators_parallel.py
 
 stubs-generate dir:
   #!/usr/bin/env bash
@@ -55,7 +55,6 @@ generate:
   just stubs-generate 'tierkreis_workers/aer_worker'
   just stubs-generate 'tierkreis_workers/nexus_worker'
   just stubs-generate 'tierkreis_workers/pytket_worker'
-  just stubs-generate 'tierkreis_workers/pytket_simulators_worker'
   just stubs-generate 'examples/example_workers/error_worker'
   just stubs-generate 'examples/example_workers/hello_world_worker'
   just stubs-generate 'examples/example_workers/substitution_worker'
@@ -68,7 +67,6 @@ generate:
   cp 'tierkreis_workers/aer_worker/stubs.py' tierkreis/tierkreis/aer_worker.py
   cp 'tierkreis_workers/nexus_worker/stubs.py' tierkreis/tierkreis/nexus_worker.py
   cp 'tierkreis_workers/pytket_worker/stubs.py' tierkreis/tierkreis/pytket_worker.py
-  cp 'tierkreis_workers/pytket_simulators_worker/stubs.py' tierkreis/tierkreis/pytket_simulators_worker.py
 
 check-stubs:
   just generate

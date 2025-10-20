@@ -7,9 +7,9 @@ requires-python = ">=3.12"
 dependencies = [
     "tierkreis",
     "pytket",
-    "pytket-qiskit",
     "qnexus",
-
+    "pytket-qiskit",
+    "pytket-quantinuum",
 ]
 
 [project.optional-dependencies]
@@ -35,6 +35,8 @@ include = [
 
 [tool.uv.sources]
 tierkreis = { workspace = true }
+pytket-qiskit = { git = "https://github.com/CQCL/pytket-qiskit", branch = "main" }
+pytket-quantinuum = { git = "https://github.com/CQCL/pytket-quantinuum", branch = "main" }
 
 [project.scripts]
 tkr_pytket_worker = "main:main"

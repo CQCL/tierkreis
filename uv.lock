@@ -1593,7 +1593,7 @@ wheels = [
 
 [[package]]
 name = "pytket"
-version = "2.6.0"
+version = "2.10.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "graphviz" },
@@ -1607,23 +1607,22 @@ dependencies = [
     { name = "typing-extensions" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/83/9a/72134f974191bc2335b5d36b811fa0baba272d4c5fb837eea1d4aac71a84/pytket-2.6.0-cp312-abi3-macosx_13_0_arm64.whl", hash = "sha256:65e8291653bb443fc32d4113f92854da43b4b586f282020e6c92b7e39d70241b", size = 5596173 },
-    { url = "https://files.pythonhosted.org/packages/cd/96/84321f8de81c9c392a59e921d6814bd29a22b33c5bca7d111887017ca1ae/pytket-2.6.0-cp312-abi3-macosx_13_0_x86_64.whl", hash = "sha256:284c6608feeb7e7d867113d626631b2c9bfc2eb76386ffdf9eee2ccaea63cc0c", size = 6325504 },
-    { url = "https://files.pythonhosted.org/packages/16/16/8a52a674e22a2f5b6063712369086fa76e728ef430d4e9819dd5eb1cd9a1/pytket-2.6.0-cp312-abi3-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:0459896701256cba342d333cfa9101fa31a1d0b11723092e4b444f7a8c2fac6b", size = 7481486 },
-    { url = "https://files.pythonhosted.org/packages/82/62/8fa63935965624be638584a9371a50c68992f116fc17df121d3e5ccd1f57/pytket-2.6.0-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a63c222741644727ffeb1d3696d29c11a27a16849114d12c2e1b2672ab42eefd", size = 8134947 },
-    { url = "https://files.pythonhosted.org/packages/25/dd/a850b89934afbe487ed35e69d73b2134f0aba788c24690b98e76fcde1a9e/pytket-2.6.0-cp312-abi3-win_amd64.whl", hash = "sha256:e1567aba40de39b919c3036b6988870d6d2a8504c9383605e5cb14966baa277b", size = 9664721 },
+    { url = "https://files.pythonhosted.org/packages/57/53/67f176f4b1872f5632f47cbe1ee5a25034b9162a40b289d946fa03eab756/pytket-2.10.1-cp312-abi3-macosx_13_0_arm64.whl", hash = "sha256:60967bbf797be6c708cf6b983af889546f0d9e0818868ec7484a13e0f6b36986", size = 5484417 },
+    { url = "https://files.pythonhosted.org/packages/c2/dc/c733449e8909b08b34317b2cca8c84efc616ee2cdd29a7060c6ec0323c3f/pytket-2.10.1-cp312-abi3-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:eead5714a9abde29f784f0938b9939f822426bae5b54263f9196004185fe604c", size = 7494936 },
+    { url = "https://files.pythonhosted.org/packages/93/1e/7bcef18b060f2a9858016e7d874e466cf458b3ae6469d357e3bae313849c/pytket-2.10.1-cp312-abi3-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:a7b98ac9119729931025952ec121652da336cb59b2f18d60f04fcdfbc9edd0fb", size = 8218527 },
+    { url = "https://files.pythonhosted.org/packages/ee/a1/89988fb36e066d78c8457a20a45ff5d7f954c22f40f80685738e8860a5f4/pytket-2.10.1-cp312-abi3-win_amd64.whl", hash = "sha256:ecf77f1d6f79e6595183c02fbb23a4fcb45a7fbb82c3c81d41d593a06e6ea4f1", size = 9713881 },
 ]
 
 [[package]]
 name = "pytket-qir"
-version = "0.24.1"
+version = "0.25.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyqir" },
     { name = "pytket" },
 ]
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/fe/e3/6fea65f877813ca0182abe4dff8f68710bd4a2ca6e1d636272403a209c13/pytket_qir-0.24.1-py3-none-any.whl", hash = "sha256:082a1ba2f9b6ba0f860303f2b6f02adb7a5272a49bbe0a76e11ce8c39d188ee7", size = 31221 },
+    { url = "https://files.pythonhosted.org/packages/21/24/9236fd99bf8a7a7e85f5ea23f02be5e2f65498e4545860595275dfac7c6f/pytket_qir-0.25.0-py3-none-any.whl", hash = "sha256:9955cd9fea785681642ba442bedbe91c7b23a9a8eae7619ab9c52ae0763296f2", size = 32411 },
 ]
 
 [[package]]
@@ -1641,8 +1640,8 @@ wheels = [
 
 [[package]]
 name = "pytket-qiskit"
-version = "0.69.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.72.0"
+source = { git = "https://github.com/CQCL/pytket-qiskit?branch=main#046b604175182b5f3cb303e30dbd48d2b3f8f6b1" }
 dependencies = [
     { name = "numpy" },
     { name = "pytket" },
@@ -1651,14 +1650,11 @@ dependencies = [
     { name = "qiskit-ibm-runtime" },
     { name = "symengine" },
 ]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e5/0b/a19969a35a1f8a96a66d542ee95e3e93741e474e648ef043e673e42ee63d/pytket_qiskit-0.69.0-py3-none-any.whl", hash = "sha256:0a9f7c6dcb09c7e882d89871638da3621f63b3fff5f80f59b40ce62072da28d0", size = 57468 },
-]
 
 [[package]]
 name = "pytket-quantinuum"
-version = "0.50.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.54.0"
+source = { git = "https://github.com/CQCL/pytket-quantinuum?branch=main#7fa500ba778eaafbb81492c60b0d20d6b0713341" }
 dependencies = [
     { name = "msal" },
     { name = "nest-asyncio" },
@@ -1669,9 +1665,6 @@ dependencies = [
     { name = "requests" },
     { name = "types-requests" },
     { name = "websockets" },
-]
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/50/2d/0c0c5277c1c2f881da591893a921f22d2749d2e0efe58379fa04fe26f50b/pytket_quantinuum-0.50.0-py3-none-any.whl", hash = "sha256:a873828b2ff28efc5e3c0af960c084e7d86c5e07a225ef9320cf189d07443daf", size = 45303 },
 ]
 
 [[package]]
@@ -1795,28 +1788,25 @@ wheels = [
 
 [[package]]
 name = "qiskit"
-version = "2.0.3"
+version = "2.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dill" },
     { name = "numpy" },
-    { name = "python-dateutil" },
     { name = "rustworkx" },
     { name = "scipy" },
     { name = "stevedore" },
-    { name = "symengine" },
-    { name = "sympy" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/46/58/d19b159719c701f63487c93349aab41a8e4e30234322ccbc407d376bf88b/qiskit-2.0.3.tar.gz", hash = "sha256:fa016bc34619f9f58af06be79a6f2634eacc095f0a3e2e29cef9f00b451ca267", size = 3393670 }
+sdist = { url = "https://files.pythonhosted.org/packages/46/e1/82dbef6f58f382101ee7f29bb903349e66d6386ec8a30bea629ab10668ca/qiskit-2.2.1.tar.gz", hash = "sha256:d116e55bea21c2ecd7392dee8f3ec532f5e63c8a01c54c5a7440b38320c24774", size = 3775242 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/5f/f4c2a0ce9fdf1398b09f24506c39e6877619eaa2503a5888471731d5df5c/qiskit-2.0.3-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:ebfc1ffe707b64aa4b27adb76afad506c91709b96e97d99133c8c4579660d81f", size = 6338639 },
-    { url = "https://files.pythonhosted.org/packages/ae/ab/0b1da3c833a04b333f8f5af01949d19c31b58b8fd9ce1f80dadf586fa8e7/qiskit-2.0.3-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:3a8a5f9417a319b71fb3cf3e1bfb6a434c0a075626b7eb23ea2fa58d1c3d7cd7", size = 5940398 },
-    { url = "https://files.pythonhosted.org/packages/dc/dc/85c13eb034851d36fbc234854a2b139f3dcde03df383eac8401ddbc396da/qiskit-2.0.3-cp39-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:eaa98892ead3e57cdff587406484d1e13832520be41a406f3502eab9eb212a13", size = 6525128 },
-    { url = "https://files.pythonhosted.org/packages/bd/7e/b2c67e94650a742715a347c27108edf3248d2582ed2f720ed72f3385da2c/qiskit-2.0.3-cp39-abi3-manylinux_2_17_ppc64le.manylinux2014_ppc64le.whl", hash = "sha256:4845436812540853c8f08f87f4a36243315bcfc00beac665f0ecaddd3d64edb3", size = 6739966 },
-    { url = "https://files.pythonhosted.org/packages/d0/90/5609ced494b963e786592a82b662088d400b45f2a3fd80cdce7f89b9ed3c/qiskit-2.0.3-cp39-abi3-manylinux_2_17_s390x.manylinux2014_s390x.whl", hash = "sha256:b6a4e81da0b9db367316e4d76719f9252b2416f09be038dce03f7fc2740439a5", size = 6494185 },
-    { url = "https://files.pythonhosted.org/packages/b9/36/f00b392452f4c3dd118997efe26ebd7ab441200aa637ceadf5433ac57f88/qiskit-2.0.3-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:bba21f4cae1554ba72b09f7d9a35639c1776f1c43339c6750af93e7395069168", size = 6505961 },
-    { url = "https://files.pythonhosted.org/packages/f8/1c/b5bec90430542952da535de1b07277739651b4d3175c6c6d2280a6f0c63e/qiskit-2.0.3-cp39-abi3-win_amd64.whl", hash = "sha256:59c9b0daaf745307e6449b7907b8c38a6a07eba905bd9496c02ce12a6a37f6ae", size = 6245814 },
+    { url = "https://files.pythonhosted.org/packages/24/97/fc7661bdd055c02758bd05f7deac21d4ffb83389f56be1e2278fe3b12a51/qiskit-2.2.1-cp39-abi3-macosx_10_12_x86_64.whl", hash = "sha256:db0c80d0ea923e9d994e403e1a09dd164b6f90e4a11729ce9353a23e640f793d", size = 7809945 },
+    { url = "https://files.pythonhosted.org/packages/6c/45/59e9f272b0a2c513265f848951e7f50e756f69e405adadb205b966bcd31a/qiskit-2.2.1-cp39-abi3-macosx_11_0_arm64.whl", hash = "sha256:47a1eb22dc05d46f461363f1565247f6079a90add48a4d19b9fd54c3b26bfee3", size = 7329310 },
+    { url = "https://files.pythonhosted.org/packages/9f/1f/b4bf20515e989184707f291b4ec03530a0083b674b979624a08ac6ec0501/qiskit-2.2.1-cp39-abi3-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:eb80e4e5e6922d34530d6a36487c1a059b78c9596fd4302fa9acafc249d5f8b5", size = 7699739 },
+    { url = "https://files.pythonhosted.org/packages/30/92/3e7dca93ca5755021536e274bc3d104124e379f1197b6feb86e69cadd899/qiskit-2.2.1-cp39-abi3-manylinux2014_ppc64le.manylinux_2_17_ppc64le.whl", hash = "sha256:62ebb02552d0ed0da11711223f7c4b5d9ddf84853b6b208e205369ac43cbd29f", size = 8255338 },
+    { url = "https://files.pythonhosted.org/packages/b2/a2/734c0988edbc4e6628c20837b235d597e5c10bc11ab5a277f03243a3628a/qiskit-2.2.1-cp39-abi3-manylinux2014_s390x.manylinux_2_17_s390x.whl", hash = "sha256:a95b86d596572106acf688aad0fc7fdcbf9674032012b0746332e8e8e232e1b5", size = 7990324 },
+    { url = "https://files.pythonhosted.org/packages/da/1d/36a1b8ff819b72393d2e261ba9386ed6934ae5db03d9b83c069f376a1b98/qiskit-2.2.1-cp39-abi3-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:5c99461dfd7b17dbf840363b586c7f040fa35098dbd38361af626586cd0e888e", size = 7996265 },
+    { url = "https://files.pythonhosted.org/packages/cc/05/ca684a9a68243a08c853af7552edca7e38a395496a323212438f37621de1/qiskit-2.2.1-cp39-abi3-win_amd64.whl", hash = "sha256:063ba0b1e47a1a0a1cd8a0af80376ad720dea04fa9dfa5463cb956f4ee82b052", size = 7766390 },
 ]
 
 [[package]]
@@ -1851,7 +1841,7 @@ wheels = [
 
 [[package]]
 name = "qiskit-ibm-runtime"
-version = "0.40.1"
+version = "0.43.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ibm-platform-services" },
@@ -1864,9 +1854,9 @@ dependencies = [
     { name = "requests-ntlm" },
     { name = "urllib3" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b0/90/c16c0a83400b29aa9f76f463ebeb3b5a4abc711eebd6ddd27509fa0a02b4/qiskit_ibm_runtime-0.40.1.tar.gz", hash = "sha256:83fd172357a28d69b3289009a724ec14d70c4367dbb5aa140ffd63aa101c3ae1", size = 3198615 }
+sdist = { url = "https://files.pythonhosted.org/packages/b1/8b/5a50b62a98800a8c402cfc342e13ec93e33b03211ddd86998ba7001a3f35/qiskit_ibm_runtime-0.43.0.tar.gz", hash = "sha256:1aacbe10eb7698c03bd62e09d88ef81b095f1c4a9c7e76dba9e58b983d0273e3", size = 1492671 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a0/2e/7ef9afa14f94affb7afd472edd70358c1a0c66e5cbeac1b2a29ce84b8a5d/qiskit_ibm_runtime-0.40.1-py3-none-any.whl", hash = "sha256:5a67e4c55b6e0a2bc9041c1ec7b8c5adc43a50f7dfb8a2521a0c2f3ed4aaa712", size = 3196409 },
+    { url = "https://files.pythonhosted.org/packages/3f/a4/c297e71bdec66fbc7dc643e69b6380e23e78952e902dc2f9cf6d4f054d2f/qiskit_ibm_runtime-0.43.0-py3-none-any.whl", hash = "sha256:5c03be3a82cef1af222be7ebcb910341326e120720d87016da9d5876937ddc5f", size = 1424856 },
 ]
 
 [[package]]
@@ -2541,6 +2531,8 @@ source = { editable = "tierkreis_workers/pytket_worker" }
 dependencies = [
     { name = "pytket" },
     { name = "pytket-qiskit" },
+    { name = "pytket-quantinuum" },
+    { name = "qnexus" },
     { name = "tierkreis" },
 ]
 
@@ -2556,8 +2548,10 @@ requires-dist = [
     { name = "pytket" },
     { name = "pytket-qir", marker = "extra == 'qir'" },
     { name = "pytket-qirpass", marker = "extra == 'qir'" },
-    { name = "pytket-qiskit" },
-    { name = "pytket-quantinuum", marker = "extra == 'qir'" },
+    { name = "pytket-qiskit", git = "https://github.com/CQCL/pytket-qiskit?branch=main" },
+    { name = "pytket-quantinuum", git = "https://github.com/CQCL/pytket-quantinuum?branch=main" },
+    { name = "pytket-quantinuum", marker = "extra == 'qir'", git = "https://github.com/CQCL/pytket-quantinuum?branch=main" },
+    { name = "qnexus" },
     { name = "tierkreis", editable = "tierkreis" },
 ]
 provides-extras = ["qir"]

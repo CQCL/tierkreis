@@ -197,7 +197,7 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
             try:
                 return coerce_from_annotation(ser, t)
             except (AssertionError, ValidationError):
-                logger.info(f"Tried deserialising as {t}")
+                logger.debug(f"Tried deserialising as {t}")
         raise TierkreisError(f"Could not deserialise {ser} as {annotation}")
 
     origin = get_origin(annotation)

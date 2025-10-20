@@ -53,7 +53,7 @@ def get_backend_info(config: BackendConfig) -> BackendInfo:
         case IBMQConfig():
             info = next(
                 filter(
-                    lambda x: x.name == config.backend_name,
+                    lambda x: x.device_name == config.backend_name,
                     IBMQBackend.available_devices(),
                 ),
                 None,
@@ -66,7 +66,7 @@ def get_backend_info(config: BackendConfig) -> BackendInfo:
         case QuantinuumConfig():
             info = next(
                 filter(
-                    lambda x: x.name == config.device_name,
+                    lambda x: x.device_name == config.device_name,
                     QuantinuumBackend.available_devices(),
                 ),
                 None,

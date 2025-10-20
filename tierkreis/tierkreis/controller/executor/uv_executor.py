@@ -1,9 +1,12 @@
+import json
 import logging
 import shutil
 import subprocess
 from pathlib import Path
 
 from tierkreis.consts import TKR_DIR_KEY
+from tierkreis.controller.data.location import WorkerCallArgs
+from tierkreis.controller.executor.environment import create_env
 from tierkreis.exceptions import TierkreisError
 
 logger = logging.getLogger(__name__)
@@ -46,9 +49,16 @@ class UvExecutor:
         if uv_path is None:
             raise TierkreisError("uv is required to use the uv_executor")
 
+        with open(self.logs_path.parent.parent / worker_call_args_path) as fh:
+            call_args = WorkerCallArgs(**json.load(fh))
+
         worker_path = self.launchers_path / launcher_name
 
         env = self.env.copy()
+        env.update(create_env(call_args, self.logs_path.parent, False))
+        env["worker_call_args_file"] = str(
+            self.logs_path.parent / worker_call_args_path
+        )
         if "VIRTUAL_ENVIRONMENT" not in env:
             env["VIRTUAL_ENVIRONMENT"] = ""
         if TKR_DIR_KEY not in env:

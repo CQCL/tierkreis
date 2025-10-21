@@ -44,6 +44,7 @@ examples:
   {{uvrun}} examples/non_standard_tkr_dir.py
   {{uvrun}} examples/qsci_graph.py
   {{uvrun}} examples/signing_graph.py
+  {{uvrun}} examples/mpi_graph.py
 
 stubs-generate dir:
   #!/usr/bin/env bash

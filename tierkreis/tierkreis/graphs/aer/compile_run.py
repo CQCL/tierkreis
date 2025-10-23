@@ -1,5 +1,5 @@
 # ruff: noqa: F821
-from typing import NamedTuple, Union
+from typing import NamedTuple
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.builtins.stubs import zip_impl, untuple
@@ -14,15 +14,15 @@ class AerJobInputs(NamedTuple):
     circuits: TKR[list[Circuit]]
     n_shots: TKR[list[int]]
     config: TKR[AerConfig]
-    compilation_optimisation_level: TKR[Union[int, None]]
-    compilation_timeout: TKR[Union[int, None]]
+    compilation_optimisation_level: TKR[int]
+    compilation_timeout: TKR[int]
 
 
 class AerJobInputsSingle(NamedTuple):
     circuit_shots: TKR[tuple[Circuit, int]]
     config: TKR[AerConfig]
-    compilation_optimisation_level: TKR[Union[int, None]]
-    compilation_timeout: TKR[Union[int, None]]
+    compilation_optimisation_level: TKR[int]
+    compilation_timeout: TKR[int]
 
 
 def aer_compile_run_single():
@@ -32,9 +32,9 @@ def aer_compile_run_single():
     compiled_circuit = g.task(
         get_compiled_circuit(
             circuit=circuit_shots.a,
+            config=g.inputs.config,
             optimisation_level=g.inputs.compilation_optimisation_level,
             timeout=g.inputs.compilation_timeout,
-            config=g.inputs.config,
         )
     )
     res = g.task(run_circuit(compiled_circuit, circuit_shots.b, g.inputs.config))

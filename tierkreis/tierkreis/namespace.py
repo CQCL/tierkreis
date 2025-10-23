@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from inspect import _empty, isclass, signature
 from logging import getLogger
 from pathlib import Path
 import shutil
@@ -38,10 +39,14 @@ class Namespace:
 
     def add_function(self, func: WorkerFunction) -> None:
         name = func.__name__
+        sig = signature(func)
         annotations = func.__annotations__
         generics: list[str] = [str(x) for x in func.__type_params__]
         in_annotations = {k: v for k, v in annotations.items() if k != "return"}
-        ins = [TypedArg(k, GenericType.from_type(t)) for k, t in in_annotations.items()]
+        ins = []
+        for k, t in sig.parameters.items():
+            has_default = not (isclass(t.default) and issubclass(t.default, _empty))
+            ins.append(TypedArg(k, GenericType.from_type(t.annotation), has_default))
         out = annotations["return"]
 
         for _, annotation in in_annotations.items():
@@ -90,6 +95,7 @@ class Namespace:
 
 from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol, Union
 from types import NoneType
+from tierkreis.controller.data.core import TKR_DEFAULT, TKRDefault
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType, Struct
 

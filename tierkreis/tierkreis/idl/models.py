@@ -71,6 +71,7 @@ class GenericType:
 class TypedArg:
     name: str
     t: GenericType
+    has_default: bool = False
 
 
 @dataclass

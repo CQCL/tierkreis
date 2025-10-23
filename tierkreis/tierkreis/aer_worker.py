@@ -1,15 +1,15 @@
 """Code generated from aer_worker namespace. Please do not edit."""
 
-from typing import NamedTuple, Union
-from types import NoneType
+from typing import NamedTuple
+from tierkreis.controller.data.core import TKR_DEFAULT, TKRDefault
 from tierkreis.controller.data.models import TKR, OpaqueType
 
 
 class get_compiled_circuit(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
-    optimisation_level: TKR[Union[int, NoneType]]  # noqa: F821 # fmt: skip
-    timeout: TKR[Union[int, NoneType]]  # noqa: F821 # fmt: skip
     config: TKR[OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"]]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
+    timeout: TKR[int] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip

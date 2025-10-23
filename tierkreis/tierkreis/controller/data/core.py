@@ -1,9 +1,11 @@
-from typing import NamedTuple, Protocol, SupportsIndex, runtime_checkable
+from typing import Literal, NamedTuple, Protocol, SupportsIndex, runtime_checkable
 
 
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
+TKR_DEFAULT = "TKR_DEFAULT"
+type TKRDefault = Literal["TKR_DEFAULT"]
 
 
 class EmptyModel(NamedTuple): ...

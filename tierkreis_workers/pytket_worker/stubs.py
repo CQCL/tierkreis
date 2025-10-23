@@ -2,6 +2,7 @@
 
 from typing import NamedTuple, Union
 from types import NoneType
+from tierkreis.controller.data.core import TKR_DEFAULT, TKRDefault
 from tierkreis.controller.data.models import TKR, OpaqueType
 
 
@@ -57,12 +58,12 @@ class apply_pass(NamedTuple):
 
 class compile(NamedTuple):
     circuit: TKR[Union[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]  # noqa: F821 # fmt: skip
-    input_format: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
-    gate_set: TKR[Union[list[str], NoneType]]  # noqa: F821 # fmt: skip
-    coupling_map: TKR[Union[list[tuple[int, int]], NoneType]]  # noqa: F821 # fmt: skip
-    output_format: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_pass: TKR[Union[OpaqueType["pytket._tket.passes.BasePass"], NoneType]]  # noqa: F821 # fmt: skip
+    input_format: TKR[str] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
+    optimization_level: TKR[int] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
+    gate_set: TKR[Union[list[str], NoneType]] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
+    coupling_map: TKR[Union[list[tuple[int, int]], NoneType]] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
+    output_format: TKR[str] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
+    optimization_pass: TKR[Union[OpaqueType["pytket._tket.passes.BasePass"], NoneType]] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[Union[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]]:  # noqa: F821 # fmt: skip
@@ -100,7 +101,7 @@ class compile_circuits_quantinuum(NamedTuple):
 class compile_tket_circuit_ibm(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimization_level: TKR[int] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip
@@ -114,7 +115,7 @@ class compile_tket_circuit_ibm(NamedTuple):
 class compile_tket_circuits_ibm(NamedTuple):
     circuits: TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimization_level: TKR[int] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]]:  # noqa: F821 # fmt: skip
@@ -128,7 +129,7 @@ class compile_tket_circuits_ibm(NamedTuple):
 class compile_tket_circuit_quantinuum(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimization_level: TKR[int] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip
@@ -142,7 +143,7 @@ class compile_tket_circuit_quantinuum(NamedTuple):
 class compile_tket_circuits_quantinuum(NamedTuple):
     circuits: TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimization_level: TKR[int] | TKRDefault = TKR_DEFAULT  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]]:  # noqa: F821 # fmt: skip

@@ -1,0 +1,11 @@
+[project]
+name = "qulacs-worker"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "pytket-qulacs>=0.41.0",
+    "tierkreis",
+]
+
+[tool.uv.sources]
+tierkreis = { workspace = true }

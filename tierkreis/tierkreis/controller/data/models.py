@@ -1,11 +1,14 @@
 from dataclasses import dataclass
 from inspect import isclass
 from itertools import chain
+from types import UnionType
 from typing import (
     Literal,
     Protocol,
+    Union,
     cast,
     dataclass_transform,
+    get_args,
     get_origin,
     overload,
     runtime_checkable,
@@ -15,7 +18,6 @@ from tierkreis.controller.data.core import (
     NodeIndex,
     PortID,
     RestrictedNamedTuple,
-    TKRDefault,
     ValueRef,
 )
 from tierkreis.controller.data.types import PType, generics_in_ptype
@@ -51,7 +53,7 @@ class TKR[T: PModel]:
 
 
 @runtime_checkable
-class TNamedModel(RestrictedNamedTuple[TKR[PType] | TKRDefault], Protocol):
+class TNamedModel(RestrictedNamedTuple[TKR[PType] | None], Protocol):
     """A struct whose members are restricted to being references to PTypes.
 
     E.g. in graph builder code these are outputs of tasks."""
@@ -98,11 +100,7 @@ def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
 
 def dict_from_tmodel(tmodel: TModel) -> dict[PortID, ValueRef]:
     if isinstance(tmodel, TNamedModel):
-        return {
-            k: (v.node_index, v.port_id)
-            for k, v in tmodel._asdict().items()
-            if v != "TKR_DEFAULT"
-        }
+        return {k: (v.node_index, v.port_id) for k, v in tmodel._asdict().items() if v}
 
     return {"value": (tmodel.node_index, tmodel.port_id)}
 

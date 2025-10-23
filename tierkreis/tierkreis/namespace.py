@@ -95,7 +95,6 @@ class Namespace:
 
 from typing import Literal, NamedTuple, Sequence, TypeVar, Generic, Protocol, Union
 from types import NoneType
-from tierkreis.controller.data.core import TKR_DEFAULT, TKRDefault
 from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller.data.types import PType, Struct
 

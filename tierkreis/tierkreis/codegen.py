@@ -40,7 +40,7 @@ def format_generic_type(
 
 def format_typed_arg(typed_arg: TypedArg, is_portmaping: bool) -> str:
     type_str = format_generic_type(typed_arg.t, False, not is_portmaping)
-    default_str = " | TKRDefault = TKR_DEFAULT " if typed_arg.has_default else ""
+    default_str = " | None = None " if typed_arg.has_default else ""
     return f"{typed_arg.name}: {type_str}{default_str} {NO_QA_STR}"
 
 

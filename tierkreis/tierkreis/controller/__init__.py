@@ -59,12 +59,21 @@ def resume_graph(
     for _ in range(n_iterations):
         walk_results = walk_node(storage, Loc(), graph.output_idx(), graph)
         if walk_results.errored != []:
-            node_errors = "\n".join(x for x in walk_results.errored)
-            storage.write_node_errors(Loc(), node_errors)
             # TODO: add to base class after storage refactor
             (storage.logs_path.parent / "-" / "_error").touch()
-            print("Graph finished with errors.")
+            node_errors = "\n".join(x for x in walk_results.errored)
+            storage.write_node_errors(Loc(), node_errors)
+
+            print("\n\nGraph finished with errors.\n\n")
+
+            for error_loc in walk_results.errored:
+                print(error_loc)
+                print(storage.read_errors(error_loc))
+                print("\n\n")
+
+            print("--- Tierkreis graph errors above this line. ---\n\n")
             break
+
         start_nodes(storage, executor, walk_results.inputs_ready)
         if storage.is_node_finished(Loc()):
             break

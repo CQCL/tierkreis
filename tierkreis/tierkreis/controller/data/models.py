@@ -1,14 +1,11 @@
 from dataclasses import dataclass
 from inspect import isclass
 from itertools import chain
-from types import UnionType
 from typing import (
     Literal,
     Protocol,
-    Union,
     cast,
     dataclass_transform,
-    get_args,
     get_origin,
     overload,
     runtime_checkable,

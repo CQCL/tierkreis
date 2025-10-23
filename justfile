@@ -56,6 +56,7 @@ generate:
   just stubs-generate 'tierkreis_workers/aer_worker'
   just stubs-generate 'tierkreis_workers/nexus_worker'
   just stubs-generate 'tierkreis_workers/pytket_worker'
+  just stubs-generate 'tierkreis_workers/qulacs_worker'
   just stubs-generate 'examples/example_workers/error_worker'
   just stubs-generate 'examples/example_workers/hello_world_worker'
   just stubs-generate 'examples/example_workers/substitution_worker'

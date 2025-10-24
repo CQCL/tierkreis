@@ -10,10 +10,11 @@ from tierkreis.storage import FileStorage, read_outputs
 from tierkreis.executor import UvExecutor
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis.pytket_worker import compile_tket_circuit_ibm
+from tierkreis.aer_worker import get_compiled_circuit
 
 type Circuit = OpaqueType["pytket._tket.circuit.Circuit"]
 type BackendResult = OpaqueType["pytket.backends.backendresult.BackendResult"]
+type Config = OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"]
 
 config = AerConfig()
 circuit = circuit_from_qasm(Path(__file__).parent / "data" / "ghz_state_n23.qasm")
@@ -21,8 +22,8 @@ circuit = circuit_from_qasm(Path(__file__).parent / "data" / "ghz_state_n23.qasm
 
 class InnerInputs(NamedTuple):
     circuit: TKR[Circuit]
-    backend_name: TKR[str]
-    # optimisation_level: TKR[int]
+    config: TKR[Config]
+    optimisation_level: TKR[int]
 
 
 class OuterInputs(NamedTuple):
@@ -33,8 +34,17 @@ class OuterInputs(NamedTuple):
 
 def inner_graph() -> GraphBuilder:
     g = GraphBuilder(InnerInputs, TKR[Circuit])
+    compiled_circuit = g.task(get_compiled_circuit(g.inputs.circuit, g.inputs.config))
+    g.outputs(compiled_circuit)
+    return g
+
+
+def inner_graph_2() -> GraphBuilder:
+    g = GraphBuilder(InnerInputs, TKR[Circuit])
     compiled_circuit = g.task(
-        compile_tket_circuit_ibm(g.inputs.circuit, g.inputs.backend_name)
+        get_compiled_circuit(
+            g.inputs.circuit, g.inputs.config, g.inputs.optimisation_level
+        )
     )
     g.outputs(compiled_circuit)
     return g
@@ -61,9 +71,18 @@ if __name__ == "__main__":
         storage,
         executor,
         inner_graph(),
-        {"circuit": circuit, "backend_name": "ibm_torino"},
+        {"circuit": circuit, "config": config, "optimisation_level": 2},
         polling_interval_seconds=0.1,
     )
-    outputs = read_outputs(inner_graph(), storage)
-    assert isinstance(outputs, dict)
-    print(len(outputs))
+    outputs_1 = read_outputs(inner_graph(), storage)
+
+    storage.clean_graph_files()
+    run_graph(
+        storage,
+        executor,
+        inner_graph_2(),
+        {"circuit": circuit, "config": config, "optimisation_level": 2},
+        polling_interval_seconds=0.1,
+    )
+    outputs_2 = read_outputs(inner_graph_2(), storage)
+    assert outputs_1 == outputs_2

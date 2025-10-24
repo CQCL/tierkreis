@@ -10,7 +10,6 @@ from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node
 from tierkreis.controller.data.core import PortID, ValueRef
-from tierkreis.exceptions import TierkreisError
 
 root_loc = Loc("")
 logger = logging.getLogger(__name__)

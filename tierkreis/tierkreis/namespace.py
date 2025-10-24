@@ -7,7 +7,7 @@ import subprocess
 from typing import Callable, Self, get_origin
 from tierkreis.codegen import format_method, format_model
 from tierkreis.controller.data.models import PModel, is_portmapping
-from tierkreis.controller.data.types import Struct, is_ptype
+from tierkreis.controller.data.types import Struct, has_default, is_ptype
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.spec import spec
 from tierkreis.idl.models import GenericType, Interface, Method, Model, TypedArg
@@ -45,8 +45,7 @@ class Namespace:
         in_annotations = {k: v for k, v in annotations.items() if k != "return"}
         ins = []
         for k, t in sig.parameters.items():
-            has_default = not (isclass(t.default) and issubclass(t.default, _empty))
-            ins.append(TypedArg(k, GenericType.from_type(t.annotation), has_default))
+            ins.append(TypedArg(k, GenericType.from_type(t.annotation), has_default(t)))
         out = annotations["return"]
 
         for _, annotation in in_annotations.items():

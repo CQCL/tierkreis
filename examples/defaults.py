@@ -23,13 +23,19 @@ circuit = circuit_from_qasm(Path(__file__).parent / "data" / "ghz_state_n23.qasm
 class InnerInputs(NamedTuple):
     circuit: TKR[Circuit]
     config: TKR[Config]
-    optimisation_level: TKR[int]
+    optimisation_level: TKR[int] | None = None
 
 
 class OuterInputs(NamedTuple):
     circuit: TKR[Circuit]
-    backend_name: TKR[str]
-    optimisation_level: TKR[int]
+    config: TKR[Config]
+    opt_leve: TKR[int] | None = None
+
+
+class OuterOutputs(NamedTuple):
+    circuit_1: TKR[Circuit]
+    circuit_2: TKR[Circuit]
+    circuit_3: TKR[Circuit]
 
 
 def inner_graph() -> GraphBuilder:
@@ -50,39 +56,37 @@ def inner_graph_2() -> GraphBuilder:
     return g
 
 
-# def outer_graph() -> GraphBuilder:
-#     g = GraphBuilder(OuterInputs, TKR[Circuit])
-#     compiled_circuit = g.eval(
-#         inner_graph(),
-#         InnerInputs(
-#             g.inputs.circuit,
-#             g.inputs.backend_name or g.const("ibm_torino"),
-#             g.inputs.optimisation_level,
-#         ),
-#     )
-#     g.outputs(compiled_circuit)
-#     return g
+def outer_graph() -> GraphBuilder:
+    g = GraphBuilder(OuterInputs, OuterOutputs)
+    compiled_circuit_1 = g.eval(
+        inner_graph(),
+        InnerInputs(g.inputs.circuit, g.inputs.config),
+    )
+    compiled_circuit_2 = g.eval(
+        inner_graph_2(),
+        InnerInputs(g.inputs.circuit, g.inputs.config),
+    )
+    compiled_circuit_3 = g.eval(
+        inner_graph_2(),
+        InnerInputs(g.inputs.circuit, g.inputs.config, g.const(2)),
+    )
+    g.outputs(OuterOutputs(compiled_circuit_1, compiled_circuit_2, compiled_circuit_3))
+    return g
 
 
 if __name__ == "__main__":
     storage = FileStorage(UUID(int=202), do_cleanup=True)
     executor = UvExecutor(PACKAGE_PATH / ".." / "tierkreis_workers", storage.logs_path)
-    run_graph(
-        storage,
-        executor,
-        inner_graph(),
-        {"circuit": circuit, "config": config, "optimisation_level": 2},
-        polling_interval_seconds=0.1,
-    )
-    outputs_1 = read_outputs(inner_graph(), storage)
-
     storage.clean_graph_files()
     run_graph(
         storage,
         executor,
-        inner_graph_2(),
-        {"circuit": circuit, "config": config, "optimisation_level": 2},
+        outer_graph(),
+        {"circuit": circuit, "config": config},
         polling_interval_seconds=0.1,
     )
-    outputs_2 = read_outputs(inner_graph_2(), storage)
-    assert outputs_1 == outputs_2
+    outputs = read_outputs(outer_graph(), storage)
+    assert isinstance(outputs, dict)
+    assert "circuit_1" in outputs
+    assert "circuit_2" in outputs
+    assert "circuit_3" in outputs

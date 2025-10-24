@@ -4,8 +4,10 @@ from itertools import chain
 from typing import (
     Literal,
     Protocol,
+    Union,
     cast,
     dataclass_transform,
+    get_args,
     get_origin,
     overload,
     runtime_checkable,
@@ -119,7 +121,10 @@ def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
         args: list[TKR] = []
         for ref in refs:
             key = ref[1].replace("-*", "")
-            args.append(model.__annotations__[key](ref[0], ref[1]))
+            param = model.__annotations__[key]
+            if get_origin(param) == Union:
+                param = next(x for x in get_args(param) if x)
+            args.append(param(ref[0], ref[1]))
         return cast(T, model(*args))
     return tmodel(refs[0][0], refs[0][1])
 

@@ -70,10 +70,6 @@ def walk_node(
         case "eval":
             message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
             g = ptype_from_bytes(message, GraphData)
-
-            if g.remaining_inputs(set(node.inputs.keys())):
-                return WalkResult([node_run_data], [])
-
             return walk_node(storage, loc, g.output_idx(), g)
 
         case "output":

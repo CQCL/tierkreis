@@ -43,7 +43,7 @@ class Namespace:
         annotations = func.__annotations__
         generics: list[str] = [str(x) for x in func.__type_params__]
         in_annotations = {k: v for k, v in annotations.items() if k != "return"}
-        [
+        ins = [
             TypedArg(k, GenericType.from_type(t.annotation), has_default(t))
             for k, t in sig.parameters.items()
         ]

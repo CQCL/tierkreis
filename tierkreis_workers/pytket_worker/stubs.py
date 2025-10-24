@@ -5,6 +5,60 @@ from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 
 
+class get_backend_info(NamedTuple):
+    config: TKR[Union[OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"], OpaqueType["quantinuum_schemas.models.backend_config.AerStateConfig"], OpaqueType["quantinuum_schemas.models.backend_config.AerUnitaryConfig"], OpaqueType["quantinuum_schemas.models.backend_config.BraketConfig"], OpaqueType["quantinuum_schemas.models.backend_config.QuantinuumConfig"], OpaqueType["quantinuum_schemas.models.backend_config.IBMQConfig"], OpaqueType["quantinuum_schemas.models.backend_config.IBMQEmulatorConfig"], OpaqueType["quantinuum_schemas.models.backend_config.ProjectQConfig"], OpaqueType["quantinuum_schemas.models.backend_config.QulacsConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneQuestConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneStimConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneLeanConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneCoinflipConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneClassicalReplayConfig"]]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["pytket.backends.backendinfo.BackendInfo"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["pytket.backends.backendinfo.BackendInfo"]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"
+
+
+class compile_using_info(NamedTuple):
+    circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
+    backend_info: TKR[OpaqueType["pytket.backends.backendinfo.BackendInfo"]]  # noqa: F821 # fmt: skip
+    config: TKR[Union[OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"], OpaqueType["quantinuum_schemas.models.backend_config.AerStateConfig"], OpaqueType["quantinuum_schemas.models.backend_config.AerUnitaryConfig"], OpaqueType["quantinuum_schemas.models.backend_config.BraketConfig"], OpaqueType["quantinuum_schemas.models.backend_config.QuantinuumConfig"], OpaqueType["quantinuum_schemas.models.backend_config.IBMQConfig"], OpaqueType["quantinuum_schemas.models.backend_config.IBMQEmulatorConfig"], OpaqueType["quantinuum_schemas.models.backend_config.ProjectQConfig"], OpaqueType["quantinuum_schemas.models.backend_config.QulacsConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneQuestConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneStimConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneLeanConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneCoinflipConfig"], OpaqueType["quantinuum_schemas.models.backend_config.SeleneClassicalReplayConfig"]]]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
+    timeout: TKR[int]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"
+
+
+class ibmq_offline_pass(NamedTuple):
+    backend_info: TKR[OpaqueType["pytket.backends.backendinfo.BackendInfo"]]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["pytket._tket.passes.BasePass"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["pytket._tket.passes.BasePass"]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"
+
+
+class quantinuum_offline_pass(NamedTuple):
+    backend_info: TKR[OpaqueType["pytket.backends.backendinfo.BackendInfo"]]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["pytket._tket.passes.BasePass"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["pytket._tket.passes.BasePass"]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"
+
+
 class add_measure_all(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
 
@@ -58,11 +112,11 @@ class apply_pass(NamedTuple):
 class compile(NamedTuple):
     circuit: TKR[Union[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]  # noqa: F821 # fmt: skip
     input_format: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
     gate_set: TKR[Union[list[str], NoneType]]  # noqa: F821 # fmt: skip
     coupling_map: TKR[Union[list[tuple[int, int]], NoneType]]  # noqa: F821 # fmt: skip
     output_format: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_pass: TKR[Union[OpaqueType["pytket._tket.passes.BasePass"], NoneType]]  # noqa: F821 # fmt: skip
+    optimisation_pass: TKR[Union[OpaqueType["pytket._tket.passes.BasePass"], NoneType]]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[Union[OpaqueType["pytket._tket.circuit.Circuit"], str, bytes]]]:  # noqa: F821 # fmt: skip
@@ -100,7 +154,7 @@ class compile_circuits_quantinuum(NamedTuple):
 class compile_tket_circuit_ibm(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip
@@ -114,7 +168,7 @@ class compile_tket_circuit_ibm(NamedTuple):
 class compile_tket_circuits_ibm(NamedTuple):
     circuits: TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]]:  # noqa: F821 # fmt: skip
@@ -128,7 +182,7 @@ class compile_tket_circuits_ibm(NamedTuple):
 class compile_tket_circuit_quantinuum(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip
@@ -142,7 +196,7 @@ class compile_tket_circuit_quantinuum(NamedTuple):
 class compile_tket_circuits_quantinuum(NamedTuple):
     circuits: TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]  # noqa: F821 # fmt: skip
     backend_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimization_level: TKR[int]  # noqa: F821 # fmt: skip
+    optimisation_level: TKR[int]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]]:  # noqa: F821 # fmt: skip

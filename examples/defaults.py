@@ -62,6 +62,7 @@ if __name__ == "__main__":
         executor,
         inner_graph(),
         {"circuit": circuit, "backend_name": "ibm_torino"},
+        polling_interval_seconds=0.1,
     )
     outputs = read_outputs(inner_graph(), storage)
     assert isinstance(outputs, dict)

@@ -1,8 +1,6 @@
 from pathlib import Path
 from uuid import UUID
 
-import pytest
-from tests.controller.partial_graphdata import partial_intersection
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.core import EmptyModel
@@ -10,7 +8,6 @@ from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.models import TKR
 from tierkreis.controller.executor.uv_executor import UvExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
-from tierkreis.exceptions import TierkreisError
 from tests.errors.failing_worker.stubs import fail, wont_fail, exit_code_1
 
 
@@ -63,16 +60,6 @@ def test_nested_error() -> None:
     storage.clean_graph_files()
     run_graph(storage, executor, g.get_data(), {}, n_iterations=1000)
     assert (storage.logs_path.parent / "-/errors").exists()
-
-
-def test_partial_graph_intersection() -> None:
-    with pytest.raises(TierkreisError):
-        g = partial_intersection()
-        storage = ControllerFileStorage(UUID(int=45), name="partial_intersection_fails")
-        executor = UvExecutor(Path(__file__).parent, logs_path=storage.logs_path)
-        storage.clean_graph_files()
-        run_graph(storage, executor, g, {}, n_iterations=1000)
-        assert (storage.logs_path.parent / "-/errors").exists()
 
 
 def test_non_zero_exit_code() -> None:

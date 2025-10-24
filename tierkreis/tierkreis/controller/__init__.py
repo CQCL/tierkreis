@@ -10,7 +10,6 @@ from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.walk import walk_node
 from tierkreis.controller.data.core import PortID, ValueRef
-from tierkreis.exceptions import TierkreisError
 
 root_loc = Loc("")
 logger = logging.getLogger(__name__)
@@ -31,7 +30,7 @@ def run_graph(
         graph_inputs = {"value": graph_inputs}
     remaining_inputs = g.remaining_inputs({k for k in graph_inputs.keys()})
     if len(remaining_inputs) > 0:
-        raise TierkreisError(f"Some inputs were not provided: {remaining_inputs}")
+        logger.warning(f"Some inputs were not provided: {remaining_inputs}")
 
     storage.write_metadata(Loc(""))
     for name, value in graph_inputs.items():

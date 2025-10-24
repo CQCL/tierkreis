@@ -1,3 +1,4 @@
+from inspect import Signature, signature
 import logging
 from logging import getLogger
 from pathlib import Path
@@ -8,7 +9,12 @@ from typing import Callable
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
-from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.data.types import (
+    PType,
+    bytes_from_ptype,
+    has_default,
+    ptype_from_bytes,
+)
 from tierkreis.exceptions import TierkreisError
 from tierkreis.namespace import Namespace, WorkerFunction
 from tierkreis.worker.storage.filestorage import WorkerFileStorage
@@ -58,7 +64,7 @@ class Worker:
     """
 
     functions: dict[str, Callable[[WorkerCallArgs], None]]
-    types: dict[MethodName, dict[PortID, type]]
+    types: dict[MethodName, Signature]
     namespace: Namespace
 
     def __init__(self, name: str, storage: WorkerStorage | None = None) -> None:
@@ -75,10 +81,19 @@ class Worker:
     def _load_args(
         self, f: WorkerFunction, inputs: dict[str, Path]
     ) -> dict[str, PType]:
-        bs = {k: self.storage.read_input(p) for k, p in inputs.items()}
+        bs: dict[str, bytes] = {}
+        for k, p in inputs.items():
+            try:
+                bs[k] = self.storage.read_input(p)
+            except FileNotFoundError:
+                if not has_default(self.types[f.__name__].parameters[k]):
+                    raise TierkreisError(f"Input {k} not found at {p}.")
+
         args = {}
         for k, b in bs.items():
-            args[k] = ptype_from_bytes(b, self.types[f.__name__][k])
+            args[k] = ptype_from_bytes(
+                b, self.types[f.__name__].parameters[k].annotation
+            )
         return args
 
     def _save_results(self, outputs: dict[PortID, Path], results: PModel):
@@ -87,13 +102,7 @@ class Worker:
             self.storage.write_output(path, bytes_from_ptype(d[result_name]))
 
     def add_types(self, func: WorkerFunction) -> None:
-        name = func.__name__
-        annotations = func.__annotations__
-        in_annotations = {k: v for k, v in annotations.items() if k != "return"}
-        for k, annotation in in_annotations.items():
-            existing = self.types.get(name, {})
-            existing[k] = annotation
-            self.types[name] = existing
+        self.types[func.__name__] = signature(func)
 
     def primitive_task(
         self,

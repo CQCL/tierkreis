@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import shutil
 from datetime import datetime
@@ -15,6 +16,8 @@ from tierkreis.controller.data.location import (
     WorkerCallArgs,
 )
 from tierkreis.exceptions import TierkreisError
+
+logger = logging.getLogger(__name__)
 
 
 class ControllerFileStorage:
@@ -146,7 +149,7 @@ class ControllerFileStorage:
         try:
             os.link(self._output_path(old_location, old_port), new_dir)
         except FileNotFoundError as e:
-            raise TierkreisError(
+            logger.warning(
                 f"Could not link {e.filename} to {e.filename2}."
                 " Possibly a mislabelled variable?"
             )

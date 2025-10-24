@@ -4,7 +4,6 @@ from uuid import UUID
 
 import pytest
 
-from tests.controller.partial_graphdata import double_partial
 from tests.controller.sample_graphdata import (
     maps_in_series,
     simple_eagerifelse,
@@ -12,7 +11,6 @@ from tests.controller.sample_graphdata import (
     simple_ifelse,
     simple_loop,
     simple_map,
-    simple_partial,
 )
 from tests.controller.loop_graphdata import loop_multiple_acc, loop_multiple_acc_untyped
 from tests.controller.typed_graphdata import (
@@ -56,9 +54,7 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
         {},
     ),
     (simple_eagerifelse(), 1, "simple_eagerifelse", 10, {"pred": b"true"}),
-    (simple_partial(), 12, "simple_partial", 11, {}),
     (factorial().get_data(), 120, "factorial", 12, {"value": b"5"}),
-    (double_partial(), 6, "double_partial", 13, {}),
     (typed_eval().get_data(), 12, "typed_eval", 14, {}),
     (typed_loop().get_data(), 10, "typed_loop", 15, {}),
     (typed_map().get_data(), list(range(6, 47, 2)), "typed_map", 16, {}),
@@ -81,9 +77,7 @@ ids = [
     "loop_multiple_acc_untyped",
     "loop_multiple_acc",
     "simple_eagerifelse",
-    "simple_partial",
     "factorial_5",
-    "double_partial",
     "typed_eval",
     "typed_loop",
     "typed_map",

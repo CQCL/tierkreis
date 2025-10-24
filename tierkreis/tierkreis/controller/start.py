@@ -121,13 +121,6 @@ def start(
     elif node.type == "eval":
         message = storage.read_output(parent.N(node.graph[0]), node.graph[1])
         g = ptype_from_bytes(message, GraphData)
-
-        if g.remaining_inputs(set(ins.keys())):
-            g.fixed_inputs.update(ins)
-            storage.write_output(node_location, "body", g.model_dump_json().encode())
-            storage.mark_node_finished(node_location)
-            return
-
         ins["body"] = (parent.N(node.graph[0]), node.graph[1])
         ins.update(g.fixed_inputs)
 

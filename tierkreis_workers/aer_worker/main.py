@@ -22,14 +22,12 @@ def get_backend(config: AerConfig) -> AerBackend:
 @worker.task()
 def get_compiled_circuit(
     circuit: Circuit,
-    optimisation_level: int | None,
-    timeout: int | None,
     config: AerConfig,
+    optimisation_level: int = 2,
+    timeout: int = 300,
 ) -> Circuit:
     backend = get_backend(config)
-    return backend.get_compiled_circuit(
-        circuit, optimisation_level or 2, timeout or 300
-    )
+    return backend.get_compiled_circuit(circuit, optimisation_level, timeout)
 
 
 @worker.task()

@@ -4,8 +4,10 @@ from itertools import chain
 from typing import (
     Literal,
     Protocol,
+    Union,
     cast,
     dataclass_transform,
+    get_args,
     get_origin,
     overload,
     runtime_checkable,
@@ -50,7 +52,7 @@ class TKR[T: PModel]:
 
 
 @runtime_checkable
-class TNamedModel(RestrictedNamedTuple[TKR[PType]], Protocol):
+class TNamedModel(RestrictedNamedTuple[TKR[PType] | None], Protocol):
     """A struct whose members are restricted to being references to PTypes.
 
     E.g. in graph builder code these are outputs of tasks."""
@@ -97,7 +99,7 @@ def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
 
 def dict_from_tmodel(tmodel: TModel) -> dict[PortID, ValueRef]:
     if isinstance(tmodel, TNamedModel):
-        return {k: (v.node_index, v.port_id) for k, v in tmodel._asdict().items()}
+        return {k: (v.node_index, v.port_id) for k, v in tmodel._asdict().items() if v}
 
     return {"value": (tmodel.node_index, tmodel.port_id)}
 
@@ -119,7 +121,10 @@ def init_tmodel[T: TModel](tmodel: type[T], refs: list[ValueRef]) -> T:
         args: list[TKR] = []
         for ref in refs:
             key = ref[1].replace("-*", "")
-            args.append(model.__annotations__[key](ref[0], ref[1]))
+            param = model.__annotations__[key]
+            if get_origin(param) == Union:
+                param = next(x for x in get_args(param) if x)
+            args.append(param(ref[0], ref[1]))
         return cast(T, model(*args))
     return tmodel(refs[0][0], refs[0][1])
 

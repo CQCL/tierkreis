@@ -13,14 +13,12 @@ type Circuit = OpaqueType["pytket._tket.circuit.Circuit"]
 class AerJobInputs(NamedTuple):
     circuits: TKR[list[Circuit]]
     n_shots: TKR[list[int]]
-    config: TKR[AerConfig]
     compilation_optimisation_level: TKR[int]
     compilation_timeout: TKR[int]
 
 
 class AerJobInputsSingle(NamedTuple):
     circuit_shots: TKR[tuple[Circuit, int]]
-    config: TKR[AerConfig]
     compilation_optimisation_level: TKR[int]
     compilation_timeout: TKR[int]
 
@@ -32,12 +30,11 @@ def aer_compile_run_single():
     compiled_circuit = g.task(
         get_compiled_circuit(
             circuit=circuit_shots.a,
-            config=g.inputs.config,
             optimisation_level=g.inputs.compilation_optimisation_level,
             timeout=g.inputs.compilation_timeout,
         )
     )
-    res = g.task(run_circuit(compiled_circuit, circuit_shots.b, g.inputs.config))
+    res = g.task(run_circuit(compiled_circuit, circuit_shots.b))
     g.outputs(res)
     return g
 
@@ -50,7 +47,6 @@ def aer_compile_run():
     inputs = g.map(
         lambda x: AerJobInputsSingle(
             circuit_shots=x,
-            config=g.inputs.config,
             compilation_optimisation_level=g.inputs.compilation_optimisation_level,
             compilation_timeout=g.inputs.compilation_timeout,
         ),

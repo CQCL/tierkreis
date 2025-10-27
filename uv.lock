@@ -4,12 +4,12 @@ requires-python = ">=3.12"
 
 [manifest]
 members = [
-    "qulacs-worker",
     "tierkreis",
     "tierkreis-visualization",
     "tkr-aer-worker",
     "tkr-nexus-worker",
     "tkr-pytket-worker",
+    "tkr-qulacs-worker",
 ]
 
 [manifest.dependency-groups]
@@ -1938,21 +1938,6 @@ wheels = [
 ]
 
 [[package]]
-name = "qulacs-worker"
-version = "0.1.0"
-source = { virtual = "tierkreis_workers/qulacs_worker" }
-dependencies = [
-    { name = "pytket-qulacs" },
-    { name = "tierkreis" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "pytket-qulacs", specifier = ">=0.41.0" },
-    { name = "tierkreis", editable = "tierkreis" },
-]
-
-[[package]]
 name = "qwasm"
 version = "1.0.1"
 source = { registry = "https://pypi.org/simple" }
@@ -2605,6 +2590,21 @@ requires-dist = [
     { name = "tierkreis", editable = "tierkreis" },
 ]
 provides-extras = ["qir"]
+
+[[package]]
+name = "tkr-qulacs-worker"
+version = "0.1.0"
+source = { virtual = "tierkreis_workers/qulacs_worker" }
+dependencies = [
+    { name = "pytket-qulacs" },
+    { name = "tierkreis" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "pytket-qulacs", specifier = ">=0.41.0" },
+    { name = "tierkreis", editable = "tierkreis" },
+]
 
 [[package]]
 name = "tornado"

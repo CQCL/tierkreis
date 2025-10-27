@@ -1,5 +1,6 @@
 [project]
 name = "tkr_qulacs_worker"
+description = "A tierkreis worker for Qulacs."
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [

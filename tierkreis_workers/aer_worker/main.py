@@ -9,7 +9,6 @@ from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit
 from pytket.extensions.qiskit.backends.aer import AerBackend
 from qiskit import qasm3
 
-logger = logging.getLogger(__name__)
 worker = Worker("aer_worker")
 
 

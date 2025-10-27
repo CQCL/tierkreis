@@ -1,5 +1,5 @@
 from sys import argv
-from typing import Any, Optional
+from typing import Any
 
 from tierkreis import Worker
 from pytket._tket.circuit import Circuit
@@ -36,7 +36,7 @@ def run_circuit(
     n_shots: int,
     result_type: str = "state_vector",
     gpu_sim: bool = False,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> BackendResult:
     backend = get_backend(result_type, gpu_sim)
     config: dict[str, Any] = {} if seed is None else {"seed": seed}
@@ -49,7 +49,7 @@ def run_circuits(
     n_shots: list[int],
     result_type: str = "state_vector",
     gpu_sim: bool = False,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> list[BackendResult]:
     backend = get_backend(result_type, gpu_sim)
     config: dict[str, Any] = {} if seed is None else {"seed": seed}

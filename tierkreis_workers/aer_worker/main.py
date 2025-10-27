@@ -1,6 +1,5 @@
-import logging
 from sys import argv
-from typing import Any, Optional
+from typing import Any
 
 from tierkreis import Worker
 from pytket._tket.circuit import Circuit
@@ -12,6 +11,14 @@ from qiskit import qasm3
 worker = Worker("aer_worker")
 
 
+def get_backend(simulation_method: str = "automatic", n_qubits: int = 40) -> AerBackend:
+    return AerBackend(simulation_method=simulation_method, n_qubits=n_qubits)
+
+
+def get_config(seed: int | None = None) -> dict[str, Any]:
+    return {} if seed is None else {"seed": seed}
+
+
 @worker.task()
 def get_compiled_circuit(
     circuit: Circuit,
@@ -20,7 +27,7 @@ def get_compiled_circuit(
     simulation_method: str = "automatic",
     n_qubits: int = 40,
 ) -> Circuit:
-    backend = AerBackend(simulation_method=simulation_method, n_qubits=n_qubits)
+    backend = get_backend(simulation_method, n_qubits)
     return backend.get_compiled_circuit(circuit, optimisation_level, timeout)
 
 
@@ -30,10 +37,10 @@ def run_circuit(
     n_shots: int,
     simulation_method: str = "automatic",
     n_qubits: int = 40,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> BackendResult:
-    backend = AerBackend(simulation_method=simulation_method, n_qubits=n_qubits)
-    config: dict[str, Any] = {} if seed is None else {"seed": seed}
+    backend = get_backend(simulation_method, n_qubits)
+    config = get_config(seed)
     return backend.run_circuit(circuit, n_shots, **config)
 
 
@@ -43,10 +50,10 @@ def run_circuits(
     n_shots: list[int],
     simulation_method: str = "automatic",
     n_qubits: int = 40,
-    seed: Optional[int] = None,
+    seed: int | None = None,
 ) -> list[BackendResult]:
-    backend = AerBackend(simulation_method=simulation_method, n_qubits=n_qubits)
-    config: dict[str, Any] = {} if seed is None else {"seed": seed}
+    backend = get_backend(simulation_method, n_qubits)
+    config = get_config(seed)
     return backend.run_circuits(circuits, n_shots, **config)
 
 

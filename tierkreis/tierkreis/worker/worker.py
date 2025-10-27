@@ -158,7 +158,7 @@ class Worker:
                 raise TierkreisError(
                     f"{self.name}: function name {node_definition.function_name} not found"
                 )
-            logger.info(f"running: {node_definition.function_name}")
+            logger.info(f"running: {node_definition.function_name} in {self.name}")
 
             function(node_definition)
 

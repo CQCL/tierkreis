@@ -39,7 +39,7 @@ examples:
   {{uvrun}} examples/hello_world_graph.py
   {{uvrun}} examples/defaults.py
   {{uvrun}} examples/error_handling_graph.py
-  {{uvrun}} examples/aer_parallel.py
+  {{uvrun}} examples/simulate_parallel.py
   {{uvrun}} examples/symbolic_circuits.py
   {{uvrun}} examples/hamiltonian_graph.py
   {{uvrun}} examples/non_standard_tkr_dir.py
@@ -69,6 +69,7 @@ generate:
   cp 'tierkreis_workers/aer_worker/stubs.py' tierkreis/tierkreis/aer_worker.py
   cp 'tierkreis_workers/nexus_worker/stubs.py' tierkreis/tierkreis/nexus_worker.py
   cp 'tierkreis_workers/pytket_worker/stubs.py' tierkreis/tierkreis/pytket_worker.py
+  cp 'tierkreis_workers/qulacs_worker/stubs.py' tierkreis/tierkreis/qulacs_worker.py
 
 check-stubs:
   just generate

@@ -29,7 +29,7 @@ class InnerInputs(NamedTuple):
 class OuterInputs(NamedTuple):
     circuit: TKR[Circuit]
     config: TKR[Config]
-    opt_leve: TKR[int] | None = None
+    opt_level: TKR[int] | None = None
 
 
 class OuterOutputs(NamedTuple):

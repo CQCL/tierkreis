@@ -37,6 +37,7 @@ prod:
 
 examples:
   {{uvrun}} examples/hello_world_graph.py
+  {{uvrun}} examples/defaults.py
   {{uvrun}} examples/error_handling_graph.py
   {{uvrun}} examples/aer_parallel.py
   {{uvrun}} examples/symbolic_circuits.py

@@ -1,7 +1,7 @@
 import logging
 from base64 import b64decode, b64encode
 import collections.abc
-from inspect import isclass
+from inspect import Parameter, _empty, isclass
 from itertools import chain
 import json
 from types import NoneType, UnionType
@@ -287,3 +287,7 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
         return set((str(x) for x in pydantic_get_args(ptype)))
 
     assert_never(ptype)
+
+
+def has_default(t: Parameter) -> bool:
+    return not (isclass(t.default) and issubclass(t.default, _empty))

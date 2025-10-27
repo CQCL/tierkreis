@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from inspect import signature
 from logging import getLogger
 from pathlib import Path
 import shutil
@@ -6,7 +7,7 @@ import subprocess
 from typing import Callable, Self, get_origin
 from tierkreis.codegen import format_method, format_model
 from tierkreis.controller.data.models import PModel, is_portmapping
-from tierkreis.controller.data.types import Struct, is_ptype
+from tierkreis.controller.data.types import Struct, has_default, is_ptype
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.spec import spec
 from tierkreis.idl.models import GenericType, Interface, Method, Model, TypedArg
@@ -38,10 +39,14 @@ class Namespace:
 
     def add_function(self, func: WorkerFunction) -> None:
         name = func.__name__
+        sig = signature(func)
         annotations = func.__annotations__
         generics: list[str] = [str(x) for x in func.__type_params__]
         in_annotations = {k: v for k, v in annotations.items() if k != "return"}
-        ins = [TypedArg(k, GenericType.from_type(t)) for k, t in in_annotations.items()]
+        ins = [
+            TypedArg(k, GenericType.from_type(t.annotation), has_default(t))
+            for k, t in sig.parameters.items()
+        ]
         out = annotations["return"]
 
         for _, annotation in in_annotations.items():

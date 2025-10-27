@@ -3,13 +3,20 @@ from typing import Any, Optional
 
 from tierkreis import Worker
 from pytket._tket.circuit import Circuit
+from pytket.backends.backend import Backend
 from pytket.backends.backendresult import BackendResult
-from pytket.extensions.qulacs.backends.qulacs_backend import (
-    QulacsBackend,
-    QulacsGPUBackend,
-)
+from pytket.extensions.qulacs.backends.qulacs_backend import QulacsBackend
 
 worker = Worker("qulacs_worker")
+
+
+def get_backend(result_type: str = "state_vector", gpu_sim: bool = False) -> Backend:
+    if gpu_sim:
+        from pytket.extensions.qulacs.backends.qulacs_backend import QulacsGPUBackend
+
+        return QulacsGPUBackend()
+    else:
+        return QulacsBackend(result_type)
 
 
 @worker.task()
@@ -19,7 +26,7 @@ def get_compiled_circuit(
     result_type: str = "state_vector",
     gpu_sim: bool = False,
 ) -> Circuit:
-    backend = QulacsGPUBackend() if gpu_sim else QulacsBackend(result_type)
+    backend = get_backend(result_type, gpu_sim)
     return backend.get_compiled_circuit(circuit, optimisation_level)
 
 
@@ -31,7 +38,7 @@ def run_circuit(
     gpu_sim: bool = False,
     seed: Optional[int] = None,
 ) -> BackendResult:
-    backend = QulacsGPUBackend() if gpu_sim else QulacsBackend(result_type)
+    backend = get_backend(result_type, gpu_sim)
     config: dict[str, Any] = {} if seed is None else {"seed": seed}
     return backend.run_circuit(circuit, n_shots, **config)
 
@@ -44,7 +51,7 @@ def run_circuits(
     gpu_sim: bool = False,
     seed: Optional[int] = None,
 ) -> list[BackendResult]:
-    backend = QulacsGPUBackend() if gpu_sim else QulacsBackend(result_type)
+    backend = get_backend(result_type, gpu_sim)
     config: dict[str, Any] = {} if seed is None else {"seed": seed}
     return backend.run_circuits(circuits, n_shots, **config)
 

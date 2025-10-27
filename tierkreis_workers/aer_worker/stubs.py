@@ -1,14 +1,16 @@
 """Code generated from aer_worker namespace. Please do not edit."""
 
-from typing import NamedTuple
+from typing import NamedTuple, Union
+from types import NoneType
 from tierkreis.controller.data.models import TKR, OpaqueType
 
 
 class get_compiled_circuit(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
-    config: TKR[OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"]]  # noqa: F821 # fmt: skip
     optimisation_level: TKR[int] | None = None  # noqa: F821 # fmt: skip
     timeout: TKR[int] | None = None  # noqa: F821 # fmt: skip
+    simulation_method: TKR[str] | None = None  # noqa: F821 # fmt: skip
+    n_qubits: TKR[int] | None = None  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip
@@ -22,7 +24,9 @@ class get_compiled_circuit(NamedTuple):
 class run_circuit(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
     n_shots: TKR[int]  # noqa: F821 # fmt: skip
-    config: TKR[OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"]]  # noqa: F821 # fmt: skip
+    simulation_method: TKR[str] | None = None  # noqa: F821 # fmt: skip
+    n_qubits: TKR[int] | None = None  # noqa: F821 # fmt: skip
+    seed: TKR[Union[int, NoneType]] | None = None  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]]]:  # noqa: F821 # fmt: skip
@@ -36,7 +40,9 @@ class run_circuit(NamedTuple):
 class run_circuits(NamedTuple):
     circuits: TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]  # noqa: F821 # fmt: skip
     n_shots: TKR[list[int]]  # noqa: F821 # fmt: skip
-    config: TKR[OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"]]  # noqa: F821 # fmt: skip
+    simulation_method: TKR[str] | None = None  # noqa: F821 # fmt: skip
+    n_qubits: TKR[int] | None = None  # noqa: F821 # fmt: skip
+    seed: TKR[Union[int, NoneType]] | None = None  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[list[OpaqueType["pytket.backends.backendresult.BackendResult"]]]]:  # noqa: F821 # fmt: skip

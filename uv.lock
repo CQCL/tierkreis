@@ -2594,7 +2594,7 @@ provides-extras = ["qir"]
 [[package]]
 name = "tkr-qulacs-worker"
 version = "0.1.0"
-source = { virtual = "tierkreis_workers/qulacs_worker" }
+source = { editable = "tierkreis_workers/qulacs_worker" }
 dependencies = [
     { name = "pytket-qulacs" },
     { name = "tierkreis" },

@@ -2554,14 +2554,12 @@ version = "0.1.4"
 source = { editable = "tierkreis_workers/aer_worker" }
 dependencies = [
     { name = "pytket-qiskit" },
-    { name = "quantinuum-schemas" },
     { name = "tierkreis" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "pytket-qiskit" },
-    { name = "quantinuum-schemas", specifier = ">=3.2.6" },
     { name = "tierkreis", editable = "tierkreis" },
 ]
 

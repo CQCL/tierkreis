@@ -1,5 +1,6 @@
 import logging
 from sys import argv
+from typing import Any, Optional
 
 from tierkreis import Worker
 from pytket._tket.circuit import Circuit
@@ -7,26 +8,20 @@ from pytket.backends.backendresult import BackendResult
 from pytket.extensions.qiskit.qiskit_convert import tk_to_qiskit
 from pytket.extensions.qiskit.backends.aer import AerBackend
 from qiskit import qasm3
-from quantinuum_schemas.models.backend_config import AerConfig
 
 logger = logging.getLogger(__name__)
 worker = Worker("aer_worker")
 
 
-def get_backend(config: AerConfig) -> AerBackend:
-    return AerBackend(
-        simulation_method=config.simulation_method, n_qubits=config.n_qubits
-    )
-
-
 @worker.task()
 def get_compiled_circuit(
     circuit: Circuit,
-    config: AerConfig,
     optimisation_level: int = 2,
     timeout: int = 300,
+    simulation_method: str = "automatic",
+    n_qubits: int = 40,
 ) -> Circuit:
-    backend = get_backend(config)
+    backend = AerBackend(simulation_method=simulation_method, n_qubits=n_qubits)
     return backend.get_compiled_circuit(circuit, optimisation_level, timeout)
 
 
@@ -34,20 +29,26 @@ def get_compiled_circuit(
 def run_circuit(
     circuit: Circuit,
     n_shots: int,
-    config: AerConfig,
+    simulation_method: str = "automatic",
+    n_qubits: int = 40,
+    seed: Optional[int] = None,
 ) -> BackendResult:
-    backend = get_backend(config)
-    return backend.run_circuit(circuit, n_shots)
+    backend = AerBackend(simulation_method=simulation_method, n_qubits=n_qubits)
+    config: dict[str, Any] = {} if seed is None else {"seed": seed}
+    return backend.run_circuit(circuit, n_shots, **config)
 
 
 @worker.task()
 def run_circuits(
     circuits: list[Circuit],
     n_shots: list[int],
-    config: AerConfig,
+    simulation_method: str = "automatic",
+    n_qubits: int = 40,
+    seed: Optional[int] = None,
 ) -> list[BackendResult]:
-    backend = get_backend(config)
-    return backend.run_circuits(circuits, n_shots)
+    backend = AerBackend(simulation_method=simulation_method, n_qubits=n_qubits)
+    config: dict[str, Any] = {} if seed is None else {"seed": seed}
+    return backend.run_circuits(circuits, n_shots, **config)
 
 
 @worker.task()

@@ -19,6 +19,10 @@ def get_backend(result_type: str = "state_vector", gpu_sim: bool = False) -> Bac
         return QulacsBackend(result_type)
 
 
+def get_config(seed: int | None = None) -> dict[str, Any]:
+    return {} if seed is None else {"seed": seed}
+
+
 @worker.task()
 def get_compiled_circuit(
     circuit: Circuit,
@@ -39,7 +43,7 @@ def run_circuit(
     seed: int | None = None,
 ) -> BackendResult:
     backend = get_backend(result_type, gpu_sim)
-    config: dict[str, Any] = {} if seed is None else {"seed": seed}
+    config = get_config(seed)
     return backend.run_circuit(circuit, n_shots, **config)
 
 
@@ -52,7 +56,7 @@ def run_circuits(
     seed: int | None = None,
 ) -> list[BackendResult]:
     backend = get_backend(result_type, gpu_sim)
-    config: dict[str, Any] = {} if seed is None else {"seed": seed}
+    config = get_config(seed)
     return backend.run_circuits(circuits, n_shots, **config)
 
 

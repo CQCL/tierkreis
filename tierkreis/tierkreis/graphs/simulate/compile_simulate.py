@@ -13,7 +13,6 @@ from tierkreis.qulacs_worker import (
 )
 from tierkreis.builtins.stubs import str_eq
 
-type AerConfig = OpaqueType["quantinuum_schemas.models.backend_config.AerConfig"]
 type BackendResult = OpaqueType["pytket.backends.backendresult.BackendResult"]
 type Circuit = OpaqueType["pytket._tket.circuit.Circuit"]
 

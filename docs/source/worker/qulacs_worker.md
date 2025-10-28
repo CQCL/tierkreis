@@ -23,7 +23,7 @@ The Qulacs worker exposes the following elementary tasks to the user.
 
 ## Prepackaged graphs
 
-The Tierkreis Python package provides a few of prepackaged graphs to make it easier to compile and run circuits with Qulacs.
+The Tierkreis Python package provides a few prepackaged graphs to make it easier to compile and run circuits with Qulacs.
 
 `tierkreis.graphs.simulate.compile_simulate.compile_simulate` is intended for the common use case of compiling a list of circuits in parallel and then running them in parallel.
 It can be included within a custom graph using `GraphBuilder.eval` or run as a standalone graph.

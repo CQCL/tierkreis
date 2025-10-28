@@ -119,7 +119,7 @@ def compile_using_info(
             )
         case QuantinuumConfig():
             compilation_pass = QuantinuumBackend.pass_from_info(
-                backend_info, optimisation_level, timeout
+                backend_info, optimisation_level=optimisation_level, timeout=timeout
             )
         case _:
             raise NotImplementedError()
@@ -432,15 +432,17 @@ def compile_tket_circuits_quantinuum(
 
 
 @worker.task()
-def to_qasm_str(circuit: Circuit) -> str:
+def to_qasm_str(circuit: Circuit, header: str = "qelib1") -> str:
     """Transforms a pytket circuit into a QASM2 string.
 
     :param circuit: The original circuit.
     :type circuit: Circuit
+    :param header: The QASM2 header lib to use.
+    :type header: str
     :return: The circuit in QASM2 representation.
     :rtype: str
     """
-    return circuit_to_qasm_str(circuit)
+    return circuit_to_qasm_str(circuit, header)
 
 
 @worker.task()

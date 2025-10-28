@@ -45,7 +45,7 @@ def compile_run_single():
         compile_tket_circuit_ibm(
             circuit=g.inputs.circuit,
             backend_name=g.inputs.backend,
-            optimization_level=g.const(2),
+            optimisation_level=g.const(2),
         )
     )
     res = g.task(submit_single(compiled_circuit, g.inputs.n_shots))

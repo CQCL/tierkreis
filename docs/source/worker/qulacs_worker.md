@@ -19,7 +19,7 @@ The Qulacs worker exposes the following elementary tasks to the user.
 
 - `get_compiled_circuit`. A wrapper around `QulacsBackend.get_compiled_circuit`, which is intended to be parallelised using a Tierkreis `map`.
 - `run_circuit`. A wrapper around `QulacsBackend.run_circuit`, which is intended to be parallelised using a Tierkreis `map`.
-- `run_circuits`. A wrapper around `QulacsBackend.run_circuits`.
+- `run_circuits`. A runs multiple circuits according to the logic defined in the `process_circuits` method in [pytket-qulacs](https://github.com/CQCL/pytket-qulacs/blob/main/pytket/extensions/qulacs/backends/qulacs_backend.py#L186).
 
 ## Prepackaged graphs
 

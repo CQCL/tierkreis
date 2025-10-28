@@ -1594,7 +1594,7 @@ wheels = [
 
 [[package]]
 name = "pytket"
-version = "2.10.1"
+version = "2.10.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "graphviz" },
@@ -1616,7 +1616,7 @@ wheels = [
 
 [[package]]
 name = "pytket-qir"
-version = "0.24.1"
+version = "0.25.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pyqir" },
@@ -1641,8 +1641,8 @@ wheels = [
 
 [[package]]
 name = "pytket-qiskit"
-version = "0.69.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.72.0"
+source = { git = "https://github.com/CQCL/pytket-qiskit#046b604175182b5f3cb303e30dbd48d2b3f8f6b1" }
 dependencies = [
     { name = "numpy" },
     { name = "pytket" },
@@ -1657,8 +1657,8 @@ wheels = [
 
 [[package]]
 name = "pytket-quantinuum"
-version = "0.50.0"
-source = { registry = "https://pypi.org/simple" }
+version = "0.54.0"
+source = { git = "https://github.com/CQCL/pytket-quantinuum#7fa500ba778eaafbb81492c60b0d20d6b0713341" }
 dependencies = [
     { name = "msal" },
     { name = "nest-asyncio" },
@@ -1807,17 +1807,14 @@ wheels = [
 
 [[package]]
 name = "qiskit"
-version = "2.0.3"
+version = "2.2.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "dill" },
     { name = "numpy" },
-    { name = "python-dateutil" },
     { name = "rustworkx" },
     { name = "scipy" },
     { name = "stevedore" },
-    { name = "symengine" },
-    { name = "sympy" },
     { name = "typing-extensions" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/46/58/d19b159719c701f63487c93349aab41a8e4e30234322ccbc407d376bf88b/qiskit-2.0.3.tar.gz", hash = "sha256:fa016bc34619f9f58af06be79a6f2634eacc095f0a3e2e29cef9f00b451ca267", size = 3393670, upload-time = "2025-06-17T14:03:58.349Z" }
@@ -1863,7 +1860,7 @@ wheels = [
 
 [[package]]
 name = "qiskit-ibm-runtime"
-version = "0.40.1"
+version = "0.43.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "ibm-platform-services" },
@@ -2570,6 +2567,7 @@ source = { editable = "tierkreis_workers/pytket_worker" }
 dependencies = [
     { name = "pytket" },
     { name = "pytket-qiskit" },
+    { name = "qnexus" },
     { name = "tierkreis" },
 ]
 
@@ -2585,8 +2583,9 @@ requires-dist = [
     { name = "pytket" },
     { name = "pytket-qir", marker = "extra == 'qir'" },
     { name = "pytket-qirpass", marker = "extra == 'qir'" },
-    { name = "pytket-qiskit" },
-    { name = "pytket-quantinuum", marker = "extra == 'qir'" },
+    { name = "pytket-qiskit", git = "https://github.com/CQCL/pytket-qiskit" },
+    { name = "pytket-quantinuum", marker = "extra == 'qir'", git = "https://github.com/CQCL/pytket-quantinuum" },
+    { name = "qnexus" },
     { name = "tierkreis", editable = "tierkreis" },
 ]
 provides-extras = ["qir"]

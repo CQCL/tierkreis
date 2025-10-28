@@ -209,6 +209,7 @@ class compile_tket_circuits_quantinuum(NamedTuple):
 
 class to_qasm_str(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
+    header: TKR[str]  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip

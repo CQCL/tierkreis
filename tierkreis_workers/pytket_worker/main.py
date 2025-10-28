@@ -168,7 +168,9 @@ def quantinuum_offline_pass(
     try:
         from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
 
-        return QuantinuumBackend.pass_from_info(backend_info, optimisation_level)
+        return QuantinuumBackend.pass_from_info(
+            backend_info, optimisation_level=optimisation_level
+        )
     except ModuleNotFoundError as e:
         raise TierkreisError(
             "Pytket worker could not instantiate QuantinuumBackend. Make sure pytket-quantinuum is installed"

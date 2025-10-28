@@ -1,30 +1,29 @@
-# Qiskit Aer worker
+# Qulacs worker
 
-A Tierkreis worker that compiles and runs circuits with Qiskit Aer.
+A Tierkreis worker that compiles and runs circuits with Qulacs.
 
-The Aer worker largely wraps the functionality from [pytket-qiskit](https://github.com/CQCL/pytket-qiskit/).
+The Qulacs worker largely wraps the functionality from [pytket-qulacs](https://github.com/CQCL/pytket-qulacs/).
 In addition to the elementary tasks exposed, there are also prepackaged graphs to make using the worker more convenient.
 
 ## Installation
 
 ```sh
-pip install tkr-aer-worker
+pip install tkr-qulacs-worker
 ```
 
-will install an executable Python script `tkr_aer_worker` into your virtual environment.
+will install an executable Python script `tkr_qulacs_worker` into your virtual environment.
 
 ## Elementary tasks
 
-The Aer worker exposes the following elementary tasks to the user.
+The Qulacs worker exposes the following elementary tasks to the user.
 
-- `get_compiled_circuit`. A wrapper around `AerBackend.get_compiled_circuit`, which is intended to be parallelised using a Tierkreis `map`.
-- `run_circuit`. A wrapper around `AerBackend.run_circuit`, which is intended to be parallelised using a Tierkreis `map`.
-- `run_circuits`. A wrapper around `AerBackend.run_circuits`, which performs multiple simulations according to the logic in the `process_circuits` method in [pytket-qiskit](https://github.com/CQCL/pytket-qiskit/blob/main/pytket/extensions/qiskit/backends/aer.py).
-- `to_qasm3_str`. Converts a pytket `Circuit` to QASM3 using the Qiskit qasm3 module.
+- `get_compiled_circuit`. A wrapper around `QulacsBackend.get_compiled_circuit`, which is intended to be parallelised using a Tierkreis `map`.
+- `run_circuit`. A wrapper around `QulacsBackend.run_circuit`, which is intended to be parallelised using a Tierkreis `map`.
+- `run_circuits`. A runs multiple circuits according to the logic defined in the `process_circuits` method in [pytket-qulacs](https://github.com/CQCL/pytket-qulacs/blob/main/pytket/extensions/qulacs/backends/qulacs_backend.py#L186).
 
 ## Prepackaged graphs
 
-The Tierkreis Python package provides a few prepackaged graphs to make it easier to compile and run circuits with Aer.
+The Tierkreis Python package provides a few prepackaged graphs to make it easier to compile and run circuits with Qulacs.
 
 `tierkreis.graphs.simulate.compile_simulate.compile_simulate` is intended for the common use case of compiling a list of circuits in parallel and then running them in parallel.
 It can be included within a custom graph using `GraphBuilder.eval` or run as a standalone graph.
@@ -32,7 +31,7 @@ It can be included within a custom graph using `GraphBuilder.eval` or run as a s
 An example use is in `examples/simulate_parallel.py` in the [Tierkreis repo](https://github.com/CQCL/tierkreis), which looks like:
 
 ```python
-simulator_name = "aer"
+simulator_name = "qulacs"
 circuits = ...your circuits here...
 
 g = compile_simulate()

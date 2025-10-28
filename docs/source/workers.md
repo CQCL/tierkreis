@@ -46,3 +46,8 @@ See the example `hamiltonian_graph.py`.
 
 Interface to the Quantinuum Nexus platform.
 More detailed docs [here](worker/nexus_worker.md).
+
+## Qulacs
+
+Compile and run quantum circuits locally with Qulacs.
+More detailed docs [here](worker/qulacs_worker.md).

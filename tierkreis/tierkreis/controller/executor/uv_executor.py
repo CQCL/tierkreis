@@ -1,4 +1,5 @@
 import logging
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -48,7 +49,7 @@ class UvExecutor:
 
         worker_path = self.launchers_path / launcher_name
 
-        env = self.env.copy()
+        env = os.environ.copy() | self.env.copy()
         if "VIRTUAL_ENVIRONMENT" not in env:
             env["VIRTUAL_ENVIRONMENT"] = ""
         if TKR_DIR_KEY not in env:

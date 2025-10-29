@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -51,7 +52,7 @@ class ShellExecutor:
         with open(self.workflow_dir.parent / worker_call_args_path) as fh:
             call_args = WorkerCallArgs(**json.load(fh))
 
-        env = self.env.copy()
+        env = os.environ.copy() | self.env.copy()
         env.update(self._create_env(call_args, self.workflow_dir.parent, export_values))
         env["worker_call_args_file"] = str(
             self.workflow_dir.parent / worker_call_args_path

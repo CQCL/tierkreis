@@ -32,7 +32,7 @@ The pytket worker exposes the following elementary tasks to the user:
 - `get_backend_info` retrieves the backend info given a configuration dict, might require authentication.
 - `compile_using_info` compiles a circuit with a default pass for a backend info that was previously acquired.
 - `ibmq_offline_pass` gets the offline pass for an IBMQ backend info object. Requires IBMQ authentication.
-- `quantinuum_offline_pass` gets the offline pass for an Quantinuum backend info object. Requires IBMQ authentication. Requires Qauntinuum Nexus authentication.
+- `quantinuum_offline_pass` gets the offline pass for an Quantinuum backend info object. Requires IBMQ authentication. Requires Quantinuum Nexus authentication.
 - `add_measure_all` adds final measurements to a circuit.
 - `append_pauli_measurement_impl` adds measurements according to a Pauli string to a circuit.
 - `optimise_phase_gadgets` applies the phase gadget optimization pass to a circuit.
@@ -40,8 +40,8 @@ The pytket worker exposes the following elementary tasks to the user:
 - `compile` generic compile function with a variety of options
 - `compile_circuit_quantinuum` and `compile_circuits_quantinuum` apply a predefined level 3 optimization for Quantinuum devices to a (list of) circuit.
 - `compile_tket_circuit_ibm` and `compile_tket_circuits_ibm` applies the pytket default pass for IBM devices to a (list of) circuit. Requires IBMQ authentication.
-- `compile_tket_circuit_quantinuum` and `compile_tket_circuits_quantinuum` applies the pytket default pass for Quantinuum devices to a (list of) circuit. Requires Qauntinuum Nexus authentication.
-- `to_qasm_str` and `from_gasm_str` transforms a Circuit to/from QASM 2.
+- `compile_tket_circuit_quantinuum` and `compile_tket_circuits_quantinuum` applies the pytket default pass for Quantinuum devices to a (list of) circuit. Requires Quantinuum Nexus authentication.
+- `to_qasm_str` and `from_qasm_str` transforms a Circuit to/from QASM 2.
 - `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR. Requires optional dependencies `uv sync --groups qir`.
 - `expectation` estimates the expectation value from shot counts.
 - `n_qubits` returns the number of qubits in a const circuit.

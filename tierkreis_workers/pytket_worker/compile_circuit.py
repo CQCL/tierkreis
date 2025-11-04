@@ -105,7 +105,8 @@ def compile_circuit(
             circuit = qir_to_pytket(circuit)
         else:
             raise TierkreisError("Invalid combination of input type and format.")
-        # sanity_check:
+
+    assert isinstance(circuit, Circuit)
     qubits: set[int] = set()
     if coupling_map is not None:
         qubits = set([q for pair in coupling_map for q in pair])

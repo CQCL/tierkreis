@@ -15,6 +15,13 @@ class DoublerOutput(NamedTuple):
     value: TKR[int]
 
 
+def typed_doubler():
+    g = GraphBuilder(TKR[int], TKR[int])
+    out = g.task(itimes(a=g.const(2), b=g.inputs))
+    g.outputs(out)
+    return g
+
+
 def typed_doubler_plus_multi():
     g = GraphBuilder(DoublerInput, DoublerOutput)
     mul = g.task(itimes(a=g.inputs.x, b=g.const(2)))
@@ -72,6 +79,13 @@ def typed_loop():
 
 class TypedMapOutput(NamedTuple):
     typed_map_output: TKR[list[int]]
+
+
+def typed_map_simple():
+    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    m = g.map(typed_doubler(), g.inputs)
+    g.outputs(TypedMapOutput(typed_map_output=m))
+    return g
 
 
 def typed_map():

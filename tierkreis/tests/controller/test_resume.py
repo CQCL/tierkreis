@@ -21,6 +21,7 @@ from tests.controller.typed_graphdata import (
     typed_map,
     factorial,
     gcd,
+    typed_map_simple,
 )
 from tierkreis.controller import run_graph
 from tierkreis.controller.data.location import Loc
@@ -66,6 +67,14 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     ),
     (typed_map().get_data(), [], "typed_map", 16, {"value": []}),
     (
+        typed_map_simple().get_data(),
+        list(range(0, 42, 2)),
+        "typed_map",
+        16,
+        {"value": list(range(21))},
+    ),
+    (typed_map_simple().get_data(), [], "typed_map", 16, {"value": []}),
+    (
         typed_destructuring().get_data(),
         list(range(6, 47, 2)),
         "typed_map",
@@ -96,6 +105,8 @@ ids = [
     "typed_loop",
     "typed_map",
     "typed_map_empty",
+    "typed_map_simple",
+    "typed_map_simple_empty",
     "typed_destructuring",
     "typed_destructuring_empty",
     "tuple_untuple",

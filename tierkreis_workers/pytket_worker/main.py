@@ -59,6 +59,13 @@ def get_backend_info(config: BackendConfig) -> BackendInfo:
 
 @worker.task()
 def device_name_from_info(backend_info: BackendInfo) -> str | None:
+    """Returns the device name in the BackendInfo if it exists.
+
+    :param backend_info: The BackendInfo object.
+    :type backend_info: BackendInfo
+    :return: The device name if it exists, otherwise None.
+    :rtype: str | None
+    """
     return backend_info.device_name
 
 
@@ -183,7 +190,8 @@ def compile_generic_with_fixed_pass(
     """Generic compilation function.
 
     When no optimization pass is provided a generic one will be applied.
-    The passes are indicated for which optimizatino level they apply:
+    The passes are indicated for which optimization level they apply:
+
     - DecomposeBoxes, [0,1,2,3]
     - First round
         - AutoRebase, [0]
@@ -202,6 +210,7 @@ def compile_generic_with_fixed_pass(
     - Circuit: TKET
     - str: QASM2
     - bytes: QIR
+
     When no coupling map is provided an all-to-all connectivity is assumed, no mapping will take place.
     The qubit number is inferred from the number of qubits in the circuit.
     The coupling map is expected as a tuple of integers, from which the maximum number of qubits will be inferred.

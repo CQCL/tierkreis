@@ -14,33 +14,24 @@ will install an executable Python script `tkr_pytket_worker` into your virtual e
 
 ## Authentication
 
-Certain backends, such as the Quantinnuum backend require authentication.
-The worker uses the default mechanisms provided by the `qnexus` Python package.
+This worker is designed to work without authentication for the majority of the tasks.
 
-```bash
-uv run python -c "from qnexus.client.auth import login; login()"
+```{important}
+The `get_backend_info` function is the notable exception and requires authentication with Quantinuum Nexus to access the devices.
 ```
-
-will put the a token in the appropriate filesystem location for subsequent operations to use.
-
-To use IBMQ services, the credentials are expected to be stored in a file ` $HOME/.qiskit/qiskit-ibm.json` for more see the [Qiskit Documentation](https://quantum.cloud.ibm.com/docs/en/guides/cloud-setup)
 
 ## Elementary tasks
 
 The pytket worker exposes the following elementary tasks to the user:
 
-- `get_backend_info` retrieves the backend info given a configuration dict, might require authentication.
+- `get_backend_info` retrieves the backend info given a configuration dict, requires authentication.
+- `device_name_from_info` retrieves the device name from backend info object.
 - `compile_using_info` compiles a circuit with a default pass for a backend info that was previously acquired.
-- `ibmq_offline_pass` gets the offline pass for an IBMQ backend info object. Requires IBMQ authentication.
-- `quantinuum_offline_pass` gets the offline pass for an Quantinuum backend info object. Requires IBMQ authentication. Requires Quantinuum Nexus authentication.
 - `add_measure_all` adds final measurements to a circuit.
 - `append_pauli_measurement_impl` adds measurements according to a Pauli string to a circuit.
 - `optimise_phase_gadgets` applies the phase gadget optimization pass to a circuit.
 - `apply_pass` applies a user defined optimization pass.
-- `compile` generic compile function with a variety of options
-- `compile_circuit_quantinuum` and `compile_circuits_quantinuum` apply a predefined level 3 optimization for Quantinuum devices to a (list of) circuit.
-- `compile_tket_circuit_ibm` and `compile_tket_circuits_ibm` applies the pytket default pass for IBM devices to a (list of) circuit. Requires IBMQ authentication.
-- `compile_tket_circuit_quantinuum` and `compile_tket_circuits_quantinuum` applies the pytket default pass for Quantinuum devices to a (list of) circuit. Requires Quantinuum Nexus authentication.
+- `compile_generic_with_fixed_pass` generic compile function with a variety of options using a predefined pass without considering fidelities. No authentication is required.
 - `to_qasm_str` and `from_qasm_str` transforms a Circuit to/from QASM 2.
 - `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR. Requires optional dependencies `uv sync --groups qir`.
 - `expectation` estimates the expectation value from shot counts.

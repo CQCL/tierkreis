@@ -14,9 +14,8 @@ will install an executable Python script `tkr_ibmq_worker` into your virtual env
 
 ````{important}
 Accessing backends requires authentication.
-The worker uses the default mechanisms provided by the `qnexus` Python package.
-```bash
-uv run python -c "from qnexus.client.auth import login; login()"
+To use IBMQ services, the credentials are expected to be stored in a file ` $HOME/.qiskit/qiskit-ibm.json` for more see the [Qiskit Documentation](https://quantum.cloud.ibm.com/docs/en/guides/cloud-setup)
+
 ```
 
 ````

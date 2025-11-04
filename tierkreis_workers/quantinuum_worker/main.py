@@ -8,7 +8,7 @@ from pytket.passes import BasePass
 from tierkreis import Worker
 from tierkreis.exceptions import TierkreisError
 
-from default_pass import default_compilation_pass
+from default_pass_quantinuum import default_compilation_pass
 
 worker = Worker("quantinuum_worker")
 

@@ -71,7 +71,7 @@ def compile(
 
 
 @worker.task()
-def compile_circuit_ibmq(circuit: Circuit) -> Circuit:
+def compile_circuit_ibmq(circuit: Circuit, device_name: str) -> Circuit:
     """Applies a predefined optimization pass for IBMQ devices.
 
     The optimization pass corresponds to a level=3 optimization.
@@ -81,13 +81,13 @@ def compile_circuit_ibmq(circuit: Circuit) -> Circuit:
     :return: The optimized circuit.
     :rtype: Circuit
     """
-    p = default_compilation_pass()
+    p = IBMQBackend(device_name).default_compilation_pass()
     p.apply(circuit)
     return circuit
 
 
 @worker.task()
-def compile_circuits_ibmq(circuits: list[Circuit]) -> list[Circuit]:
+def compile_circuits_ibmq(circuits: list[Circuit], device_name: str) -> list[Circuit]:
     """Applies a predefined optimization pass for IBMQ devices.
 
     :param circuits: A list of circuits to be optimized.
@@ -95,7 +95,7 @@ def compile_circuits_ibmq(circuits: list[Circuit]) -> list[Circuit]:
     :return: The optimized circuits.
     :rtype: list[Circuit]
     """
-    p = default_compilation_pass()
+    p = IBMQBackend(device_name).default_compilation_pass()
     for pytket_circuit in circuits:
         p.apply(pytket_circuit)
     return circuits

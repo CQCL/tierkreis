@@ -1,6 +1,6 @@
-"""Code generated from ibmq_worker namespace. Please do not edit."""
+"""Code generated from quantinuum_worker namespace. Please do not edit."""
 
-from typing import NamedTuple, Sequence
+from typing import NamedTuple
 from tierkreis.controller.data.models import TKR, OpaqueType
 
 
@@ -13,7 +13,7 @@ class get_backend_info(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "ibmq_worker"
+        return "quantinuum_worker"
 
 
 class backend_pass_from_info(NamedTuple):
@@ -26,7 +26,7 @@ class backend_pass_from_info(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "ibmq_worker"
+        return "quantinuum_worker"
 
 
 class backend_default_compilation_pass(NamedTuple):
@@ -39,20 +39,17 @@ class backend_default_compilation_pass(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "ibmq_worker"
+        return "quantinuum_worker"
 
 
 class fixed_pass(NamedTuple):
-    coupling_map: TKR[Sequence[tuple[int, int]]]  # noqa: F821 # fmt: skip
-    optimisation_level: TKR[int] | None = None  # noqa: F821 # fmt: skip
-
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.passes.BasePass"]]]:  # noqa: F821 # fmt: skip
         return TKR[OpaqueType["pytket._tket.passes.BasePass"]]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
-        return "ibmq_worker"
+        return "quantinuum_worker"
 
 
 class compile(NamedTuple):
@@ -66,13 +63,11 @@ class compile(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "ibmq_worker"
+        return "quantinuum_worker"
 
 
-class compile_circuit_ibmq(NamedTuple):
+class compile_circuit_quantinuum(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
-    device_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimisation_level: TKR[int] | None = None  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[OpaqueType["pytket._tket.circuit.Circuit"]]]:  # noqa: F821 # fmt: skip
@@ -80,13 +75,11 @@ class compile_circuit_ibmq(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "ibmq_worker"
+        return "quantinuum_worker"
 
 
-class compile_circuits_ibmq(NamedTuple):
+class compile_circuits_quantinuum(NamedTuple):
     circuits: TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]  # noqa: F821 # fmt: skip
-    device_name: TKR[str]  # noqa: F821 # fmt: skip
-    optimisation_level: TKR[int] | None = None  # noqa: F821 # fmt: skip
 
     @staticmethod
     def out() -> type[TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]]:  # noqa: F821 # fmt: skip
@@ -94,4 +87,4 @@ class compile_circuits_ibmq(NamedTuple):
 
     @property
     def namespace(self) -> str:
-        return "ibmq_worker"
+        return "quantinuum_worker"

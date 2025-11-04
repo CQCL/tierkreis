@@ -142,6 +142,8 @@ def start(
     elif node.type == "map":
         first_ref = next(x for x in ins.values() if x[1] == "*")
         map_eles = outputs_iter(storage, first_ref[0])
+        if not map_eles:
+            storage.mark_node_finished(node_location)
         for idx, p in map_eles:
             eval_inputs: dict[PortID, tuple[Loc, PortID]] = {}
             eval_inputs["body"] = (parent.N(node.body[0]), node.body[1])

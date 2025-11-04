@@ -15,6 +15,13 @@ class DoublerOutput(NamedTuple):
     value: TKR[int]
 
 
+def typed_doubler():
+    g = GraphBuilder(TKR[int], TKR[int])
+    out = g.task(itimes(a=g.const(2), b=g.inputs))
+    g.outputs(out)
+    return g
+
+
 def typed_doubler_plus_multi():
     g = GraphBuilder(DoublerInput, DoublerOutput)
     mul = g.task(itimes(a=g.inputs.x, b=g.const(2)))
@@ -74,19 +81,24 @@ class TypedMapOutput(NamedTuple):
     typed_map_output: TKR[list[int]]
 
 
+def typed_map_simple():
+    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    m = g.map(typed_doubler(), g.inputs)
+    g.outputs(TypedMapOutput(typed_map_output=m))
+    return g
+
+
 def typed_map():
-    g = GraphBuilder(EmptyModel, TypedMapOutput)
-    Ns = g.const(list(range(21)))
-    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), Ns)
+    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), g.inputs)
     m = g.map(typed_doubler_plus(), ins)
     g.outputs(TypedMapOutput(typed_map_output=m))
     return g
 
 
 def typed_destructuring():
-    g = GraphBuilder(EmptyModel, TypedMapOutput)
-    Ns = g.const(list(range(21)))
-    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), Ns)
+    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), g.inputs)
     m = g.map(typed_doubler_plus_multi(), ins)
     mout = g.map(lambda x: x.value, m)
     g.outputs(TypedMapOutput(typed_map_output=mout))

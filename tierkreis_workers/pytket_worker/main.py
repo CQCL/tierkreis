@@ -5,11 +5,7 @@ from compile_circuit import (
     OptimizationLevel,
     compile_circuit,
 )
-from default_pass import (
-    default_compilation_pass,
-    default_compilation_pass_ibm,
-    default_compilation_pass_quantinuum,
-)
+
 from pytket._tket.circuit import Circuit
 from pytket.backends.backendresult import BackendResult
 from pytket.circuit import OpType
@@ -22,6 +18,7 @@ from pytket.utils.measurements import append_pauli_measurement
 from pytket.backends.backendinfo import BackendInfo
 
 from qnexus import BackendConfig, IBMQConfig, QuantinuumConfig
+import qnexus as qnx
 from tierkreis.exceptions import TierkreisError
 
 from tierkreis import Worker
@@ -44,40 +41,20 @@ def get_backend_info(config: BackendConfig) -> BackendInfo:
     :return: The BackendInfo if the device was available
     :rtype: BackendInfo
     """
-    try:
-        from pytket.extensions.qiskit.backends.ibm import IBMQBackend
-        from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
-    except ModuleNotFoundError as e:
-        raise TierkreisError("Pytket worker could not import extension backends") from e
-    match config:
-        case IBMQConfig():
-            info = next(
-                filter(
-                    lambda x: x.name == config.backend_name,
-                    IBMQBackend.available_devices(),
-                ),
-                None,
-            )
-            if info is None:
-                raise TierkreisError(
-                    f"Device {config.backend_name} is not in the list of available IBMQ devices"
-                )
-            return info
-        case QuantinuumConfig():
-            info = next(
-                filter(
-                    lambda x: x.name == config.device_name,
-                    QuantinuumBackend.available_devices(),
-                ),
-                None,
-            )
-            if info is None:
-                raise TierkreisError(
-                    f"Device {config.device_name} is not in the list of available Quantinuum devices"
-                )
-            return info
-        case _:
-            raise NotImplementedError()
+    if not isinstance(config, IBMQConfig) or not isinstance(config, QuantinuumConfig):
+        raise NotImplementedError()
+    device = next(
+        filter(
+            lambda x: x.device_name == config.backend_name,
+            qnx.devices.get_all(),
+        ),
+        None,
+    )
+    if device is None:
+        raise TierkreisError(
+            f"Device {config.backend_name} is not in the list of available devices"
+        )
+    return device.backend_info
 
 
 @worker.task()
@@ -125,56 +102,6 @@ def compile_using_info(
             raise NotImplementedError()
     compilation_pass.apply(circuit)
     return circuit
-
-
-@worker.task()
-def ibmq_offline_pass(
-    backend_info: BackendInfo, optimisation_level: int = 2
-) -> BasePass:
-    """Fetches an compilation pass from a BackendInfo of a IBMQ backend.
-
-    :param backend_info: The backend info to get the pass for.
-    :type backend_info: BackendInfo
-    :param optimisation_level: The optimization level for the compilation, defaults to 2
-    :type optimisation_level: int, optional
-    :raises TierkreisError: If the pytket-qiskit extension is not installed.
-    :return: The default compilation pass given the backend.
-    :rtype: BasePass
-    """
-    try:
-        from pytket.extensions.qiskit.backends.ibm import IBMQBackend
-
-        return IBMQBackend.pass_from_info(backend_info, optimisation_level)
-    except ModuleNotFoundError as e:
-        raise TierkreisError(
-            "Pytket worker could not instantiate IBMQBackend. Make sure pytket-qiskit is installed"
-        ) from e
-
-
-@worker.task()
-def quantinuum_offline_pass(
-    backend_info: BackendInfo, optimisation_level: int = 2
-) -> BasePass:
-    """Fetches an compilation pass from a BackendInfo of a Quantinuum backend.
-
-    :param backend_info: The backend info to get the pass for.
-    :type backend_info: BackendInfo
-    :param optimisation_level: The optimization level for the compilation, defaults to 2
-    :type optimisation_level: int, optional
-    :raises TierkreisError: If the pytket-quantinuum extension is not installed.
-    :return: The default compilation pass given the backend.
-    :rtype: BasePass
-    """
-    try:
-        from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
-
-        return QuantinuumBackend.pass_from_info(
-            backend_info, optimisation_level=optimisation_level
-        )
-    except ModuleNotFoundError as e:
-        raise TierkreisError(
-            "Pytket worker could not instantiate QuantinuumBackend. Make sure pytket-quantinuum is installed"
-        ) from e
 
 
 @worker.task()
@@ -239,7 +166,7 @@ def apply_pass(circuit: Circuit, compiler_pass: BasePass) -> Circuit:
 
 
 @worker.task()
-def compile(
+def compile_generic_with_fixed_pass(
     circuit: Circuit | str | bytes,
     input_format: str = "TKET",
     optimisation_level: int = 2,
@@ -313,128 +240,7 @@ def compile(
 
 
 @worker.task()
-def compile_circuit_quantinuum(circuit: Circuit) -> Circuit:
-    """Applies a predefined optimization pass for Quantinuum devices.
-
-    The optimization pass corresponds to a level=3 optimization.
-
-    :param circuit: The original circuit.
-    :type circuit: Circuit
-    :return: The optimized circuit.
-    :rtype: Circuit
-    """
-    p = default_compilation_pass()
-    p.apply(circuit)
-    return circuit
-
-
-@worker.task()
-def compile_circuits_quantinuum(circuits: list[Circuit]) -> list[Circuit]:
-    """Applies a predefined optimization pass for Quantinuum devices.
-
-    :param circuits: A list of circuits to be optimized.
-    :type circuits: list[Circuit]
-    :return: The optimized circuits.
-    :rtype: list[Circuit]
-    """
-    p = default_compilation_pass()
-    for pytket_circuit in circuits:
-        p.apply(pytket_circuit)
-    return circuits
-
-
-@worker.task()
-def compile_tket_circuit_ibm(
-    circuit: Circuit, backend_name: str, optimisation_level: int = 2
-) -> Circuit:
-    """Applies pytkets default compilation pass for IBMQ devices.
-
-    The device is constructed by name, this function needs credentials.
-
-    :param circuit: The original circuit.
-    :type circuit: Circuit
-    :param backend_name: The name of the IBMQ backend.
-    :type backend_name: str
-    :param optimisation_level: Level of optimization in [0,1,2,3], defaults to 2
-    :type optimisation_level: int, optional
-    :return: The optimized circuit.
-    :rtype: Circuit
-    """
-    p = default_compilation_pass_ibm(backend_name, optimisation_level)
-    p.apply(circuit)
-    return circuit
-
-
-@worker.task()
-def compile_tket_circuits_ibm(
-    circuits: list[Circuit], backend_name: str, optimisation_level: int = 2
-) -> list[Circuit]:
-    """Applies pytkets default compilation pass for IBMQ devices.
-
-    The device is constructed by name, this function needs credentials.
-
-    :param circuits: A list of circuits to be optimized.
-    :type circuits: list[Circuit]
-    :param backend_name: The name of the IBMQ backend.
-    :type backend_name: str
-    :param optimisation_level: Level of optimization in [0,1,2,3], defaults to 2
-    :type optimisation_level: int, optional
-    :return: The optimized circuits.
-    :rtype: list[Circuit]
-    """
-    p = default_compilation_pass_ibm(backend_name, optimisation_level)
-    for pytket_circuit in circuits:
-        p.apply(pytket_circuit)
-    return circuits
-
-
-@worker.task()
-def compile_tket_circuit_quantinuum(
-    circuit: Circuit, backend_name: str, optimisation_level: int = 2
-) -> Circuit:
-    """Applies pytkets default compilation pass for Quantinuum devices.
-
-    The device is constructed by name, this function needs credentials.
-
-    :param circuit: The original circuit.
-    :type circuit: Circuit
-    :param backend_name: The name of the Quantinuum backend.
-    :type backend_name: str
-    :param optimisation_level: Level of optimization in [0,1,2,3], defaults to 2
-    :type optimisation_level: int, optional
-    :return: The optimized circuit.
-    :rtype: Circuit
-    """
-    p = default_compilation_pass_quantinuum(backend_name, optimisation_level)
-    p.apply(circuit)
-    return circuit
-
-
-@worker.task()
-def compile_tket_circuits_quantinuum(
-    circuits: list[Circuit], backend_name: str, optimisation_level: int = 2
-) -> list[Circuit]:
-    """Applies pytkets default compilation pass for Quantinuum devices.
-
-    The device is constructed by name, this function needs credentials.
-
-    :param circuits: A list of circuits to be optimized.
-    :type circuits: list[Circuit]
-    :param backend_name: The name of the Quantinuum backend.
-    :type backend_name: str
-    :param optimisation_level: Level of optimization in [0,1,2,3], defaults to 2
-    :type optimisation_level: int, optional
-    :return: The optimized circuits.
-    :rtype: list[Circuit]
-    """
-    p = default_compilation_pass_quantinuum(backend_name, optimisation_level)
-    for pytket_circuit in circuits:
-        p.apply(pytket_circuit)
-    return circuits
-
-
-@worker.task()
-def to_qasm_str(circuit: Circuit, header: str = "qelib1") -> str:
+def to_qasm2_str(circuit: Circuit, header: str = "qelib1") -> str:
     """Transforms a pytket circuit into a QASM2 string.
 
     :param circuit: The original circuit.
@@ -448,7 +254,7 @@ def to_qasm_str(circuit: Circuit, header: str = "qelib1") -> str:
 
 
 @worker.task()
-def from_gasm_str(qasm: str) -> Circuit:
+def from_qasm2_str(qasm: str) -> Circuit:
     """Generates a pytket circuit from a QASM2 string.
 
     :param qasm: The circuit in QASM2 representation.

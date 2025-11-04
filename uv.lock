@@ -2585,13 +2585,13 @@ version = "0.1.5"
 source = { editable = "tierkreis_workers/pytket_worker" }
 dependencies = [
     { name = "pytket" },
+    { name = "pytket-qirpass" },
     { name = "qnexus" },
     { name = "tierkreis" },
 ]
 
 [package.optional-dependencies]
 backends = [
-    { name = "pytket-qirpass" },
     { name = "pytket-qiskit" },
     { name = "pytket-quantinuum" },
 ]
@@ -2599,7 +2599,7 @@ backends = [
 [package.metadata]
 requires-dist = [
     { name = "pytket" },
-    { name = "pytket-qirpass", marker = "extra == 'backends'" },
+    { name = "pytket-qirpass" },
     { name = "pytket-qiskit", marker = "extra == 'backends'" },
     { name = "pytket-quantinuum", marker = "extra == 'backends'", git = "https://github.com/CQCL/pytket-quantinuum" },
     { name = "qnexus" },

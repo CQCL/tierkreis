@@ -24,7 +24,7 @@ The `get_backend_info` function is the notable exception and requires authentica
 
 The pytket worker exposes the following elementary tasks to the user:
 
-- `get_backend_info` retrieves the backend info given a configuration dict, requires authentication.
+- `get_backend_info` retrieves the backend info given a configuration dict. **Requires authentication**. Requires optional dependencies `uv sync --groups backends`.
 - `device_name_from_info` retrieves the device name from backend info object.
 - `compile_using_info` compiles a circuit with a default pass for a backend info that was previously acquired.
 - `add_measure_all` adds final measurements to a circuit.
@@ -33,7 +33,7 @@ The pytket worker exposes the following elementary tasks to the user:
 - `apply_pass` applies a user defined optimization pass.
 - `compile_generic_with_fixed_pass` generic compile function with a variety of options using a predefined pass without considering fidelities. No authentication is required.
 - `to_qasm_str` and `from_qasm_str` transforms a Circuit to/from QASM 2.
-- `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR. Requires optional dependencies `uv sync --groups qir`.
+- `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR.
 - `expectation` estimates the expectation value from shot counts.
 - `n_qubits` returns the number of qubits in a const circuit.
 
@@ -61,9 +61,9 @@ def compile_run_single():
     )
 
     compiled_circuit = g.task(
-        compile_tket_circuit_ibm(
+        compile_circuit_ibmq(
             circuit=g.inputs.circuit,
-            backend_name=g.inputs.backend,
+            device_name=g.inputs.backend,
             optimization_level=g.const(2),
         )
     )
@@ -83,7 +83,7 @@ run_graph(
     executor,
     g,
     {
-        "circuit": ghz(),
+        "circuit": circuit,
         "n_shots": n_shots,
         "backend": "<ibm_backend>", # e.g. ibm_torino
     },

@@ -16,6 +16,14 @@ worker = Worker("quantinuum_worker")
 
 @worker.task()
 def get_backend_info(device_name: str) -> BackendInfo:
+    """Retrieves a BackendInfo object for a given device name.
+
+    :param device_name: The name of the device.
+    :type device_name: str
+    :raises TierkreisError: If the device is not found or not accessible.
+    :return: The BackendInfo object for the device.
+    :rtype: BackendInfo
+    """
     info = next(
         filter(
             lambda x: x.name == device_name,
@@ -34,6 +42,15 @@ def get_backend_info(device_name: str) -> BackendInfo:
 def backend_pass_from_info(
     backend_info: BackendInfo, optimisation_level: int = 2
 ) -> BasePass:
+    """Returns a compilation pass according to the backend info.
+
+    :param backend_info: Device information to use for compilation.
+    :type backend_info: BackendInfo
+    :param optimisation_level: The optimization level for the compilation, defaults to 2
+    :type optimisation_level: int, optional
+    :return: A compilation pass for the backend.
+    :rtype: BasePass
+    """
     return QuantinuumBackend.pass_from_info(
         backend_info, optimisation_level=optimisation_level
     )
@@ -43,12 +60,26 @@ def backend_pass_from_info(
 def backend_default_compilation_pass(
     device_name: str, optimisation_level: int = 2
 ) -> BasePass:
+    """Returns the default compilation pass for a given device name.
+
+    :param device_name: The name of the device.
+    :type device_name: str
+    :param optimisation_level: The optimization level for the compilation, defaults to 2
+    :type optimisation_level: int, optional
+    :return: The default compilation pass for the backend.
+    :rtype: BasePass
+    """
     backend = QuantinuumBackend(device_name)
     return backend.default_compilation_pass(optimisation_level)
 
 
 @worker.task()
 def fixed_pass() -> BasePass:
+    """Returns a predefined compilation pass for Quantinuum devices.
+
+    :return: The compilation pass.
+    :rtype: BasePass
+    """
     return default_compilation_pass()
 
 
@@ -58,6 +89,17 @@ def compile(
     device_name: str,
     optimisation_level: int = 2,
 ) -> Circuit:
+    """Gets a compiled circuit for a given device name.
+
+    :param circuit: The original circuit to compile.
+    :type circuit: Circuit
+    :param device_name: The name of the device to compile for.
+    :type device_name: str
+    :param optimisation_level: The optimization level for the compilation, defaults to 2
+    :type optimisation_level: int, optional
+    :return: The compiled circuit.
+    :rtype: Circuit
+    """
     backend = QuantinuumBackend(device_name)
     compilation_pass = backend.default_compilation_pass(optimisation_level)
     compilation_pass.apply(circuit)

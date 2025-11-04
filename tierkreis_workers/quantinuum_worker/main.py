@@ -2,6 +2,7 @@ from sys import argv
 
 from pytket._tket.circuit import Circuit
 from pytket.backends.backendinfo import BackendInfo
+from pytket.backends.backendresult import BackendResult
 from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
 from pytket.passes import BasePass
 
@@ -92,6 +93,21 @@ def compile_circuits_quantinuum(circuits: list[Circuit]) -> list[Circuit]:
     for pytket_circuit in circuits:
         p.apply(pytket_circuit)
     return circuits
+
+
+@worker.task()
+def run_circuit(circuit: Circuit, n_shots: int, device_name: str) -> BackendResult:
+    """Submits a circuit to a Quantinuum backend and returns the result.
+
+    :param circuit: The circuit to be run.
+    :type circuit: Circuit
+    :param n_shots: The number of shots to run.
+    :type n_shots: int
+    :return: The backend result.
+    :rtype: BackendResult
+    """
+    backend = QuantinuumBackend(device_name)
+    return backend.run_circuit(circuit, n_shots)
 
 
 def main():

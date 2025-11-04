@@ -17,6 +17,18 @@ class get_backend_info(NamedTuple):
         return "pytket_worker"
 
 
+class device_name_from_info(NamedTuple):
+    backend_info: TKR[OpaqueType["pytket.backends.backendinfo.BackendInfo"]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Union[str, NoneType]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[str, NoneType]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"
+
+
 class compile_using_info(NamedTuple):
     circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
     backend_info: TKR[OpaqueType["pytket.backends.backendinfo.BackendInfo"]]  # noqa: F821 # fmt: skip

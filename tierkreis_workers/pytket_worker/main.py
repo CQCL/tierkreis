@@ -58,6 +58,11 @@ def get_backend_info(config: BackendConfig) -> BackendInfo:
 
 
 @worker.task()
+def device_name_from_info(backend_info: BackendInfo) -> str | None:
+    return backend_info.device_name
+
+
+@worker.task()
 def compile_using_info(
     circuit: Circuit,
     backend_info: BackendInfo,

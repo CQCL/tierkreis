@@ -95,3 +95,17 @@ class compile_circuits_ibmq(NamedTuple):
     @property
     def namespace(self) -> str:
         return "ibmq_worker"
+
+
+class run_circuit(NamedTuple):
+    circuit: TKR[OpaqueType["pytket._tket.circuit.Circuit"]]  # noqa: F821 # fmt: skip
+    n_shots: TKR[int]  # noqa: F821 # fmt: skip
+    device_name: TKR[str]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "ibmq_worker"

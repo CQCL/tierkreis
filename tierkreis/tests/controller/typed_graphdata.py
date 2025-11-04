@@ -75,18 +75,16 @@ class TypedMapOutput(NamedTuple):
 
 
 def typed_map():
-    g = GraphBuilder(EmptyModel, TypedMapOutput)
-    Ns = g.const(list(range(21)))
-    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), Ns)
+    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), g.inputs)
     m = g.map(typed_doubler_plus(), ins)
     g.outputs(TypedMapOutput(typed_map_output=m))
     return g
 
 
 def typed_destructuring():
-    g = GraphBuilder(EmptyModel, TypedMapOutput)
-    Ns = g.const(list(range(21)))
-    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), Ns)
+    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), g.inputs)
     m = g.map(typed_doubler_plus_multi(), ins)
     mout = g.map(lambda x: x.value, m)
     g.outputs(TypedMapOutput(typed_map_output=mout))

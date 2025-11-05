@@ -52,10 +52,10 @@ def compile_run_single():
         compile(
             circuit=g.inputs.circuit,
             device_name=g.inputs.backend,
-            optimization_level=g.const(2),
+            optimisation_level=g.const(2),
         )
     )
-    res = g.task(run_circuit(compiled_circuit, g.inputs.n_shots))
+    res = g.task(run_circuit(compiled_circuit, g.inputs.n_shots, g.inputs.backend))
     g.outputs(res)
     return g
 

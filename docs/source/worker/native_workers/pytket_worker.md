@@ -64,7 +64,7 @@ def compile_run_single():
         compile_circuit_ibmq(
             circuit=g.inputs.circuit,
             device_name=g.inputs.backend,
-            optimization_level=g.const(2),
+            optimisation_level=g.const(2),
         )
     )
     res = g.task(submit_single(compiled_circuit, g.inputs.n_shots))

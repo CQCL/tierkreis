@@ -3,7 +3,7 @@ from uuid import UUID
 
 from pydantic_settings import BaseSettings
 from starlette.templating import Jinja2Templates
-from tierkreis.controller.storage.base import ControllerStorage
+from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 
 

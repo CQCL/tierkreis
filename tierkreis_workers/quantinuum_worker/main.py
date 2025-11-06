@@ -5,13 +5,17 @@ from pytket.backends.backendinfo import BackendInfo
 from pytket.backends.backendresult import BackendResult
 from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
 from pytket.passes import BasePass
-
+from pytket.extensions.quantinuum.backends.api_wrappers import QuantinuumAPI
+from pytket.extensions.quantinuum.backends.credential_storage import (
+    QuantinuumConfigCredentialStorage,
+)
 from tierkreis import Worker
 from tierkreis.exceptions import TierkreisError
 
 from default_pass_quantinuum import default_compilation_pass
 
 worker = Worker("quantinuum_worker")
+api_handler = QuantinuumAPI(token_store=QuantinuumConfigCredentialStorage())
 
 
 @worker.task()
@@ -26,8 +30,8 @@ def get_backend_info(device_name: str) -> BackendInfo:
     """
     info = next(
         filter(
-            lambda x: x.name == device_name,
-            QuantinuumBackend.available_devices(),
+            lambda x: x.device_name == device_name,
+            QuantinuumBackend.available_devices(api_handler=api_handler),
         ),
         None,
     )
@@ -69,7 +73,7 @@ def backend_default_compilation_pass(
     :return: The default compilation pass for the backend.
     :rtype: BasePass
     """
-    backend = QuantinuumBackend(device_name)
+    backend = QuantinuumBackend(device_name, api_handler=api_handler)
     return backend.default_compilation_pass(optimisation_level)
 
 
@@ -100,7 +104,7 @@ def compile(
     :return: The compiled circuit.
     :rtype: Circuit
     """
-    backend = QuantinuumBackend(device_name)
+    backend = QuantinuumBackend(device_name, api_handler=api_handler)
     compilation_pass = backend.default_compilation_pass(optimisation_level)
     compilation_pass.apply(circuit)
     return circuit
@@ -148,7 +152,7 @@ def run_circuit(circuit: Circuit, n_shots: int, device_name: str) -> BackendResu
     :return: The backend result.
     :rtype: BackendResult
     """
-    backend = QuantinuumBackend(device_name)
+    backend = QuantinuumBackend(device_name, api_handler=api_handler)
     return backend.run_circuit(circuit, n_shots)
 
 

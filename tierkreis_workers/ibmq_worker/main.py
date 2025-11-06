@@ -21,7 +21,7 @@ worker = Worker("ibmq_worker")
 def get_backend_info(device_name: str) -> BackendInfo:
     info = next(
         filter(
-            lambda x: x.name == device_name,
+            lambda x: x.device_name == device_name,
             IBMQBackend.available_devices(),
         ),
         None,

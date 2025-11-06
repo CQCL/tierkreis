@@ -14,9 +14,20 @@ will install an executable Python script `tkr_quantinuum_worker` into your virtu
 
 ````{important}
 Accessing backends through require authentication.
-The worker uses the default mechanisms provided by the `qnexus` Python package.
-```bash
-uv run python -c "from qnexus.client.auth import login; login()"
+The worker uses the default mechanisms provided by the [`pytket-quantinuum`](https://docs.quantinuum.com/tket/extensions/pytket-quantinuum/#persistent-authentication-token-storage) Python package.
+Run the following code before using the Quantinuum worker
+```python
+from pytket.extensions.quantinuum.backends.api_wrappers import QuantinuumAPI
+from pytket.extensions.quantinuum.backends.credential_storage import (
+    QuantinuumConfigCredentialStorage,
+)
+from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
+
+backend = QuantinuumBackend(
+    device_name=<device_name>, #e.g. H2-1E
+    api_handler=QuantinuumAPI(token_store=QuantinuumConfigCredentialStorage()),
+)
+backend.login()
 ```
 
 ````

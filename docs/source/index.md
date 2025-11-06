@@ -17,7 +17,6 @@ installation.md
 core_concepts.md
 getting_started.md
 visualization.md
-:glob:
 worker/index
 apidocs/index
 ```

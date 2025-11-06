@@ -12,13 +12,11 @@ will install an executable Python script `tkr_ibmq_worker` into your virtual env
 
 ## Authentication
 
-````{important}
+```{important}
 Accessing backends requires authentication.
 To use IBMQ services, the credentials are expected to be stored in a file ` $HOME/.qiskit/qiskit-ibm.json` for more see the [Qiskit Documentation](https://quantum.cloud.ibm.com/docs/en/guides/cloud-setup)
 
 ```
-
-````
 
 The worker assumes that the IBMQ devices are accessible through Quantinuum Nexus.
 Tasks that require authentication are marked as such in the task list below.

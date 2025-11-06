@@ -52,7 +52,12 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
             const target = event.target as HTMLElement;
             if (target.closest("button") === null) {
               if (data.title == "Function") {
-                data.setInfo?.({ type: "Logs", content: logs ? logs : "" });
+                data.setInfo?.({
+                  type: "Logs",
+                  content: logs ? logs : "",
+                  workflow_id: data.workflowId,
+                  node_location: data.node_location,
+                });
               }
             }
           }}
@@ -81,6 +86,8 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
                     data.setInfo?.({
                       type: "Errors",
                       content: errors ? errors : "",
+                      workflow_id: data.workflowId,
+                      node_location: data.node_location,
                     })
                   }
                 >

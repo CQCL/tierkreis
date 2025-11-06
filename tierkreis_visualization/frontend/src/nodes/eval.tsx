@@ -16,6 +16,7 @@ import { bottomUpLayout } from "@/graph/layoutGraph";
 import { type BackendNode } from "./types";
 import { hideChildren } from "./hide_children";
 import { Minus, Plus } from "lucide-react";
+import { InfoProps } from "@/components/types";
 
 function replaceEval(
   nodeId: string,
@@ -163,13 +164,20 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
   const loadChildren = async (
     workflowId: string,
     node_location: string,
-    parentId: string
+    parentId: string,
+    setInfo: ((info: InfoProps) => void) | undefined
   ) => {
     const url = `${URL}/${workflowId}/nodes/${node_location}`;
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
       .then((data) => {
-        const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
+        const nodes = parseNodes(
+          data.nodes,
+          data.edges,
+          workflowId,
+          setInfo,
+          parentId
+        );
         const edges = parseEdges(data.edges, parentId);
         const oldEdges = reactFlowInstance.getEdges();
         const oldNodes = reactFlowInstance.getNodes();
@@ -208,7 +216,8 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
                   loadChildren(
                     node_data.workflowId,
                     node_data.node_location,
-                    node_data.id
+                    node_data.id,
+                    node_data.setInfo
                   )
                 }
               >

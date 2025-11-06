@@ -18,6 +18,7 @@ This worker is designed to work without authentication for the majority of the t
 
 ```{important}
 The `get_backend_info` function is the notable exception and requires authentication with Quantinuum Nexus to access the devices.
+The authentication depends on IBMQ and Quantinuum web services respectively.
 ```
 
 ## Elementary tasks
@@ -36,12 +37,18 @@ The pytket worker exposes the following elementary tasks to the user:
 - `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR.
 - `expectation` estimates the expectation value from shot counts.
 - `n_qubits` returns the number of qubits in a const circuit.
+- `backend_result_to_dict` and `backend_result_from_dict` convert between a `BackendResult` and a register based dictionary mapping register names to a list of shot bitstrings.
 
 The straight forward approach to compiling a circuit with the default pass for a backend is:
 
 1. Construct a `qnx.BackendConfig` object defining the desired backend
 2. Get the according `pytket.BackendInfo` object
 3. Provide both together with a circuit to immediately compile the circuit for the backend.
+
+```{warning}
+While there is an apply pass function, this will only work with serializable passes.
+Trying to use a non-serializable pass will result in an error.
+```
 
 ## Example
 

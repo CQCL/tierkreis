@@ -1,12 +1,23 @@
-# Worker Libraries
+# Workers
 
+A worker implements _atomic_ functionalities that will not be broken further by the controller.
 Tierkreis workers come in three flavors:
 
 - Builtin workers, provided by Tierkreis itself
 - User defined workers, by using the `@worker.task()` annotation or writing external ones
 - Prepackaged workers from the Tierkreis developers
 
-This document outlines the functionality of the prepackaged workers.
+```{toctree}
+:maxdepth: 2
+complex_types.md
+external_workers.md
+hello_world.md
+native_workers/index
+```
+
+## Prepackaged workers
+
+The following outlines the functionality of the prepackaged workers.
 Currently the following workers are provided as separate packages on pypi:
 
 - IBMQ
@@ -15,17 +26,17 @@ Currently the following workers are provided as separate packages on pypi:
 - Quantinuum Nexus
 - Quantinuum Backend
 
-## Qiskit Aer
+### Qiskit Aer
 
 Compile and run quantum circuits locally with Qiskit Aer.
-More detailed docs [here](worker/aer_worker.md).
+More detailed docs [here](worker/native_workers/aer_worker.md).
 
-## IBMQ
+### IBMQ
 
 Compile and run quantum circuits locally with IBMQ.
 More detailed docs [here](worker/native_workers/ibmq_worker.md).
 
-## Pytket
+### Pytket
 
 The pytket compiler suite to optimize circuits.
 The worker only contains a subset of common operations.
@@ -45,17 +56,17 @@ will install an executable Python script `tkr_pytket_worker` into your virtual e
 
 See the example `hamiltonian_graph.py`.
 
-## Quantinuum Nexus
+### Quantinuum Nexus
 
 Interface to the Quantinuum Nexus platform.
 More detailed docs [here](worker/native_workers/nexus_worker.md).
 
-## Quantinuum Backend
+### Quantinuum Backend
 
 Compile and run quantum circuits locally with Quantinuum backends.
 More detailed docs [here](worker/native_workers/quantinuum_worker.md).
 
-## Qulacs
+### Qulacs
 
 Compile and run quantum circuits locally with Qulacs.
 More detailed docs [here](worker/native_workers/qulacs_worker.md).

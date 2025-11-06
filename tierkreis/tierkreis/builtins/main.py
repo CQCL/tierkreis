@@ -8,7 +8,11 @@ from typing import NamedTuple, Sequence
 
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import portmapping
-from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.data.types import (
+    PType,
+    bytes_from_ptype,
+    ptype_from_bytes,
+)
 from tierkreis.worker.worker import TierkreisWorkerError
 from tierkreis.worker.storage.protocol import WorkerStorage
 from tierkreis import Worker
@@ -26,15 +30,70 @@ def iadd(a: int, b: int) -> int:
 
 
 @worker.task()
+def add(a: int | float, b: int | float) -> int | float:
+    return a + b
+
+
+@worker.task()
+def subtract(a: int | float, b: int | float) -> int | float:
+    return a - b
+
+
+@worker.task()
 def itimes(a: int, b: int) -> int:
     logger.debug(f"itimes {a} {b}")
     return a * b
 
 
 @worker.task()
+def times(a: int | float, b: int | float) -> int | float:
+    return a * b
+
+
+@worker.task()
+def divide(a: int | float, b: int | float) -> float:
+    return a / b
+
+
+@worker.task()
+def idivide(a: int, b: int) -> int:
+    return a // b
+
+
+@worker.task()
 def igt(a: int, b: int) -> bool:
     logger.debug(f"igt {a} {b}")
     return a > b
+
+
+@worker.task()
+def eq(a: int | float, b: int | float) -> bool:
+    return a == b
+
+
+@worker.task()
+def neq(a: int | float, b: int | float) -> bool:
+    return a != b
+
+
+@worker.task()
+def gt(a: int | float, b: int | float) -> bool:
+    return a > b
+
+
+@worker.task()
+def pow(a: int | float, b: int | float) -> int | float:
+    return a**b
+
+
+@worker.task()
+def tkr_abs(a: int | float) -> int | float:
+    return abs(a)
+
+
+@worker.task()
+def tkr_round(a: float | int) -> int:
+    return round(a)
 
 
 @worker.task()
@@ -177,6 +236,42 @@ def tkr_encode(string: str) -> bytes:
 @worker.task()
 def tkr_decode(bytes: bytes) -> str:
     return bytes.decode()
+
+
+@worker.task()
+def tkr_all[T: PType](values: Sequence[T]) -> bool:
+    return all(values)
+
+
+@worker.task()
+def tkr_any[T: PType](values: Sequence[T]) -> bool:
+    return any(values)
+
+
+@worker.task()
+def tkr_reversed[T: PType](values: list[T]) -> list[T]:
+    return list(reversed(values))
+
+
+@worker.task()
+def tkr_append[T: PType](values: list[T], extension: T) -> list[T]:
+    result = values.copy()
+    result.append(extension)
+    return result
+
+
+@worker.task()
+def tkr_extend[T: PType](first: list[T], second: list[T]) -> list[T]:
+    result = first.copy()
+    result.extend(second)
+    return result
+
+
+@worker.task()
+def tkr_concat_lists[U: PType, V: PType](
+    first: list[U], second: list[V]
+) -> list[U | V]:
+    return first + second
 
 
 if __name__ == "__main__":

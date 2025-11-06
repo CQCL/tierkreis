@@ -1,6 +1,6 @@
 """Code generated from builtins namespace. Please do not edit."""
 
-from typing import NamedTuple
+from typing import NamedTuple, Sequence, Union
 from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import PType
 
@@ -33,7 +33,72 @@ class iadd(NamedTuple):
         return "builtins"
 
 
+class add(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Union[int, float]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class subtract(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Union[int, float]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
 class itimes(NamedTuple):
+    a: TKR[int]  # noqa: F821 # fmt: skip
+    b: TKR[int]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class times(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Union[int, float]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class divide(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[float]]:  # noqa: F821 # fmt: skip
+        return TKR[float]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class idivide(NamedTuple):
     a: TKR[int]  # noqa: F821 # fmt: skip
     b: TKR[int]  # noqa: F821 # fmt: skip
 
@@ -53,6 +118,82 @@ class igt(NamedTuple):
     @staticmethod
     def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
         return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class eq(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class neq(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class gt(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class pow(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+    b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Union[int, float]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_abs(NamedTuple):
+    a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[Union[int, float]]]:  # noqa: F821 # fmt: skip
+        return TKR[Union[int, float]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_round(NamedTuple):
+    a: TKR[Union[float, int]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[int]]:  # noqa: F821 # fmt: skip
+        return TKR[int]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:
@@ -290,6 +431,81 @@ class tkr_decode(NamedTuple):
     @staticmethod
     def out() -> type[TKR[str]]:  # noqa: F821 # fmt: skip
         return TKR[str]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_all[T: PType](NamedTuple):
+    values: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_any[T: PType](NamedTuple):
+    values: TKR[Sequence[T]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[bool]]:  # noqa: F821 # fmt: skip
+        return TKR[bool]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_reversed[T: PType](NamedTuple):
+    values: TKR[list[T]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[list[T]]]:  # noqa: F821 # fmt: skip
+        return TKR[list[T]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_append[T: PType](NamedTuple):
+    values: TKR[list[T]]  # noqa: F821 # fmt: skip
+    extension: TKR[T]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[list[T]]]:  # noqa: F821 # fmt: skip
+        return TKR[list[T]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_extend[T: PType](NamedTuple):
+    first: TKR[list[T]]  # noqa: F821 # fmt: skip
+    second: TKR[list[T]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[list[T]]]:  # noqa: F821 # fmt: skip
+        return TKR[list[T]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
+class tkr_concat_lists[U: PType, V: PType](NamedTuple):
+    first: TKR[list[U]]  # noqa: F821 # fmt: skip
+    second: TKR[list[V]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[list[Union[U, V]]]]:  # noqa: F821 # fmt: skip
+        return TKR[list[Union[U, V]]]  # noqa: F821 # fmt: skip
 
     @property
     def namespace(self) -> str:

@@ -184,3 +184,27 @@ class n_qubits(NamedTuple):
     @property
     def namespace(self) -> str:
         return "pytket_worker"
+
+
+class backend_result_to_dict(NamedTuple):
+    backend_result: TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[dict[str, list[str]]]]:  # noqa: F821 # fmt: skip
+        return TKR[dict[str, list[str]]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"
+
+
+class backend_result_from_dict(NamedTuple):
+    data: TKR[dict[str, list[str]]]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]]]:  # noqa: F821 # fmt: skip
+        return TKR[OpaqueType["pytket.backends.backendresult.BackendResult"]]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "pytket_worker"

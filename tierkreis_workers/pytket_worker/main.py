@@ -1,12 +1,11 @@
+from collections import Counter
 from sys import argv
-from compile_circuit import (
-    MINIMAL_GATE_SET,
-    CircuitFormat,
-    OptimizationLevel,
-    compile_circuit,
-)
+
+import qnexus as qnx
 
 from pytket._tket.circuit import Circuit
+from pytket._tket.unit_id import Bit
+from pytket.backends.backendinfo import BackendInfo
 from pytket.backends.backendresult import BackendResult
 from pytket.circuit import OpType
 from pytket.passes import BasePass
@@ -15,13 +14,18 @@ from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
 from pytket.transform import Transform
 from pytket.utils.expectations import expectation_from_counts
 from pytket.utils.measurements import append_pauli_measurement
-from pytket.backends.backendinfo import BackendInfo
-
+from pytket.utils.outcomearray import OutcomeArray
 from qnexus import BackendConfig, IBMQConfig, QuantinuumConfig
-import qnexus as qnx
-from tierkreis.exceptions import TierkreisError
 
 from tierkreis import Worker
+from tierkreis.exceptions import TierkreisError
+
+from compile_circuit import (
+    MINIMAL_GATE_SET,
+    CircuitFormat,
+    OptimizationLevel,
+    compile_circuit,
+)
 
 worker = Worker("pytket_worker")
 
@@ -337,6 +341,59 @@ def n_qubits(circuit: Circuit) -> int:
     :rtype: int
     """
     return circuit.n_qubits
+
+
+@worker.task()
+def backend_result_to_dict(backend_result: BackendResult) -> dict[str, list[str]]:
+    """Converst a pytket BackendResults to a mapping register_name -> list of bitstrings.
+
+    :param backend_result: The backend results.
+    :type backend_result: BackendResult
+    :return: A dict of register names and shot bitstrings.
+    :rtype: dict[str, list[str]]
+    """
+    shots = backend_result.get_shots()
+    bits = backend_result.to_dict()["bits"]
+    register = Counter([bit[0] for bit in bits])
+    c_bits = {str(k): v for k, v in backend_result.c_bits.items()}
+    results = {name: [] for name in register}
+    for shot in shots:
+        for reg, len in register.items():
+            shot_str = ["0"] * len
+            for bit in bits:
+                if bit[0] == reg:
+                    shot_str[bit[1][0]] = str(shot[c_bits[f"{reg}[{bit[1][0]}]"]])
+            results[reg].append("".join(shot_str))
+
+    return results
+
+
+@worker.task()
+def backend_result_from_dict(data: dict[str, list[str]]) -> BackendResult:
+    """Turns a dict representation of shots on a backend into a pytket.BackendResult.
+
+    The expected format is a dict mapping register names to lists of bitstrings.
+    For example:
+    {
+        "c": ["00", "01", "10", "11"],
+        "d": ["0", "1", "0", "1"]
+    }
+
+    :param data: The dict representation of the shots.
+    :type data: dict[str, list[str]]
+    :return: The corresponding pytket.BackendResult.
+    :rtype: BackendResult
+    """
+    bits, bit_register = [], []
+    for key, values in data.items():
+        bit_register += [Bit(key, i) for i in range(len(values[0]))]
+        bits.append([[int(b) for b in shot] for shot in values])
+    bit_strings = [
+        [item for sublist in group for item in sublist] for group in zip(*bits)
+    ]
+    return BackendResult(
+        shots=OutcomeArray.from_readouts(bit_strings), c_bits=bit_register
+    )
 
 
 def main():

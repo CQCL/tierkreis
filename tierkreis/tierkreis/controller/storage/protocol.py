@@ -1,58 +1,116 @@
+from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
+import json
+import logging
 from pathlib import Path
-from typing import Any, Protocol
-
+from typing import Any
+from uuid import UUID
+from tierkreis.controller.data.graph import NodeDef, NodeDefModel
+from tierkreis.controller.data.location import Loc, OutputLoc, WorkerCallArgs
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.graph import NodeDef
-from tierkreis.controller.data.location import (
-    Loc,
-    OutputLoc,
-    WorkerCallArgs,
-)
+from tierkreis.exceptions import TierkreisError
+
+logger = logging.getLogger(__name__)
 
 
-class ControllerStorage(Protocol):
-    """The storage protocol defines interaction with the *state* of the computation.
+@dataclass
+class StorageEntryMetadata:
+    """Collection of commonly found metadata.
 
-    The controller progresses the computation by committing the output values of a computation to the storage.
-    They can then in turn be picked up as inputs of dependent calculations.
-    For this purpose the protocol exposes *read_...* and *write_...* functions.
-    """
+    Storage implementations should decide which are applicable."""
 
-    logs_path: Path
+    st_mtime: float | None = None
 
-    def write_node_def(self, node_location: Loc, node: NodeDef) -> None:
-        """Stores the definition of the node defined at the given location.
 
-        Example::
+class ControllerStorage(ABC):
+    tkr_dir: Path
+    workflow_id: UUID
+    name: str | None
 
-            controller_storage.write_node_def(
-                Loc(), Input(name="prediction", inputs={})
-            )
+    @abstractmethod
+    def delete(self, path: Path) -> None:
+        """Delete the storage entry at the specified path."""
 
-        Will store the {"name": "pred", "inputs": {},"type": "input"} at location "-".
+    @abstractmethod
+    def exists(self, path: Path) -> bool:
+        """Is there an entry in the storage at the specified path?"""
 
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :param node: The definition of the node.
-        :type node: NodeDef
-        """
-        ...
+    @abstractmethod
+    def link(self, src: Path, dst: Path) -> None:
+        """The storage entry at `dst` should have the same value as the entry at `src`."""
+
+    @abstractmethod
+    def list_subpaths(self, path: Path) -> list[Path]:
+        """List all the paths starting with the specified path.
+
+        This is used when the number of entries can only be determined at runtime.
+        For example in a map node."""
+
+    @abstractmethod
+    def mkdir(self, path: Path) -> None:
+        """Create an empty directory (and parents) at this path.
+
+        Probably only required for file-based storage."""
+
+    @abstractmethod
+    def read(self, path: Path) -> bytes:
+        """Read the storage entry at the specified path."""
+
+    @abstractmethod
+    def stat(self, path: Path) -> StorageEntryMetadata:
+        """Get applicable stats for storage entry."""
+
+    @abstractmethod
+    def touch(self, path: Path) -> None:
+        """Create empty storage entry at the specified path."""
+
+    @abstractmethod
+    def write(self, path: Path, value: bytes) -> None:
+        """Write the given bytes to the storage entry at the specified path."""
+
+    @property
+    def workflow_dir(self) -> Path:
+        return self.tkr_dir / str(self.workflow_id)
+
+    @property
+    def logs_path(self) -> Path:
+        return self.workflow_dir / "logs"
+
+    def _nodedef_path(self, node_location: Loc) -> Path:
+        return self.workflow_dir / str(node_location) / "nodedef"
+
+    def _worker_call_args_path(self, node_location: Loc) -> Path:
+        return self.workflow_dir / str(node_location) / "definition"
+
+    def _metadata_path(self, node_location: Loc) -> Path:
+        return self.workflow_dir / str(node_location) / "_metadata"
+
+    def _outputs_dir(self, node_location: Loc) -> Path:
+        return self.workflow_dir / str(node_location) / "outputs"
+
+    def _output_path(self, node_location: Loc, port_name: PortID) -> Path:
+        return self._outputs_dir(node_location) / port_name
+
+    def _done_path(self, node_location: Loc) -> Path:
+        return self.workflow_dir / str(node_location) / "_done"
+
+    def _error_path(self, node_location: Loc) -> Path:
+        return self.workflow_dir / str(node_location) / "_error"
+
+    def _error_logs_path(self, node_location: Loc) -> Path:
+        return self.workflow_dir / str(node_location) / "errors"
+
+    def clean_graph_files(self) -> None:
+        self.delete(self.workflow_dir)
+
+    def write_node_def(self, node_location: Loc, node: NodeDef):
+        bs = NodeDefModel(root=node).model_dump_json().encode()
+        self.write(self._nodedef_path(node_location), bs)
 
     def read_node_def(self, node_location: Loc) -> NodeDef:
-        """Loads the definition of the node defined at the given location.
-
-        Example::
-
-            controller_storage.read_node_def(Loc())
-
-        Will return the node definition stored at location "-".
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: The definition of the node.
-        :rtype: NodeDef
-        """
-        ...
+        bs = self.read(self._nodedef_path(node_location))
+        return NodeDefModel(**json.loads(bs)).root
 
     def write_worker_call_args(
         self,
@@ -61,95 +119,33 @@ class ControllerStorage(Protocol):
         inputs: dict[PortID, OutputLoc],
         output_list: list[PortID],
     ) -> Path:
-        """Stores the call arguments for the function node at the given location.
+        call_args_path = self._worker_call_args_path(node_location)
+        node_definition = WorkerCallArgs(
+            function_name=function_name,
+            inputs={
+                k: self._output_path(loc, port).relative_to(self.tkr_dir)
+                for k, (loc, port) in inputs.items()
+            },
+            outputs={
+                k: self._output_path(node_location, k).relative_to(self.tkr_dir)
+                for k in output_list
+            },
+            output_dir=self._outputs_dir(node_location).relative_to(self.tkr_dir),
+            done_path=self._done_path(node_location).relative_to(self.tkr_dir),
+            error_path=self._error_path(node_location).relative_to(self.tkr_dir),
+            logs_path=self.logs_path.relative_to(self.tkr_dir),
+        )
+        self.write(call_args_path, node_definition.model_dump_json().encode())
+        self.mkdir(self._outputs_dir(node_location))
 
-        Function nodes will always be invoked by a worker.
-        For example a node `Func("builtins.iadd", {"a": a, "b": b})`
-        would be stored as::
+        if (parent := node_location.parent()) is not None:
+            self.touch(self._metadata_path(parent))
 
-            {
-                "function_name": "builtins.iadd",
-                "inputs": {
-                    "a": Loc("a"),
-                    "b": Loc("b")
-                },
-                "outputs": {"value": Loc("value")}
-            }
-
-        where inputs and outputs link the ports of different nodes.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :param function_name: The name of the function being called.
-        :type function_name: str
-        :param inputs: The inputs to the function.
-        :type inputs: dict[PortID, OutputLoc]
-        :param output_list: The list of outputs from the function.
-        :type output_list: list[PortID]
-        :return: The path to the stored call arguments, such that the worker can find them.
-        :rtype: Path
-        """
-        ...
+        return call_args_path.relative_to(self.tkr_dir)
 
     def read_worker_call_args(self, node_location: Loc) -> WorkerCallArgs:
-        """Loads the call arguments for the function node at the given location.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: The call arguments for the worker.
-        :rtype: WorkerCallArgs
-        """
-        ...
-
-    def read_errors(self, node_location: Loc) -> str:
-        """Loads the error logs for the node at the given location.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: The error logs for the node.
-        :rtype: str
-        """
-        ...
-
-    def node_has_error(self, node_location: Loc) -> bool:
-        """Checks if the node at the given location has encountered an error.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: True if the node has error logs, False otherwise.
-        :rtype: bool
-        """
-        ...
-
-    def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
-        """Writes the error messages for the node at the given location.
-
-        For function nodes this allows workers to forward error messages to the controller.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :param error_logs: The error logs to write.
-        :type error_logs: str
-        """
-        ...
-
-    def mark_node_finished(self, node_location: Loc) -> None:
-        """Marks the node at the given location as finished.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        """
-        ...
-
-    def is_node_finished(self, node_location: Loc) -> bool:
-        """Checks if the node at the given location is finished.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: True if the node is finished, False otherwise.
-        :rtype: bool
-        """
-        ...
+        node_definition_path = self._worker_call_args_path(node_location)
+        return WorkerCallArgs(**json.loads(self.read(node_definition_path)))
 
     def link_outputs(
         self,
@@ -158,104 +154,84 @@ class ControllerStorage(Protocol):
         old_location: Loc,
         old_port: PortID,
     ) -> None:
-        """Connects the output port of one node to the output port of another.
-
-        This is useful when unwrapping nodes such that the output of a nested node
-        can be reused as the output of the parent node.
-
-        :param new_location: The location of the new node.
-        :type new_location: Loc
-        :param new_port: The port of the new node.
-        :type new_port: PortID
-        :param old_location: The location of the old node.
-        :type old_location: Loc
-        :param old_port: The port of the old node.
-        :type old_port: PortID
-        """
-        ...
+        new_dir = self._output_path(new_location, new_port)
+        try:
+            self.link(self._output_path(old_location, old_port), new_dir)
+        except FileNotFoundError as e:
+            logger.warning(
+                f"Could not link {e.filename} to {e.filename2}."
+                " Possibly a mislabelled variable?"
+            )
+        except OSError as e:
+            raise TierkreisError(
+                "Workflow already exists. Try running with a different ID or do_cleanup."
+            ) from e
 
     def write_output(
         self, node_location: Loc, output_name: PortID, value: bytes
     ) -> Path:
-        """Writes the output value for port of the node at the given location.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :param output_name: The name of the output port.
-        :type output_name: PortID
-        :param value: The value to write to the output port.
-        :type value: bytes
-        :return: The path to the written output.
-        :rtype: Path
-        """
-        ...
+        output_path = self._output_path(node_location, output_name)
+        self.write(output_path, bytes(value))
+        return output_path
 
     def read_output(self, node_location: Loc, output_name: PortID) -> bytes:
-        """Reads the output value for the port of the node at the given location.
+        return self.read(self._output_path(node_location, output_name))
 
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :param output_name: The name of the output port.
-        :type output_name: PortID
-        :return: The output value for the port.
-        :rtype: bytes
-        """
-        ...
+    def read_errors(self, node_location: Loc) -> str:
+        if not self.exists(self._error_logs_path(node_location)):
+            if self.exists(self._error_path(node_location)):
+                return self.read(self._error_path(node_location)).decode()
+            return ""
+        errors = self.read(self._error_logs_path(node_location)).decode()
+        if errors == "":
+            if self.exists(self._error_path(node_location)):
+                return self.read(self._error_path(node_location)).decode()
+        return errors
+
+    def write_node_errors(self, node_location: Loc, error_logs: str) -> None:
+        self.write(self._error_logs_path(node_location), error_logs.encode())
 
     def read_output_ports(self, node_location: Loc) -> list[PortID]:
-        """Checks which output ports are available for the node at the given location.
-
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: The list of output ports for the node.
-        :rtype: list[PortID]
-        """
-        ...
+        dir_list = self.list_subpaths(self._outputs_dir(node_location))
+        dir_list.sort()
+        return [x.name for x in dir_list]
 
     def is_node_started(self, node_location: Loc) -> bool:
-        """Checks if the node at the given location has started.
+        return self.exists(Path(self._nodedef_path(node_location)))
 
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: True if the node has started, False otherwise.
-        :rtype: bool
-        """
-        ...
+    def is_node_finished(self, node_location: Loc) -> bool:
+        return self.exists(self._done_path(node_location))
 
-    def read_metadata(self, node_location: Loc) -> dict[str, Any]:
-        """Reads the metadata for the node at the given location.
+    def node_has_error(self, node_location: Loc) -> bool:
+        return self.exists(self._error_path(node_location))
 
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        :return: The metadata for the node.
-        :rtype: dict[str, Any]
-        """
-        ...
+    def mark_node_finished(self, node_location: Loc) -> None:
+        self.touch(self._done_path(node_location))
+
+        if (parent := node_location.parent()) is not None:
+            self.touch(self._metadata_path(parent))
 
     def write_metadata(self, node_location: Loc) -> None:
-        """Writes the metadata for the node at the given location.
+        j = json.dumps({"name": self.name, "start_time": datetime.now().isoformat()})
+        self.write(self._metadata_path(node_location), j.encode())
 
-        :param node_location: The location of the node.
-        :type node_location: Loc
-        """
-        ...
+    def read_metadata(self, node_location: Loc) -> dict[str, Any]:
+        return json.loads(self.read(self._metadata_path(node_location)))
 
     def read_started_time(self, node_location: Loc) -> str | None:
-        """Reads the start time of a node
-
-        :param node_location: The location of the node
-        :type node_location: Loc
-        :return: A time string when node has started, else None.
-        :rtype: str | None
-        """
-        ...
+        node_def = Path(self._nodedef_path(node_location))
+        if not self.exists(node_def):
+            return None
+        since_epoch = self.stat(node_def).st_mtime
+        if since_epoch is None:
+            return None
+        return datetime.fromtimestamp(since_epoch).isoformat()
 
     def read_finished_time(self, node_location: Loc) -> str | None:
-        """Reads the finish time of a node
-
-        :param node_location: The location of the node
-        :type node_location: Loc
-        :return: A time string when node is completed, else None.
-        :rtype: str | None
-        """
-        ...
+        done = Path(self._done_path(node_location))
+        if not self.exists(done):
+            return None
+        since_epoch = self.stat(done).st_mtime
+        if since_epoch is None:
+            return None
+        return datetime.fromtimestamp(since_epoch).isoformat()

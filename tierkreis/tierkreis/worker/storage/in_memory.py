@@ -1,8 +1,13 @@
+import fnmatch
+import json
 import logging
 from pathlib import Path
 
 from tierkreis.controller.data.location import WorkerCallArgs
-from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
+from tierkreis.controller.storage.in_memory import (
+    ControllerInMemoryStorage,
+    InMemoryFileData,
+)
 from tierkreis.exceptions import TierkreisError
 
 
@@ -17,33 +22,23 @@ class InMemoryWorkerStorage:
         return Path(path)
 
     def read_call_args(self, path: Path) -> WorkerCallArgs:
-        loc = self.controller_storage.path_to_loc(path)[0]
-        return self.controller_storage.read_worker_call_args(loc)
+        bs = self.controller_storage.files[path].value
+        return WorkerCallArgs(**json.loads(bs))
 
     def read_input(self, path: Path) -> bytes:
-        loc, port = self.controller_storage.path_to_loc(path)
-        if port is None:
-            raise TierkreisError(f"Path {path} does not specify a port.")
-        return self.controller_storage.read_output(loc, port)
+        return self.controller_storage.files[path].value
 
     def write_output(self, path: Path, value: bytes) -> None:
-        loc, port = self.controller_storage.path_to_loc(path)
-        if port is None:
-            raise TierkreisError(f"Path {path} does not specify a port.")
-        self.controller_storage.write_output(loc, port, value)
+        self.controller_storage.files[path] = InMemoryFileData(value)
 
     def glob(self, path_string: str) -> list[str]:
-        loc, port = self.controller_storage.path_to_loc(Path(path_string))
-        path = self.controller_storage.loc_to_path(loc)
-        outputs = [str(key) for key in self.controller_storage.nodes[path].outputs]
-        if port is not None:
-            outputs = filter(lambda o: o.startswith(port[:-1]), outputs)
-        return [loc + "/" + out for out in outputs]
+        files = [str(x) for x in self.controller_storage.files.keys()]
+        matching = fnmatch.filter(files, path_string)
+        return matching
 
     def mark_done(self, path: Path) -> None:
-        loc, _ = self.controller_storage.path_to_loc(path)
-        self.controller_storage.mark_node_finished(loc)
+        self.controller_storage.touch(path)
 
     def write_error(self, path: Path, error_logs: str) -> None:
-        loc, _ = self.controller_storage.path_to_loc(path)
-        self.controller_storage.write_node_errors(loc, error_logs)
+        logger.error(error_logs)
+        raise TierkreisError("Error occured when running graph in-memory.")

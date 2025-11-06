@@ -19,6 +19,14 @@ worker = Worker("ibmq_worker")
 
 @worker.task()
 def get_backend_info(device_name: str) -> BackendInfo:
+    """Retrieves a BackendInfo object for a given device name.
+
+    :param device_name: The name of the device.
+    :type device_name: str
+    :raises TierkreisError: If the device is not found or not accessible.
+    :return: The BackendInfo object for the device.
+    :rtype: BackendInfo
+    """
     info = next(
         filter(
             lambda x: x.device_name == device_name,
@@ -37,6 +45,15 @@ def get_backend_info(device_name: str) -> BackendInfo:
 def backend_pass_from_info(
     backend_info: BackendInfo, optimisation_level: int = 2
 ) -> BasePass:
+    """Returns a compilation pass according to the backend info.
+
+    :param backend_info: Device information to use for compilation.
+    :type backend_info: BackendInfo
+    :param optimisation_level: The optimization level for the compilation, defaults to 2
+    :type optimisation_level: int, optional
+    :return: A compilation pass for the backend.
+    :rtype: BasePass
+    """
     return IBMQBackend.pass_from_info(
         backend_info, optimisation_level=optimisation_level
     )
@@ -46,6 +63,15 @@ def backend_pass_from_info(
 def backend_default_compilation_pass(
     device_name: str, optimisation_level: int = 2
 ) -> BasePass:
+    """Returns the default compilation pass for a given device name.
+
+    :param device_name: The name of the device.
+    :type device_name: str
+    :param optimisation_level: The optimization level for the compilation, defaults to 2
+    :type optimisation_level: int, optional
+    :return: The default compilation pass for the backend.
+    :rtype: BasePass
+    """
     backend = IBMQBackend(device_name)
     return backend.default_compilation_pass(optimisation_level)
 
@@ -55,6 +81,15 @@ def fixed_pass(
     coupling_map: Sequence[tuple[int, int]],
     optimisation_level: int = 2,
 ) -> BasePass:
+    """Returns a predefined compilation pass for IBMQ devices.
+
+    :param coupling_map: The coupling map for the device.
+    :type coupling_map: Sequence[tuple[int, int]]
+    :param optimisation_level: The optimization level for the compilation, defaults to 2
+    :type optimisation_level: int, optional
+    :return: A compilation pass for the backend.
+    :rtype: BasePass
+    """
     arch = Architecture(coupling_map)
     return default_compilation_pass(optimisation_level, arch, IBMQ_GATE_SET)
 
@@ -65,6 +100,17 @@ def compile(
     device_name: str,
     optimisation_level: int = 2,
 ) -> Circuit:
+    """Gets a compiled circuit for a given device name.
+
+    :param circuit: The original circuit to compile.
+    :type circuit: Circuit
+    :param device_name: The name of the device to compile for.
+    :type device_name: str
+    :param optimisation_level: The optimization level for the compilation, defaults to 2
+    :type optimisation_level: int, optional
+    :return: The compiled circuit.
+    :rtype: Circuit
+    """
     backend = IBMQBackend(device_name)
     compilation_pass = backend.default_compilation_pass(optimisation_level)
     compilation_pass.apply(circuit)

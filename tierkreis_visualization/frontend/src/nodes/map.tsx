@@ -130,7 +130,13 @@ export function MapNode({ data: node_data }: NodeProps<BackendNode>) {
     fetch(url, { method: "GET", headers: { Accept: "application/json" } })
       .then((response) => response.json())
       .then((data) => {
-        const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
+        const nodes = parseNodes(
+          data.nodes,
+          data.edges,
+          workflowId,
+          node_data.setInfo,
+          parentId
+        );
         const oldEdges = reactFlowInstance.getEdges();
         const oldNodes = reactFlowInstance.getNodes();
         const { nodes: newNodes, edges: newEdges } = replaceMap(

@@ -55,7 +55,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
                 data.setInfo?.({
                   type: "Logs",
                   content: logs ? logs : "",
-                  workflow_id: data.workflowId,
+                  workflowId: data.workflowId,
                   node_location: data.node_location,
                 });
               }
@@ -86,7 +86,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
                     data.setInfo?.({
                       type: "Errors",
                       content: errors ? errors : "",
-                      workflow_id: data.workflowId,
+                      workflowId: data.workflowId,
                       node_location: data.node_location,
                     })
                   }

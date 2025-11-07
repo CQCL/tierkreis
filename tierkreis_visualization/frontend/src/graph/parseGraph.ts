@@ -170,9 +170,16 @@ export function parseEdges(edges: PyEdge[], parentId?: string): Edge[] {
 export function parseGraph(
   data: { nodes: PyNode[]; edges: PyEdge[] },
   workflowId: string,
+  setInfo: ((info: InfoProps) => void) | undefined,
   parentId?: string
 ) {
-  const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
+  const nodes = parseNodes(
+    data.nodes,
+    data.edges,
+    workflowId,
+    setInfo,
+    parentId
+  );
   const edges = parseEdges(data.edges, parentId);
   return { nodes, edges };
 }

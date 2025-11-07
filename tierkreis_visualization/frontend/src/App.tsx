@@ -134,7 +134,11 @@ const Main = (props: {
       const nodes = reactFlowInstance.getNodes();
       const edges = reactFlowInstance.getEdges();
       console.log({ edges, nodes });
-      const graph = parseGraph(JSON.parse(event.data), props.workflow_id);
+      const graph = parseGraph(
+        JSON.parse(event.data),
+        props.workflow_id,
+        props.setInfo
+      );
       let nodesMap = new Map();
       if (nodes) {
         nodesMap = new Map(nodes.map((node) => [node.id, node]));
@@ -277,6 +281,8 @@ export default function App() {
   const [info, setInfo] = useState<InfoProps>({
     type: "Logs",
     content: logs.data,
+    workflowId: workflow_id,
+    node_location: "-",
   });
   const graphQuery = useSuspenseQuery({
     queryKey: ["workflowGraph", workflow_id],
@@ -290,7 +296,7 @@ export default function App() {
       }
       return response.json();
     },
-    select: (data) => parseGraph(data, workflow_id),
+    select: (data) => parseGraph(data, workflow_id, setInfo),
   });
 
   const remoteGraph = graphQuery.data;

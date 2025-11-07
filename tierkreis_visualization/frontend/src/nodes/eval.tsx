@@ -144,7 +144,8 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
           handles={node_data.handles.inputs}
           id={node_data.id}
           isOpen={node_data.isTooltipOpen}
-          onOpenChange={node_data.onTooltipOpenChange}
+          hoveredId={node_data.id}
+          setHoveredId={node_data.setHoveredId}
         />
         <div className="grid justify-items-end">
           <Button
@@ -229,7 +230,6 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
             handles={node_data.handles.inputs}
             id={node_data.id}
             isOpen={node_data.isTooltipOpen}
-            onOpenChange={node_data.onTooltipOpenChange}
             hoveredId={node_data.hoveredId}
             setHoveredId={node_data.setHoveredId}
           />
@@ -237,7 +237,6 @@ export function EvalNode({ data: node_data }: NodeProps<BackendNode>) {
             handles={node_data.handles.outputs}
             id={node_data.id}
             isOpen={node_data.isTooltipOpen}
-            onOpenChange={node_data.onTooltipOpenChange}
             hoveredId={node_data.hoveredId}
             setHoveredId={node_data.setHoveredId}
           />

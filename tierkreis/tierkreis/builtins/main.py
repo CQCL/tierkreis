@@ -35,6 +35,11 @@ def add(a: int | float, b: int | float) -> int | float:
 
 
 @worker.task()
+def isubtract(a: int, b: int) -> int:
+    return a - b
+
+
+@worker.task()
 def subtract(a: int | float, b: int | float) -> int | float:
     return a - b
 
@@ -67,6 +72,11 @@ def igt(a: int, b: int) -> bool:
 
 
 @worker.task()
+def gt(a: int | float, b: int | float) -> bool:
+    return a > b
+
+
+@worker.task()
 def eq(a: int | float, b: int | float) -> bool:
     return a == b
 
@@ -77,8 +87,8 @@ def neq(a: int | float, b: int | float) -> bool:
 
 
 @worker.task()
-def gt(a: int | float, b: int | float) -> bool:
-    return a > b
+def ipow(a: int, b: int) -> int:
+    return a**b
 
 
 @worker.task()
@@ -102,13 +112,19 @@ def neg(a: bool) -> bool:
 
 
 @worker.task()
-def impl_and(a: bool, b: bool) -> bool:
+def trk_and(a: bool, b: bool) -> bool:
     logger.debug(f"and {a} {b}")
     return a and b
 
 
 @worker.task()
-def impl_id[T: PType](value: T) -> T:
+def trk_or(a: bool, b: bool) -> bool:
+    logger.debug(f"and {a} {b}")
+    return a or b
+
+
+@worker.task()
+def tkr_id[T: PType](value: T) -> T:
     logger.debug(f"id {value}")
     return value
 
@@ -132,7 +148,7 @@ def head[T: PType](v: list[T]) -> Headed[T]:  # noqa: E741
 
 
 @worker.task()
-def impl_len[A](v: list[A]) -> int:
+def tkr_len[A](v: list[A]) -> int:
     logger.info("len: %s", v)
     return len(v)
 
@@ -173,7 +189,7 @@ def concat(lhs: str, rhs: str) -> str:
 
 
 @worker.task()
-def zip_impl[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
+def tkr_zip[U, V](a: list[U], b: list[V]) -> list[tuple[U, V]]:
     return list(zip(a, b))
 
 
@@ -190,7 +206,7 @@ def unzip[U: PType, V: PType](value: list[tuple[U, V]]) -> Unzipped[U, V]:
 
 
 @worker.task()
-def tuple_impl[U, V](a: U, b: V) -> tuple[U, V]:
+def tkr_tuple[U, V](a: U, b: V) -> tuple[U, V]:
     return (a, b)
 
 
@@ -254,24 +270,75 @@ def tkr_reversed[T: PType](values: list[T]) -> list[T]:
 
 
 @worker.task()
-def tkr_append[T: PType](values: list[T], extension: T) -> list[T]:
-    result = values.copy()
-    result.append(extension)
-    return result
-
-
-@worker.task()
 def tkr_extend[T: PType](first: list[T], second: list[T]) -> list[T]:
-    result = first.copy()
-    result.extend(second)
-    return result
+    first.extend(second)
+    return first
 
 
 @worker.task()
-def tkr_concat_lists[U: PType, V: PType](
-    first: list[U], second: list[V]
-) -> list[U | V]:
+def concat_lists[U: PType, V: PType](first: list[U], second: list[V]) -> list[U | V]:
     return first + second
+
+
+@worker.task()
+def tkr_str(value: int | float | bool) -> str:
+    return str(value)
+
+
+@worker.task()
+def tkr_int(value: int | float | bool | str) -> int:
+    return int(value)
+
+
+@worker.task()
+def sum_list(values: list[int | float]) -> int | float:
+    return sum(values)
+
+
+@worker.task()
+def prod_list(values: list[int | float]) -> int | float:
+    prod = 1
+    for v in values:
+        prod *= v
+    return prod
+
+
+@worker.task()
+def max_item(values: list[int | float]) -> int | float:
+    return max(values)
+
+
+@worker.task()
+def min_item(values: list[int | float]) -> int | float:
+    return min(values)
+
+
+@worker.task()
+def sort_number_list(values: list[int | float]) -> list[int | float]:
+    return sorted(values)
+
+
+@worker.task()
+def sort_string_list(values: list[str]) -> list[str]:
+    return sorted(values)
+
+
+@worker.task()
+def flatten[T: PType](values: list[list[T]]) -> list[T]:
+    out = []
+    for sub in values:
+        out.extend(sub)
+    return out
+
+
+@worker.task()
+def take[T: PType](values: list[T], n: int) -> list[T]:
+    return values[:n]
+
+
+@worker.task()
+def drop[T: PType](values: list[T], n: int) -> list[T]:
+    return values[n:]
 
 
 if __name__ == "__main__":

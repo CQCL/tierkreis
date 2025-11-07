@@ -2,9 +2,9 @@
 members = [
     "tierkreis",
     "tierkreis_visualization",
-
-    "tierkreis_workers/*",
+    "tierkreis_workers/*worker",
 ]
+
 
 [dependency-groups]
 # Default dev dependency group

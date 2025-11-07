@@ -2,7 +2,7 @@ from pytket._tket.unit_id import Bit
 from pytket.backends.backendresult import BackendResult
 from pytket.utils.outcomearray import OutcomeArray
 
-from main import backend_result_from_dict, backend_result_to_dict
+from .main import backend_result_from_dict, backend_result_to_dict
 
 
 def test_backend_result_conversion() -> None:

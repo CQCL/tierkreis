@@ -19,6 +19,12 @@ jobs:
       command_name: test
       command: just test
 
+  test-workers:
+    uses: ./.github/workflows/run_check_matrix.yml
+    with:
+      command_name: test-workers
+      command: just test-workers
+
   examples:
     uses: ./.github/workflows/run_check_matrix.yml
     with:

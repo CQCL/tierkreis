@@ -74,7 +74,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               handles={data.handles.inputs}
               id={data.id}
               isOpen={data.isTooltipOpen}
-              hoveredId={data.id}
+              hoveredId={data.hoveredId}
               setHoveredId={data.setHoveredId}
             />
             <div className="flex items-center justify-center">
@@ -100,7 +100,7 @@ export function DefaultNode({ data }: NodeProps<BackendNode>) {
               handles={data.handles.outputs}
               id={data.id}
               isOpen={data.isTooltipOpen}
-              hoveredId={data.id}
+              hoveredId={data.hoveredId}
               setHoveredId={data.setHoveredId}
             />
           </CardContent>

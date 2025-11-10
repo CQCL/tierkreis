@@ -39,7 +39,7 @@ Tasks that require authentication are marked as such in the task list below.
 The Quantinuum worker exposes the following elementary tasks to the user:
 
 - `get_backend_info` retrieves the backend info given a configuration dict. **Requires authentication**.
-- `backend_pass_from_info` constructs a compilation pass using a backend info object. **Requires authentication**.
+- `backend_pass_from_info` constructs a compilation pass using a backend info object.
 - `backend_default_compilation_pass` fetches the default pass given the device name. **Requires authentication**.
 - `compile` fetches and applies the default compilation pass. **Requires authentication**.
 - `compile_circuit_quantinuum` and `compile_circuits_quantinuum` applies a predefined compilation pass to a (list of) circuits.

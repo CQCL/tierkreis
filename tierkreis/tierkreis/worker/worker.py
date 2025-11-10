@@ -4,7 +4,7 @@ from logging import getLogger
 from pathlib import Path
 import sys
 from types import TracebackType
-from typing import Any, Callable, TypeVar
+from typing import Callable, TypeVar
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
@@ -39,7 +39,7 @@ class TierkreisWorkerError(TierkreisError):
     pass
 
 
-F = TypeVar("F", bound=Callable[..., Any])
+F = TypeVar("F", bound=Callable[..., PModel])
 
 
 class Worker:

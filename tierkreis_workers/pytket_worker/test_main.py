@@ -1,6 +1,8 @@
 from pytket._tket.unit_id import Bit
 from pytket.backends.backendresult import BackendResult
 from pytket.utils.outcomearray import OutcomeArray
+from pytket._tket.circuit import Circuit
+from pytket.extensions.qiskit.backends.aer import AerBackend
 
 from .main import backend_result_from_dict, backend_result_to_dict
 
@@ -23,5 +25,21 @@ def test_backend_result_conversion() -> None:
     }
 
 
-if __name__ == "__main__":
-    test_backend_result_conversion()
+def _deterministic_circuit() -> Circuit:
+    circuit = Circuit(3)
+    circuit.add_c_register("a", 1)
+    circuit.add_c_register("b", 2)
+    circuit.X(0)
+    circuit.X(1)
+    circuit.Measure(0, Bit("a", 0))
+    circuit.Measure(1, Bit("b", 0))
+    circuit.Measure(2, Bit("b", 1))
+    return circuit
+
+
+def test_deterministic_circuit() -> None:
+    circuit = _deterministic_circuit()
+    result = AerBackend().run_circuit(circuit, 10)
+    result_dict = backend_result_to_dict(result)
+    assert result_dict == {"a": ["1"] * 10, "b": ["10"] * 10}
+    assert result == backend_result_from_dict(result_dict)

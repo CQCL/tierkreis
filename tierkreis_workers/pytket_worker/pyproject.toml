@@ -12,10 +12,13 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-backends = [
+backend-qiskit = [
     "pytket-qiskit",
+]
+backend-quantinuum = [
     "pytket-quantinuum",
 ]
+
 
 [build-system]
 requires = ["hatchling"]

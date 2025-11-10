@@ -100,17 +100,28 @@ def compile_using_info(
     :return: The compiled circuit.
     :rtype: Circuit
     """
-    try:
-        from pytket.extensions.qiskit.backends.ibm import IBMQBackend
-        from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
-    except ModuleNotFoundError as e:
-        raise TierkreisError("Pytket worker could not import extension backends") from e
     match config:
         case IBMQConfig():
+            try:
+                from pytket.extensions.qiskit.backends.ibm import IBMQBackend
+            except ModuleNotFoundError as e:
+                raise TierkreisError(
+                    "Pytket worker could not import IBMQBackend."
+                    "Please mnake sure to install the extras to use this task."
+                ) from e
             compilation_pass = IBMQBackend.pass_from_info(
                 backend_info, optimisation_level, timeout
             )
         case QuantinuumConfig():
+            try:
+                from pytket.extensions.quantinuum.backends.quantinuum import (
+                    QuantinuumBackend,
+                )
+            except ModuleNotFoundError as e:
+                raise TierkreisError(
+                    "Pytket worker could not import QuantinuumBackend."
+                    "Please mnake sure to install the extras to use this task."
+                ) from e
             compilation_pass = QuantinuumBackend.pass_from_info(
                 backend_info, optimisation_level=optimisation_level, timeout=timeout
             )

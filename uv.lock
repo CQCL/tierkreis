@@ -1,5 +1,5 @@
 version = 1
-revision = 3
+revision = 2
 requires-python = ">=3.12"
 
 [manifest]
@@ -3002,8 +3002,10 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
-backends = [
+backend-qiskit = [
     { name = "pytket-qiskit" },
+]
+backend-quantinuum = [
     { name = "pytket-quantinuum" },
 ]
 
@@ -3011,12 +3013,12 @@ backends = [
 requires-dist = [
     { name = "pytket" },
     { name = "pytket-qirpass" },
-    { name = "pytket-qiskit", marker = "extra == 'backends'" },
-    { name = "pytket-quantinuum", marker = "extra == 'backends'", git = "https://github.com/CQCL/pytket-quantinuum" },
+    { name = "pytket-qiskit", marker = "extra == 'backend-qiskit'" },
+    { name = "pytket-quantinuum", marker = "extra == 'backend-quantinuum'", git = "https://github.com/CQCL/pytket-quantinuum" },
     { name = "qnexus" },
     { name = "tierkreis", editable = "tierkreis" },
 ]
-provides-extras = ["backends"]
+provides-extras = ["backend-qiskit", "backend-quantinuum"]
 
 [[package]]
 name = "tkr-quantinuum-worker"

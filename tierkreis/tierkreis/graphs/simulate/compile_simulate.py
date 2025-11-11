@@ -2,7 +2,7 @@
 from typing import Literal, NamedTuple
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis.builtins.stubs import zip_impl, untuple
+from tierkreis.builtins.stubs import tkr_zip, untuple
 from tierkreis.aer_worker import (
     get_compiled_circuit as aer_compile,
     run_circuit as aer_run,
@@ -76,7 +76,7 @@ def compile_simulate_single():
 def compile_simulate():
     g = GraphBuilder(SimulateJobInputs, TKR[list[BackendResult]])
 
-    circuits_shots = g.task(zip_impl(g.inputs.circuits, g.inputs.n_shots))
+    circuits_shots = g.task(tkr_zip(g.inputs.circuits, g.inputs.n_shots))
 
     inputs = g.map(
         lambda x: SimulateJobInputsSingle(

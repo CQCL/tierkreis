@@ -1,5 +1,5 @@
 from typing import NamedTuple
-from tierkreis.builtins.stubs import iadd, igt, itimes, tuple_impl, untuple, mod
+from tierkreis.builtins.stubs import iadd, igt, itimes, tkr_tuple, untuple, mod
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR
@@ -107,7 +107,7 @@ def typed_destructuring():
 
 def tuple_untuple():
     g = GraphBuilder(EmptyModel, TKR[int])
-    t = g.task(tuple_impl(g.const(1), g.const(2)))
+    t = g.task(tkr_tuple(g.const(1), g.const(2)))
     ut = g.task(untuple(t))
     g.outputs(g.task(iadd(ut.a, ut.b)))
     return g

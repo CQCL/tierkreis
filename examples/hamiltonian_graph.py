@@ -21,7 +21,7 @@ from tierkreis.controller.executor.multiple import MultipleExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.executor.uv_executor import UvExecutor
 
-from tierkreis.builtins.stubs import untuple, itimes, iadd, unzip, zip_impl
+from tierkreis.builtins.stubs import untuple, itimes, iadd, unzip, tkr_zip
 from tierkreis.graphs.fold import FoldFunctionInput, FoldGraphInputs, fold_graph
 from tierkreis.pytket_worker import (
     append_pauli_measurement_impl,
@@ -129,7 +129,7 @@ def symbolic_execution():
         pauli_strings_list,
     )
     m = g.map(_subgraph(), aes)
-    zipped = g.task(zip_impl(m, parameters_list))
+    zipped = g.task(tkr_zip(m, parameters_list))
     # (\(x,y) \z --> x*y+z) and 0
     # TODO: This needs a better name
     ins = FoldGraphInputs(g.const(0.0), zipped)

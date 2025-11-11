@@ -1,6 +1,6 @@
 from typing import Generic, NamedTuple, TypeVar
 from tierkreis.builder import GraphBuilder, TypedGraphRef
-from tierkreis.builtins.stubs import head, igt, impl_len
+from tierkreis.builtins.stubs import head, igt, tkr_len
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.models import TKR
 from tierkreis.controller.data.types import PType
@@ -30,7 +30,7 @@ def _fold_graph_outer[A: PType, B: PType]():
     accum = g.inputs.accum
     values = g.inputs.values
 
-    values_len = g.task(impl_len(values))
+    values_len = g.task(tkr_len(values))
     # True if there is more than one value in the list.
     non_empty = g.task(igt(values_len, g.const(0)))
 

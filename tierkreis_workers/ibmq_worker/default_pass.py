@@ -1,7 +1,3 @@
-from enum import Enum, auto
-from typing import Sequence, assert_never
-
-from pytket._tket.circuit import Circuit
 from pytket.architecture import Architecture, FullyConnected
 from pytket.circuit import OpType
 from pytket.mapping import LexiLabellingMethod, LexiRouteRoutingMethod
@@ -21,25 +17,8 @@ from pytket.passes import (
     SynthesiseTket,
 )
 from pytket.placement import GraphPlacement
-from pytket.qasm.qasm import circuit_from_qasm_str, circuit_to_qasm_str
-from tierkreis.exceptions import TierkreisError
 
 
-class OptimizationLevel(Enum):
-    ZERO = 0
-    ONE = 1
-    TWO = 2
-    THREE = 3
-
-
-MINIMAL_GATE_SET = {OpType.Rx, OpType.Rz, OpType.CX}
-QUANTINUUM_GATE_SET = {
-    OpType.ZZPhase,
-    OpType.TK2,
-    OpType.Rz,
-    OpType.PhasedX,
-    OpType.ZZMax,
-}
 IBMQ_GATE_SET: set[OpType] = {
     OpType.Rx,
     OpType.Rz,
@@ -75,71 +54,7 @@ ALL_TKET_1Q_GATES = {
 }
 
 
-class CircuitFormat(Enum):
-    TKET = auto()
-    QASM2 = auto()
-    QIR = auto()
-
-
-def compile_circuit(
-    circuit: Circuit | str | bytes,
-    input_format: CircuitFormat = CircuitFormat.TKET,
-    optimization: OptimizationLevel = OptimizationLevel.TWO,
-    gate_set: set[OpType] = MINIMAL_GATE_SET,
-    coupling_map: Sequence[tuple[int, int]] | None = None,
-    output_format: CircuitFormat = CircuitFormat.TKET,
-    optimization_pass: BasePass | None = None,
-) -> Circuit | str | bytes:
-    # Circuit type: Circuit: TKET, str: QASM2, bytes: QIR
-    if isinstance(circuit, str):
-        if input_format == CircuitFormat.QASM2:
-            circuit = circuit_from_qasm_str(circuit)
-        else:
-            raise TierkreisError("Invalid combination of input type and format.")
-    if isinstance(circuit, bytes):
-        if input_format == CircuitFormat.QIR:
-            try:
-                from pytket_qirpass import qir_to_pytket
-            except ModuleNotFoundError:
-                raise TierkreisError("Could not resolve pytket_qirpass")
-            circuit = qir_to_pytket(circuit)
-        else:
-            raise TierkreisError("Invalid combination of input type and format.")
-
-    assert isinstance(circuit, Circuit)
-    qubits: set[int] = set()
-    if coupling_map is not None:
-        qubits = set([q for pair in coupling_map for q in pair])
-        if len(qubits) < len(circuit.qubits):
-            raise TierkreisError("Circuit does not fit on device.")
-        arch = Architecture(coupling_map)
-    else:
-        arch = FullyConnected(len(qubits))
-
-    # Provide choice of alternative optimization passes
-    if optimization_pass is None:
-        optimization_pass = _default_pass(optimization.value, arch, gate_set)
-    optimization_pass.apply(circuit)
-
-    match output_format:
-        case CircuitFormat.TKET:
-            return circuit
-        case CircuitFormat.QASM2:
-            return circuit_to_qasm_str(circuit)
-        case CircuitFormat.QIR:
-            try:
-                from pytket.qir.conversion.api import pytket_to_qir
-            except ModuleNotFoundError:
-                raise TierkreisError("Could not resolve pytket_qirpass")
-            ret = pytket_to_qir(circuit)
-            if ret is None:
-                raise TierkreisError("Could not transform circuit to QIR.")
-            return ret
-        case _:
-            assert_never()
-
-
-def _default_pass(
+def default_compilation_pass(
     optimization_level: int,
     arch: Architecture | FullyConnected,
     primitive_gates: set[OpType],
@@ -194,7 +109,6 @@ def _default_pass(
     assert arch is not None
     if not isinstance(arch, FullyConnected):
         # Default placement and routing, for lightsabre use IBMQ compilation
-        # TODO check for better passes here
         passlist.append(AutoRebase(primitive_gates))
         passlist.append(
             FullMappingPass(

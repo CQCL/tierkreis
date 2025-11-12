@@ -9,6 +9,9 @@ setup:
 test:
     {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term
 
+test-workers:
+    {{uvrun}} pytest tierkreis_workers/pytket_worker --doctest-modules --cov=. --cov-report=html --cov-report=term
+
 test-slow:
     {{uvrun}} pytest tierkreis --doctest-modules --cov=. --cov-report=html --cov-report=term --runslow
 
@@ -54,8 +57,10 @@ stubs-generate dir:
 generate: 
   just stubs-generate 'tierkreis/tierkreis/builtins'
   just stubs-generate 'tierkreis_workers/aer_worker'
+  just stubs-generate 'tierkreis_workers/ibmq_worker'
   just stubs-generate 'tierkreis_workers/nexus_worker'
   just stubs-generate 'tierkreis_workers/pytket_worker'
+  just stubs-generate 'tierkreis_workers/quantinuum_worker'
   just stubs-generate 'tierkreis_workers/qulacs_worker'
   just stubs-generate 'examples/example_workers/error_worker'
   just stubs-generate 'examples/example_workers/hello_world_worker'
@@ -67,8 +72,10 @@ generate:
   mkdir -p examples/example_workers/nexus_worker
   mkdir -p examples/example_workers/pytket_worker
   cp 'tierkreis_workers/aer_worker/stubs.py' tierkreis/tierkreis/aer_worker.py
+  cp 'tierkreis_workers/ibmq_worker/stubs.py' tierkreis/tierkreis/ibmq_worker.py
   cp 'tierkreis_workers/nexus_worker/stubs.py' tierkreis/tierkreis/nexus_worker.py
   cp 'tierkreis_workers/pytket_worker/stubs.py' tierkreis/tierkreis/pytket_worker.py
+  cp 'tierkreis_workers/quantinuum_worker/stubs.py' tierkreis/tierkreis/quantinuum_worker.py
   cp 'tierkreis_workers/qulacs_worker/stubs.py' tierkreis/tierkreis/qulacs_worker.py
 
 check-stubs:

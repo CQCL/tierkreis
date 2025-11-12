@@ -1,24 +1,14 @@
 [project]
-name = "tkr_pytket_worker"
-version = "0.1.5"
-description = "A tierkreis worker for pytket."
+name = "tkr_quantinuum_worker"
+version = "0.1.0"
+description = "A tierkreis worker for compilation of quanitnuum backends."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "tierkreis",
     "pytket",
-    "qnexus",
-    "pytket_qirpass",
-]
-
-[project.optional-dependencies]
-backend-qiskit = [
-    "pytket-qiskit",
-]
-backend-quantinuum = [
     "pytket-quantinuum",
 ]
-
 
 [build-system]
 requires = ["hatchling"]
@@ -35,8 +25,7 @@ include = [
 
 [tool.uv.sources]
 tierkreis = { workspace = true }
-pytket-qiskist = { git = "https://github.com/CQCL/pytket-qiskit" }
 pytket-quantinuum = { git = "https://github.com/CQCL/pytket-quantinuum" }
 
 [project.scripts]
-tkr_pytket_worker = "main:main"
+tkr_quantinuum_worker = "main:main"

@@ -14,8 +14,6 @@ from pytket.passes import (
 )
 from pytket.passes.resizeregpass import scratch_reg_resize_pass
 from pytket.circuit import OpType
-from pytket.extensions.qiskit.backends.ibm import IBMQBackend
-from tierkreis.exceptions import TierkreisError
 
 
 def _gate_set() -> set[OpType]:
@@ -94,21 +92,3 @@ def default_compilation_pass() -> BasePass:
     passlist.append(RemovePhaseOps())
     passlist.append(FlattenRelabelRegistersPass("q"))
     return SequencePass(passlist, strict=False)
-
-
-def default_compilation_pass_ibm(
-    backend_name: str, optimization_level: int = 2
-) -> BasePass:
-    backend = IBMQBackend(backend_name)
-    return backend.default_compilation_pass(optimization_level)
-
-
-def default_compilation_pass_quantinuum(
-    backend_name: str, optimization_level: int = 2
-) -> BasePass:
-    try:
-        from pytket.extensions.quantinuum.backends.quantinuum import QuantinuumBackend
-    except ModuleNotFoundError:
-        raise TierkreisError("Cannot import Quantinuum Backend")
-    backend = QuantinuumBackend(backend_name)
-    return backend.default_compilation_pass(optimization_level)

@@ -17,6 +17,6 @@ installation.md
 core_concepts.md
 getting_started.md
 visualization.md
-workers.md
+worker/index
 apidocs/index
 ```

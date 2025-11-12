@@ -18,7 +18,7 @@ from tierkreis.controller.data.models import TKR, OpaqueType
 from tierkreis.controller import run_graph
 from tierkreis.storage import read_outputs, InMemoryStorage
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
-from tierkreis.pytket_worker import compile_tket_circuit_ibm
+from tierkreis.ibmq_worker import compile_circuit_ibmq
 from tierkreis.aer_worker import submit_single
 
 
@@ -42,10 +42,10 @@ def compile_run_single():
     )
 
     compiled_circuit = g.task(
-        compile_tket_circuit_ibm(
+        compile_circuit_ibmq(
             circuit=g.inputs.circuit,
-            backend_name=g.inputs.backend,
-            optimization_level=g.const(2),
+            device_name=g.inputs.backend,
+            optimisation_level=g.const(2),
         )
     )
     res = g.task(submit_single(compiled_circuit, g.inputs.n_shots))

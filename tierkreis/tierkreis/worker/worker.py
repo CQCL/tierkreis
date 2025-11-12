@@ -4,7 +4,7 @@ from logging import getLogger
 from pathlib import Path
 import sys
 from types import TracebackType
-from typing import Callable
+from typing import Callable, TypeVar
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
@@ -37,6 +37,9 @@ def handle_unhandled_exception(
 
 class TierkreisWorkerError(TierkreisError):
     pass
+
+
+F = TypeVar("F", bound=Callable[..., PModel])
 
 
 class Worker:
@@ -117,10 +120,10 @@ class Worker:
 
         return function_decorator
 
-    def task(self, name: str | None = None) -> Callable[[WorkerFunction], None]:
+    def task(self) -> Callable[[F], F]:
         """Registers a python function as a task with the worker."""
 
-        def function_decorator(func: WorkerFunction) -> None:
+        def function_decorator(func: F) -> F:
             self.namespace.add_function(func)
             self.add_types(func)
 
@@ -130,6 +133,7 @@ class Worker:
                 self._save_results(node_definition.outputs, results)
 
             self.functions[func.__name__] = wrapper
+            return func
 
         return function_decorator
 

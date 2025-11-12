@@ -14,33 +14,41 @@ will install an executable Python script `tkr_pytket_worker` into your virtual e
 
 ## Authentication
 
-Certain backends, such as the Quantinnuum backend require authentication.
-The worker uses the default mechanisms provided by the `qnexus` Python package.
+This worker is designed to work without authentication for the majority of the tasks.
 
-```bash
-uv run python -c "from qnexus.client.auth import login; login()"
+```{important}
+The `get_backend_info` function is the notable exception and requires authentication with Quantinuum Nexus to access the devices.
+The authentication depends on IBMQ and Quantinuum web services respectively.
 ```
-
-will put the a token in the appropriate filesystem location for subsequent operations to use.
-
-To use IBMQ services, the credentials are expected to be stored in a file ` $HOME/.qiskit/qiskit-ibm.json` for more see the [Qiskit Documentation](https://quantum.cloud.ibm.com/docs/en/guides/cloud-setup)
 
 ## Elementary tasks
 
 The pytket worker exposes the following elementary tasks to the user:
 
+- `get_backend_info` retrieves the backend info given a configuration dict. **Requires authentication**. Requires optional dependencies `uv sync --groups backends`.
+- `device_name_from_info` retrieves the device name from backend info object.
+- `compile_using_info` compiles a circuit with a default pass for a backend info that was previously acquired.
 - `add_measure_all` adds final measurements to a circuit.
 - `append_pauli_measurement_impl` adds measurements according to a Pauli string to a circuit.
 - `optimise_phase_gadgets` applies the phase gadget optimization pass to a circuit.
 - `apply_pass` applies a user defined optimization pass.
-- `compile` generic compile function with a variety of options
-- `compile_circuit_quantinuum` and `compile_circuits_quantinuum` apply a predefined level 3 optimization for Quantinuum devices to a (list of) circuit.
-- `compile_tket_circuit_ibm` and `compile_tket_circuits_ibm` applies the pytket default pass for IBM devices to a (list of) circuit. Requires IBMQ authentication.
-- `compile_tket_circuit_quantinuum` and `compile_tket_circuits_quantinuum` applies the pytket default pass for Quantinuum devices to a (list of) circuit. Requires Qautninuum Nexus authentication.
-- `to_qasm_str` and `from_gasm_str` transforms a Circuit to/from QASM 2.
-- `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR. Requires optional dependencies `uv sync --groups qir`.
+- `compile_generic_with_fixed_pass` generic compile function with a variety of options using a predefined pass without considering fidelities. No authentication is required.
+- `to_qasm_str` and `from_qasm_str` transforms a Circuit to/from QASM 2.
+- `to_qir_bytes` and `from_qir_bytes` transforms a Circuit to/from QIR.
 - `expectation` estimates the expectation value from shot counts.
 - `n_qubits` returns the number of qubits in a const circuit.
+- `backend_result_to_dict` and `backend_result_from_dict` convert between a `BackendResult` and a register based dictionary mapping register names to a list of shot bitstrings.
+
+The straight forward approach to compiling a circuit with the default pass for a backend is:
+
+1. Construct a `qnx.BackendConfig` object defining the desired backend
+2. Get the according `pytket.BackendInfo` object
+3. Provide both together with a circuit to immediately compile the circuit for the backend.
+
+```{warning}
+While there is an apply pass function, this will only work with serializable passes.
+Trying to use a non-serializable pass will result in an error.
+```
 
 ## Example
 
@@ -60,10 +68,10 @@ def compile_run_single():
     )
 
     compiled_circuit = g.task(
-        compile_tket_circuit_ibm(
+        compile_circuit_ibmq(
             circuit=g.inputs.circuit,
-            backend_name=g.inputs.backend,
-            optimization_level=g.const(2),
+            device_name=g.inputs.backend,
+            optimisation_level=g.const(2),
         )
     )
     res = g.task(submit_single(compiled_circuit, g.inputs.n_shots))
@@ -82,7 +90,7 @@ run_graph(
     executor,
     g,
     {
-        "circuit": ghz(),
+        "circuit": circuit,
         "n_shots": n_shots,
         "backend": "<ibm_backend>", # e.g. ibm_torino
     },

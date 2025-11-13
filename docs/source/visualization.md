@@ -29,7 +29,7 @@ from tierkreis_visualization.main import start
 start()
 ```
 
-Alternatively in you can use visualize a graph that is still under construction using the syntax
+Alternatively you can visualize a graph that is still under construction using the syntax
 
 ```bash
 uv run tkr_viz_graph <PATH_TO_PYTHON_FILE>:<VARIABLE_CONTAINING_GRAPH>
@@ -41,7 +41,8 @@ For example one could run the following command from the root of the Tierkreis r
 uv run tkr_viz_graph examples/defaults.py:outer_g
 ```
 
-which will live reload the browser when the graph definition is modified.
+which will show one of the examples in the Tierkreis repo as a partially constructed graph.
+If you delete the optional 'extra' output on line 62 then the browser will live reload displaying the updated graph.
 
 ## Usage
 

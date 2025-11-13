@@ -9,7 +9,7 @@ from tierkreis_visualization.routers.workflows import router as workflows_router
 
 def get_app():
     app = App(lifespan=lifespan)
-    app.include_router(workflows_router, prefix="/api/workflows")
+    app.include_router(workflows_router, prefix="/workflows")
     app.mount("/assets/", assets, name="frontend_assets")
 
     @app.get("/{path:path}")

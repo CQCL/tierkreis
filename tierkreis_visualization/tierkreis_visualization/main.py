@@ -1,8 +1,5 @@
-import os
 from sys import argv
-from uuid import UUID
 
-from tierkreis_visualization.config import CONFIG
 import uvicorn
 
 

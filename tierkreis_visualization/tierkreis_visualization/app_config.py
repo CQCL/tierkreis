@@ -11,8 +11,9 @@ from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.graphdata import GraphDataStorage
 from tierkreis.controller.storage.protocol import ControllerStorage
 
-static_files = StaticFiles(
-    directory=(Path(__file__).parent / "static" / "dist").absolute(), html=True
+assets = StaticFiles(
+    directory=(Path(__file__).parent / "static" / "dist" / "assets").absolute(),
+    html=True,
 )
 
 

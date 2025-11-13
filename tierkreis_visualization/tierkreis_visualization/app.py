@@ -1,5 +1,8 @@
+from pathlib import Path
 from sys import argv
-from tierkreis_visualization.app_config import App, StorageType, lifespan, static_files
+from fastapi import Response
+from fastapi.responses import FileResponse
+from tierkreis_visualization.app_config import App, StorageType, lifespan, assets
 from tierkreis_visualization.config import CONFIG
 from tierkreis_visualization.storage import file_storage_fn, graph_data_storage_fn
 from tierkreis_visualization.routers.workflows import router as workflows_router
@@ -8,7 +11,15 @@ from tierkreis_visualization.routers.workflows import router as workflows_router
 def get_app():
     app = App(lifespan=lifespan)
     app.include_router(workflows_router, prefix="/api/workflows")
-    app.mount("/", static_files, name="frontend")
+    app.mount("/assets/", assets, name="frontend_assets")
+
+    @app.get("/{path:path}")
+    def read_root():
+        return FileResponse(
+            Path(__file__).parent / "static" / "dist" / "index.html",
+            media_type="text/html",
+        )
+
     return app
 
 

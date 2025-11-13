@@ -29,18 +29,17 @@ from tierkreis_visualization.main import start
 start()
 ```
 
-Alternatively in you can use `visualize_graph`
+Alternatively in you can use visualize a graph that is still under construction using the syntax
 
-```py
-from tierkreis.builder import GraphBuilder
-from tierkreis_visualization.main import visualize_graph
-
-graph = GraphBuilder()
-visualize_graph(graph.get_data())
+```bash
+uv run tkr_viz_graph <PATH_TO_PYTHON_FILE>:<VARIABLE_CONTAINING_GRAPH>
 ```
 
-which can also visualize partial graphs.
-This is very helpful during development, but currently does not provide a hot reload function.
+```bash
+uv run tkr_viz_graph examples/defaults.py:outer_g
+```
+
+which will live reload the browser when the graph definition is modified.
 
 ## Usage
 

@@ -1,0 +1,30 @@
+from sys import argv
+from tierkreis_visualization.app_config import App, StorageType, lifespan, static_files
+from tierkreis_visualization.config import CONFIG
+from tierkreis_visualization.storage import file_storage_fn, graph_data_storage_fn
+from tierkreis_visualization.routers.workflows import router as workflows_router
+
+
+def get_app():
+    app = App(lifespan=lifespan)
+    app.include_router(workflows_router, prefix="/api/workflows")
+    app.mount("/", static_files, name="frontend")
+    return app
+
+
+def get_filestorage_app():
+    app = get_app()
+    app.state.get_storage_fn = file_storage_fn(CONFIG.tierkreis_path)
+    app.state.storage_type = StorageType.FILESTORAGE
+    return app
+
+
+def get_graph_data_app():
+    app = get_app()
+    app.state.get_storage_fn = graph_data_storage_fn(argv[1])[0]
+    app.state.storage_type = StorageType.GRAPHDATA
+    return app
+
+
+app = get_filestorage_app()
+app_graph_data = get_graph_data_app()

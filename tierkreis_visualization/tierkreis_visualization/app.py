@@ -21,7 +21,12 @@ def get_filestorage_app():
 
 def get_graph_data_app():
     app = get_app()
-    app.state.get_storage_fn = graph_data_storage_fn(argv[1])[0]
+    graph_specifier = argv[1] if len(argv) > 1 else CONFIG.graph_specifier
+
+    if graph_specifier is None:
+        return app
+
+    app.state.get_storage_fn = graph_data_storage_fn(graph_specifier)[0]
     app.state.storage_type = StorageType.GRAPHDATA
     return app
 

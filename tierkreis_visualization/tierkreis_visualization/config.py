@@ -6,6 +6,7 @@ from starlette.templating import Jinja2Templates
 
 class Settings(BaseSettings):
     tierkreis_path: Path = Path.home() / ".tierkreis" / "checkpoints"
+    graph_specifier: str | None = None
 
 
 CONFIG = Settings()

@@ -35,6 +35,8 @@ Alternatively in you can use visualize a graph that is still under construction 
 uv run tkr_viz_graph <PATH_TO_PYTHON_FILE>:<VARIABLE_CONTAINING_GRAPH>
 ```
 
+For example one could run the following command from the root of the Tierkreis repo.
+
 ```bash
 uv run tkr_viz_graph examples/defaults.py:outer_g
 ```

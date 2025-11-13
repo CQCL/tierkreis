@@ -1,6 +1,5 @@
 from pathlib import Path
 from sys import argv
-from fastapi import Response
 from fastapi.responses import FileResponse
 from tierkreis_visualization.app_config import App, StorageType, lifespan, assets
 from tierkreis_visualization.config import CONFIG

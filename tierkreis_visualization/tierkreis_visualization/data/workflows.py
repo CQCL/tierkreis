@@ -1,19 +1,13 @@
 import os
 from datetime import datetime
-from enum import Enum
 from uuid import UUID
 
 from pydantic import BaseModel
 
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.storage.filestorage import ControllerFileStorage
-from tierkreis.controller.storage.graphdata import GraphDataStorage
-from tierkreis_visualization.config import CONFIG, get_storage
-
-
-class StorageType(Enum):
-    FILESTORAGE = ControllerFileStorage
-    GRAPHDATA = GraphDataStorage
+from tierkreis_visualization.app_config import StorageType
+from tierkreis_visualization.config import CONFIG
+from tierkreis_visualization.storage import file_storage_fn
 
 
 class WorkflowDisplay(BaseModel):
@@ -43,7 +37,7 @@ def get_workflows_from_disk() -> list[WorkflowDisplay]:
     for folder in folders:
         try:
             id = UUID(folder)
-            metadata = get_storage(id).read_metadata(Loc(""))
+            metadata = file_storage_fn(CONFIG.tierkreis_path)(id).read_metadata(Loc(""))
             name = metadata["name"] or "workflow"
             start = metadata.get("start_time", datetime.now().isoformat())
             workflows.append(

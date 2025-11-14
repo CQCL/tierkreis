@@ -49,6 +49,7 @@ class GraphDataStorage(ControllerStorage):
         self.name = name
         self.nodes: dict[Loc, NodeData] = {}
         self.graph = graph
+        self.tkr_dir = Path.home() / ".tierkreis"
 
     def delete(self, path: Path) -> None:
         raise NotImplementedError("GraphDataStorage is read only storage.")

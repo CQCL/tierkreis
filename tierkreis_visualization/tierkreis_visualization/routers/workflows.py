@@ -24,7 +24,7 @@ from tierkreis_visualization.data.workflows import get_workflows
 from tierkreis_visualization.routers.models import PyGraph
 from tierkreis_visualization.routers.navigation import breadcrumbs
 
-router = APIRouter(prefix="/workflows")
+router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
@@ -33,6 +33,8 @@ logger = logging.getLogger(__name__)
 async def websocket_endpoint(
     websocket: WebSocket, workflow_id: UUID, node_location_str: str
 ) -> None:
+    if workflow_id.int == 0:
+        return
     storage = websocket.app.state.get_storage_fn(workflow_id)
     try:
         await websocket.accept()

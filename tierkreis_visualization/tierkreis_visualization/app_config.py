@@ -1,20 +1,13 @@
 from contextlib import asynccontextmanager
 from enum import Enum
-from pathlib import Path
 from typing import Callable
 from uuid import UUID
 import webbrowser
 from fastapi import FastAPI
-from fastapi.staticfiles import StaticFiles
 import starlette.datastructures
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.graphdata import GraphDataStorage
 from tierkreis.controller.storage.protocol import ControllerStorage
-
-assets = StaticFiles(
-    directory=(Path(__file__).parent / "static" / "dist" / "assets").absolute(),
-    html=True,
-)
 
 
 @asynccontextmanager

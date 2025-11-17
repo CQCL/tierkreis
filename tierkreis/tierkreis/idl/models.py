@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from types import NoneType
-from typing import Annotated, Mapping, Self, Sequence, TypeVar, get_args, get_origin
+from typing import Annotated, Mapping, Self, Sequence, get_args, get_origin
 
 from tierkreis.controller.data.core import RestrictedNamedTuple
 from tierkreis.controller.data.types import _is_generic
@@ -49,6 +49,11 @@ class GenericType:
     def __hash__(self) -> int:
         return hash(self.origin)
 
+    def __eq__(self, value: object) -> bool:
+        if not hasattr(value, "origin"):
+            return False
+        return self.origin == getattr(value, "origin")
+
 
 @dataclass
 class TypedArg:
@@ -79,3 +84,11 @@ class Model:
 
     def __hash__(self) -> int:
         return hash(self.t.origin)
+
+    def __lt__(self, other: "Model"):
+        if self.t in [x.t for x in other.decls]:
+            return True
+        if other.t in [x.t for x in self.decls]:
+            return False
+
+        return str(self.t.origin) < str(other.t.origin)

@@ -27,13 +27,13 @@ class Namespace:
             return
 
         annotations = gt.origin.__annotations__
-        portmapping_flag = True if is_portmapping(gt.origin) else False
         decls = [TypedArg(k, GenericType.from_type(x)) for k, x in annotations.items()]
-        model = Model(portmapping_flag, gt, decls)
-        self.models.add(model)
-
         for decl in decls:
             [self.add_struct(g) for g in decl.t.included_structs()]
+
+        portmapping_flag = True if is_portmapping(gt.origin) else False
+        model = Model(portmapping_flag, gt, decls)
+        self.models.add(model)
 
     @staticmethod
     def _validate_signature(func: WorkerFunction) -> Signature:
@@ -87,9 +87,7 @@ class Namespace:
     def stubs(self) -> str:
         functions = [format_method(self.name, f) for f in self.methods]
         functions_str = "\n\n".join(functions)
-
-        models = sorted(list(self.models), key=lambda x: str(x.t.origin))
-        models_str = "\n\n".join([format_model(x) for x in models])
+        models_str = "\n\n".join([format_model(x) for x in sorted(list(self.models))])
 
         return f'''"""Code generated from {self.name} namespace. Please do not edit."""
 

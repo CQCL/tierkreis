@@ -6,8 +6,12 @@ from tierkreis.controller.data.types import PType
 worker = Worker("TestNamespace")
 
 
-class IncludedType(NamedTuple):
+class NestedType(NamedTuple):
     city: str
+
+
+class IncludedType(NamedTuple):
+    nested: NestedType
 
 
 @portmapping

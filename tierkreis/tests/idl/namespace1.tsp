@@ -1,5 +1,9 @@
-model IncludedType {
+model NestedType {
   city: string;
+}
+
+model IncludedType {
+  nested: NestedType;
 }
 
 @portmapping

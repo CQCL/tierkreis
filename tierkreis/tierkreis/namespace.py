@@ -23,12 +23,13 @@ class Namespace:
     models: set[Model] = field(default_factory=lambda: set())
 
     def add_struct(self, gt: GenericType) -> None:
-        if not isinstance(gt.origin, Struct):
+        if not isinstance(gt.origin, Struct) or Model(False, gt, []) in self.models:
             return
 
         annotations = gt.origin.__annotations__
         portmapping_flag = True if is_portmapping(gt.origin) else False
         decls = [TypedArg(k, GenericType.from_type(x)) for k, x in annotations.items()]
+        [self.add_struct(decl.t) for decl in decls]
         model = Model(portmapping_flag, gt, decls)
         self.models.add(model)
 

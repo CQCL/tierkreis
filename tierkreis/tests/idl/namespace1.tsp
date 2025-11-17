@@ -1,3 +1,7 @@
+model IncludedType {
+  city: string;
+}
+
 @portmapping
 model A {
   name: Record<string>;
@@ -13,7 +17,9 @@ model C<T> {
   a: Array<integer>;
   b: B;
   t: T;
+  included: IncludedType;
 }
+
 interface TestNamespace {
   foo(a: integer, b: string): A;
   bar(): B;

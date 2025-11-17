@@ -34,7 +34,8 @@ class Namespace:
         self.models.add(model)
 
     @staticmethod
-    def _validate_signature(sig: Signature) -> None:
+    def _validate_signature(func: WorkerFunction) -> Signature:
+        sig = signature(func)
         for param in sig.parameters.values():
             if not is_ptype(param.annotation):
                 raise TierkreisError(f"Expected PType got {param.annotation}")
@@ -43,9 +44,10 @@ class Namespace:
         if not is_portmapping(out) and not is_ptype(out) and out is not None:
             raise TierkreisError(f"Expected PModel found {out}")
 
+        return sig
+
     def add_function(self, func: WorkerFunction) -> None:
-        sig = signature(func)
-        self._validate_signature(sig)
+        sig = self._validate_signature(func)
 
         method = Method(
             GenericType(func.__name__, [str(x) for x in func.__type_params__]),

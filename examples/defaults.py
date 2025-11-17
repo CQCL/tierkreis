@@ -31,6 +31,7 @@ class OuterOutputs(NamedTuple):
     circuit_1: TKR[Circuit]
     circuit_2: TKR[Circuit]
     circuit_3: TKR[Circuit]
+    extra_output: TKR[bool] | None = None
 
 
 def inner_graph() -> GraphBuilder:
@@ -56,9 +57,14 @@ def outer_graph() -> GraphBuilder:
     compiled_circuit_3 = g.eval(
         inner_graph_2(), InnerInputs(g.inputs.circuit, g.const(2))
     )
-    g.outputs(OuterOutputs(compiled_circuit_1, compiled_circuit_2, compiled_circuit_3))
+    extra = g.const(True)
+    g.outputs(
+        OuterOutputs(compiled_circuit_1, compiled_circuit_2, compiled_circuit_3, extra)
+    )
     return g
 
+
+outer_g = outer_graph()
 
 if __name__ == "__main__":
     storage = FileStorage(UUID(int=202), do_cleanup=True)
@@ -67,11 +73,11 @@ if __name__ == "__main__":
     run_graph(
         storage,
         executor,
-        outer_graph(),
+        outer_g,
         {"circuit": circuit},
         polling_interval_seconds=0.1,
     )
-    outputs = read_outputs(outer_graph(), storage)
+    outputs = read_outputs(outer_g, storage)
     assert isinstance(outputs, dict)
     assert "circuit_1" in outputs
     assert "circuit_2" in outputs

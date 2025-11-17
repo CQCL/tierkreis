@@ -19,11 +19,16 @@ class C[T: PType](Struct, Protocol):
     a: list[int]  # noqa: F821 # fmt: skip
     b: B  # noqa: F821 # fmt: skip
     included: IncludedType  # noqa: F821 # fmt: skip
+    ol: list[ListItem]  # noqa: F821 # fmt: skip
     t: T  # noqa: F821 # fmt: skip
 
 
 class IncludedType(Struct, Protocol):
     nested: NestedType  # noqa: F821 # fmt: skip
+
+
+class ListItem(Struct, Protocol):
+    i: int  # noqa: F821 # fmt: skip
 
 
 class NestedType(Struct, Protocol):

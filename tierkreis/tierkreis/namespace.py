@@ -29,9 +29,11 @@ class Namespace:
         annotations = gt.origin.__annotations__
         portmapping_flag = True if is_portmapping(gt.origin) else False
         decls = [TypedArg(k, GenericType.from_type(x)) for k, x in annotations.items()]
-        [self.add_struct(decl.t) for decl in decls]
         model = Model(portmapping_flag, gt, decls)
         self.models.add(model)
+
+        for decl in decls:
+            [self.add_struct(g) for g in decl.t.included_structs()]
 
     @staticmethod
     def _validate_signature(func: WorkerFunction) -> Signature:

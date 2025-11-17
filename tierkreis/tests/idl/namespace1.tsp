@@ -1,3 +1,7 @@
+model ListItem {
+  i: uint8;
+}
+
 model NestedType {
   city: string;
 }
@@ -22,6 +26,7 @@ model C<T> {
   b: B;
   t: T;
   included: IncludedType;
+  ol: Array<ListItem>;
 }
 
 interface TestNamespace {

@@ -1,10 +1,10 @@
 from dataclasses import dataclass, field
-from inspect import signature
+from inspect import Signature, signature
 from logging import getLogger
 from pathlib import Path
 import shutil
 import subprocess
-from typing import Callable, Self, get_origin
+from typing import Callable, Self
 from tierkreis.codegen import format_method, format_model
 from tierkreis.controller.data.models import PModel, is_portmapping
 from tierkreis.controller.data.types import Struct, has_default, is_ptype
@@ -22,48 +22,43 @@ class Namespace:
     methods: list[Method] = field(default_factory=lambda: [])
     models: set[Model] = field(default_factory=lambda: set())
 
-    def _add_model_from_type(self, t: type) -> None:
-        origin = get_origin(t)
-
-        if is_ptype(t) and not isinstance(t, Struct) and not isinstance(origin, Struct):
+    def add_struct(self, gt: GenericType) -> None:
+        if not isinstance(gt.origin, Struct):
             return
 
-        if origin is None:
-            origin = t
-
-        annotations = origin.__annotations__
-        portmapping_flag = True if is_portmapping(origin) else False
+        annotations = gt.origin.__annotations__
+        portmapping_flag = True if is_portmapping(gt.origin) else False
         decls = [TypedArg(k, GenericType.from_type(x)) for k, x in annotations.items()]
-        model = Model(portmapping_flag, GenericType.from_type(t), decls)
+        model = Model(portmapping_flag, gt, decls)
         self.models.add(model)
 
-    def add_function(self, func: WorkerFunction) -> None:
-        name = func.__name__
-        sig = signature(func)
-        annotations = func.__annotations__
-        generics: list[str] = [str(x) for x in func.__type_params__]
-        in_annotations = {k: v for k, v in annotations.items() if k != "return"}
-        ins = [
-            TypedArg(k, GenericType.from_type(t.annotation), has_default(t))
-            for k, t in sig.parameters.items()
-        ]
-        out = annotations["return"]
+    @staticmethod
+    def _validate_signature(sig: Signature) -> None:
+        for param in sig.parameters.values():
+            if not is_ptype(param.annotation):
+                raise TierkreisError(f"Expected PType got {param.annotation}")
 
-        for _, annotation in in_annotations.items():
-            if not is_ptype(annotation):
-                raise TierkreisError(f"Expected PType found {annotation} {annotations}")
-
+        out = sig.return_annotation
         if not is_portmapping(out) and not is_ptype(out) and out is not None:
             raise TierkreisError(f"Expected PModel found {out}")
 
+    def add_function(self, func: WorkerFunction) -> None:
+        sig = signature(func)
+        self._validate_signature(sig)
+
         method = Method(
-            GenericType(name, generics),
-            ins,
-            GenericType.from_type(out),
-            is_portmapping(out),
+            GenericType(func.__name__, [str(x) for x in func.__type_params__]),
+            [
+                TypedArg(k, GenericType.from_type(t.annotation), has_default(t))
+                for k, t in sig.parameters.items()
+            ],
+            GenericType.from_type(sig.return_annotation),
+            is_portmapping(sig.return_annotation),
         )
         self.methods.append(method)
-        [self._add_model_from_type(t) for t in annotations.values()]
+
+        for t in func.__annotations__.values():
+            [self.add_struct(x) for x in GenericType.from_type(t).included_structs()]
 
     @classmethod
     def from_spec_file(cls, path: Path) -> "Namespace":

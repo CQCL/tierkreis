@@ -1,4 +1,8 @@
 from sys import argv
+from uuid import UUID
+from tierkreis.controller.data.graph import GraphData
+from tierkreis.controller.storage.graphdata import GraphDataStorage
+from tierkreis.controller.storage.protocol import ControllerStorage
 from tierkreis_visualization.app_config import App, StorageType, lifespan
 from tierkreis_visualization.config import CONFIG
 from tierkreis_visualization.storage import file_storage_fn, graph_data_storage_fn
@@ -31,5 +35,16 @@ def get_graph_data_app():
         return app
 
     app.state.get_storage_fn = graph_data_storage_fn(graph_specifier)[0]
+    app.state.storage_type = StorageType.GRAPHDATA
+    return app
+
+
+def app_from_graph_data(graph_data: GraphData):
+    app = get_app()
+
+    def inner(workflow_id: UUID) -> ControllerStorage:
+        return GraphDataStorage(UUID(int=0), graph=graph_data)
+
+    app.state.get_storage_fn = inner
     app.state.storage_type = StorageType.GRAPHDATA
     return app

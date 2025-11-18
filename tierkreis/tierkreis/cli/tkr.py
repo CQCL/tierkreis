@@ -182,6 +182,11 @@ def main() -> None:
         logging.warning(
             "To install it, please run 'pip install tierkreis-visualization'"
         )
+    except RuntimeError:
+        logging.warning("Runtime Error during tierkreis visualization.")
+        logging.warning(
+            "Please Make sure your installation is valid, and assets are provided.'"
+        )
     args = parser.parse_args(args=None if sys.argv[1:] else ["--help"])
     args.func(args)
 

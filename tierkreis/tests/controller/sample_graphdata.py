@@ -30,7 +30,7 @@ def simple_partial() -> GraphData:
     doubler_const = g.const(doubler_plus())
     partial = g.eval(doubler_const, {"intercept": zero})("body")
     e = g.eval(partial, {"doubler_input": six})
-    g.output({"simple_partial_output": e("doubler_output")})
+    g.output({"value": e("doubler_output")})
     return g
 
 
@@ -51,7 +51,7 @@ def simple_loop() -> GraphData:
     six = g.const(6)
     g_const = g.const(loop_body())
     loop = g.loop(g_const, {"loop_acc": six}, "should_continue")
-    g.output({"simple_loop_output": loop("loop_acc")})
+    g.output({"value": loop("loop_acc")})
     return g
 
 
@@ -64,7 +64,7 @@ def simple_map() -> GraphData:
 
     m = g.map(doubler_const, {"doubler_input": Ns("*"), "intercept": six})
     folded = g.func("builtins.fold_values", {"values_glob": m("*")})
-    g.output({"simple_map_output": folded(Labels.VALUE)})
+    g.output({"value": folded(Labels.VALUE)})
     return g
 
 
@@ -74,7 +74,7 @@ def simple_ifelse() -> GraphData:
     one = g.const(1)
     two = g.const(2)
     out = g.if_else(pred, one, two)("value")
-    g.output({"simple_ifelse_output": out})
+    g.output({"value": out})
     return g
 
 
@@ -90,7 +90,7 @@ def maps_in_series() -> GraphData:
 
     m2 = g.map(doubler_const, {"doubler_input": m("*"), "intercept": zero})
     folded = g.func("builtins.fold_values", {"values_glob": m2("*")})
-    g.output({"maps_in_series_output": folded(Labels.VALUE)})
+    g.output({"value": folded(Labels.VALUE)})
     return g
 
 
@@ -103,7 +103,7 @@ def map_with_str_keys() -> GraphData:
 
     m = g.map(doubler_const, {"doubler_input": Ns("*"), "intercept": zero})
     folded = g.func("builtins.fold_dict", {"values_glob": m("*")})
-    g.output({"map_with_str_keys_output": folded(Labels.VALUE)})
+    g.output({"value": folded(Labels.VALUE)})
     return g
 
 
@@ -123,7 +123,7 @@ def factorial() -> GraphData:
     if_false = g.const(1)
 
     out = g.if_else(pred, if_true, if_false)("value")
-    g.output({"factorial_output": out})
+    g.output({"value": out})
     return g
 
 
@@ -133,5 +133,5 @@ def simple_eagerifelse() -> GraphData:
     one = g.const(1)
     two = g.const(2)
     out = g.eager_if_else(pred, one, two)(Labels.VALUE)
-    g.output({"simple_eagerifelse_output": out})
+    g.output({"value": out})
     return g

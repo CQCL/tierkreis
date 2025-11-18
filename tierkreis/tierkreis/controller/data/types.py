@@ -54,6 +54,7 @@ type ElementaryType = (
     bool
     | int
     | float
+    | complex
     | str
     | NoneType
     | bytes
@@ -162,6 +163,8 @@ def ser_from_ptype(ptype: PType) -> Any | bytes:
             return bytes(ptype)
         case bool() | int() | float() | str() | NoneType() | TypeVar():
             return ptype
+        case complex():
+            return str(ptype)
         case Struct():
             return {k: ser_from_ptype(p) for k, p in ptype._asdict().items()}
         case collections.abc.Sequence():
@@ -216,6 +219,9 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
 
     if issubclass(origin, (bool, int, float, str, bytes, NoneType)):
         return ser
+
+    if issubclass(origin, complex):
+        return origin.__call__(ser)
 
     if issubclass(origin, DictConvertible):
         assert issubclass(annotation, origin)
@@ -277,7 +283,7 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
     if origin is not None:
         return generics_in_ptype(origin)
 
-    if issubclass(ptype, (bool, int, float, str, bytes, NoneType)):
+    if issubclass(ptype, (bool, int, float, complex, str, bytes, NoneType)):
         return set()
 
     if issubclass(ptype, (DictConvertible, ListConvertible, Struct)):

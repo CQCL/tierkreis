@@ -132,3 +132,10 @@ TKR[list[OpaqueType["pytket._tket.circuit.Circuit"]]]
 We can also use `pydantic.BaseModel` as an input or output.
 The behavior of `BaseModel`s is very similar to `DictConvertible`.
 For serialization the method `model_dump(mode="json")` will be used instead of `to_dict` and the stub generation process will create types using `OpaqueType` as above.
+
+## Special Python types
+
+### complex
+
+Complex numbers are serialized into strings using `str` and deserialized using the constructor `complex`.
+This means that `complex(1,-1)` serializes to `"(1-1j)"` and `complex(1,0)` serializes to `"(1+0j)"`.

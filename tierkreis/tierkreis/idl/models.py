@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from types import NoneType
-from typing import Annotated, Mapping, Self, Sequence, TypeVar, get_args, get_origin
+from typing import Annotated, Mapping, Self, Sequence, get_args, get_origin
 
+from tierkreis.controller.data.core import RestrictedNamedTuple
 from tierkreis.controller.data.types import _is_generic
-from tierkreis.exceptions import TierkreisError
+
 
 type ElementaryType = (
     type[int]
@@ -28,43 +29,30 @@ class GenericType:
         if get_origin(t) is Annotated:
             return cls.from_type(get_args(t)[0])
 
-        if _is_generic(t):
-            return cls(str(t), [])
+        args = get_args(t)
+        origin = str(t) if _is_generic(t) else get_origin(t) or t
 
-        args, origin = get_args(t), get_origin(t)
-        if not args:
-            return cls(t, [])
+        subargs = []
+        [subargs.append(str(x)) for x in args if _is_generic(x)]
+        [subargs.append(cls.from_type(x)) for x in args if not _is_generic(x)]
+        return cls(origin, subargs)
 
-        if args and origin:
-            subargs = []
-            for arg in args:
-                if isinstance(arg, TypeVar) or isinstance(arg, TypeVar):
-                    subargs.append(str(arg))
-                else:
-                    subargs.append(cls.from_type(arg))
-
-            return cls(origin, subargs)
-
-        raise TierkreisError(f"Expected generic type. Got {t}")
-
-    @staticmethod
-    def _generics(t: "GenericType | str"):
-        if _is_generic(t):
-            return str(t)
-
-        if isinstance(t, str):
-            return [t]
-
-        if t.args == []:
-            return []
-
-        outs = []
-        for arg in t.args:
-            outs.extend(GenericType._generics(arg))
+    @classmethod
+    def _included_structs(cls, t: "GenericType") -> "set[GenericType]":
+        outs = set({t}) if isinstance(t.origin, (RestrictedNamedTuple, str)) else set()
+        [outs.update(cls._included_structs(x)) for x in t.args if isinstance(x, cls)]
         return outs
 
-    def generics(self) -> list[str]:
-        return GenericType._generics(self)
+    def included_structs(self) -> "set[GenericType]":
+        return GenericType._included_structs(self)
+
+    def __hash__(self) -> int:
+        return hash(self.origin)
+
+    def __eq__(self, value: object) -> bool:
+        if not hasattr(value, "origin"):
+            return False
+        return self.origin == getattr(value, "origin")
 
 
 @dataclass
@@ -96,3 +84,6 @@ class Model:
 
     def __hash__(self) -> int:
         return hash(self.t.origin)
+
+    def __lt__(self, other: "Model"):
+        return str(self.t.origin) < str(other.t.origin)

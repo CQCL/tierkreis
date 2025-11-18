@@ -6,6 +6,18 @@ from tierkreis.controller.data.types import PType
 worker = Worker("TestNamespace")
 
 
+class ListItem(NamedTuple):
+    i: int
+
+
+class NestedType(NamedTuple):
+    city: str
+
+
+class IncludedType(NamedTuple):
+    nested: NestedType
+
+
 @portmapping
 class A(NamedTuple):
     name: dict[str, str]
@@ -21,6 +33,8 @@ class C[T: PType](NamedTuple):
     a: list[int]
     b: B
     t: T
+    included: IncludedType
+    ol: list[ListItem]
 
 
 @worker.task()

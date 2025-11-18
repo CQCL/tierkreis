@@ -48,7 +48,7 @@ Programmatically this is available through:
 
 ```py
 from tierkreis.builder import GraphBuilder
-from tierkreis_visualization.main import visualize_graph
+from tierkreis_visualization.visualize_graph import visualize_graph
 
 graph = GraphBuilder()
 visualize_graph(graph)

@@ -39,7 +39,7 @@ class GenericType:
 
     @classmethod
     def _included_structs(cls, t: "GenericType") -> "set[GenericType]":
-        outs = set({t}) if isinstance(t.origin, RestrictedNamedTuple) else set()
+        outs = set({t}) if isinstance(t.origin, (RestrictedNamedTuple, str)) else set()
         [outs.update(cls._included_structs(x)) for x in t.args if isinstance(x, cls)]
         return outs
 
@@ -86,9 +86,4 @@ class Model:
         return hash(self.t.origin)
 
     def __lt__(self, other: "Model"):
-        if self.t in [x.t for x in other.decls]:
-            return True
-        if other.t in [x.t for x in self.decls]:
-            return False
-
         return str(self.t.origin) < str(other.t.origin)

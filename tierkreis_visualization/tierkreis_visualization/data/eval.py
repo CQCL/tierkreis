@@ -128,8 +128,8 @@ def get_eval_node(
             value = None
 
             try:
-                value = json.loads(storage.read_output(node_location.N(idx), p1))
-            except (FileNotFoundError, TierkreisError):
+                value = storage.read_output(node_location.N(idx), p1).decode()
+            except (FileNotFoundError, TierkreisError, UnicodeDecodeError):
                 value = None
 
             py_edge = PyEdge(

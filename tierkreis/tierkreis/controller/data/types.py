@@ -4,6 +4,7 @@ import collections.abc
 from inspect import Parameter, _empty, isclass
 from itertools import chain
 import json
+import pickle
 from types import NoneType, UnionType
 from typing import (
     Annotated,
@@ -26,6 +27,18 @@ from pydantic._internal._generics import get_args as pydantic_get_args
 from tierkreis.controller.data.core import RestrictedNamedTuple
 from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
+
+
+@runtime_checkable
+class NdarraySurrogate(Protocol):
+    """A protocol to enable use of numpy.ndarray.
+
+    By default the serialisation will be done using dumps
+    and the deserialisation using `pickle.loads`."""
+
+    def dumps(self) -> bytes: ...
+    def tobytes(self) -> bytes: ...
+    def tolist(self) -> list: ...
 
 
 @runtime_checkable
@@ -60,6 +73,7 @@ type ElementaryType = (
     | bytes
     | DictConvertible
     | ListConvertible
+    | NdarraySurrogate
     | BaseModel
 )
 type JsonType = Container[ElementaryType]
@@ -148,7 +162,8 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return all(is_ptype(x) for x in get_args(annotation))
 
     elif isclass(annotation) and issubclass(
-        annotation, (DictConvertible, ListConvertible, BaseModel, Struct)
+        annotation,
+        (DictConvertible, ListConvertible, NdarraySurrogate, BaseModel, Struct),
     ):
         return True
 
@@ -163,10 +178,9 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return False
 
 
-def ser_from_ptype(ptype: PType) -> Any | bytes:
+def ser_from_ptype(ptype: PType) -> Any:
     match ptype:
         case bytes() | bytearray() | memoryview():
-            # Top level bytes should be a clean pass-through.
             return bytes(ptype)
         case bool() | int() | float() | complex() | str() | NoneType() | TypeVar():
             return ptype
@@ -182,16 +196,17 @@ def ser_from_ptype(ptype: PType) -> Any | bytes:
             return ser_from_ptype(ptype.to_list())
         case BaseModel():
             return ptype.model_dump(mode="json")
+        case NdarraySurrogate():
+            return ptype.dumps()
         case _:
             assert_never(ptype)
 
 
 def bytes_from_ptype(ptype: PType) -> bytes:
     ser = ser_from_ptype(ptype)
-    match ptype:
+    match ser:
         case bytes():
-            # Top level bytes should be a clean pass-through.
-            return ptype
+            return ser  # Top level bytes should be a clean pass-through.
         case _:
             return json.dumps(ser, cls=TierkreisEncoder).encode()
 
@@ -233,12 +248,19 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
         assert issubclass(annotation, origin)
         return annotation.from_list(ser)
 
+    if issubclass(origin, NdarraySurrogate):
+        return pickle.loads(ser)
+
     if issubclass(origin, BaseModel):
         assert issubclass(annotation, origin)
         return annotation(**ser)
 
     if issubclass(origin, Struct):
-        return cast(T, origin(**ser))
+        d = {
+            k: coerce_from_annotation(ser[k], v)
+            for k, v in origin.__annotations__.items()
+        }
+        return cast(T, origin(**d))
 
     if issubclass(origin, collections.abc.Sequence):
         args = get_args(annotation)
@@ -261,9 +283,12 @@ def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> 
     if isclass(annotation) and issubclass(annotation, bytes):
         return cast(T, bs)
 
+    if isclass(annotation) and issubclass(annotation, NdarraySurrogate):
+        return cast(T, pickle.loads(bs))
+
     try:
         j = json.loads(bs, cls=TierkreisDecoder)
-    except json.JSONDecodeError as err:
+    except (json.JSONDecodeError, UnicodeDecodeError) as err:
         if annotation is None:
             return cast(T, bs)
         raise err
@@ -288,7 +313,7 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
     if issubclass(ptype, (bool, int, float, complex, str, bytes, NoneType)):
         return set()
 
-    if issubclass(ptype, (DictConvertible, ListConvertible, Struct)):
+    if issubclass(ptype, (DictConvertible, ListConvertible, NdarraySurrogate, Struct)):
         return set()
 
     if issubclass(ptype, BaseModel):

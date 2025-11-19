@@ -137,5 +137,9 @@ For serialization the method `model_dump(mode="json")` will be used instead of `
 
 ### complex
 
-Complex numbers are serialized into strings using `str` and deserialized using the constructor `complex`.
-This means that `complex(1,-1)` serializes to `"(1-1j)"` and `complex(1,0)` serializes to `"(1+0j)"`.
+Complex numbers are serialized using a custom JSON encoder.
+The complex number `z` will appear nested in a JSON object as:
+
+```python
+{"__tkr_complex__": [z.real, z.imag]}
+```

@@ -83,6 +83,9 @@ class TierkreisEncoder(json.JSONEncoder):
         if isinstance(o, bytes):
             return {"__tkr_bytes__": True, "bytes": b64encode(o).decode()}
 
+        if isinstance(o, complex):
+            return {"__tkr_complex__": [o.real, o.imag]}
+
         return super().default(o)
 
 
@@ -97,6 +100,10 @@ class TierkreisDecoder(json.JSONDecoder):
         """Try to decode an object containing bytes."""
         if "__tkr_bytes__" in d and "bytes" in d:
             return b64decode(d["bytes"])
+
+        if "__tkr_complex__" in d:
+            return complex(*d["__tkr_complex__"])
+
         return d
 
 
@@ -161,10 +168,8 @@ def ser_from_ptype(ptype: PType) -> Any | bytes:
         case bytes() | bytearray() | memoryview():
             # Top level bytes should be a clean pass-through.
             return bytes(ptype)
-        case bool() | int() | float() | str() | NoneType() | TypeVar():
+        case bool() | int() | float() | complex() | str() | NoneType() | TypeVar():
             return ptype
-        case complex():
-            return str(ptype)
         case Struct():
             return {k: ser_from_ptype(p) for k, p in ptype._asdict().items()}
         case collections.abc.Sequence():
@@ -217,11 +222,8 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
         # just return the value in its "raw" form.
         return ser
 
-    if issubclass(origin, (bool, int, float, str, bytes, NoneType)):
+    if issubclass(origin, (bool, int, float, complex, str, bytes, NoneType)):
         return ser
-
-    if issubclass(origin, complex):
-        return origin.__call__(ser)
 
     if issubclass(origin, DictConvertible):
         assert issubclass(annotation, origin)

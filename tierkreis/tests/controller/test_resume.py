@@ -90,10 +90,10 @@ params: list[tuple[GraphData, Any, str, int, dict[str, PType] | PType]] = [
     (gcd().get_data(), 24, "gcd", 21, {"a": 48, "b": 360}),
     (gcd().get_data(), 1, "gcd", 22, {"a": 9357, "b": 5864}),
     (gcd().get_data(), 3, "gcd", 23, {"a": 3, "b": 0}),
-    (tkr_conj().get_data(), "(1-1j)", "tkr_conj", 24, complex(1, 1)),
+    (tkr_conj().get_data(), complex(1, -1), "tkr_conj", 24, complex(1, 1)),
     (
         tkr_list_conj().get_data(),
-        ["(1-1j)", "(1-0j)"],
+        [complex(1, -1), complex(1, 0)],
         "tkr_conj",
         25,
         [complex(1, 1), complex(1, 0)],

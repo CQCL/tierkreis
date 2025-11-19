@@ -44,6 +44,19 @@ uv run tkr_viz_graph examples/defaults.py:outer_g
 which will show one of the examples in the Tierkreis repo as a partially constructed graph.
 If you delete the optional 'extra' output on line 62 then the browser will live reload displaying the updated graph.
 
+Programmatically this is available through:
+
+```py
+from tierkreis.builder import GraphBuilder
+from tierkreis_visualization.visualize_graph import visualize_graph
+
+graph = GraphBuilder()
+visualize_graph(graph)
+```
+
+which will block the execution.
+Reloading is not available through the programming interface.
+
 ## Usage
 
 The visualizer provides plenty information about the graphs in the system.

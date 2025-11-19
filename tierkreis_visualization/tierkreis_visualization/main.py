@@ -14,10 +14,7 @@ def dev() -> None:
 def graph() -> None:
     """Visualize a computation graph in a web browser.
 
-    :param graph: The computation graph to visualize.
-    :type graph: GraphData
-    :param storage: The storage backend to use for the visualization.
-    :type storage: ControllerStorage | None. Defaults to GraphDataStorage.
+    Entrypoint for the project script tkr-vis-graph.
     """
     reload_path = argv[1].split(":", 1)[0]
     uvicorn.run(

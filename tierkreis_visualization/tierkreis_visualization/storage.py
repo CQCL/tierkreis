@@ -5,6 +5,7 @@ import sys
 from typing import Callable
 from uuid import UUID
 
+from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.graphdata import GraphDataStorage
 from tierkreis.controller.storage.protocol import ControllerStorage
@@ -43,3 +44,12 @@ def graph_data_storage_fn(
         return GraphDataStorage(UUID(int=0), graph=graph)
 
     return inner, Path(mod_path)
+
+
+def from_graph_data_storage_fn(
+    graph_data: GraphData,
+) -> Callable[[UUID], ControllerStorage]:
+    def inner(workflow_id: UUID) -> ControllerStorage:
+        return GraphDataStorage(UUID(int=0), graph=graph_data)
+
+    return inner

@@ -14,6 +14,8 @@ from tests.controller.sample_graphdata import (
 )
 from tests.controller.loop_graphdata import loop_multiple_acc, loop_multiple_acc_untyped
 from tests.controller.typed_graphdata import (
+    tkr_conj,
+    tkr_list_conj,
     tuple_untuple,
     typed_destructuring,
     typed_eval,
@@ -24,22 +26,22 @@ from tests.controller.typed_graphdata import (
     typed_map_simple,
 )
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.types import PType, ptype_from_bytes
+from tierkreis.controller.data.types import PType
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage
 from tierkreis.controller.storage.in_memory import ControllerInMemoryStorage
 from tierkreis.controller.data.graph import GraphData
+from tierkreis.storage import read_outputs
 
-params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
-    (simple_eval(), 12, "simple_eval", 1, {}),
+params: list[tuple[GraphData, Any, str, int, dict[str, PType] | PType]] = [
+    (simple_eval(), {"simple_eval_output": 12}, "simple_eval", 1, {}),
     (simple_loop(), 10, "simple_loop", 2, {}),
     (simple_map(), list(range(6, 47, 2)), "simple_map", 3, {}),
     (maps_in_series(), list(range(0, 81, 4)), "maps_in_series", 4, {}),
     (simple_ifelse(), 1, "simple_ifelse", 6, {"pred": b"true"}),
     (simple_ifelse(), 2, "simple_ifelse", 7, {"pred": b"false"}),
-    (factorial().get_data(), 24, "factorial", 8, {"value": b"4"}),
+    (factorial().get_data(), 24, "factorial", 8, 4),
     (
         loop_multiple_acc_untyped(),
         {"acc1": 6, "acc2": 12, "acc3": 18},
@@ -56,7 +58,7 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     ),
     (simple_eagerifelse(), 1, "simple_eagerifelse", 10, {"pred": b"true"}),
     (factorial().get_data(), 120, "factorial", 12, {"value": b"5"}),
-    (typed_eval().get_data(), 12, "typed_eval", 14, {}),
+    (typed_eval().get_data(), {"typed_eval_output": 12}, "typed_eval", 14, {}),
     (typed_loop().get_data(), 10, "typed_loop", 15, {}),
     (
         typed_map().get_data(),
@@ -88,6 +90,14 @@ params: list[tuple[GraphData, Any, str, int, dict[str, Any]]] = [
     (gcd().get_data(), 24, "gcd", 21, {"a": 48, "b": 360}),
     (gcd().get_data(), 1, "gcd", 22, {"a": 9357, "b": 5864}),
     (gcd().get_data(), 3, "gcd", 23, {"a": 3, "b": 0}),
+    (tkr_conj().get_data(), complex(1, -1), "tkr_conj", 24, complex(1, 1)),
+    (
+        tkr_list_conj().get_data(),
+        [complex(1, -1), complex(1, 0)],
+        "tkr_conj",
+        25,
+        [complex(1, 1), complex(1, 0)],
+    ),
 ]
 ids = [
     "simple_eval",
@@ -115,6 +125,8 @@ ids = [
     "gcd_48_360",
     "gcd_9357_5864",
     "gcd_3_0",
+    "tkr_conj",
+    "tkr_conj_list",
 ]
 
 storage_classes = [ControllerFileStorage, ControllerInMemoryStorage]
@@ -123,13 +135,13 @@ storage_ids = ["FileStorage", "In-memory"]
 
 @pytest.mark.parametrize("storage_class", storage_classes, ids=storage_ids)
 @pytest.mark.parametrize("graph,output,name,id,inputs", params, ids=ids)
-def test_resume_eval(
+def test_resume(
     storage_class: Type[ControllerFileStorage | ControllerInMemoryStorage],
     graph: GraphData,
     output: Any,
     name: str,
     id: int,
-    inputs: dict[str, PType],
+    inputs: dict[str, PType] | PType,
 ):
     g = graph
     storage = storage_class(UUID(int=id), name=name)
@@ -139,14 +151,5 @@ def test_resume_eval(
     storage.clean_graph_files()
     run_graph(storage, executor, g, inputs)
 
-    output_ports = g.nodes[g.output_idx()].inputs.keys()
-    actual_output = {}
-    for port in output_ports:
-        actual_output[port] = ptype_from_bytes(storage.read_output(Loc(), port))
-
-    if f"{name}_output" in actual_output:
-        assert actual_output[f"{name}_output"] == output
-    elif "value" in actual_output:
-        assert actual_output["value"] == output
-    else:
-        assert actual_output == output
+    actual_output = read_outputs(g, storage)
+    assert actual_output == output

@@ -77,6 +77,11 @@ def gt(a: int | float, b: int | float) -> bool:
 
 
 @worker.task()
+def conjugate(z: complex) -> complex:
+    return z.conjugate()
+
+
+@worker.task()
 def eq(a: int | float, b: int | float) -> bool:
     return a == b
 

@@ -150,6 +150,18 @@ class gt(NamedTuple):
         return "builtins"
 
 
+class conjugate(NamedTuple):
+    z: TKR[complex]  # noqa: F821 # fmt: skip
+
+    @staticmethod
+    def out() -> type[TKR[complex]]:  # noqa: F821 # fmt: skip
+        return TKR[complex]  # noqa: F821 # fmt: skip
+
+    @property
+    def namespace(self) -> str:
+        return "builtins"
+
+
 class eq(NamedTuple):
     a: TKR[Union[int, float]]  # noqa: F821 # fmt: skip
     b: TKR[Union[int, float]]  # noqa: F821 # fmt: skip

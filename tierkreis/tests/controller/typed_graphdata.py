@@ -1,5 +1,13 @@
 from typing import NamedTuple
-from tierkreis.builtins.stubs import iadd, igt, itimes, tkr_tuple, untuple, mod
+from tierkreis.builtins.stubs import (
+    iadd,
+    igt,
+    itimes,
+    tkr_tuple,
+    untuple,
+    mod,
+    conjugate,
+)
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.models import TKR
@@ -66,42 +74,34 @@ def loop_body():
     return g
 
 
-class TypedLoopOutput(NamedTuple):
-    typed_loop_output: TKR[int]
-
-
 def typed_loop():
-    g = GraphBuilder(EmptyModel, TypedLoopOutput)
+    g = GraphBuilder(EmptyModel, TKR[int])
     loop = g.loop(loop_body(), LoopBodyInput(loop_acc=g.const(6)))
-    g.outputs(TypedLoopOutput(typed_loop_output=loop.loop_acc))
+    g.outputs(loop.loop_acc)
     return g
 
 
-class TypedMapOutput(NamedTuple):
-    typed_map_output: TKR[list[int]]
-
-
 def typed_map_simple():
-    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    g = GraphBuilder(TKR[list[int]], TKR[list[int]])
     m = g.map(typed_doubler(), g.inputs)
-    g.outputs(TypedMapOutput(typed_map_output=m))
+    g.outputs(m)
     return g
 
 
 def typed_map():
-    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    g = GraphBuilder(TKR[list[int]], TKR[list[int]])
     ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), g.inputs)
     m = g.map(typed_doubler_plus(), ins)
-    g.outputs(TypedMapOutput(typed_map_output=m))
+    g.outputs(m)
     return g
 
 
 def typed_destructuring():
-    g = GraphBuilder(TKR[list[int]], TypedMapOutput)
+    g = GraphBuilder(TKR[list[int]], TKR[list[int]])
     ins = g.map(lambda n: DoublerInput(x=n, intercept=g.const(6)), g.inputs)
     m = g.map(typed_doubler_plus_multi(), ins)
     mout = g.map(lambda x: x.value, m)
-    g.outputs(TypedMapOutput(typed_map_output=mout))
+    g.outputs(mout)
     return g
 
 
@@ -136,4 +136,18 @@ def gcd():
     rec = g.eval(g.ref(), GCDInput(a=g.inputs.b, b=a_mod_b))
 
     g.outputs(g.ifelse(pred, rec, g.inputs.a))
+    return g
+
+
+def tkr_conj():
+    g = GraphBuilder(TKR[complex], TKR[complex])
+    z = g.task(conjugate(g.inputs))
+    g.outputs(z)
+    return g
+
+
+def tkr_list_conj():
+    g = GraphBuilder(TKR[list[complex]], TKR[list[complex]])
+    zs = g.map(tkr_conj(), g.inputs)
+    g.outputs(zs)
     return g

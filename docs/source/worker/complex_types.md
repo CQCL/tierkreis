@@ -143,3 +143,11 @@ The complex number `z` will appear nested in JSON as:
 ```python
 {"__tkr_complex__": [z.real, z.imag]}
 ```
+
+### numpy.ndarray
+
+A NumPy `ndarray` will be recognized as a valid type.
+By default it will be serialized using `ndarray.dumps` and deserialized using `pickle.loads`.
+Similarly to the `bytes` type, a top-level `ndarray` will produce a file containing the raw bytes given by the serialization method to ease interoperability with other tools.
+If an `ndarray` is present within a nested Tierkreis structure then it will be serialized in the same way as `bytes` above (i.e. using the `__tkr_bytes__` discriminator).
+Unlike bytes, the stub generation process will produce `TKR[OpaqueType["numpy.ndarray"]]` for use in graph builder code.

@@ -138,7 +138,7 @@ For serialization the method `model_dump(mode="json")` will be used instead of `
 ### complex
 
 Complex numbers are serialized using a custom JSON encoder.
-The complex number `z` will appear nested in a JSON object as:
+The complex number `z` will appear nested in JSON as:
 
 ```python
 {"__tkr_complex__": [z.real, z.imag]}

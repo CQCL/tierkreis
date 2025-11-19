@@ -2,7 +2,6 @@ from pathlib import Path
 from typing import NamedTuple
 from uuid import UUID
 from tierkreis.builder import GraphBuilder
-from tierkreis.consts import PACKAGE_PATH
 from tierkreis.controller.data.core import EmptyModel
 from tierkreis.controller.data.models import TKR, OpaqueType
 from example_workers.scipy_worker.stubs import (

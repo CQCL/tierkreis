@@ -135,7 +135,7 @@ storage_ids = ["FileStorage", "In-memory"]
 
 @pytest.mark.parametrize("storage_class", storage_classes, ids=storage_ids)
 @pytest.mark.parametrize("graph,output,name,id,inputs", params, ids=ids)
-def test_resume_eval(
+def test_resume(
     storage_class: Type[ControllerFileStorage | ControllerInMemoryStorage],
     graph: GraphData,
     output: Any,

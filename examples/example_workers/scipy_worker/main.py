@@ -1,19 +1,20 @@
 from sys import argv
-from typing import NamedTuple
+from typing import Annotated, NamedTuple
 import numpy as np
 
 from tierkreis.worker.worker import Worker
 
 worker = Worker("scipy_worker")
+NDArray = Annotated[np.ndarray, "custom_deserializer"]
 
 
 class PointedArray(NamedTuple):
-    a: np.ndarray
+    a: NDArray
     p: int
 
 
 @worker.task()
-def add_point(a: np.ndarray, p: int) -> PointedArray:
+def add_point(a: NDArray, p: int) -> PointedArray:
     return PointedArray(a, p)
 
 
@@ -23,17 +24,17 @@ def eval_point(pa: PointedArray) -> float:
 
 
 @worker.task()
-def linspace(start: float, stop: float, num: int = 50) -> np.ndarray:
+def linspace(start: float, stop: float, num: int = 50) -> NDArray:
     return np.linspace(start, stop, num=num)
 
 
 @worker.task()
-def transpose(a: np.ndarray) -> np.ndarray:
+def transpose(a: NDArray) -> NDArray:
     return a.transpose()
 
 
 @worker.task()
-def reshape(a: np.ndarray, shape: int | list[int]) -> np.ndarray:
+def reshape(a: NDArray, shape: int | list[int]) -> NDArray:
     return np.reshape(a, shape)
 
 

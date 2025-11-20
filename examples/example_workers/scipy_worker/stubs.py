@@ -2,7 +2,7 @@
 
 from typing import NamedTuple, Protocol, Union
 from tierkreis.controller.data.models import TKR, OpaqueType
-from tierkreis.controller.data.types import Struct
+from tierkreis.controller.data.deser import Struct
 
 
 class PointedArray(Struct, Protocol):

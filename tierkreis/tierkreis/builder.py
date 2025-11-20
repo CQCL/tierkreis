@@ -11,7 +11,7 @@ from tierkreis.controller.data.models import (
     model_fields,
     init_tmodel,
 )
-from tierkreis.controller.data.types import PType
+from tierkreis.controller.data.deser import PType
 from tierkreis.controller.data.graph import GraphData, ValueRef
 
 

@@ -19,7 +19,7 @@ from tierkreis.controller.data.core import (
     RestrictedNamedTuple,
     ValueRef,
 )
-from tierkreis.controller.data.types import PType, generics_in_ptype
+from tierkreis.controller.data.core import PType, generics_in_ptype
 
 TKR_PORTMAPPING_FLAG = "__tkr_portmapping__"
 

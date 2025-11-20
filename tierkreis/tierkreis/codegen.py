@@ -1,6 +1,6 @@
 from inspect import isclass
 from pydantic import BaseModel
-from tierkreis.controller.data.types import (
+from tierkreis.controller.data.deser import (
     DictConvertible,
     ListConvertible,
     NdarraySurrogate,

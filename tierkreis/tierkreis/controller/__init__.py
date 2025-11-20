@@ -4,7 +4,10 @@ from time import sleep
 from tierkreis.builder import GraphBuilder
 from tierkreis.controller.data.graph import Eval, GraphData
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.types import PType, bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.data.core import PType
+from tierkreis.controller.data.ser import bytes_from_ptype
+from tierkreis.controller.data.deser import ptype_from_bytes
+
 from tierkreis.controller.executor.protocol import ControllerExecutor
 from tierkreis.controller.start import NodeRunData, start, start_nodes
 from tierkreis.controller.storage.protocol import ControllerStorage

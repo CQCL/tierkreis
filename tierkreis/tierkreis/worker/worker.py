@@ -9,12 +9,11 @@ from typing import Callable, TypeVar
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import PModel, dict_from_pmodel
-from tierkreis.controller.data.types import (
-    PType,
-    bytes_from_ptype,
-    has_default,
-    ptype_from_bytes,
-)
+from tierkreis.controller.data.core import PType, has_default
+from tierkreis.controller.data.ser import bytes_from_ptype
+from tierkreis.controller.data.deser import ptype_from_bytes
+
+
 from tierkreis.exceptions import TierkreisError
 from tierkreis.namespace import Namespace, WorkerFunction
 from tierkreis.worker.storage.filestorage import WorkerFileStorage

@@ -2,7 +2,7 @@
 
 from typing import NamedTuple, Sequence, Union
 from tierkreis.controller.data.models import TKR
-from tierkreis.controller.data.types import PType
+from tierkreis.controller.data.deser import PType
 
 
 class Headed[T: PType](NamedTuple):

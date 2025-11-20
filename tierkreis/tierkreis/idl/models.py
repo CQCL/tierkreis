@@ -3,7 +3,7 @@ from types import NoneType
 from typing import Annotated, Mapping, Self, Sequence, get_args, get_origin
 
 from tierkreis.controller.data.core import RestrictedNamedTuple
-from tierkreis.controller.data.types import _is_generic
+from tierkreis.controller.data.core import _is_generic
 
 
 type ElementaryType = (

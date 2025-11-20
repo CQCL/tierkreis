@@ -7,7 +7,7 @@ import subprocess
 from typing import Callable, Self
 from tierkreis.codegen import format_method, format_model
 from tierkreis.controller.data.models import PModel, is_portmapping
-from tierkreis.controller.data.types import Struct, has_default, is_ptype
+from tierkreis.controller.data.core import Struct, has_default, is_ptype
 from tierkreis.exceptions import TierkreisError
 from tierkreis.idl.spec import spec
 from tierkreis.idl.models import GenericType, Interface, Method, Model, TypedArg

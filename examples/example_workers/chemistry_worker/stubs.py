@@ -2,7 +2,7 @@
 
 from typing import NamedTuple, Protocol
 from tierkreis.controller.data.models import TKR
-from tierkreis.controller.data.types import Struct
+from tierkreis.controller.data.deser import Struct
 
 
 class CompleteActiveSpace(Struct, Protocol):

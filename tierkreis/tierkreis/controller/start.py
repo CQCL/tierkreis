@@ -6,7 +6,8 @@ import subprocess
 import sys
 
 from tierkreis.controller.data.core import PortID
-from tierkreis.controller.data.types import bytes_from_ptype, ptype_from_bytes
+from tierkreis.controller.data.ser import bytes_from_ptype
+from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.storage.adjacency import outputs_iter
 from typing_extensions import assert_never

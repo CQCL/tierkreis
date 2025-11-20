@@ -1,4 +1,5 @@
 from base64 import b64encode
+from collections import defaultdict
 import collections.abc
 import json
 from types import NoneType
@@ -43,15 +44,13 @@ def ser_from_ptype(ptype: PType, hint: type | None) -> Any:
                 for k, p in ptype._asdict().items()
             }
         case tuple():
-            args = get_args(hint)
-            if not args:
-                return tuple([ser_from_ptype(p, None) for p in ptype])
+            args = get_args(hint) or [None] * len(ptype)
             return tuple([ser_from_ptype(p, args[i]) for i, p in enumerate(ptype)])
         case collections.abc.Sequence():
-            h = get_args(hint)[0] if hint else None
+            h = get_args(hint)[0] if hint and get_args(hint) else None
             return [ser_from_ptype(p, h) for p in ptype]
         case collections.abc.Mapping():
-            h = get_args(hint)[1] if hint else None
+            h = get_args(hint)[1] if hint and get_args(hint) else None
             return {k: ser_from_ptype(p, h) for k, p in ptype.items()}
         case DictConvertible():
             return ser_from_ptype(ptype.to_dict(), None)

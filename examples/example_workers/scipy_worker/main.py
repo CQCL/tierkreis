@@ -1,11 +1,13 @@
+import pickle
 from sys import argv
 from typing import Annotated, NamedTuple
 import numpy as np
 
+from tierkreis.controller.data.deser import BytesDeserializer
 from tierkreis.worker.worker import Worker
 
 worker = Worker("scipy_worker")
-NDArray = Annotated[np.ndarray, "custom_deserializer"]
+NDArray = Annotated[np.ndarray, BytesDeserializer(pickle.loads)]
 
 
 class PointedArray(NamedTuple):

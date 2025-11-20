@@ -1,8 +1,9 @@
 from base64 import b64encode
 import collections.abc
+from dataclasses import dataclass
 import json
 from types import NoneType
-from typing import Any, TypeVar, assert_never
+from typing import Any, Callable, TypeVar, assert_never, get_args
 
 from pydantic import BaseModel
 from tierkreis.controller.data.core import (
@@ -11,6 +12,7 @@ from tierkreis.controller.data.core import (
     NdarraySurrogate,
     PType,
     Struct,
+    get_serializer,
 )
 
 
@@ -27,22 +29,30 @@ class TierkreisEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-def ser_from_ptype(ptype: PType) -> Any:
+def ser_from_ptype(ptype: PType, hint: type | None) -> Any:
+    if sr := get_serializer(hint):
+        return sr.serializer(ptype)
+
     match ptype:
         case bytes() | bytearray() | memoryview():
             return bytes(ptype)
         case bool() | int() | float() | complex() | str() | NoneType() | TypeVar():
             return ptype
         case Struct():
-            return {k: ser_from_ptype(p) for k, p in ptype._asdict().items()}
+            return {
+                k: ser_from_ptype(p, hint.__annotations__[k])
+                for k, p in ptype._asdict().items()
+            }
         case collections.abc.Sequence():
-            return [ser_from_ptype(p) for p in ptype]
+            h = get_args(hint)[0] if hint else None
+            return [ser_from_ptype(p, h) for p in ptype]
         case collections.abc.Mapping():
-            return {k: ser_from_ptype(p) for k, p in ptype.items()}
+            h = get_args(hint)[1] if hint else None
+            return {k: ser_from_ptype(p, h) for k, p in ptype.items()}
         case DictConvertible():
-            return ser_from_ptype(ptype.to_dict())
+            return ser_from_ptype(ptype.to_dict(), None)
         case ListConvertible():
-            return ser_from_ptype(ptype.to_list())
+            return ser_from_ptype(ptype.to_list(), None)
         case BaseModel():
             return ptype.model_dump(mode="json")
         case NdarraySurrogate():
@@ -51,8 +61,8 @@ def ser_from_ptype(ptype: PType) -> Any:
             assert_never(ptype)
 
 
-def bytes_from_ptype(ptype: PType) -> bytes:
-    ser = ser_from_ptype(ptype)
+def bytes_from_ptype(ptype: PType, hint: type | None = None) -> bytes:
+    ser = ser_from_ptype(ptype, hint)
     match ser:
         case bytes():
             return ser  # Top level bytes should be a clean pass-through.

@@ -8,7 +8,11 @@ from typing import Callable, TypeVar
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
-from tierkreis.controller.data.models import PModel, dict_from_pmodel
+from tierkreis.controller.data.models import (
+    PModel,
+    annotations_from_pmodel,
+    dict_from_pmodel,
+)
 from tierkreis.controller.data.core import PType, has_default
 from tierkreis.controller.data.ser import bytes_from_ptype
 from tierkreis.controller.data.deser import ptype_from_bytes
@@ -98,10 +102,15 @@ class Worker:
             )
         return args
 
-    def _save_results(self, outputs: dict[PortID, Path], results: PModel):
+    def _save_results(
+        self, f: WorkerFunction, outputs: dict[PortID, Path], results: PModel
+    ):
         d = dict_from_pmodel(results)
+        annotations = annotations_from_pmodel(signature(f).return_annotation)
         for result_name, path in outputs.items():
-            self.storage.write_output(path, bytes_from_ptype(d[result_name]))
+            self.storage.write_output(
+                path, bytes_from_ptype(d[result_name], annotations[result_name])
+            )
 
     def add_types(self, func: WorkerFunction) -> None:
         self.types[func.__name__] = signature(func)
@@ -129,7 +138,7 @@ class Worker:
             def wrapper(node_definition: WorkerCallArgs):
                 kwargs = self._load_args(func, node_definition.inputs)
                 results = func(**kwargs)
-                self._save_results(node_definition.outputs, results)
+                self._save_results(func, node_definition.outputs, results)
 
             self.functions[func.__name__] = wrapper
             return func

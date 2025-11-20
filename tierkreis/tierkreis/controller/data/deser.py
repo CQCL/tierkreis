@@ -1,22 +1,10 @@
-from dataclasses import dataclass
 import logging
 from base64 import b64decode
 import collections.abc
-from inspect import isclass
 import json
 import pickle
 from types import NoneType
-from typing import (
-    Annotated,
-    Any,
-    Callable,
-    Self,
-    TypeVar,
-    assert_never,
-    cast,
-    get_args,
-    get_origin,
-)
+from typing import Annotated, Any, TypeVar, assert_never, cast, get_args, get_origin
 
 from pydantic import BaseModel, ValidationError
 from tierkreis.controller.data.core import (
@@ -26,23 +14,12 @@ from tierkreis.controller.data.core import (
     PType,
     Struct,
     _is_union,
+    get_deserializer,
 )
 from tierkreis.exceptions import TierkreisError
 
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class BytesDeserializer:
-    deserializer: Callable[[bytes], Any]
-
-    @staticmethod
-    def from_type(t: Any) -> "BytesDeserializer | None":
-        for arg in get_args(t):
-            if isinstance(arg, BytesDeserializer):
-                return arg
-        return None
 
 
 class TierkreisDecoder(json.JSONDecoder):
@@ -67,18 +44,18 @@ def coerce_from_annotation[T: PType](ser: Any, hint: type[T] | None) -> T:
     if hint is None:
         return ser
 
-    if t := BytesDeserializer.from_type(hint):
-        return t.deserializer(ser)
+    if sr := get_deserializer(hint):
+        return sr.deserializer(ser)
 
     if get_origin(hint) is Annotated:
         return coerce_from_annotation(ser, get_args(hint)[0])
 
     if _is_union(hint):
-        for t in get_args(hint):
+        for bd in get_args(hint):
             try:
-                return coerce_from_annotation(ser, t)
+                return coerce_from_annotation(ser, bd)
             except (AssertionError, ValidationError):
-                logger.debug(f"Tried deserialising as {t}")
+                logger.debug(f"Tried deserialising as {bd}")
         raise TierkreisError(f"Could not deserialise {ser} as {hint}")
 
     origin = get_origin(hint)
@@ -138,15 +115,8 @@ def coerce_from_annotation[T: PType](ser: Any, hint: type[T] | None) -> T:
 
 
 def ptype_from_bytes[T: PType](bs: bytes, hint: type[T] | None = None) -> T:
-    # Case when we know that top level type does not serialize to JSON.
-    unannotated = get_args(hint)[0] if get_origin(hint) is Annotated else hint
-    if isclass(unannotated) and issubclass(unannotated, (bytes, NdarraySurrogate)):
-        return coerce_from_annotation(bs, hint)
-
     try:
         j = json.loads(bs, cls=TierkreisDecoder)
         return coerce_from_annotation(j, hint)
-    except (json.JSONDecodeError, UnicodeDecodeError) as err:
-        if hint is None:
-            return cast(T, bs)
-        raise err
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return coerce_from_annotation(bs, hint)

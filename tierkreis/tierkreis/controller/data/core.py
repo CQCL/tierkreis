@@ -1,10 +1,14 @@
+from abc import ABC, abstractmethod
 import collections.abc
+from dataclasses import dataclass
 from inspect import Parameter, _empty, isclass
 from itertools import chain
 from types import NoneType, UnionType
 from typing import (
     Annotated,
     Any,
+    Callable,
+    Literal,
     Mapping,
     NamedTuple,
     Protocol,
@@ -27,6 +31,7 @@ from pydantic._internal._generics import get_args as pydantic_get_args
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
+SerializationFormat = Literal["json", "bytes", "unknown"]
 
 
 class EmptyModel(NamedTuple): ...
@@ -64,6 +69,18 @@ class ListConvertible(Protocol):
     def to_list(self) -> list: ...
     @classmethod
     def from_list(cls, arg: list, /) -> "Self": ...
+
+
+@dataclass
+class Serializer:
+    serializer: Callable[[Any], Any]
+    serialization_format: SerializationFormat = "bytes"
+
+
+@dataclass
+class Deserializer:
+    deserializer: Callable[[Any], Any]
+    serialization_format: SerializationFormat = "bytes"
 
 
 type Container[T] = (
@@ -182,3 +199,21 @@ def generics_in_ptype(ptype: type[PType]) -> set[str]:
 
 def has_default(t: Parameter) -> bool:
     return not (isclass(t.default) and issubclass(t.default, _empty))
+
+
+def get_serializer(hint: type | None) -> Serializer | None:
+    if hint is None:
+        return None
+
+    for arg in get_args(hint):
+        if isinstance(arg, Serializer):
+            return arg
+
+
+def get_deserializer(hint: type | None) -> Deserializer | None:
+    if hint is None:
+        return None
+
+    for arg in get_args(hint):
+        if isinstance(arg, Deserializer):
+            return arg

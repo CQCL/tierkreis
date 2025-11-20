@@ -6,10 +6,10 @@ from uuid import UUID
 from unittest import mock
 
 
+from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.cli.run_workflow import run_workflow
 from tests.controller.sample_graphdata import simple_eval
-from tierkreis.controller.data.deser import ptype_from_bytes
 
 logger = logging.getLogger(__name__)
 

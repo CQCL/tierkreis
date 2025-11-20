@@ -26,7 +26,7 @@ from tests.controller.typed_graphdata import (
     typed_map_simple,
 )
 from tierkreis.controller import run_graph
-from tierkreis.controller.data.deser import PType
+from tierkreis.controller.data.core import PType
 from tierkreis.controller.executor.in_memory_executor import InMemoryExecutor
 from tierkreis.controller.executor.shell_executor import ShellExecutor
 from tierkreis.controller.storage.filestorage import ControllerFileStorage

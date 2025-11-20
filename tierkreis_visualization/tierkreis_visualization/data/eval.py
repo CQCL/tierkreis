@@ -3,9 +3,9 @@ from typing import Optional, assert_never
 
 from pydantic import BaseModel
 from tierkreis.controller.data.core import NodeIndex
+from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.graph import GraphData, IfElse, NodeDef
-from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.storage.adjacency import in_edges
 from tierkreis.controller.storage.protocol import ControllerStorage
 

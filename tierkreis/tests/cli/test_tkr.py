@@ -7,7 +7,7 @@ from uuid import UUID
 
 from tierkreis.cli.tkr import load_graph, _load_inputs, main
 from tierkreis.controller.data.graph import GraphData
-from tierkreis.controller.data.deser import PType
+from tierkreis.controller.data.core import PType
 from tierkreis.exceptions import TierkreisError
 
 from tests.controller.sample_graphdata import simple_eval

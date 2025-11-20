@@ -4,6 +4,7 @@ from typing import assert_never
 
 from tierkreis.controller.consts import BODY_PORT
 from tierkreis.controller.data.core import NodeIndex
+from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.data.graph import (
     EagerIfElse,
     Eval,
@@ -13,7 +14,6 @@ from tierkreis.controller.data.graph import (
     NodeDef,
 )
 from tierkreis.controller.data.location import Loc
-from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.start import NodeRunData
 from tierkreis.controller.storage.adjacency import outputs_iter, unfinished_inputs
 from tierkreis.controller.storage.protocol import ControllerStorage

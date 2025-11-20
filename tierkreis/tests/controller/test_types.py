@@ -7,8 +7,8 @@ from pydantic import BaseModel
 import pytest
 
 from tierkreis.controller.data.core import PType, generics_in_ptype, is_ptype
-from tierkreis.controller.data.ser import bytes_from_ptype
 from tierkreis.controller.data.deser import ptype_from_bytes
+from tierkreis.controller.data.ser import bytes_from_ptype
 
 
 class UntupledModel[U, V](BaseModel):

@@ -1,4 +1,3 @@
-from abc import ABC, abstractmethod
 import collections.abc
 from dataclasses import dataclass
 from inspect import Parameter, _empty, isclass

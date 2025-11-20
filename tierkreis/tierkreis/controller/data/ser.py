@@ -1,9 +1,8 @@
 from base64 import b64encode
 import collections.abc
-from dataclasses import dataclass
 import json
 from types import NoneType
-from typing import Any, Callable, TypeVar, assert_never, get_args
+from typing import Any, TypeVar, assert_never, get_args
 
 from pydantic import BaseModel
 from tierkreis.controller.data.core import (
@@ -43,6 +42,11 @@ def ser_from_ptype(ptype: PType, hint: type | None) -> Any:
                 k: ser_from_ptype(p, hint.__annotations__[k])
                 for k, p in ptype._asdict().items()
             }
+        case tuple():
+            args = get_args(hint)
+            if not args:
+                return tuple([ser_from_ptype(p, None) for p in ptype])
+            return tuple([ser_from_ptype(p, args[i]) for i, p in enumerate(ptype)])
         case collections.abc.Sequence():
             h = get_args(hint)[0] if hint else None
             return [ser_from_ptype(p, h) for p in ptype]

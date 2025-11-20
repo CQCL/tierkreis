@@ -4,9 +4,10 @@ from logging import getLogger
 from pathlib import Path
 import sys
 from types import TracebackType
-from typing import Callable, TypeVar
+from typing import Callable, TypeVar, get_origin
 
 from tierkreis.controller.data.core import PortID
+from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import (
     PModel,
@@ -15,7 +16,6 @@ from tierkreis.controller.data.models import (
 )
 from tierkreis.controller.data.core import PType, has_default
 from tierkreis.controller.data.ser import bytes_from_ptype
-from tierkreis.controller.data.deser import ptype_from_bytes
 
 
 from tierkreis.exceptions import TierkreisError
@@ -106,7 +106,9 @@ class Worker:
         self, f: WorkerFunction, outputs: dict[PortID, Path], results: PModel
     ):
         d = dict_from_pmodel(results)
-        annotations = annotations_from_pmodel(signature(f).return_annotation)
+        ret = signature(f).return_annotation
+        origin = get_origin(ret) or ret
+        annotations = annotations_from_pmodel(origin)
         for result_name, path in outputs.items():
             self.storage.write_output(
                 path, bytes_from_ptype(d[result_name], annotations[result_name])

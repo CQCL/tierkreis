@@ -1,7 +1,7 @@
 from types import NoneType
 import pytest
 from tierkreis.codegen import format_generic_type
-from tierkreis.controller.data.deser import PType
+from tierkreis.controller.data.core import PType
 from tierkreis.idl.models import GenericType
 
 formats: list[tuple[type[PType], str]] = [

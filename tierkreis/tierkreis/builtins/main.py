@@ -6,11 +6,11 @@ from sys import argv
 from time import sleep
 from typing import NamedTuple, Sequence
 
+from tierkreis.controller.data.deser import ptype_from_bytes
 from tierkreis.controller.data.location import WorkerCallArgs
 from tierkreis.controller.data.models import portmapping
 from tierkreis.controller.data.core import PType
 from tierkreis.controller.data.ser import bytes_from_ptype
-from tierkreis.controller.data.deser import ptype_from_bytes
 
 from tierkreis.worker.worker import TierkreisWorkerError
 from tierkreis.worker.storage.protocol import WorkerStorage

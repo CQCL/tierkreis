@@ -2,7 +2,7 @@
 
 from typing import NamedTuple, Protocol
 from tierkreis.controller.data.models import TKR
-from tierkreis.controller.data.types import PType, Struct
+from tierkreis.controller.data.core import PType, Struct
 
 
 class A(NamedTuple):

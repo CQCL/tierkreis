@@ -151,3 +151,33 @@ By default it will be serialized using `ndarray.dumps` and deserialized using `p
 Similarly to the `bytes` type, a top-level `ndarray` will produce a file containing the raw bytes given by the serialization method to ease interoperability with other tools.
 If an `ndarray` is present within a nested Tierkreis structure then it will be serialized in the same way as `bytes` above (i.e. using the `__tkr_bytes__` discriminator).
 Unlike bytes, the stub generation process will produce `TKR[OpaqueType["numpy.ndarray"]]` for use in graph builder code.
+
+# Custom serializers
+
+If the worker author would like to customize the (de)serialization functions they may use Python `Annotated` types.
+The Tierkreis Python library will look for subclasses of `tierkreis.controller.data.core.Serializer` and `tierkreis.controller.data.core.Deserializer` in the annotations.
+It is up to the user to ensure that these functions invert each other appropriately for the user's needs.
+The following example shows how to change the serialization of NumPy `ndarray`s based on the value of an env var `SER_METHOD`.
+(Note that the default serialization is with `dumps` and `pickle.loads`.)
+
+```python
+SER_METHOD = os.environ.get("SER_METHOD")
+if SER_METHOD == "dumps":
+    ser = Serializer(np.ndarray.dumps)
+    deser = Deserializer(pickle.loads)
+elif SER_METHOD == "tolist":
+    ser = Serializer(np.ndarray.tolist)
+    deser = Deserializer(np.array)
+elif SER_METHOD == "save":
+    ser = Serializer(save)
+    deser = Deserializer(load)
+else:
+    ser = None
+    deser = None
+
+NDArray = Annotated[np.ndarray, ser, deser]
+
+@worker.task()
+def transpose(a: NDArray) -> NDArray:
+    return a.transpose()
+```

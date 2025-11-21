@@ -27,6 +27,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic._internal._generics import get_args as pydantic_get_args
 from tierkreis.controller.data.core import (
     RestrictedNamedTuple,
+    SerializationMethod,
     get_deserializer,
     get_serializer,
 )
@@ -299,14 +300,38 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T] | None) -> T:
     assert_never(ser)
 
 
-def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
-    if isclass(annotation) and issubclass(annotation, bytes):
-        return coerce_from_annotation(bs, annotation)
+def get_serialization_method[T: PType](
+    hint: type[T] | None = None,
+) -> SerializationMethod:
+    if hint is None:
+        return "unknown"
 
-    try:
-        bs = json.loads(bs, cls=TierkreisDecoder)
-    finally:
-        return coerce_from_annotation(bs, annotation)
+    if sr := get_serializer(hint):
+        return sr.serialization_method
+
+    unannotated = get_args(hint)[0] if get_origin(hint) is Annotated else hint
+    if isclass(unannotated) and issubclass(unannotated, (bytes, NdarraySurrogate)):
+        return "bytes"
+
+    return "json"
+
+
+def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
+    method = get_serialization_method(annotation)
+    match method:
+        case "bytes":
+            return coerce_from_annotation(bs, annotation)
+        case "json":
+            j = json.loads(bs, cls=TierkreisDecoder)
+            return coerce_from_annotation(j, annotation)
+        case "unknown":
+            try:
+                j = json.loads(bs, cls=TierkreisDecoder)
+                return coerce_from_annotation(j, annotation)
+            except (json.JSONDecodeError, UnicodeDecodeError) as err:
+                return cast(T, bs)
+        case _:
+            assert_never(method)
 
 
 def generics_in_ptype(ptype: type[PType]) -> set[str]:

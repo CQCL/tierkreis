@@ -3,6 +3,7 @@ from typing import (
     Annotated,
     Any,
     Callable,
+    Literal,
     NamedTuple,
     Protocol,
     SupportsIndex,
@@ -15,6 +16,7 @@ from typing import (
 PortID = str
 NodeIndex = int
 ValueRef = tuple[NodeIndex, PortID]
+SerializationMethod = Literal["bytes", "json", "unknown"]
 
 
 class EmptyModel(NamedTuple): ...
@@ -31,11 +33,13 @@ class RestrictedNamedTuple[T](Protocol):
 @dataclass
 class Serializer:
     serializer: Callable[[Any], Any]
+    serialization_method: SerializationMethod = "bytes"
 
 
 @dataclass
 class Deserializer:
     deserializer: Callable[[Any], Any]
+    serialization_method: SerializationMethod = "bytes"
 
 
 def get_t_from_args[T](t: type[T], hint: type | None) -> T | None:

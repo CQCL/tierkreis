@@ -29,8 +29,8 @@ if SER_METHOD == "dumps":
     ser = Serializer(np.ndarray.dumps)
     deser = Deserializer(pickle.loads)
 elif SER_METHOD == "tolist":
-    ser = Serializer(np.ndarray.tolist)
-    deser = Deserializer(np.array)
+    ser = Serializer(np.ndarray.tolist, "json")
+    deser = Deserializer(np.array, "json")
 elif SER_METHOD == "save":
     ser = Serializer(save)
     deser = Deserializer(load)

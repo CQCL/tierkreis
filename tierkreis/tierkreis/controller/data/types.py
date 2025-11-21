@@ -304,16 +304,9 @@ def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> 
         return coerce_from_annotation(bs, annotation)
 
     try:
-        j = json.loads(bs, cls=TierkreisDecoder)
-    except (json.JSONDecodeError, UnicodeDecodeError) as err:
-        if annotation is None:
-            return cast(T, bs)
-        raise err
-
-    if annotation is None:
-        return j
-
-    return coerce_from_annotation(j, annotation)
+        bs = json.loads(bs, cls=TierkreisDecoder)
+    finally:
+        return coerce_from_annotation(bs, annotation)
 
 
 def generics_in_ptype(ptype: type[PType]) -> set[str]:

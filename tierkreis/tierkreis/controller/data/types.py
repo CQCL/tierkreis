@@ -27,7 +27,7 @@ from pydantic import BaseModel, ValidationError
 from pydantic._internal._generics import get_args as pydantic_get_args
 from tierkreis.controller.data.core import (
     RestrictedNamedTuple,
-    SerializationMethod,
+    SerializationFormat,
     get_deserializer,
     get_serializer,
 )
@@ -300,9 +300,9 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T] | None) -> T:
     assert_never(ser)
 
 
-def get_serialization_method[T: PType](
+def get_serialization_format[T: PType](
     hint: type[T] | None = None,
-) -> SerializationMethod:
+) -> SerializationFormat:
     if hint is None:
         return "unknown"
 
@@ -317,7 +317,7 @@ def get_serialization_method[T: PType](
 
 
 def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
-    method = get_serialization_method(annotation)
+    method = get_serialization_format(annotation)
     match method:
         case "bytes":
             return coerce_from_annotation(bs, annotation)
@@ -328,7 +328,7 @@ def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> 
             try:
                 j = json.loads(bs, cls=TierkreisDecoder)
                 return coerce_from_annotation(j, annotation)
-            except (json.JSONDecodeError, UnicodeDecodeError) as err:
+            except (json.JSONDecodeError, UnicodeDecodeError):
                 return cast(T, bs)
         case _:
             assert_never(method)

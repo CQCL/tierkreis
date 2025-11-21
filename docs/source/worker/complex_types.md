@@ -156,6 +156,8 @@ Unlike bytes, the stub generation process will produce `TKR[OpaqueType["numpy.nd
 
 If the worker author would like to customize the (de)serialization functions they may use Python `Annotated` types.
 The Tierkreis Python library will look for subclasses of `tierkreis.controller.data.core.Serializer` and `tierkreis.controller.data.core.Deserializer` in the annotations.
+The `serialization_format` of `Serializer` and `Deserializer` defaults to `"bytes"`, which means that the (de)serialization method will be applied before JSON parsing.
+If we set the `serialization_format` to `"json"` then Tierkreis will insert JSON loading/dumping before/after the custom method is called.
 It is up to the user to ensure that these functions invert each other appropriately for the user's needs.
 The following example shows how to change the serialization of NumPy `ndarray`s based on the value of an env var `SER_METHOD`.
 (Note that the default serialization is with `dumps` and `pickle.loads` so the first and last cases perform the same serializations.)
@@ -166,8 +168,8 @@ if SER_METHOD == "dumps":
     ser = Serializer(np.ndarray.dumps)
     deser = Deserializer(pickle.loads)
 elif SER_METHOD == "tolist":
-    ser = Serializer(np.ndarray.tolist)
-    deser = Deserializer(np.array)
+    ser = Serializer(np.ndarray.tolist, "json")
+    deser = Deserializer(np.array, "json")
 elif SER_METHOD == "save":
     ser = Serializer(save)
     deser = Deserializer(load)

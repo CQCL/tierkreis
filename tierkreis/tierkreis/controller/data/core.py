@@ -47,5 +47,9 @@ def get_t_from_args[T](t: type[T], hint: type | None) -> T | None:
             return arg
 
 
-get_serializer = lambda x: get_t_from_args(Serializer, x)
-get_deserializer = lambda x: get_t_from_args(Deserializer, x)
+def get_serializer(hint: type | None):
+    return get_t_from_args(Serializer, hint)
+
+
+def get_deserializer(hint: type | None):
+    return get_t_from_args(Deserializer, hint)

@@ -1,6 +1,11 @@
 from inspect import isclass
 from pydantic import BaseModel
-from tierkreis.controller.data.types import DictConvertible, ListConvertible, _is_union
+from tierkreis.controller.data.types import (
+    DictConvertible,
+    ListConvertible,
+    NdarraySurrogate,
+    _is_union,
+)
 from tierkreis.idl.models import GenericType, Method, Model, TypedArg
 
 NO_QA_STR = " # noqa: F821 # fmt: skip"
@@ -11,7 +16,7 @@ def format_ptype(ptype: type | str) -> str:
         return ptype
 
     if isclass(ptype) and issubclass(
-        ptype, (DictConvertible, ListConvertible, BaseModel)
+        ptype, (DictConvertible, ListConvertible, NdarraySurrogate, BaseModel)
     ):
         return f'OpaqueType["{ptype.__module__}.{ptype.__qualname__}"]'
 

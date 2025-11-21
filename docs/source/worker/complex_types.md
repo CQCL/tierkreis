@@ -143,3 +143,43 @@ The complex number `z` will appear nested in JSON as:
 ```python
 {"__tkr_complex__": [z.real, z.imag]}
 ```
+
+### numpy.ndarray
+
+A NumPy `ndarray` will be recognized as a valid type.
+By default it will be serialized using `ndarray.dumps` and deserialized using `pickle.loads`.
+Similarly to the `bytes` type, a top-level `ndarray` will produce a file containing the raw bytes given by the serialization method to ease interoperability with other tools.
+If an `ndarray` is present within a nested Tierkreis structure then it will be serialized in the same way as `bytes` above (i.e. using the `__tkr_bytes__` discriminator).
+Unlike bytes, the stub generation process will produce `TKR[OpaqueType["numpy.ndarray"]]` for use in graph builder code.
+
+# Custom serializers
+
+If the worker author would like to customize the (de)serialization functions they may use Python `Annotated` types.
+The Tierkreis Python library will look for subclasses of `tierkreis.controller.data.core.Serializer` and `tierkreis.controller.data.core.Deserializer` in the annotations.
+The `serialization_format` of `Serializer` and `Deserializer` defaults to `"bytes"`, which means that the (de)serialization method will be applied before JSON parsing.
+If we set the `serialization_format` to `"json"` then Tierkreis will insert JSON loading/dumping before/after the custom method is called.
+It is up to the user to ensure that these functions invert each other appropriately for the user's needs.
+The following example shows how to change the serialization of NumPy `ndarray`s based on the value of an env var `SER_METHOD`.
+(Note that the default serialization is with `dumps` and `pickle.loads` so the first and last cases perform the same serializations.)
+
+```python
+SER_METHOD = os.environ.get("SER_METHOD")
+if SER_METHOD == "dumps":
+    ser = Serializer(np.ndarray.dumps)
+    deser = Deserializer(pickle.loads)
+elif SER_METHOD == "tolist":
+    ser = Serializer(np.ndarray.tolist, "json")
+    deser = Deserializer(np.array, "json")
+elif SER_METHOD == "save":
+    ser = Serializer(save)
+    deser = Deserializer(load)
+else:
+    ser = None
+    deser = None
+
+NDArray = Annotated[np.ndarray, ser, deser]
+
+@worker.task()
+def transpose(a: NDArray) -> NDArray:
+    return a.transpose()
+```

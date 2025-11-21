@@ -8,7 +8,11 @@ from typing import Callable, TypeVar
 
 from tierkreis.controller.data.core import PortID
 from tierkreis.controller.data.location import WorkerCallArgs
-from tierkreis.controller.data.models import PModel, dict_from_pmodel
+from tierkreis.controller.data.models import (
+    PModel,
+    annotations_from_pmodel,
+    dict_from_pmodel,
+)
 from tierkreis.controller.data.types import (
     PType,
     bytes_from_ptype,
@@ -99,10 +103,14 @@ class Worker:
             )
         return args
 
-    def _save_results(self, outputs: dict[PortID, Path], results: PModel):
+    def _save_results(
+        self, f: WorkerFunction, outputs: dict[PortID, Path], results: PModel
+    ):
         d = dict_from_pmodel(results)
+        ret = annotations_from_pmodel(signature(f).return_annotation)
         for result_name, path in outputs.items():
-            self.storage.write_output(path, bytes_from_ptype(d[result_name]))
+            bs = bytes_from_ptype(d[result_name], ret[result_name])
+            self.storage.write_output(path, bs)
 
     def add_types(self, func: WorkerFunction) -> None:
         self.types[func.__name__] = signature(func)
@@ -130,7 +138,7 @@ class Worker:
             def wrapper(node_definition: WorkerCallArgs):
                 kwargs = self._load_args(func, node_definition.inputs)
                 results = func(**kwargs)
-                self._save_results(node_definition.outputs, results)
+                self._save_results(func, node_definition.outputs, results)
 
             self.functions[func.__name__] = wrapper
             return func

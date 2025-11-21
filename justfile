@@ -35,7 +35,6 @@ serve:
 prod:
   bun install
   bunx vite build .
-  cp -r dist ../tierkreis_visualization/static
 
 
 examples:
@@ -47,6 +46,10 @@ examples:
   {{uvrun}} examples/hamiltonian_graph.py
   {{uvrun}} examples/non_standard_tkr_dir.py
   {{uvrun}} examples/qsci_graph.py
+  {{uvrun}} examples/scipy_graph.py
+  SER_METHOD=dumps {{uvrun}} examples/scipy_graph.py
+  SER_METHOD=tolist {{uvrun}} examples/scipy_graph.py
+  SER_METHOD=save {{uvrun}} examples/scipy_graph.py
   {{uvrun}} examples/signing_graph.py
 
 stubs-generate dir:
@@ -62,11 +65,13 @@ generate:
   just stubs-generate 'tierkreis_workers/pytket_worker'
   just stubs-generate 'tierkreis_workers/quantinuum_worker'
   just stubs-generate 'tierkreis_workers/qulacs_worker'
+
   just stubs-generate 'examples/example_workers/error_worker'
   just stubs-generate 'examples/example_workers/hello_world_worker'
   just stubs-generate 'examples/example_workers/substitution_worker'
   just stubs-generate 'examples/example_workers/chemistry_worker'
   just stubs-generate 'examples/example_workers/qsci_worker'
+  just stubs-generate 'examples/example_workers/scipy_worker'
 
   mkdir -p examples/example_workers/aer_worker
   mkdir -p examples/example_workers/nexus_worker

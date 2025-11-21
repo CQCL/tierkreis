@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from inspect import isclass
 from itertools import chain
 from typing import (
+    Any,
     Literal,
     Protocol,
     Union,
@@ -93,6 +94,14 @@ def is_tnamedmodel(o) -> TypeIs[type[TNamedModel]]:
 def dict_from_pmodel(pmodel: PModel) -> dict[PortID, PType]:
     if is_portmapping(pmodel):
         return pmodel._asdict()
+
+    return {"value": pmodel}
+
+
+def annotations_from_pmodel(pmodel: type) -> dict[PortID, Any]:
+    if is_portmapping(pmodel):
+        origin = get_origin(pmodel) or pmodel
+        return origin.__annotations__
 
     return {"value": pmodel}
 

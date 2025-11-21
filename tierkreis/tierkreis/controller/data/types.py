@@ -1,3 +1,4 @@
+from collections import defaultdict
 import logging
 from base64 import b64decode, b64encode
 import collections.abc
@@ -24,7 +25,11 @@ from typing import (
 
 from pydantic import BaseModel, ValidationError
 from pydantic._internal._generics import get_args as pydantic_get_args
-from tierkreis.controller.data.core import RestrictedNamedTuple
+from tierkreis.controller.data.core import (
+    RestrictedNamedTuple,
+    get_deserializer,
+    get_serializer,
+)
 from tierkreis.exceptions import TierkreisError
 from typing_extensions import TypeIs
 
@@ -178,22 +183,31 @@ def is_ptype(annotation: Any) -> TypeIs[type[PType]]:
         return False
 
 
-def ser_from_ptype(ptype: PType) -> Any:
+def ser_from_ptype(ptype: PType, annotation: type[PType] | None) -> Any:
+    if sr := get_serializer(annotation):
+        return sr.serializer(ptype)
+
     match ptype:
         case bytes() | bytearray() | memoryview():
             return bytes(ptype)
         case bool() | int() | float() | complex() | str() | NoneType() | TypeVar():
             return ptype
         case Struct():
-            return {k: ser_from_ptype(p) for k, p in ptype._asdict().items()}
+            d = annotation.__annotations__ or defaultdict(None)
+            return {k: ser_from_ptype(p, d[k]) for k, p in ptype._asdict().items()}
+        case tuple():
+            args = get_args(annotation) or [None] * len(ptype)
+            return tuple([ser_from_ptype(p, args[i]) for i, p in enumerate(ptype)])
         case collections.abc.Sequence():
-            return [ser_from_ptype(p) for p in ptype]
+            arg = get_args(annotation)[0] if get_args(annotation) else None
+            return [ser_from_ptype(p, arg) for p in ptype]
         case collections.abc.Mapping():
-            return {k: ser_from_ptype(p) for k, p in ptype.items()}
+            arg = get_args(annotation)[1] if get_args(annotation) else None
+            return {k: ser_from_ptype(p, arg) for k, p in ptype.items()}
         case DictConvertible():
-            return ser_from_ptype(ptype.to_dict())
+            return ser_from_ptype(ptype.to_dict(), None)
         case ListConvertible():
-            return ser_from_ptype(ptype.to_list())
+            return ser_from_ptype(ptype.to_list(), None)
         case BaseModel():
             return ptype.model_dump(mode="json")
         case NdarraySurrogate():
@@ -202,8 +216,8 @@ def ser_from_ptype(ptype: PType) -> Any:
             assert_never(ptype)
 
 
-def bytes_from_ptype(ptype: PType) -> bytes:
-    ser = ser_from_ptype(ptype)
+def bytes_from_ptype(ptype: PType, annotation: type[PType] | None = None) -> bytes:
+    ser = ser_from_ptype(ptype, annotation)
     match ser:
         case bytes():
             return ser  # Top level bytes should be a clean pass-through.
@@ -211,7 +225,13 @@ def bytes_from_ptype(ptype: PType) -> bytes:
             return json.dumps(ser, cls=TierkreisEncoder).encode()
 
 
-def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
+def coerce_from_annotation[T: PType](ser: Any, annotation: type[T] | None) -> T:
+    if annotation is None:
+        return ser
+
+    if ds := get_deserializer(annotation):
+        return ds.deserializer(ser)
+
     if get_origin(annotation) is Annotated:
         return coerce_from_annotation(ser, get_args(annotation)[0])
 
@@ -281,10 +301,7 @@ def coerce_from_annotation[T: PType](ser: Any, annotation: type[T]) -> T:
 
 def ptype_from_bytes[T: PType](bs: bytes, annotation: type[T] | None = None) -> T:
     if isclass(annotation) and issubclass(annotation, bytes):
-        return cast(T, bs)
-
-    if isclass(annotation) and issubclass(annotation, NdarraySurrogate):
-        return cast(T, pickle.loads(bs))
+        return coerce_from_annotation(bs, annotation)
 
     try:
         j = json.loads(bs, cls=TierkreisDecoder)

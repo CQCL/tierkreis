@@ -46,6 +46,10 @@ examples:
   {{uvrun}} examples/hamiltonian_graph.py
   {{uvrun}} examples/non_standard_tkr_dir.py
   {{uvrun}} examples/qsci_graph.py
+  {{uvrun}} examples/scipy_graph.py
+  SER_METHOD=dumps {{uvrun}} examples/scipy_graph.py
+  SER_METHOD=tolist {{uvrun}} examples/scipy_graph.py
+  SER_METHOD=save {{uvrun}} examples/scipy_graph.py
   {{uvrun}} examples/signing_graph.py
 
 stubs-generate dir:

@@ -158,7 +158,7 @@ If the worker author would like to customize the (de)serialization functions the
 The Tierkreis Python library will look for subclasses of `tierkreis.controller.data.core.Serializer` and `tierkreis.controller.data.core.Deserializer` in the annotations.
 It is up to the user to ensure that these functions invert each other appropriately for the user's needs.
 The following example shows how to change the serialization of NumPy `ndarray`s based on the value of an env var `SER_METHOD`.
-(Note that the default serialization is with `dumps` and `pickle.loads`.)
+(Note that the default serialization is with `dumps` and `pickle.loads` so the first and last cases perform the same serializations.)
 
 ```python
 SER_METHOD = os.environ.get("SER_METHOD")

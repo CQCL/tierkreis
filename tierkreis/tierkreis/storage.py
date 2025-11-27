@@ -9,6 +9,7 @@ from tierkreis.controller.storage.filestorage import (
 from tierkreis.controller.storage.in_memory import (
     ControllerInMemoryStorage as InMemoryStorage,
 )
+from tierkreis.exceptions import TierkreisError
 
 __all__ = ["FileStorage", "InMemoryStorage"]
 
@@ -23,3 +24,20 @@ def read_outputs(
     if len(out_ports) == 1 and "value" in out_ports:
         return ptype_from_bytes(storage.read_output(Loc(), "value"))
     return {k: ptype_from_bytes(storage.read_output(Loc(), k)) for k in out_ports}
+
+
+def read_loop_trace(
+    g: GraphData | GraphBuilder,
+    storage: ControllerStorage,
+    node_key: str,
+    output_name: str,
+) -> list[PType]:
+    """Reads the trace of a loop from storage."""
+    if isinstance(g, GraphBuilder):
+        g = g.get_data()
+    loc = storage.loc_from_node_name(node_key)
+    output_names = storage.read_output_ports(loc)
+    if output_name not in output_names:
+        raise TierkreisError(f"Output name {output_name} not found in loop node output")
+    results = storage.read_loop_trace(loc, output_name)
+    return [ptype_from_bytes(r) for r in results]

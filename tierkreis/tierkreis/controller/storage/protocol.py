@@ -48,6 +48,14 @@ class ControllerStorage(ABC):
         For example in a map node."""
 
     @abstractmethod
+    def list_loop_iters(self, path: Path) -> list[Path]:
+        """List all loop iterations under the specified path.
+
+        A loop iter is a node that ends with .L{iter_number} where iter_number is an integer.
+        Only used to generate loop traces.
+        """
+
+    @abstractmethod
     def mkdir(self, path: Path) -> None:
         """Create an empty directory (and parents) at this path.
 
@@ -235,3 +243,29 @@ class ControllerStorage(ABC):
         if since_epoch is None:
             return None
         return datetime.fromtimestamp(since_epoch).isoformat()
+
+    def read_loop_trace(self, node_location: Loc, output_name: PortID) -> list[bytes]:
+        definition = self.read_node_def(node_location)
+        if definition.type != "loop":
+            raise TierkreisError("Can only read traces from loop nodes.")
+        result = []
+        for iter in range(
+            len(self.list_loop_iters(self.workflow_dir))
+        ):  # heavily overestimates the number of children
+            child_location = node_location.L(iter)
+            if not self.is_node_started(child_location):
+                break
+            result.append(self.read_output(child_location, output_name))
+
+        return result
+
+    def loc_from_node_name(self, node_name: str) -> Loc:
+        loop_nodes = set(node.stem for node in self.list_loop_iters(self.workflow_dir))
+        for candidate in loop_nodes:
+            loc = Loc(candidate)
+            node = self.read_node_def(loc)
+            if not node.type == "loop":
+                continue
+            if node_name == node.name:
+                return loc
+        raise TierkreisError(f"Node name {node_name} not found in workflow.")

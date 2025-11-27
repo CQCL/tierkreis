@@ -35,6 +35,7 @@ class Loop:
     continue_port: PortID  # The port that specifies if the loop should continue.
     outputs: set[PortID] = field(default_factory=lambda: set())
     type: Literal["loop"] = field(default="loop")
+    name: str | None = None
 
 
 @dataclass
@@ -116,9 +117,13 @@ class GraphData(BaseModel):
         return self.add(Eval(graph, inputs))
 
     def loop(
-        self, body: ValueRef, inputs: dict[PortID, ValueRef], continue_port: PortID
+        self,
+        body: ValueRef,
+        inputs: dict[PortID, ValueRef],
+        continue_port: PortID,
+        name: str | None = None,
     ) -> Callable[[PortID], ValueRef]:
-        return self.add(Loop(body, inputs, continue_port))
+        return self.add(Loop(body, inputs, continue_port, name=name))
 
     def map(
         self,

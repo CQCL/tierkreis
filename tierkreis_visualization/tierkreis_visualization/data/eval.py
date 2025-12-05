@@ -1,7 +1,6 @@
 import json
 from typing import Optional, assert_never
 
-from pydantic import BaseModel
 from tierkreis.controller.data.core import NodeIndex
 from tierkreis.controller.data.location import Loc
 from tierkreis.controller.data.graph import GraphData, IfElse, NodeDef
@@ -11,11 +10,7 @@ from tierkreis.controller.storage.protocol import ControllerStorage
 
 from tierkreis.exceptions import TierkreisError
 from tierkreis_visualization.data.models import PyNode, NodeStatus, PyEdge
-
-
-class EvalNodeData(BaseModel):
-    nodes: list[PyNode]
-    edges: list[PyEdge]
+from tierkreis_visualization.routers.models import PyGraph
 
 
 def node_status(
@@ -56,9 +51,9 @@ def add_conditional_edges(
         except FileNotFoundError:
             value = None
         edge = PyEdge(
-            from_node=idx,
+            from_node=loc.N(idx),
             from_port=p,
-            to_node=i,
+            to_node=loc.N(i),
             to_port=f"If{branch}",
             conditional=pred is None or pred != branch,
             value=value,
@@ -68,7 +63,7 @@ def add_conditional_edges(
 
 def get_eval_node(
     storage: ControllerStorage, node_location: Loc, errored_nodes: list[Loc]
-) -> EvalNodeData:
+) -> PyGraph:
     thunk = storage.read_output(node_location.N(-1), "body")
     graph = ptype_from_bytes(thunk, GraphData)
 
@@ -114,10 +109,11 @@ def get_eval_node(
                 assert_never(node)
 
         pynode = PyNode(
-            id=i,
+            id=new_location,
             status=status,
             function_name=name,
             node_location=new_location,
+            node_type=node.type,
             value=value,
             started_time=started_time,
             finished_time=finished_time,
@@ -133,8 +129,12 @@ def get_eval_node(
                 value = None
 
             py_edge = PyEdge(
-                from_node=idx, from_port=p1, to_node=i, to_port=p0, value=value
+                from_node=node_location.N(idx),
+                from_port=p1,
+                to_node=node_location.N(i),
+                to_port=p0,
+                value=value,
             )
             py_edges.append(py_edge)
 
-    return EvalNodeData(nodes=pynodes, edges=py_edges)
+    return PyGraph(nodes=pynodes, edges=py_edges)

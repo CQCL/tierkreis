@@ -25,10 +25,11 @@ def get_map_node(
     nodes: list[PyNode] = []
     for i, ele in map_eles:
         node = PyNode(
-            id=i,
+            id=loc.M(i),
             status="Started",
             function_name=ele,
             node_location=loc.M(i),
+            node_type="eval",
             started_time=storage.read_started_time(loc.M(i)) or "",
             finished_time=storage.read_finished_time(loc.M(i)) or "",
         )

@@ -1,9 +1,7 @@
-import { PyEdge } from "@/edges/types";
-import { AppNode, PyNode } from "@/nodes/types";
-import dagre from "@dagrejs/dagre";
+import { AppNode } from "@/nodes/types";
 import { Edge } from "@xyflow/react";
-import { nodeHeight, nodeWidth } from "@/data/constants";
-import { CSSProperties } from "react";
+import { loc_parent } from "@/data/loc";
+import { PyEdge, PyNode } from "@/data/api_types";
 
 function nodeType(function_name: string) {
   if (function_name.match(/^L?\d+$/)) {
@@ -51,7 +49,7 @@ function getTitle(function_name: string) {
   }
 }
 
-function getHandlesFromEdges(id: number, edges: PyEdge[]) {
+function getHandlesFromEdges(id: string, edges: PyEdge[]) {
   const inputs: string[] = [];
   const outputs: string[] = [];
   edges.map((edge) => {
@@ -81,40 +79,46 @@ function parseNodeValue(value: unknown): string | null {
   return null;
 }
 
-export function parseNodes(
+function parseNodes(
   nodes: PyNode[],
   edges: PyEdge[],
-  workflowId: string,
-  parentId?: string
+  workflowId: string
 ): AppNode[] {
   // child nodes prepend their parents id eg. [0,1,2] => [0:0,0:1,0:2]
-  const parsedNodes = nodes.map((node) => ({
-    id: (parentId ? `${parentId}:` : "") + node.id.toString(),
-    type: nodeType(node.function_name),
-    position: { x: 0, y: 0 },
-    data: {
-      name: node.function_name,
-      status: node.status,
-      handles: getHandlesFromEdges(Number(node.id), edges),
-      hidden_handles: undefined,
-      hidden_edges: undefined,
-      workflowId: workflowId,
-      node_location: node.node_location,
-      title: getTitle(node.function_name),
-      id: (parentId ? `${parentId}:` : "") + node.id.toString(),
-      label: node.function_name,
-      pinned: false,
-      value: parseNodeValue(node.value),
-      setInfo: undefined,
-      is_expanded: false,
-      isTooltipOpen: false,
-      hoveredId: "",
-      setHoveredId: () => {},
-      started_time: node.started_time,
-      finished_time: node.finished_time,
-    },
-    parentId: parentId ? `${parentId}` : undefined,
-  }));
+  const parsedNodes = nodes.map((node) => {
+    let parent: string | undefined = loc_parent(node.node_location);
+    if (parent === "-") parent = undefined;
+
+    return {
+      id: node.node_location,
+      type: nodeType(node.function_name),
+      position: { x: 0, y: 0 },
+      data: {
+        name: node.function_name,
+        status: node.status,
+        handles: getHandlesFromEdges(node.id, edges),
+        hidden_handles: undefined,
+        hidden_edges: undefined,
+        workflowId: workflowId,
+        node_location: node.node_location,
+        title: getTitle(node.function_name),
+        id: node.node_location,
+        label: node.function_name,
+        pinned: false,
+        value: parseNodeValue(node.value),
+        setInfo: undefined,
+        is_expanded: false,
+        isTooltipOpen: false,
+        hoveredId: "",
+        setHoveredId: () => {},
+        started_time: node.started_time,
+        finished_time: node.finished_time,
+        node_type: node.node_type as "eval" | "loop" | "map",
+      },
+      parentId: parent,
+      // extent: "parent",
+    };
+  });
   return parsedNodes;
 }
 
@@ -136,7 +140,7 @@ function replacer(_: string, value: unknown): unknown {
   return value;
 }
 
-export function parseEdges(edges: PyEdge[], parentId?: string): Edge[] {
+function parseEdges(edges: PyEdge[], parentId?: string): Edge[] {
   const uniqueCount: Map<string, number> = new Map();
   const prefix = parentId ? `${parentId}:` : "";
   return edges.map((edge) => {
@@ -153,8 +157,8 @@ export function parseEdges(edges: PyEdge[], parentId?: string): Edge[] {
         "-" +
         prefix +
         edge.to_node,
-      source: prefix + edge.from_node.toString(),
-      target: prefix + edge.to_node.toString(),
+      source: edge.from_node.toString(),
+      target: edge.to_node.toString(),
       sourceHandle: prefix + edge.from_node + "_" + edge.from_port,
       targetHandle: prefix + edge.to_node + "_" + edge.to_port,
       label:
@@ -168,39 +172,19 @@ export function parseEdges(edges: PyEdge[], parentId?: string): Edge[] {
 export function parseGraph(
   data: { nodes: PyNode[]; edges: PyEdge[] },
   workflowId: string,
+  openEvals: string[],
+  openLoops: string[],
+  openMaps: string[],
   parentId?: string
 ) {
-  const nodes = parseNodes(data.nodes, data.edges, workflowId, parentId);
+  const nodes = parseNodes(data.nodes, data.edges, workflowId);
   const edges = parseEdges(data.edges, parentId);
+
+  for (let n of nodes) {
+    if (openEvals.includes(n.id)) n.data.is_expanded = true;
+    if (openLoops.includes(n.id)) n.data.is_expanded = true;
+    if (openMaps.includes(n.id)) n.data.is_expanded = true;
+  }
+
   return { nodes, edges };
 }
-
-export const calculateNodePositions = (
-  nodes: { id: string; style?: CSSProperties }[],
-  edges: Edge[],
-  padding: number = 0
-) => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  const nodeIds = new Set(nodes.map((node) => node.id));
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-  dagreGraph.setGraph({ rankdir: "TB", ranker: "longest-path" });
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, {
-      width: node.style?.width ? Number(node.style.width) : nodeWidth,
-      height: node.style?.height ? Number(node.style.height) : nodeHeight,
-    });
-  });
-  edges.forEach((edge) => {
-    if (nodeIds.has(edge.source) && nodeIds.has(edge.target))
-      dagreGraph.setEdge(edge.source, edge.target);
-  });
-  dagre.layout(dagreGraph);
-  return nodes.map((node) => {
-    const { x, y, width, height } = dagreGraph.node(node.id);
-    return {
-      id: node.id,
-      x: x - width / 2 + padding,
-      y: y - height / 2 + padding,
-    };
-  });
-};

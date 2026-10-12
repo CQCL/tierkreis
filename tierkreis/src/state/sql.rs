@@ -19,9 +19,10 @@ use deadpool::{
     Runtime,
     managed::{Hook, HookError, Object},
 };
-use diesel::SqliteConnection;
+use diesel::{SqliteConnection, sql_query};
 use diesel_async::{
-    AsyncConnection, AsyncMigrationHarness, pooled_connection::AsyncDieselConnectionManager,
+    AsyncConnection, AsyncMigrationHarness, RunQueryDsl,
+    pooled_connection::AsyncDieselConnectionManager,
     sync_connection_wrapper::SyncConnectionWrapper,
 };
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness, embed_migrations};
@@ -97,9 +98,13 @@ pub async fn build_conn_pool_with_url(
         .wait_timeout(Some(default_wait))
         .post_create(Hook::async_fn(move |conn, _metrics| {
             Box::pin(async move {
-                set_busy_timeout(&mut *conn, default_wait.as_millis())
-                    .await
-                    .into_diagnostic()
+                let res: diesel::QueryResult<_> = sql_query(format!(
+                    "PRAGMA busy_timeout = {}",
+                    default_wait.as_millis()
+                ))
+                .execute(&mut *conn)
+                .await;
+                res.into_diagnostic()
                     .map_err(|err| HookError::message(err.to_string()))?;
                 Ok(())
             })
@@ -119,7 +124,8 @@ pub async fn build_conn_pool_with_url(
 
     // Note that WAL has no impact when Sqlite is operating in
     // in-memory mode.
-    enable_write_ahead_logging(&mut conn)
+    sql_query("PRAGMA journal_mode=WAL")
+        .execute(&mut conn)
         .await
         .into_diagnostic()?;
 

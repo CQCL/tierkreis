@@ -20,6 +20,7 @@ diesel::table! {
         node_location -> Text,
         scheduled_time -> Nullable<Timestamp>,
         paused_time -> Nullable<Timestamp>,
+        unpaused_time -> Nullable<Timestamp>,
         queued_time -> Nullable<Timestamp>,
         running_time -> Nullable<Timestamp>,
         complete_time -> Nullable<Timestamp>,

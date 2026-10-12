@@ -82,6 +82,8 @@ pub struct NodeState {
     pub scheduled_time: Option<DateTime<Utc>>,
     /// The first time this occurrence hit a breakpoint; retained after release.
     pub paused_time: Option<DateTime<Utc>>,
+    /// The time this occurrence was released from its breakpoint.
+    pub unpaused_time: Option<DateTime<Utc>>,
     /// The time at which the node was queued by an [`Executor`] if any.
     pub queued_time: Option<DateTime<Utc>>,
     /// The time at which the node started running by an [`Executor`] if any.
@@ -193,6 +195,7 @@ pub trait RuntimeState: Debug + Send + Sync {
     ) -> BoxFuture<'a, miette::Result<(u32, Vec<Location>)>> {
         async move {
             let source_state = self.load_workflow_run_state(run_id, attempt).await?;
+            let enable_breakpoints = source_state.breakpoints_enabled().await?;
             let locs = if locs.is_empty() {
                 let errored_locations = source_state.summary().await?.errored_locations;
                 if errored_locations.is_empty() {
@@ -228,7 +231,9 @@ pub trait RuntimeState: Debug + Send + Sync {
             }
             truncate.retain(|loc| !exclude.contains(loc));
 
-            let new_state = self.new_attempt(run_id).await?;
+            let new_state = self
+                .new_attempt(run_id, Some(RunOptions { enable_breakpoints }))
+                .await?;
             new_state
                 .copy_node_states_from(&*source_state, &exclude, &truncate)
                 .await?;
@@ -286,7 +291,8 @@ pub trait WorkflowRunState: Debug + Send + Sync {
         location: &'a Location,
     ) -> BoxFuture<'a, miette::Result<bool>>;
 
-    /// List currently paused nodes
+    /// List currently paused nodes:
+    /// Invariant: paused <==> Some(paused_time) and None(unpaused_time)
     fn paused_nodes(&self) -> BoxFuture<'_, miette::Result<Vec<Location>>>;
 
     /// Unpause selected nodes, or all when None.

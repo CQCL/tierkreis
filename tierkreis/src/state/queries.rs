@@ -1201,13 +1201,14 @@ pub async fn read_breakpoints_enabled(
 ///  Check a breakpoint entry, returning (paused, changed).
 ///
 /// # Errors
+///
 /// Returns an error if the transaction or a node-state query fails.
-pub fn pause_at_breakpoint<'a>(
-    conn: &'a mut impl AsyncConnection<Backend = Sqlite>,
+pub fn pause_at_breakpoint(
+    conn: &mut impl AsyncConnection<Backend = Sqlite>,
     run_id: String,
     attempt: i32,
     location: Location,
-) -> impl Future<Output = diesel::QueryResult<(bool, bool)>> + Send + 'a {
+) -> impl Future<Output = diesel::QueryResult<(bool, bool)>> + Send + '_ {
     use crate::state::schema::node_states::dsl as nodes;
     conn.transaction(async move |conn| {
         let node: NodeState = nodes::node_states
@@ -1240,12 +1241,12 @@ pub fn pause_at_breakpoint<'a>(
 /// # Errors
 ///
 /// Returns an error for terminal attempts, invalid selections, or failed queries.
-pub fn resume_breakpoints<'a>(
-    conn: &'a mut impl AsyncConnection<Backend = Sqlite>,
+pub fn resume_breakpoints(
+    conn: &mut impl AsyncConnection<Backend = Sqlite>,
     run_id: String,
     attempt: i32,
     locations: Option<Vec<Location>>,
-) -> impl Future<Output = miette::Result<Vec<Location>>> + Send + 'a {
+) -> impl Future<Output = miette::Result<Vec<Location>>> + Send + '_ {
     use crate::state::schema::{node_states::dsl as nodes, workflow_run_attempts::dsl as attempts};
     conn.transaction(async move |conn| {
         let run: WorkflowRunAttempt = attempts::workflow_run_attempts

@@ -324,7 +324,7 @@ impl RuntimeState for SqliteRuntimeState {
             let mut conn = self.get_conn().await?;
             let run_id = Uuid::now_v7();
             let run_id_str = run_id.to_string();
-            let enable_breakpoints = options.unwrap_or(Default::default()).enable_breakpoints;
+            let enable_breakpoints = options.unwrap_or_default().enable_breakpoints;
             conn.transaction(async |conn| {
                 let run = NewWorkflowRun {
                     id: &run_id_str,
@@ -428,7 +428,7 @@ impl RuntimeState for SqliteRuntimeState {
                 ));
             }
 
-            let enable_breakpoints = options.unwrap_or(Default::default()).enable_breakpoints;
+            let enable_breakpoints = options.unwrap_or_default().enable_breakpoints;
             insert_workflow_run_attempt(
                 &mut conn,
                 &run_id_str,

@@ -292,7 +292,7 @@ pub trait WorkflowRunState: Debug + Send + Sync {
     ) -> BoxFuture<'a, miette::Result<bool>>;
 
     /// List currently paused nodes:
-    /// Invariant: paused <==> Some(paused_time) and None(unpaused_time)
+    /// Invariant: paused <==> `Some(paused_time)` and `None(unpaused_time)`
     fn paused_nodes(&self) -> BoxFuture<'_, miette::Result<Vec<Location>>>;
 
     /// Unpause selected nodes, or all when None.

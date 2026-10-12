@@ -132,7 +132,7 @@ impl RuntimeState for InMemoryRuntimeState {
 
         let mut entry = self.inner.runs.entry((run_id, attempt)).or_default();
         entry.workflow_id = workflow_id;
-        entry.enable_breakpoints = options.unwrap_or(Default::default()).enable_breakpoints;
+        entry.enable_breakpoints = options.unwrap_or_default().enable_breakpoints;
         entry.inputs = inputs;
         entry.started_time = Some(chrono::Utc::now());
 
@@ -244,7 +244,7 @@ impl RuntimeState for InMemoryRuntimeState {
             // TODO: same as new_workflow_run_state just with provided run_id and attempt, consolidate?
             let mut entry = self.inner.runs.entry((run_id, next_attempt)).or_default();
             entry.workflow_id = workflow_id;
-            entry.enable_breakpoints = options.unwrap_or(Default::default()).enable_breakpoints;
+            entry.enable_breakpoints = options.unwrap_or_default().enable_breakpoints;
             entry.inputs = inputs;
             entry.started_time = Some(Utc::now());
 

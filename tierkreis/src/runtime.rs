@@ -42,6 +42,15 @@ use crate::{
 
 pub use crate::state::interface::RunOptions;
 
+/// The condition that [`Runtime::wait_until`] waits for.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WaitUntil {
+    /// Return as soon as one or more breakpoints have been hit.
+    Breakpoint,
+    /// Return after breakpoints have been hit and all pending work has finished.
+    Idle,
+}
+
 /// `RuntimeConfig` defines the configuration for the runtime
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct RuntimeConfig {
@@ -617,6 +626,51 @@ impl Runtime {
             }
 
             state_recv.changed().await.into_diagnostic()?;
+        }
+    }
+
+    /// Wait until `until` condition is met.
+    ///
+    /// Returns the paused locations, or an empty vector if the workflow finishes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the attempt cannot be read, fails, or a watch channel closes.
+    pub async fn wait_until(
+        &self,
+        run_id: Uuid,
+        attempt: u32,
+        until: WaitUntil,
+    ) -> miette::Result<Vec<Location>> {
+        let key = (run_id, attempt);
+        let mut state_recv = self.state.listen();
+        let mut idle_recv = self.paused_runs.subscribe();
+        let workflow_state = self.state.load_workflow_run_state(run_id, attempt).await?;
+
+        loop {
+            let still_active = { state_recv.borrow_and_update().active_runs.contains(&key) };
+            if !still_active {
+                self.wait_for(run_id, attempt).await?;
+                return Ok(Vec::new());
+            }
+
+            let paused = workflow_state.paused_nodes().await?;
+            let condition_met = match until {
+                WaitUntil::Breakpoint => !paused.is_empty(),
+                WaitUntil::Idle => {
+                    !paused.is_empty() && idle_recv.borrow().get(&key) == Some(&paused)
+                }
+            };
+            if condition_met {
+                return Ok(paused);
+            }
+
+            tokio::select! {
+                result = state_recv.changed() => result.into_diagnostic()?,
+                result = idle_recv.changed(), if until == WaitUntil::Idle => {
+                    result.into_diagnostic()?;
+                }
+            }
         }
     }
 

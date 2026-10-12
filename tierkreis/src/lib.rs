@@ -200,6 +200,12 @@ mod tierkreis {
         Unpaused,
     }
 
+    #[pyclass(name = "WaitUntil")]
+    enum PyWaitUntil {
+        Breakpoint,
+        Idle,
+    }
+
     impl From<crate::state::interface::NodeState> for PyNodeState {
         fn from(node_state: crate::state::interface::NodeState) -> Self {
             let status = if node_state.complete_time.is_some() {
@@ -371,6 +377,38 @@ mod tierkreis {
                 .map_err(|err| Python::attach(|py| convert_err(py, err)))?;
 
             Ok(())
+        }
+
+        #[pyo3(signature = (run_id, condition, attempt=0, /, timeout=604_800))]
+        async fn wait_until(
+            &self,
+            run_id: Uuid,
+            condition: Py<PyWaitUntil>,
+            attempt: u32,
+            timeout: u64,
+        ) -> PyResult<Vec<String>> {
+            let until = Python::attach(|py| match *condition.borrow(py) {
+                PyWaitUntil::Breakpoint => crate::runtime::WaitUntil::Breakpoint,
+                PyWaitUntil::Idle => crate::runtime::WaitUntil::Idle,
+            });
+            let inner = self.inner.clone();
+            let locations = get_runtime()
+                .spawn(async move {
+                    tokio::time::timeout(
+                        Duration::from_secs(timeout),
+                        inner.wait_until(run_id, attempt, until),
+                    )
+                    .await
+                    .into_diagnostic()?
+                })
+                .await
+                .map_err(|err| {
+                    Python::attach(|py| convert_err(py, miette!("Failed to join future: {err}")))
+                })?;
+
+            locations
+                .map(|locations| locations.into_iter().map(|loc| loc.to_string()).collect())
+                .map_err(|err| Python::attach(|py| convert_err(py, err)))
         }
 
         #[pyo3(signature = (run_id, attempt=0, /))]

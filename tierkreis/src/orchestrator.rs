@@ -30,8 +30,8 @@ use crate::{
     },
     event::{
         EventReceiver, EventSender, RuntimeEvent, send_complete, send_map_elem_complete,
-        send_running_loop, send_running_map, send_running_switching, send_workflow_run_complete,
-        send_workflow_run_errored,
+        send_running_eval, send_running_loop, send_running_map, send_running_switching,
+        send_workflow_run_complete, send_workflow_run_errored,
     },
     executor::{
         ExecutorRegistry,
@@ -40,7 +40,7 @@ use crate::{
     graph::{NodeDefinition, WorkflowGraph},
     location::Location,
     state::{WorkflowRunState, interface::NodeState},
-    workflow_state_query::{collect_inputs, load_subgraph},
+    workflow_state_query::{collect_input, collect_inputs, load_subgraph_from_asset},
 };
 
 /// `Action` describes an operation the Orchestrator should perform.
@@ -77,17 +77,20 @@ pub enum ActionKind {
         /// The value to mark the node with.
         cond: bool,
     },
+    SetRunningEval {
+        inputs: HashMap<String, AssetSpec>,
+    },
     /// Mark the node as running with a particular loop index.
     SetRunningLoop {
         /// The loop index to store in the node state.
         index: u32,
+        inputs: HashMap<String, AssetSpec>,
         /// The name of the parent Loop node if any.
         name: Option<String>,
     },
     /// Mark the node as running with a particular map size.
     SetRunningMap {
-        /// The size of the map to mark.
-        size: usize,
+        input_sets: Vec<HashMap<String, AssetSpec>>,
     },
     /// Mark the node as partially complete for a particular element.
     SetMapElemComplete {
@@ -111,8 +114,9 @@ pub enum ActionKind {
 struct ActionPlan {
     tasks: Vec<TaskPlan>,
     switching: Vec<(Location, bool)>,
-    looping: Vec<(Location, u32, Option<String>)>,
-    mapping: Vec<(Location, usize)>,
+    evalling: Vec<(Location, HashMap<String, AssetSpec>)>,
+    looping: Vec<(Location, u32, HashMap<String, AssetSpec>, Option<String>)>,
+    mapping: Vec<(Location, Vec<HashMap<String, AssetSpec>>)>,
     map_elem_complete: HashMap<Location, BitVec<u8>>,
     node_complete: Vec<(Location, HashMap<String, AssetSpec>)>,
     workflow_error: bool,
@@ -123,7 +127,6 @@ struct ActionPlan {
 #[derive(Debug)]
 pub struct OrchestrationContext {
     parent_loc: Location,
-    graph_inputs: HashMap<String, AssetSpec>,
     workflow_run_state: Arc<dyn WorkflowRunState>,
     // Locations scheduled in this orchestration context.
     // This solves relying on scheduled_time == Some() after a runtime restart.
@@ -134,7 +137,7 @@ impl Clone for OrchestrationContext {
     fn clone(&self) -> Self {
         Self {
             parent_loc: self.parent_loc.clone(),
-            graph_inputs: self.graph_inputs.clone(),
+            // graph_inputs: self.graph_inputs.clone(),
             workflow_run_state: Arc::clone(&self.workflow_run_state),
             scheduled_this_lifetime: Arc::clone(&self.scheduled_this_lifetime),
         }
@@ -143,13 +146,9 @@ impl Clone for OrchestrationContext {
 
 impl OrchestrationContext {
     /// Construct a new [`OrchestrationContext`] at the root Location.
-    pub fn new(
-        workflow_run_state: &Arc<dyn WorkflowRunState>,
-        inputs: HashMap<String, AssetSpec>,
-    ) -> Self {
+    pub fn new(workflow_run_state: &Arc<dyn WorkflowRunState>) -> Self {
         Self {
             parent_loc: Location::root(),
-            graph_inputs: inputs,
             workflow_run_state: Arc::clone(workflow_run_state),
             scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
         }
@@ -158,6 +157,7 @@ impl OrchestrationContext {
 
 type NodeStates = HashMap<Location, NodeState>;
 type ScheduledSet = HashSet<Location>;
+type SubWorkflowCache = HashMap<Location, Arc<WorkflowGraph>>;
 
 /// [Orchestrator] manages the Workflow execution by dispatching [Node]s to the correct
 /// [Executor][crate::executor::Executor] as well as managing a shared [`AssetStorageRegistry`]
@@ -277,9 +277,14 @@ impl Orchestrator {
 
                 let parent_location = context.parent_loc.clone();
                 match definition {
-                    NodeDefinition::Input { name } => stream_action_result(
-                        Self::build_input_action(&context.graph_inputs, parent_location, n, name),
-                    ),
+                    NodeDefinition::Input { name } => Self::build_input_action(
+                        context.workflow_run_state.clone(),
+                        parent_location,
+                        n,
+                        name.to_string(),
+                    )
+                    .into_stream()
+                    .boxed(),
                     NodeDefinition::Const { value } => self
                         .build_const_action(parent_location, n, value.clone())
                         .into_stream()
@@ -305,14 +310,7 @@ impl Orchestrator {
                         task_name,
                     )),
                     NodeDefinition::Eval {} => self
-                        .build_eval_actions(
-                            workflow_graph.clone(),
-                            context.workflow_run_state.clone(),
-                            context.scheduled_this_lifetime.clone(),
-                            node_states,
-                            parent_location,
-                            n,
-                        )
+                        .build_eval_actions(context.clone(), workflow_graph.clone(), node_states, n)
                         .try_flatten_stream()
                         .boxed_local(),
                     NodeDefinition::Loop {} => self
@@ -327,12 +325,10 @@ impl Orchestrator {
                         .boxed_local(),
                     NodeDefinition::Map { mapped_ports } => self
                         .build_map_actions(
+                            context.clone(),
                             workflow_graph.clone(),
-                            context.workflow_run_state.clone(),
-                            context.scheduled_this_lifetime.clone(),
                             node_states,
                             mapped_ports.clone(),
-                            parent_location,
                             n,
                         )
                         .try_flatten_stream()
@@ -607,17 +603,17 @@ impl Orchestrator {
         fields(location = %parent_location.with_node(n), name = name),
         err,
     )]
-    fn build_input_action(
-        graph_inputs: &HashMap<String, AssetSpec>,
+    async fn build_input_action(
+        workflow_run_state: Arc<dyn WorkflowRunState>,
         parent_location: Location,
         n: NodeIndex,
-        name: &str,
+        name: String,
     ) -> miette::Result<Action> {
-        let value = graph_inputs
-            .get(name)
-            .ok_or_else(|| miette!("Input not found for port: {name}"))?;
+        let input_asset_spec = workflow_run_state
+            .load_named_input_from_location(&parent_location, &name)
+            .await?;
         let mut outputs = HashMap::new();
-        outputs.insert(name.to_string(), value.clone());
+        outputs.insert(name, input_asset_spec);
 
         Ok(Action {
             loc: parent_location.with_node(n),
@@ -685,56 +681,77 @@ impl Orchestrator {
 
     #[instrument(
         skip_all,
-        fields(location = %parent_location.with_node(n)),
+        fields(location = %context.parent_loc.with_node(n)),
         err,
     )]
     async fn build_eval_actions<'a>(
         &'a self,
+        context: OrchestrationContext,
         workflow_graph: Arc<WorkflowGraph>,
-        workflow_run_state: Arc<dyn WorkflowRunState>,
-        scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
         node_states: Arc<NodeStates>,
-        parent_location: Location,
         n: NodeIndex,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
-        // TODO: we don't need to collect inputs other than the graph
-        // itself if the graph has already started.
-        let inputs = collect_inputs(&workflow_graph, &node_states, &parent_location, n)?;
-        let loc = parent_location.with_node(n);
+        let is_running = node_states
+            .get(&context.parent_loc.with_node(n))
+            .and_then(|state| state.running_time)
+            .is_some();
+        if !is_running {
+            let mut inputs = collect_inputs(&workflow_graph, &node_states, &context.parent_loc, n)?;
+            // The graph input is always the same, no sense in saving it.
+            inputs.remove("graph");
 
-        let subgraph = if inputs.contains_key("graph") {
-            Arc::new(load_subgraph(&self.asset_storage_registry, &inputs).await?)
+            let location = context.parent_loc.with_node(n);
+
+            Ok(stream::iter([Ok(Action {
+                loc: location,
+                kind: ActionKind::SetRunningEval { inputs },
+            })])
+            .boxed())
         } else {
-            workflow_graph
-        };
+            let location = context.parent_loc.with_node(n);
+            let subgraph = if let Ok(subgraph_asset_spec) = collect_input(
+                &workflow_graph,
+                &node_states,
+                &context.parent_loc,
+                n,
+                "graph",
+            ) {
+                Arc::new(
+                    load_subgraph_from_asset(&self.asset_storage_registry, subgraph_asset_spec)
+                        .await?,
+                )
+            } else {
+                workflow_graph
+            };
 
-        let subgraph_output_state = workflow_run_state
-            .read(&loc.with_node(subgraph.output_idx()))
-            .await?;
+            let subgraph_output_state = context
+                .workflow_run_state
+                .read(&location.with_node(subgraph.output_idx()))
+                .await?;
 
-        if let Some(subgraph_outputs) = subgraph_output_state.outputs {
-            return Ok(stream::once(future::ok(Action {
-                loc,
-                kind: ActionKind::SetComplete {
-                    outputs: subgraph_outputs,
-                },
-            }))
-            .boxed());
+            if let Some(subgraph_outputs) = subgraph_output_state.outputs {
+                return Ok(stream::once(future::ok(Action {
+                    loc: location,
+                    kind: ActionKind::SetComplete {
+                        outputs: subgraph_outputs,
+                    },
+                }))
+                .boxed());
+            }
+
+            let stream = self
+                .build_actions(
+                    OrchestrationContext {
+                        parent_loc: location,
+                        workflow_run_state: context.workflow_run_state,
+                        scheduled_this_lifetime: context.scheduled_this_lifetime,
+                    },
+                    subgraph,
+                )
+                .await?;
+
+            Ok(stream.boxed_local())
         }
-
-        let stream = self
-            .build_actions(
-                OrchestrationContext {
-                    parent_loc: loc,
-                    graph_inputs: inputs,
-                    workflow_run_state: workflow_run_state.clone(),
-                    scheduled_this_lifetime,
-                },
-                subgraph,
-            )
-            .await?;
-
-        Ok(stream.boxed_local())
     }
 
     #[instrument(
@@ -754,20 +771,33 @@ impl Orchestrator {
         let loop_index = node_states.get(&loc).and_then(|state| state.loop_index);
         match loop_index {
             None => {
+                let mut inputs =
+                    collect_inputs(&workflow_graph, &node_states, &context.parent_loc, n)?;
+                // The graph input is always the same, no sense in saving it.
+                inputs.remove("graph");
                 return Ok(stream::once(future::ok(Action {
                     loc,
-                    kind: ActionKind::SetRunningLoop { index: 0, name },
+                    kind: ActionKind::SetRunningLoop {
+                        index: 0,
+                        inputs,
+                        name,
+                    },
                 }))
                 .boxed());
             }
             Some(index) => {
-                // TODO: We probably don't need the inputs if we have already
-                // visited this loop iteration.
-                let mut inputs =
-                    collect_inputs(&workflow_graph, &node_states, &context.parent_loc, n)?;
-                let subgraph = load_subgraph(&self.asset_storage_registry, &inputs).await?;
-
                 let loop_loc = loc.with_loop_index(index);
+                let subgraph_asset_spec = collect_input(
+                    &workflow_graph,
+                    &node_states,
+                    &context.parent_loc,
+                    n,
+                    "graph",
+                )?;
+                let subgraph =
+                    load_subgraph_from_asset(&self.asset_storage_registry, subgraph_asset_spec)
+                        .await?;
+
                 let loop_subgraph_output_loc = loop_loc.with_node(subgraph.output_idx());
                 let loop_iteration_output_state = context
                     .workflow_run_state
@@ -776,25 +806,10 @@ impl Orchestrator {
 
                 match loop_iteration_output_state.outputs {
                     None => {
-                        if index > 0 {
-                            let prev_loop_loc = loc.with_loop_index(index - 1);
-                            let prev_loop_subgraph_output_loc =
-                                prev_loop_loc.with_node(subgraph.output_idx());
-                            let prev_loop_iteration_output_state = context
-                                .workflow_run_state
-                                .read(&prev_loop_subgraph_output_loc)
-                                .await?;
-
-                            inputs.extend(prev_loop_iteration_output_state.outputs.ok_or_else(
-                                || miette!("No outputs from previous loop iteration"),
-                            )?);
-                        }
-
                         return self
                             .build_actions(
                                 OrchestrationContext {
                                     parent_loc: loop_loc,
-                                    graph_inputs: inputs,
                                     workflow_run_state: Arc::clone(&context.workflow_run_state),
                                     scheduled_this_lifetime: Arc::clone(
                                         &context.scheduled_this_lifetime,
@@ -810,10 +825,18 @@ impl Orchestrator {
                                 .await?;
 
                         if should_continue_bytes == b"true" {
+                            let mut inputs = collect_inputs(
+                                &workflow_graph,
+                                &node_states,
+                                &context.parent_loc,
+                                n,
+                            )?;
+                            inputs.extend(outputs);
                             Ok(stream::once(future::ok(Action {
                                 loc,
                                 kind: ActionKind::SetRunningLoop {
                                     index: index + 1,
+                                    inputs,
                                     name,
                                 },
                             }))
@@ -834,42 +857,46 @@ impl Orchestrator {
     #[allow(clippy::too_many_arguments)]
     #[instrument(
         skip_all,
-        fields(location = %parent_location.with_node(n)),
+        fields(location = %context.parent_loc.with_node(n)),
         err,
     )]
     async fn build_map_actions<'a>(
         &'a self,
+        context: OrchestrationContext,
         workflow_graph: Arc<WorkflowGraph>,
-        workflow_run_state: Arc<dyn WorkflowRunState>,
-        scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
         node_states: Arc<NodeStates>,
         mapped_ports: HashSet<String>,
-        parent_location: Location,
         n: NodeIndex,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
+        let subgraph_asset_spec = collect_input(
+            &workflow_graph,
+            &node_states,
+            &context.parent_loc,
+            n,
+            "graph",
+        )?;
+        let subgraph =
+            load_subgraph_from_asset(&self.asset_storage_registry, subgraph_asset_spec).await?;
+
         let completed = node_states
-            .get(&parent_location.with_node(n))
+            .get(&context.parent_loc.with_node(n))
             .and_then(|state| state.map_completed.as_deref());
-        let inputs = collect_inputs(&workflow_graph, &node_states, &parent_location, n)?;
-        let subgraph = Arc::new(load_subgraph(&self.asset_storage_registry, &inputs).await?);
 
         Ok(match completed {
             None => {
                 self.build_initial_map_actions(
-                    workflow_run_state,
-                    scheduled_this_lifetime,
+                    context,
+                    workflow_graph,
+                    node_states,
                     mapped_ports,
-                    parent_location.with_node(n),
-                    inputs,
-                    subgraph,
+                    n,
                 )
                 .await?
             }
             Some(completed) if completed.all() => self
                 .build_completed_map_action(
+                    context,
                     workflow_graph,
-                    workflow_run_state,
-                    parent_location,
                     n,
                     completed.len(),
                     subgraph.output_idx(),
@@ -878,12 +905,10 @@ impl Orchestrator {
                 .boxed_local(),
             Some(completed) => {
                 self.build_subsequent_map_actions(
-                    workflow_run_state,
-                    scheduled_this_lifetime,
-                    parent_location.with_node(n),
+                    context,
+                    n,
                     completed.to_bitvec(),
-                    inputs,
-                    subgraph,
+                    Arc::new(subgraph),
                 )
                 .await?
             }
@@ -892,18 +917,21 @@ impl Orchestrator {
 
     #[instrument(
         skip_all,
-        fields(location = %location, mapped_ports = ?mapped_ports),
+        fields(mapped_ports = ?mapped_ports),
         err,
     )]
     async fn build_initial_map_actions<'a>(
         &'a self,
-        workflow_run_state: Arc<dyn WorkflowRunState>,
-        scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
+        context: OrchestrationContext,
+        workflow_graph: Arc<WorkflowGraph>,
+        node_states: Arc<NodeStates>,
         mapped_ports: HashSet<String>,
-        location: Location,
-        inputs: HashMap<String, AssetSpec>,
-        subgraph: Arc<WorkflowGraph>,
+        n: NodeIndex,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
+        let mut inputs = collect_inputs(&workflow_graph, &node_states, &context.parent_loc, n)?;
+        // The graph input is always the same, no sense in saving it.
+        inputs.remove("graph");
+
         let mut input_sets = Vec::new();
         for mapped_port in mapped_ports {
             let unfolded_assets =
@@ -918,44 +946,21 @@ impl Orchestrator {
                 input_set.insert(mapped_port.clone(), asset);
             }
         }
-        let map_size = input_sets.len();
+        let location = context.parent_loc.with_node(n);
 
-        let loc_copy = location.clone();
-
-        Ok(stream::iter(input_sets.into_iter().enumerate())
-            .flat_map_unordered(None, move |(index, inputs)| {
-                let map_loc = loc_copy.with_map_index(index);
-                self.build_actions(
-                    OrchestrationContext {
-                        parent_loc: map_loc,
-                        graph_inputs: inputs,
-                        workflow_run_state: Arc::clone(&workflow_run_state),
-                        scheduled_this_lifetime: Arc::clone(&scheduled_this_lifetime),
-                    },
-                    subgraph.clone(),
-                )
-                .try_flatten_stream()
-                .boxed_local()
-            })
-            .chain(stream::once(future::ok(Action {
-                loc: location,
-                kind: ActionKind::SetRunningMap { size: map_size },
-            })))
-            .boxed_local())
+        Ok(stream::once(future::ok(Action {
+            loc: location,
+            kind: ActionKind::SetRunningMap { input_sets },
+        }))
+        .boxed_local())
     }
 
-    #[instrument(
-        skip_all,
-        fields(location = %location),
-        err,
-    )]
+    #[instrument(skip_all, err)]
     async fn build_subsequent_map_actions<'a>(
         &'a self,
-        workflow_run_state: Arc<dyn WorkflowRunState>,
-        scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
-        location: Location,
+        context: OrchestrationContext,
+        n: NodeIndex,
         completed: BitVec<u8>,
-        inputs: HashMap<String, AssetSpec>,
         subgraph: Arc<WorkflowGraph>,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
         let output_idx = subgraph.output_idx();
@@ -964,21 +969,20 @@ impl Orchestrator {
         Ok(stream::iter(completed.into_iter().enumerate())
             .filter(|(_index, completed)| future::ready(!completed))
             .flat_map_unordered(None, move |(index, _completed)| {
-                let loc_copy = location.clone();
+                let location = context.parent_loc.with_node(n);
                 let map_loc = location.with_map_index(index);
                 let map_loc_copy = map_loc.clone();
                 self.build_actions(
                     OrchestrationContext {
                         parent_loc: map_loc,
-                        graph_inputs: inputs.clone(),
-                        workflow_run_state: Arc::clone(&workflow_run_state),
-                        scheduled_this_lifetime: Arc::clone(&scheduled_this_lifetime),
+                        workflow_run_state: Arc::clone(&context.workflow_run_state),
+                        scheduled_this_lifetime: Arc::clone(&context.scheduled_this_lifetime),
                     },
                     subgraph.clone(),
                 )
                 .try_flatten_stream()
                 .chain({
-                    let workflow_run_state_copy = workflow_run_state.clone();
+                    let workflow_run_state_copy = context.workflow_run_state.clone();
                     async move {
                         let subgraph_output_state = workflow_run_state_copy
                             .read(&map_loc_copy.with_node(output_idx))
@@ -987,7 +991,7 @@ impl Orchestrator {
                         match subgraph_output_state.outputs {
                             None => Ok(stream::empty().boxed()),
                             Some(_) => Ok(stream::once(future::ok(Action {
-                                loc: loc_copy,
+                                loc: location,
                                 kind: ActionKind::SetMapElemComplete {
                                     index,
                                     size: map_size,
@@ -1005,26 +1009,26 @@ impl Orchestrator {
 
     #[instrument(
         skip_all,
-        fields(location = %parent_location.with_node(n)),
+        fields(location = %context.parent_loc.with_node(n)),
         err,
     )]
     async fn build_completed_map_action(
         &self,
+        context: OrchestrationContext,
         workflow_graph: Arc<WorkflowGraph>,
-        workflow_run_state: Arc<dyn WorkflowRunState>,
-        parent_location: Location,
         n: NodeIndex,
         map_size: usize,
         output_idx: NodeIndex,
     ) -> miette::Result<Action> {
-        let loc = parent_location.with_node(n);
+        let loc = context.parent_loc.with_node(n);
         let mut asset_bundles: HashMap<String, Vec<_>> = workflow_graph
             .output_names(n)?
             .map(|name| (name.clone(), Vec::new()))
             .collect();
         for index in 0..map_size {
             let map_loc = loc.with_map_index(index);
-            let subgraph_output_state = workflow_run_state
+            let subgraph_output_state = context
+                .workflow_run_state
                 .read(&map_loc.with_node(output_idx))
                 .await?;
 
@@ -1097,11 +1101,16 @@ impl Orchestrator {
                 ActionKind::SetSwitching { cond } => {
                     plan.switching.push((loc, cond));
                 }
-                ActionKind::SetRunningLoop { index, name } => {
-                    plan.looping.push((loc, index, name));
+                ActionKind::SetRunningEval { inputs } => plan.evalling.push((loc, inputs)),
+                ActionKind::SetRunningLoop {
+                    index,
+                    inputs,
+                    name,
+                } => {
+                    plan.looping.push((loc, index, inputs, name));
                 }
-                ActionKind::SetRunningMap { size } => {
-                    plan.mapping.push((loc, size));
+                ActionKind::SetRunningMap { input_sets } => {
+                    plan.mapping.push((loc, input_sets));
                 }
                 ActionKind::SetMapElemComplete { index, size } => {
                     let entry = plan
@@ -1132,19 +1141,23 @@ impl Orchestrator {
             .await?;
         }
 
-        for (loc, size) in plan.mapping {
-            send_running_map(&mut event_sender, workflow_run_id, attempt, loc, size).await?;
+        for (loc, inputs) in plan.evalling {
+            send_running_eval(&mut event_sender, workflow_run_id, attempt, loc, inputs).await?;
+        }
+        for (loc, input_sets) in plan.mapping {
+            send_running_map(&mut event_sender, workflow_run_id, attempt, loc, input_sets).await?;
         }
         for (loc, bits) in plan.map_elem_complete {
             send_map_elem_complete(&mut event_sender, workflow_run_id, attempt, loc, bits).await?;
         }
-        for (loc, index, name) in plan.looping {
+        for (loc, index, inputs, name) in plan.looping {
             send_running_loop(
                 &mut event_sender,
                 workflow_run_id,
                 attempt,
                 loc,
                 index,
+                inputs,
                 name,
             )
             .await?;
@@ -1471,15 +1484,46 @@ mod tests {
         wf
     }
 
+    fn if_else_map_body() -> WorkflowGraph {
+        let mut wf = workflow(["out"]);
+        let a = input(&mut wf, "a");
+        let b = constant(&mut wf, 0).expect("failed to serialize");
+        let pred = input(&mut wf, "pred");
+        let branch = if_else(&mut wf);
+        let out = output(&wf, "out");
+
+        link(&mut wf, pred, (branch, "pred")).expect("failed to link");
+        link(&mut wf, a, (branch, "if_true")).expect("failed to link");
+        link(&mut wf, b, (branch, "if_false")).expect("failed to link");
+        link(&mut wf, (branch, "value"), out).expect("failed to link");
+
+        wf
+    }
+
+    #[fixture]
+    fn if_else_map() -> WorkflowGraph {
+        let mut wf = workflow(["out"]);
+        let values = constant(&mut wf, vec![1, 2, 3]).expect("failed to serialize");
+        let pred = constant(&mut wf, true).expect("failed to serialize");
+        let body = constant(&mut wf, if_else_map_body()).expect("failed to serialize");
+        let map = map_node(&mut wf, ["a"], ["pred"], ["out"]);
+        let out = output(&wf, "out");
+
+        link(&mut wf, values, (map, "a")).expect("failed to link");
+        link(&mut wf, pred, (map, "pred")).expect("failed to link");
+        link(&mut wf, body, (map, "graph")).expect("failed to link");
+        link(&mut wf, (map, "out"), out).expect("failed to link");
+
+        wf
+    }
+
     async fn next_actions(
         orchestrator: &Orchestrator,
         workflow_graph: &Arc<WorkflowGraph>,
         workflow_run_state: &Arc<dyn WorkflowRunState>,
-        inputs: &HashMap<String, AssetSpec>,
     ) -> miette::Result<Vec<Action>> {
         let context = OrchestrationContext {
             parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
             workflow_run_state: Arc::clone(workflow_run_state),
             scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
         };
@@ -1516,11 +1560,10 @@ mod tests {
 
         let workflow_graph = Arc::new(two_inputs_two_outputs);
 
-        let (workflow_run_state, _state_events) = InMemoryWorkflowRunState::test();
-        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
-        let actions =
-            next_actions(&orchestrator, &workflow_graph, &workflow_run_state, &inputs).await?;
+        let (workflow_run_state, _state_events) = InMemoryWorkflowRunState::test(inputs);
+        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
 
         assert_eq!(actions.len(), 2);
         assert_matches!(actions[0].kind, ActionKind::SetComplete { .. });
@@ -1552,10 +1595,9 @@ mod tests {
         let workflow_graph = Arc::new(one_input_one_output);
 
         let inputs = input_sets[0].clone();
-        let (workflow_run_state, _state_events) = InMemoryWorkflowRunState::test();
+        let (workflow_run_state, _state_events) = InMemoryWorkflowRunState::test(inputs);
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
-        let actions =
-            next_actions(&orchestrator, &workflow_graph, &workflow_run_state, &inputs).await?;
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
 
         assert_eq!(actions.len(), 1);
         assert_eq!(actions[0].loc, Location::new("N1")?);
@@ -1579,8 +1621,7 @@ mod tests {
         };
 
         workflow_run_state.write(input_complete_event).await?;
-        let actions =
-            next_actions(&orchestrator, &workflow_graph, &workflow_run_state, &inputs).await?;
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
 
         assert_eq!(actions.len(), 2);
         assert_eq!(
@@ -1641,11 +1682,10 @@ mod tests {
 
         let workflow_graph = Arc::new(simple_eval);
 
-        let (workflow_run_state, _state_events) = InMemoryWorkflowRunState::test();
-        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
-        let actions =
-            next_actions(&orchestrator, &workflow_graph, &workflow_run_state, &inputs).await?;
+        let (workflow_run_state, _state_events) = InMemoryWorkflowRunState::test(inputs);
+        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
 
         assert_eq!(actions.len(), 2);
         assert_eq!(actions[0].loc, Location::new("N2")?);
@@ -1680,10 +1720,30 @@ mod tests {
 
         workflow_run_state.write(inputs_complete_event).await?;
 
-        let actions =
-            next_actions(&orchestrator, &workflow_graph, &workflow_run_state, &inputs).await?;
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
 
         assert_eq!(actions.len(), 1);
+        dbg!(&actions);
+        assert_eq!(actions[0].loc, Location::new("N3")?);
+        assert_matches!(actions[0].kind, ActionKind::SetRunningEval { .. });
+
+        orchestrator
+            .perform_actions(
+                workflow_run_state.run_id(),
+                workflow_run_state.attempt(),
+                stream::iter(actions.into_iter().map(Ok)),
+            )
+            .await?;
+        let eval_running_event = stream.next().await.unwrap();
+        let eval_running_event = match eval_running_event {
+            RuntimeEvent::WorkflowRun { event, .. } => event,
+        };
+
+        workflow_run_state.write(eval_running_event).await?;
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
+
+        assert_eq!(actions.len(), 1);
+        dbg!(&actions);
         assert_eq!(actions[0].loc, Location::new("N3.N1")?);
         assert_matches!(actions[0].kind, ActionKind::SetComplete { .. });
 
@@ -1711,8 +1771,7 @@ mod tests {
         workflow_run_state
             .write(inner_inputs_complete_event)
             .await?;
-        let actions =
-            next_actions(&orchestrator, &workflow_graph, &workflow_run_state, &inputs).await?;
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
 
         orchestrator
             .perform_actions(
@@ -1746,8 +1805,7 @@ mod tests {
             .write(inner_output_complete_event)
             .await?;
         workflow_run_state.write(eval_complete_event).await?;
-        let actions =
-            next_actions(&orchestrator, &workflow_graph, &workflow_run_state, &inputs).await?;
+        let actions = next_actions(&orchestrator, &workflow_graph, &workflow_run_state).await?;
 
         orchestrator
             .perform_actions(Uuid::nil(), 0, stream::iter(actions.into_iter().map(Ok)))
@@ -1787,12 +1845,11 @@ mod tests {
             "memory",
         )?;
 
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
-        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
+        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext {
             parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
             workflow_run_state: Arc::clone(&workflow_run_state),
             scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
         };
@@ -1893,12 +1950,11 @@ mod tests {
             "memory",
         )?;
 
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
-        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
+        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext {
             parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
             workflow_run_state: Arc::clone(&workflow_run_state),
             scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
         };
@@ -1990,6 +2046,7 @@ mod tests {
     #[case::simple_if_else_false(simple_if_else(), json!({"pred": false}), json!({"out": 2}))]
     #[case::simple_eager_if_else_true(simple_eager_if_else(), json!({"pred": true}), json!({"out": 1}))]
     #[case::simple_eager_if_else_false(simple_eager_if_else(), json!({"pred": false}), json!({"out": 2}))]
+    #[case::if_else_map(if_else_map(), json!({}), json!({"out": [1, 2, 3]}))]
     #[tokio::test]
     #[test_log::test]
     async fn run_workflows(
@@ -2009,12 +2066,11 @@ mod tests {
             "memory",
         )?;
 
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
-        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
+        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext {
             parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
             workflow_run_state: Arc::clone(&workflow_run_state),
             scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
         };
@@ -2091,11 +2147,10 @@ mod tests {
             "memory",
         )?;
 
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
+        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(HashMap::new());
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext {
             parent_loc: Location::root(),
-            graph_inputs: HashMap::new(),
             workflow_run_state: Arc::clone(&workflow_run_state),
             scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
         };

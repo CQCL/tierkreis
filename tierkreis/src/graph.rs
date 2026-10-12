@@ -1103,7 +1103,6 @@ mod tests {
         Ok(())
     }
 
-
     #[test]
     fn empty_workflow_graph_roundtrip() -> miette::Result<()> {
         let workflow_graph = WorkflowGraph::new([]);

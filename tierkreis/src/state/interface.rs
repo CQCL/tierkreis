@@ -169,8 +169,11 @@ pub trait RuntimeState: Debug + Send + Sync {
     ///
     /// attempt(new) = max(attempts) + 1, should always be sequential
     /// This can be a partial restart, e.g., if some nodes errored.
-    fn new_attempt(&self, run_id: Uuid, options: Option<RunOptions>,)
-    -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>>;
+    fn new_attempt(
+        &self,
+        run_id: Uuid,
+        options: Option<RunOptions>,
+    ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>>;
 
     /// Restart Task nodes in a new attempt, preserving unaffected node state.
     ///

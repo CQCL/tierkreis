@@ -237,7 +237,7 @@ impl Orchestrator {
             return Ok(stream::empty().boxed());
         }
 
-        let ready_nodes: Vec<_> = {
+        let mut ready_nodes: Vec<_> = {
             let scheduled_this_lifetime = context.scheduled_this_lifetime.read().await;
             Self::find_ready_nodes(
                 &context.parent_loc,
@@ -247,6 +247,21 @@ impl Orchestrator {
             )
             .collect()
         };
+        if context.workflow_run_state.breakpoints_enabled().await? {
+            let mut startables = Vec::with_capacity(ready_nodes.len());
+            for node in ready_nodes {
+                let location = context.parent_loc.with_node(node);
+                if !workflow_graph.has_breakpoint(node)
+                    || !context
+                        .workflow_run_state
+                        .pause_at_breakpoint(&location)
+                        .await?
+                {
+                    startables.push(node);
+                }
+            }
+            ready_nodes = startables;
+        }
         // Abort if the workflow is deadlocked.
         if ready_nodes.is_empty()
             && node_states
@@ -1493,6 +1508,65 @@ mod tests {
             .into_iter()
             .collect::<Result<Vec<_>, _>>()?;
         Ok(actions)
+    }
+
+    #[tokio::test]
+    async fn breakpoint_keeps_independent_nodes_ready() -> miette::Result<()> {
+        use crate::state::interface::{RunOptions, RuntimeState};
+        let (registry, input_sets, _dir) =
+            test_storage_registry(vec![json!({"left": 1, "right": 2})], vec![]).await;
+        let executors = test_executor_registry(&registry);
+        let orchestrator = Orchestrator::try_new(&registry, &executors, "memory", "memory")?;
+        let mut graph = workflow(["left", "right"]);
+        let left = input(&mut graph, "left");
+        let right = input(&mut graph, "right");
+        let left_output = output(&graph, "left");
+        let right_output = output(&graph, "right");
+        link(&mut graph, left, left_output)?;
+        link(&mut graph, right, right_output)?;
+        graph.set_breakpoint(left.0, true)?;
+        let state = crate::state::inmemory::InMemoryRuntimeState::new();
+        let workflow_id = state.save_workflow(None, graph.clone()).await?;
+        let run = state
+            .new_workflow_run_state(
+                workflow_id,
+                input_sets[0].clone(),
+                Some(RunOptions {
+                    enable_breakpoints: true,
+                }),
+            )
+            .await?;
+        let context = OrchestrationContext::new(&run, input_sets[0].clone());
+        let graph = Arc::new(graph);
+        let actions = orchestrator
+            .build_actions(context.clone(), graph.clone())
+            .await?
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect::<miette::Result<Vec<_>>>()?;
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].loc, Location::root().with_node(right.0));
+        let paused = Location::root().with_node(left.0);
+        assert_eq!(run.paused_nodes().await?, vec![paused.clone()]);
+        assert!(
+            !context
+                .scheduled_this_lifetime
+                .read()
+                .await
+                .contains(&paused)
+        );
+        run.resume_breakpoints(Some(vec![paused.clone()])).await?;
+        let actions = orchestrator
+            .build_actions(context, graph)
+            .await?
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .collect::<miette::Result<Vec<_>>>()?;
+        assert_eq!(actions.len(), 1);
+        assert_eq!(actions[0].loc, paused);
+        Ok(())
     }
 
     // Test that we can plan a workflow with two input nodes.

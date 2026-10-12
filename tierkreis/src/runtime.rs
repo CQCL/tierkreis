@@ -8,7 +8,7 @@ use std::{
     sync::Arc,
 };
 
-use futures::{Stream, StreamExt};
+use futures::{Stream, StreamExt, TryStreamExt};
 use miette::{Diagnostic, IntoDiagnostic, miette};
 use serde::{Deserialize, Serialize};
 use tokio::sync::watch;
@@ -32,13 +32,15 @@ use crate::{
     graph::WorkflowGraph,
     location::Location,
     monitoring::{LoggingConfig, flush_logs, init_logging_and_tracing},
-    orchestrator::{OrchestrationContext, Orchestrator},
+    orchestrator::{Action, ActionKind, OrchestrationContext, Orchestrator},
     state::{
         InMemoryRuntimeState, RuntimeState, RuntimeWatchState, SqliteRuntimeState,
         interface::{NodeState, WorkflowRunStateSummary},
     },
     workflow_state_query::find_subgraph_input,
 };
+
+pub use crate::state::interface::RunOptions;
 
 /// `RuntimeConfig` defines the configuration for the runtime
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -209,6 +211,7 @@ pub struct Runtime {
     state: Arc<dyn RuntimeState>,
     asset_storage_registry: AssetStorageRegistry,
     default_storage_name: String,
+    paused_runs: watch::Sender<HashMap<(Uuid, u32), Vec<Location>>>,
 
     background_task: Option<AbortOnDrop>,
 }
@@ -257,6 +260,7 @@ impl Runtime {
             state: runtime_state,
             asset_storage_registry,
             default_storage_name: config.default_storage_name.clone(),
+            paused_runs: watch::channel(HashMap::new()).0,
             background_task: None,
         };
 
@@ -328,6 +332,7 @@ impl Runtime {
         &self,
         workflow_id: Uuid,
         inputs: HashMap<String, Vec<u8>, S>,
+        options: Option<RunOptions>,
     ) -> miette::Result<(Uuid, u32)> {
         let inputs = save_assets(
             &self.asset_storage_registry,
@@ -337,7 +342,7 @@ impl Runtime {
         .await?;
         let workflow_run_state = self
             .state
-            .new_workflow_run_state(workflow_id, inputs)
+            .new_workflow_run_state(workflow_id, inputs, options)
             .await?;
         let attempt = workflow_run_state.attempt();
         let run_id = workflow_run_state.run_id();
@@ -467,6 +472,7 @@ impl Runtime {
         let mut state_recv = self.state.listen();
         // TODO: this should probably be part of the runtime state
         let mut contexts: HashMap<(Uuid, u32), OrchestrationContext> = HashMap::new();
+        let mut pending_outputs: HashMap<(Uuid, u32), HashSet<Location>> = HashMap::new();
 
         loop {
             let active_runs: HashSet<(Uuid, u32)> = {
@@ -479,6 +485,13 @@ impl Runtime {
                 updated.active_runs.iter().copied().collect()
             };
             contexts.retain(|key, _| active_runs.contains(key));
+            // finished runs are not pending/paused
+            pending_outputs.retain(|key, _| active_runs.contains(key));
+            self.paused_runs.send_if_modified(|blocked| {
+                let previous = blocked.len();
+                blocked.retain(|key, _| active_runs.contains(key));
+                previous != blocked.len()
+            });
 
             for (run_id, attempt) in active_runs {
                 let workflow_run_state =
@@ -502,10 +515,59 @@ impl Runtime {
                 let actions = self
                     .orchestrator
                     .build_actions(context, workflow_graph)
+                    .await?
+                    .try_collect::<Vec<Action>>()
                     .await?;
+
+                // Determine if the workflow run is idle (no actions to perform)
+                let idle = actions.is_empty();
+                let pending = pending_outputs.entry((run_id, attempt)).or_default();
+                for action in &actions {
+                    if matches!(
+                        action.kind,
+                        // Possible actions that indicate the workflow is not idle
+                        ActionKind::PerformTask { .. } | ActionKind::SetComplete { .. }
+                    ) {
+                        pending.insert(action.loc.clone());
+                    }
+                }
                 self.orchestrator
-                    .perform_actions(run_id, attempt, actions)
+                    .perform_actions(
+                        run_id,
+                        attempt,
+                        futures::stream::iter(actions.into_iter().map(Ok)),
+                    )
                     .await?;
+
+                let states = workflow_run_state
+                    .read_many(&mut pending.iter().cloned())
+                    .await?;
+                // Retain only the pending outputs that are not yet completed, errored, or cancelled.
+                pending.retain(|loc| {
+                    states.get(loc).is_none_or(|node| {
+                        node.complete_time.is_none()
+                            && node.error_time.is_none()
+                            && node.cancelled_time.is_none()
+                    })
+                });
+                // Check paused nodes
+                let paused = if idle && pending.is_empty() {
+                    workflow_run_state.paused_nodes().await?
+                } else {
+                    Vec::new()
+                };
+                // Update the paused runs based on the current idle and pending status.
+                self.paused_runs.send_if_modified(|blocked| {
+                    let key = (run_id, attempt);
+                    if paused.is_empty() {
+                        blocked.remove(&key).is_some()
+                    } else if blocked.get(&key) == Some(&paused) {
+                        false
+                    } else {
+                        blocked.insert(key, paused.clone());
+                        true
+                    }
+                });
             }
             state_recv.changed().await.into_diagnostic()?;
         }
@@ -561,6 +623,43 @@ impl Runtime {
     /// Obtain a watch receiver for the runtime.
     pub fn listen(&self) -> watch::Receiver<RuntimeWatchState> {
         self.state.listen()
+    }
+
+    /// List stopped node occurrences.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the attempt cannot be read.
+    pub async fn paused_nodes(&self, run_id: Uuid, attempt: u32) -> miette::Result<Vec<Location>> {
+        self.state
+            .load_workflow_run_state(run_id, attempt)
+            .await?
+            .paused_nodes()
+            .await
+    }
+
+    /// Resume selected stopped occurrences, or all currently stopped occurrences with None.
+    ///
+    /// # Errors
+    ///
+    /// Invalid selections and terminal attempts cannot be resumed.
+    pub async fn resume_breakpoints(
+        &self,
+        run_id: Uuid,
+        attempt: u32,
+        locations: Option<Vec<Location>>,
+    ) -> miette::Result<Vec<Location>> {
+        let resumed = self
+            .state
+            .load_workflow_run_state(run_id, attempt)
+            .await?
+            .resume_breakpoints(locations)
+            .await?;
+        if !resumed.is_empty() {
+            self.paused_runs
+                .send_if_modified(|blocked| blocked.remove(&(run_id, attempt)).is_some());
+        }
+        Ok(resumed)
     }
 
     /// Fetch the outputs of a workflow run attempt.
@@ -973,7 +1072,7 @@ mod tests {
             "delay_seconds".to_string(),
             serde_json::to_vec(&1).into_diagnostic()?,
         )]);
-        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs).await?;
+        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs, None).await?;
         let workflow_run_state = runtime
             .state
             .load_workflow_run_state(run_id, attempt)
@@ -1262,7 +1361,7 @@ mod tests {
 
         let workflow_id = runtime.save_workflow(None, workflow_graph.clone()).await?;
         let inputs = HashMap::from([("hugr_package".to_string(), hugr_package_bytes()?)]);
-        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs).await?;
+        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs, None).await?;
         let workflow_run_state = runtime
             .state
             .load_workflow_run_state(run_id, attempt)

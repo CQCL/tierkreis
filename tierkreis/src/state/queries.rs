@@ -1211,28 +1211,44 @@ pub fn pause_at_breakpoint(
 ) -> impl Future<Output = diesel::QueryResult<(bool, bool)>> + Send + '_ {
     use crate::state::schema::node_states::dsl as nodes;
     conn.transaction(async move |conn| {
-        let node: NodeState = nodes::node_states
+        let node: Option<NodeState> = nodes::node_states
             .filter(nodes::run_id.eq(&run_id))
             .filter(nodes::attempt.eq(attempt))
             .filter(nodes::node_location.eq(location.clone()))
             .first(conn)
-            .await?;
-        if node.unpaused_time.is_some() {
-            return Ok((false, false));
+            .await
+            .optional()?;
+        if let Some(node) = node {
+            if node.unpaused_time.is_some() {
+                return Ok((false, false));
+            }
+            let changed = node.paused_time.is_none();
+            if changed {
+                diesel::update(
+                    nodes::node_states
+                        .filter(nodes::run_id.eq(&run_id))
+                        .filter(nodes::attempt.eq(attempt))
+                        .filter(nodes::node_location.eq(location.clone())),
+                )
+                .set(nodes::paused_time.eq(Some(Utc::now().naive_utc())))
+                .execute(conn)
+                .await?;
+            }
+            return Ok((true, changed));
         }
-        let changed = node.paused_time.is_none();
-        if changed {
-            diesel::update(
-                nodes::node_states
-                    .filter(nodes::run_id.eq(&run_id))
-                    .filter(nodes::attempt.eq(attempt))
-                    .filter(nodes::node_location.eq(location.clone())),
-            )
-            .set(nodes::paused_time.eq(Some(Utc::now().naive_utc())))
+        // If the node did not exist, insert a new paused state.
+        diesel::insert_into(nodes::node_states)
+            .values(crate::state::models::UpsertNodeState {
+                run_id,
+                attempt,
+                node_location: location,
+                paused_time: Some(Utc::now().naive_utc()),
+                ..Default::default()
+            })
             .execute(conn)
             .await?;
-        }
-        Ok((changed, true))
+
+        Ok((true, true))
     })
 }
 

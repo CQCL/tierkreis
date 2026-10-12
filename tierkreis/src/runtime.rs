@@ -542,7 +542,6 @@ impl Runtime {
                 let context = if let Some(context) = contexts.get(&(run_id, attempt)) {
                     context.clone()
                 } else {
-                    let inputs = workflow_run_state.load_inputs().await?;
                     let metadata = workflow_run_state.read_metadata().await?;
                     let profile: Option<String> = match metadata.get(RUN_PROFILE_METADATA_KEY) {
                         Some(profile) => serde_json::from_str(profile).into_diagnostic()?,
@@ -552,7 +551,7 @@ impl Runtime {
                         .as_deref()
                         .map(|profile| self.resources.load_profile(profile))
                         .transpose()?;
-                    let context = OrchestrationContext::new(&workflow_run_state, inputs, profiles);
+                    let context = OrchestrationContext::new(&workflow_run_state, profiles);
                     contexts.insert((run_id, attempt), context.clone());
                     context
                 };

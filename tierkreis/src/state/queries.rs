@@ -2,11 +2,12 @@
 This module defines the queries for reading the workflow state from the `SQlite` database.
 */
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::hash::BuildHasher;
+use std::ops::BitXorAssign;
 
 use bitvec::vec::BitVec;
 use chrono::{DateTime, NaiveDateTime, Utc};
+use diesel::dsl::sql;
 use diesel::sql_types::{Binary, Bool, Integer, Nullable, Text, Timestamp};
 use diesel::sqlite::Sqlite;
 use diesel::upsert::excluded;
@@ -27,6 +28,7 @@ use crate::state::models::{
     UpsertNodeState, UpsertWorkflowRun, Workflow, WorkflowRun, WorkflowRunAttempt,
     WorkflowRunInput,
 };
+use crate::workflow_state_query::NodeCopyFilter;
 
 fn utc_timestamp(ts: NaiveDateTime) -> DateTime<Utc> {
     DateTime::<Utc>::from_naive_utc_and_offset(ts, Utc)
@@ -668,6 +670,38 @@ pub async fn read_workflow_run_inputs(
     Ok(inputs)
 }
 
+/// Read the persisted workflow inputs for the workflow at a location.
+///
+/// # Errors
+///
+/// Returns an error when the connection pool cannot be accessed or the workflow run
+/// input lookup fails.
+pub async fn read_workflow_run_input_from_location(
+    conn: &mut impl AsyncConnection<Backend = Sqlite>,
+    workflow_run_id: &str,
+    attempt: i32,
+    location: &str,
+    name: &str,
+) -> miette::Result<AssetSpec> {
+    use crate::state::schema::workflow_run_inputs::dsl as wri;
+
+    let input = wri::workflow_run_inputs
+        .select(WorkflowRunInput::as_select())
+        .filter(wri::workflow_run_id.eq(workflow_run_id))
+        .filter(wri::attempt.eq(attempt))
+        .filter(wri::location.eq(location))
+        .filter(wri::name.eq(name))
+        .first(conn)
+        .await
+        .into_diagnostic()?;
+
+    Ok(AssetSpec {
+        asset_key: input.asset_key.parse().into_diagnostic()?,
+        kind: input.asset_kind.parse()?,
+        storage_name: input.storage_name,
+    })
+}
+
 async fn insert_outputs(
     conn: &mut impl AsyncConnection<Backend = Sqlite>,
     run_id: &str,
@@ -1059,22 +1093,20 @@ pub async fn insert_workflow_run_attempt(
 /// Copy node states (and their outputs) from `source_attempt` to `dest_attempt` of
 /// the same `run_id`.
 ///
-/// Locations in `exclude` are skipped entirely.
-/// Locations in `truncate` are copied with times and outputs cleared.
-/// See `copy_node_states_from` for more details.
-///
 /// # Errors
 ///
 /// Returns an error when the connection pool cannot be accessed or a query fails.
-pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
+///
+/// # Panics
+///
+/// Will panic if the provided `reset_loop_index` in `node_copy_filter` is greater than `i32_MAX`.
+pub fn copy_node_states<'a>(
     conn: &'a mut impl AsyncConnection<Backend = Sqlite>,
-    run_id: String,
+    run_id: &'a str,
     source_attempt: i32,
     dest_attempt: i32,
-    exclude: &'a HashSet<Location, S>,
-    truncate: &'a HashSet<Location, S>,
+    node_copy_filter: &'a NodeCopyFilter,
 ) -> impl Future<Output = miette::Result<()>> + Send + 'a {
-    use crate::state::schema::node_outputs::dsl as no;
     use crate::state::schema::node_states::dsl as ns;
 
     conn.transaction(async move |conn| {
@@ -1085,36 +1117,50 @@ pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
             .await?;
 
         for row in rows {
-            if exclude.contains(&row.node_location) {
+            if node_copy_filter.clear_roots.contains(&row.node_location)
+                || row
+                    .node_location
+                    .node_ancestors()
+                    .any(|ancestor| node_copy_filter.clear_roots.contains(&ancestor))
+            {
                 continue;
             }
-            let is_truncated = truncate.contains(&row.node_location);
-            // copy over node state TODO: clarify which times to retain.
+            let is_truncated = node_copy_filter.truncate_exact.contains(&row.node_location);
+            let loop_index = node_copy_filter
+                .reset_loop_index
+                .get(&row.node_location)
+                .map(|index| {
+                    TryInto::<i32>::try_into(*index).expect("Failed to convert to signed integer")
+                })
+                .or(row.loop_index);
+            let map_completed = node_copy_filter
+                .reset_map_elems
+                .get(&row.node_location)
+                .and_then(|bit_mask| {
+                    row.map_completed.clone().map(|existing| {
+                        let mut new = BitVec::<u8, bitvec::order::Lsb0>::from_vec(existing);
+                        new.bitxor_assign(bit_mask);
+                        new.into_vec()
+                    })
+                });
             let new_row = if is_truncated {
+                // Reset all timestamps
                 UpsertNodeState {
                     name: row.name.clone(),
-                    run_id: run_id.clone(),
+                    run_id: run_id.to_string(),
                     attempt: dest_attempt,
                     node_location: row.node_location.clone(),
-                    scheduled_time: row.scheduled_time,
-                    queued_time: row.queued_time,
-                    running_time: row.running_time,
-                    complete_time: None,
-                    cancelled_time: None,
-                    error_time: None,
                     cond: row.cond, // retained to preserve conditional state even when truncated
-                    loop_index: row.loop_index, // retained to preserve loop index even when truncated
+                    loop_index,
                     map_size: row.map_size,
-                    map_completed: None, // reset to indicate no progress on the map
-                    handle: None,
-                    error: None,
-                    error_detail: None,
+                    map_completed,
                     execution_context: row.execution_context.clone(),
+                    ..Default::default()
                 }
             } else {
                 UpsertNodeState {
                     name: row.name.clone(),
-                    run_id: run_id.clone(),
+                    run_id: run_id.to_string(),
                     attempt: dest_attempt,
                     node_location: row.node_location.clone(),
                     scheduled_time: row.scheduled_time,
@@ -1124,9 +1170,9 @@ pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
                     cancelled_time: row.cancelled_time,
                     error_time: row.error_time,
                     cond: row.cond,
-                    loop_index: row.loop_index,
+                    loop_index,
                     map_size: row.map_size,
-                    map_completed: row.map_completed.clone(),
+                    map_completed,
                     handle: row.handle.clone(),
                     error: row.error.clone(),
                     error_detail: row.error_detail.clone(),
@@ -1141,21 +1187,17 @@ pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
                 .await?;
             // copy over node outputs to the new node state
             if !is_truncated {
-                let outputs: Vec<NodeOutput> =
-                    NodeOutput::belonging_to(&row).get_results(conn).await?;
-                for output in outputs {
-                    diesel::insert_into(no::node_outputs)
-                        .values((
-                            no::node_state_id.eq(new_id),
-                            no::name.eq(output.name),
-                            no::asset_kind.eq(output.asset_kind),
-                            no::storage_name.eq(output.storage_name),
-                            no::asset_key.eq(output.asset_key),
-                        ))
-                        .execute(conn)
-                        .await?;
-                }
+                copy_outputs(conn, row.id, new_id).await?;
             }
+
+            copy_inputs(
+                conn,
+                run_id,
+                source_attempt,
+                dest_attempt,
+                &row.node_location,
+            )
+            .await?;
         }
 
         Ok::<_, diesel::result::Error>(())
@@ -1164,4 +1206,74 @@ pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
         res.into_diagnostic()
             .wrap_err("Failed to copy node states to new attempt")
     })
+}
+
+async fn copy_outputs(
+    conn: &mut impl AsyncConnection<Backend = Sqlite>,
+    source_id: i32,
+    new_id: i32,
+) -> Result<(), diesel::result::Error> {
+    use crate::state::schema::node_outputs::dsl as no;
+
+    let previous_outputs = no::node_outputs
+        .filter(no::node_state_id.eq(source_id))
+        .select((
+            // I wish there was a better way to do this
+            sql::<Integer>(&new_id.to_string()),
+            no::name,
+            no::asset_kind,
+            no::storage_name,
+            no::asset_key,
+        ));
+    diesel::insert_into(no::node_outputs)
+        .values(previous_outputs)
+        .into_columns((
+            no::node_state_id,
+            no::name,
+            no::asset_kind,
+            no::storage_name,
+            no::asset_key,
+        ))
+        .execute(conn)
+        .await?;
+    Ok(())
+}
+
+async fn copy_inputs(
+    conn: &mut impl AsyncConnection<Backend = Sqlite>,
+    run_id: &str,
+    source_attempt: i32,
+    dest_attempt: i32,
+    location: &Location,
+) -> Result<(), diesel::result::Error> {
+    use crate::state::schema::workflow_run_inputs::dsl as wri;
+
+    let previous_inputs = wri::workflow_run_inputs
+        .filter(wri::workflow_run_id.eq(run_id))
+        .filter(wri::attempt.eq(source_attempt))
+        .filter(wri::location.eq(&location))
+        .select((
+            wri::workflow_run_id,
+            // I wish there was a better way to do this
+            sql::<Integer>(&dest_attempt.to_string()),
+            wri::location,
+            wri::name,
+            wri::asset_kind,
+            wri::storage_name,
+            wri::asset_key,
+        ));
+    diesel::insert_into(wri::workflow_run_inputs)
+        .values(previous_inputs)
+        .into_columns((
+            wri::workflow_run_id,
+            wri::attempt,
+            wri::location,
+            wri::name,
+            wri::asset_kind,
+            wri::storage_name,
+            wri::asset_key,
+        ))
+        .execute(conn)
+        .await?;
+    Ok(())
 }

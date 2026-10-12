@@ -1,8 +1,9 @@
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from uuid import UUID
 
 import pytest
-from tierkreis._tierkreis import new_default
+from tierkreis._tierkreis import Runtime, new_default, new_in_memory, new_sqlite_memory
 
 from tests.controller.typed_graphdata import (
     DoublerInput,
@@ -18,6 +19,9 @@ from tierkreis.controller.data.models import TKR
 from tierkreis.executor import UvExecutor
 from tierkreis.models import EmptyModel
 from tierkreis.storage import FileStorage, read_outputs
+
+runtime_fns = [new_default, new_in_memory, new_sqlite_memory]
+runtime_fn_ids = ["default", "in_memory", "sqlite_memory"]
 
 
 def test_restart() -> None:
@@ -52,7 +56,10 @@ def test_restart() -> None:
 
 
 @pytest.mark.asyncio
-async def test_restart_runtime() -> None:
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_restart_runtime(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
 
     g = Graph(TKR[int], TKR[int])
     plus_one = g.task(iadd(g.const(1), g.inputs))
@@ -60,7 +67,8 @@ async def test_restart_runtime() -> None:
     right = g.task(itimes(g.const(2), plus_one))
     out = g.task(iadd(left, right))
     g = g.finish_with_outputs(out)
-    runtime = await new_default()
+
+    runtime = await runtime_fn()
     with runtime:
         workflow_id = await runtime.save_workflow("restart_diamond", g)
         run_id = await runtime.start_new_run(workflow_id, {"value": 0})
@@ -73,6 +81,7 @@ async def test_restart_runtime() -> None:
         assert new_attempt != 0
         # In the new implementation roos it not represent by -.
 
+        print(g.data)
         expected = {
             f"N{plus_one.node_index}",
             f"N{left.node_index}",
@@ -90,7 +99,10 @@ async def test_restart_runtime() -> None:
 
 
 @pytest.mark.asyncio
-async def test_restart_runtime_loop() -> None:
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_restart_runtime_loop(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
     body = loop_body()
     body_task_index = next(
         index
@@ -102,7 +114,7 @@ async def test_restart_runtime_loop() -> None:
     g = g.finish_with_outputs(loop.loop_acc)
     loop_location = f"N{loop.loop_acc.node_index}.L1.N{body_task_index}"
 
-    runtime = await new_default()
+    runtime = await runtime_fn()
     with runtime:
         workflow_id = await runtime.save_workflow("restart_loop", g)
         run_id = await runtime.start_new_run(workflow_id, {})
@@ -121,7 +133,10 @@ async def test_restart_runtime_loop() -> None:
 
 
 @pytest.mark.asyncio
-async def test_restart_runtime_map() -> None:
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_restart_runtime_map(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
     body = typed_doubler_plus()
     body_task_index = next(
         index
@@ -143,7 +158,7 @@ async def test_restart_runtime_map() -> None:
     g = g.finish_with_outputs(mapped)
     map_location = f"N{map_node_index}.M0.N{body_task_index}"
 
-    runtime = await new_default()
+    runtime = await runtime_fn()
     with runtime:
         workflow_id = await runtime.save_workflow("restart_map", g)
         run_id = await runtime.start_new_run(workflow_id, {"value": [0, 1, 2]})

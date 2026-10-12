@@ -1,14 +1,18 @@
 //! Utilities for loading and traversing workflow graphs using persisted runtime state.
 
-use std::{collections::HashMap, collections::HashSet, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::BitOrAssign,
+    sync::Arc,
+};
 
-use futures::{FutureExt, future::BoxFuture};
+use bitvec::vec::BitVec;
 use miette::{Context, IntoDiagnostic, miette};
 use portgraph::NodeIndex;
 
 use crate::{
-    asset_storage::{AssetSpec, AssetStorageRegistry, load_asset},
-    graph::{LegacyWorkflowGraph, NodeDefinition, WorkflowGraph},
+    asset_storage::{AssetSpec, AssetStorageRegistry, load_asset, load_asset_from_spec},
+    graph::{LegacyWorkflowGraph, WorkflowGraph},
     location::{Location, LocationComponent},
     state::{WorkflowRunState, interface::NodeState},
 };
@@ -49,159 +53,156 @@ pub async fn load_subgraph<S: ::std::hash::BuildHasher>(
     Ok(subgraph)
 }
 
-/// Resolve the graph containing the terminal node of `loc`, descending into subgraphs.
+/// Load a subgraph from the `graph` input, accepting current and legacy formats.
 ///
 /// # Errors
 ///
-/// Returns Err if the location is malformed or a subgraph cannot be loaded.
-pub async fn resolve_location(
+/// Returns Err if the graph asset cannot be loaded or decoded.
+#[tracing::instrument(skip_all, err)]
+pub async fn load_subgraph_from_asset(
     asset_storage_registry: &AssetStorageRegistry,
-    workflow_run_state: &Arc<dyn WorkflowRunState>,
-    root_graph: &Arc<WorkflowGraph>,
-    loc: &Location,
-) -> miette::Result<(WorkflowGraph, Location, NodeIndex)> {
-    let mut current_graph = root_graph.as_ref().clone();
-    let mut parent_loc = Location::root();
-    let mut current_node: Option<NodeIndex> = None;
+    asset_spec: AssetSpec,
+) -> miette::Result<WorkflowGraph> {
+    let subgraph_bytes = load_asset_from_spec(asset_storage_registry, &asset_spec).await?;
+    let subgraph_res: Result<WorkflowGraph, serde_json::Error> =
+        serde_json::from_slice(&subgraph_bytes);
 
-    let node_states = workflow_run_state
-        .read_many(
-            &mut current_graph
-                .node_ids()
-                .map(|node| parent_loc.with_node(node)),
-        )
-        .await?;
-
-    for component in loc.components() {
-        match component {
-            LocationComponent::Node { node } => {
-                if let Some(prev_node) = current_node
-                    && matches!(
-                        current_graph.node_definition(prev_node),
-                        Some(NodeDefinition::Eval { .. })
-                    )
-                {
-                    let inputs =
-                        collect_inputs(&current_graph, &node_states, &parent_loc, prev_node)?;
-                    if inputs.contains_key("graph") {
-                        current_graph = load_subgraph(asset_storage_registry, &inputs).await?;
-                        parent_loc = parent_loc.with_node(prev_node);
-                    }
-                }
-                current_node = Some(*node);
-            }
-            LocationComponent::LoopIndex { index } => {
-                let node = current_node.ok_or_else(|| {
-                    miette!("Malformed location {loc}: loop iteration without an enclosing node")
-                })?;
-                let inputs = collect_inputs(&current_graph, &node_states, &parent_loc, node)?;
-                current_graph = load_subgraph(asset_storage_registry, &inputs).await?;
-                parent_loc = parent_loc.with_node(node).with_loop_index(*index);
-                current_node = None;
-            }
-            LocationComponent::MapIndex { index } => {
-                let node = current_node.ok_or_else(|| {
-                    miette!("Malformed location {loc}: map iteration without an enclosing node")
-                })?;
-                let inputs = collect_inputs(&current_graph, &node_states, &parent_loc, node)?;
-                current_graph = load_subgraph(asset_storage_registry, &inputs).await?;
-                parent_loc = parent_loc
-                    .with_node(node)
-                    .with_map_index(usize::try_from(*index).into_diagnostic()?);
-                current_node = None;
-            }
+    let subgraph = match subgraph_res {
+        Ok(subgraph) => subgraph,
+        Err(_err) => {
+            let legacy: LegacyWorkflowGraph =
+                serde_json::from_slice(&subgraph_bytes).into_diagnostic()?;
+            legacy.to_workflow_graph()?
         }
-    }
+    };
 
-    let node = current_node.ok_or_else(|| miette!("Location {loc} does not refer to a node"))?;
-    Ok((current_graph, parent_loc, node))
+    Ok(subgraph)
 }
 
-/// Compute transitive consumers of a location, including later enclosing loop iterations.
-///
-/// # Errors
-///
-/// Returns Err if a location cannot be resolved or its state cannot be read.
-pub fn dependents<'a>(
-    asset_storage_registry: &'a AssetStorageRegistry,
-    workflow_run_state: &'a Arc<dyn WorkflowRunState>,
-    root_graph: &'a Arc<WorkflowGraph>,
-    loc: &'a Location,
-) -> BoxFuture<'a, miette::Result<HashSet<Location>>> {
-    async move {
-        let mut descendants = HashSet::new();
-        let Some((parent, last)) = loc.split_last() else {
-            return Ok(descendants);
-        };
+/// A structure containing the [`Locations`] that have become invalidated by
+/// user action, typically during a new workflow run attempt.
+#[derive(Default, Debug, Clone)]
+pub struct NodeCopyFilter {
+    // If a location appears in multiple fields the precedence order is
+    // - clear
+    // - reset loop
+    // - reset map elements
+    // - truncate
+    //
+    // Node states to clear completely + children
+    pub(crate) clear_roots: HashSet<Location>,
+    // Loop indexes to reset to and clear all subsequent iterations + children
+    //
+    // These should be the locations of parent Loop nodes.
+    pub(crate) reset_loop_index: HashMap<Location, u32>,
+    // Map elements to clear from the complete bitset.
+    //
+    // These should be the locations of parent Map nodes.
+    pub(crate) reset_map_elems: HashMap<Location, BitVec<u8>>,
+    // Exact node state locations to clear outputs and reset.
+    //
+    // These should be the locations of parent Eval nodes.
+    pub(crate) truncate_exact: HashSet<Location>,
+}
 
-        match last {
-            LocationComponent::Node { .. } => {
-                let (graph, graph_prefix, node) =
-                    resolve_location(asset_storage_registry, workflow_run_state, root_graph, loc)
-                        .await?;
+impl NodeCopyFilter {
+    pub(crate) fn merge(mut self, other: Self) -> Self {
+        self.clear_roots.extend(other.clear_roots);
+        for (loc, index) in other.reset_loop_index {
+            self.reset_loop_index
+                .entry(loc)
+                .and_modify(|existing| {
+                    if index < *existing {
+                        *existing = index;
+                    }
+                })
+                .or_insert(index);
+        }
+        for (loc, bitset) in other.reset_map_elems {
+            self.reset_map_elems
+                .entry(loc)
+                .and_modify(|existing| {
+                    let bitset_len = bitset.len();
+                    // If we are resetting a lot of map elements it would
+                    // be advantegous to resize to the largest map element
+                    // first to avoid costly resizing.
+                    if bitset_len > existing.len() {
+                        existing.resize(bitset_len, false);
+                    }
+                    existing.bitor_assign(&bitset);
+                })
+                .or_insert(bitset);
+        }
+        self.truncate_exact.extend(other.truncate_exact);
 
-                if matches!(graph.node_definition(node), Some(NodeDefinition::Output {})) {
-                    descendants.extend(
-                        dependents(
-                            asset_storage_registry,
-                            workflow_run_state,
-                            root_graph,
-                            &parent,
-                        )
-                        .await?,
-                    );
+        self
+    }
+}
+
+// Find the locations for which the state would become invalid if a Location's
+// state was cleared.
+//
+// Essentially returns the Locations that would need to be re-computed as they
+// are dependent on the result of the specified Location's output.
+pub(crate) async fn build_node_copy_filter(
+    mut workflow: WorkflowGraph,
+    workflow_run_state: &Arc<dyn WorkflowRunState>,
+    asset_storage_registry: &AssetStorageRegistry,
+    location: Location,
+) -> miette::Result<NodeCopyFilter> {
+    let mut clear_roots = HashSet::new();
+    let mut reset_loop_index = HashMap::new();
+    let mut reset_map_elems = HashMap::new();
+    let mut truncate_exact = HashSet::new();
+
+    clear_roots.insert(location.clone());
+
+    let mut working_location = Location::root();
+    for component in location.components() {
+        match component {
+            LocationComponent::Node { node } => {
+                if !working_location.is_root() {
+                    workflow = find_subgraph_input(
+                        workflow,
+                        workflow_run_state,
+                        asset_storage_registry,
+                        &working_location,
+                    )
+                    .await?;
                 }
 
-                for child in graph.output_neighbours(node) {
-                    let child_loc = graph_prefix.with_node(child);
-                    if descendants.insert(child_loc.clone()) {
-                        descendants.extend(
-                            dependents(
-                                asset_storage_registry,
-                                workflow_run_state,
-                                root_graph,
-                                &child_loc,
-                            )
-                            .await?,
-                        );
-                    }
+                clear_roots.extend(
+                    workflow
+                        .dependents(*node)
+                        .filter(|dependent| dependent != node)
+                        .map(|dependent| working_location.with_node(dependent)),
+                );
+                working_location = working_location.with_node(*node);
+
+                if working_location != location {
+                    truncate_exact.insert(working_location.clone());
                 }
             }
             LocationComponent::LoopIndex { index } => {
-                let latest = workflow_run_state
-                    .read(&parent)
-                    .await?
-                    .loop_index
-                    .unwrap_or(0);
-                for iteration in (index + 1)..=latest {
-                    descendants.insert(parent.with_loop_index(iteration));
-                }
-                descendants.extend(
-                    dependents(
-                        asset_storage_registry,
-                        workflow_run_state,
-                        root_graph,
-                        &parent,
-                    )
-                    .await?,
-                );
+                reset_loop_index.insert(working_location.clone(), *index);
+                working_location = working_location.with_loop_index(*index);
             }
-            LocationComponent::MapIndex { .. } => {
-                descendants.extend(
-                    dependents(
-                        asset_storage_registry,
-                        workflow_run_state,
-                        root_graph,
-                        &parent,
-                    )
-                    .await?,
-                );
+            LocationComponent::MapIndex { index } => {
+                let usize_index = *index as usize;
+                let mut bitset = BitVec::repeat(false, usize_index + 1);
+                bitset.set(usize_index, true);
+
+                reset_map_elems.insert(working_location.clone(), bitset);
+                working_location = working_location.with_map_index(usize_index);
             }
         }
-
-        Ok(descendants)
     }
-    .boxed()
+    Ok(NodeCopyFilter {
+        clear_roots,
+        reset_loop_index,
+        reset_map_elems,
+        truncate_exact,
+    })
 }
 
 /// Find the `graph` input to a Node at a specified Location and return it.
@@ -220,10 +221,8 @@ pub(crate) async fn find_subgraph_input(
                 let graph_asset_spec =
                     collect_input(&workflow, &node_states, &parent_location, *node, "graph")?;
 
-                let mut inputs = HashMap::new();
-                inputs.insert("graph".to_string(), graph_asset_spec);
-
-                workflow = load_subgraph(asset_storage_registry, &inputs).await?;
+                workflow =
+                    load_subgraph_from_asset(asset_storage_registry, graph_asset_spec).await?;
                 parent_location = parent_location.with_node(*node);
             }
             crate::location::LocationComponent::LoopIndex { index } => {
@@ -305,4 +304,540 @@ pub(crate) fn collect_inputs(
         inputs.insert(input_name.clone(), output_asset_spec.clone());
     }
     Ok(inputs)
+}
+
+#[cfg(test)]
+mod tests {
+    use bitvec::{bits, order::Lsb0};
+    use serde_json::json;
+    use uuid::Uuid;
+
+    use crate::{
+        asset_storage::test_storage_registry,
+        builder::{constant, eval, link, loop_node, map_node, task},
+        event::{NodeEvent, NodeStatus, RunningStateUpdate, WorkflowRunEvent},
+        state::{InMemoryRuntimeState, RuntimeState},
+    };
+
+    use super::*;
+
+    fn example_task_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let task_node = task(&mut graph, "foo", "bar", [], ["out"]);
+        link(&mut graph, (task_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    fn example_triple_task_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let const_node_and_name = constant(&mut graph, 1)?;
+        let task_node1 = task(&mut graph, "foo", "bar", ["in"], ["out"]);
+        let task_node2 = task(&mut graph, "foo", "bar", ["in"], ["out"]);
+        let task_node3 = task(&mut graph, "foo", "bar", ["in"], ["out"]);
+
+        link(&mut graph, const_node_and_name, (task_node1, "in"))?;
+        link(&mut graph, (task_node1, "out"), (task_node2, "in"))?;
+        link(&mut graph, (task_node2, "out"), (task_node3, "in"))?;
+        link(&mut graph, (task_node3, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    fn example_eval_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let const_node_and_name = constant(&mut graph, example_task_graph()?)?;
+        let eval_node = eval(&mut graph, [], ["out"]);
+
+        link(&mut graph, const_node_and_name, (eval_node, "graph"))?;
+        link(&mut graph, (eval_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    fn example_loop_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let const_node_and_name = constant(&mut graph, example_task_graph()?)?;
+        let loop_node = loop_node(&mut graph, [], ["out"]);
+
+        link(&mut graph, const_node_and_name, (loop_node, "graph"))?;
+        link(&mut graph, (loop_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    fn example_map_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let const_node_and_name = constant(&mut graph, example_task_graph()?)?;
+        let map_node = map_node(&mut graph, [], [], ["out"]);
+
+        link(&mut graph, const_node_and_name, (map_node, "graph"))?;
+        link(&mut graph, (map_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_task() -> miette::Result<()> {
+        let (asset_storage_registry, _, _dir) = test_storage_registry([], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_task_graph()?;
+
+        let invalid_locations = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N1")?,
+        )
+        .await?;
+
+        let exclude = invalid_locations.clear_roots;
+        let truncate = invalid_locations.truncate_exact;
+
+        assert_eq!(exclude.len(), 2);
+        assert!(exclude.contains(&Location::new("N1")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert!(truncate.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_triple_task_start() -> miette::Result<()> {
+        let (asset_storage_registry, _, _dir) = test_storage_registry([], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_triple_task_graph()?;
+
+        let invalid_locations = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N2")?,
+        )
+        .await?;
+
+        let exclude = invalid_locations.clear_roots;
+        let truncate = invalid_locations.truncate_exact;
+
+        dbg!(&exclude);
+        assert_eq!(exclude.len(), 4);
+        assert!(exclude.contains(&Location::new("N2")?));
+        assert!(exclude.contains(&Location::new("N3")?));
+        assert!(exclude.contains(&Location::new("N4")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert!(truncate.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_triple_task_end() -> miette::Result<()> {
+        let (asset_storage_registry, _, _dir) = test_storage_registry([], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_triple_task_graph()?;
+
+        let invalid_locations = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N4")?,
+        )
+        .await?;
+
+        let exclude = invalid_locations.clear_roots;
+        let truncate = invalid_locations.truncate_exact;
+
+        assert_eq!(exclude.len(), 2);
+        assert!(exclude.contains(&Location::new("N4")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert!(truncate.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_task_in_eval() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_eval_graph()?;
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Evalling {
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let invalid_locations = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N2.N1")?,
+        )
+        .await?;
+
+        let exclude = invalid_locations.clear_roots;
+        let truncate = invalid_locations.truncate_exact;
+
+        dbg!(&exclude, &truncate);
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.N1")?));
+        assert!(exclude.contains(&Location::new("N2.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_task_in_loop() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_loop_graph()?;
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 0,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let invalid_locations = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N2.L0.N1")?,
+        )
+        .await?;
+
+        let exclude = invalid_locations.clear_roots;
+        let loop_reset = invalid_locations.reset_loop_index;
+        let truncate = invalid_locations.truncate_exact;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.L0.N1")?));
+        assert!(exclude.contains(&Location::new("N2.L0.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(loop_reset.len(), 1);
+        assert_eq!(loop_reset.get(&Location::new("N2")?), Some(&0));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_task_in_loop_iteration() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_loop_graph()?;
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 0,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 1,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let invalid_locations = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N2.L1.N1")?,
+        )
+        .await?;
+
+        let exclude = invalid_locations.clear_roots;
+        let loop_reset = invalid_locations.reset_loop_index;
+        let truncate = invalid_locations.truncate_exact;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.L1.N1")?));
+        assert!(exclude.contains(&Location::new("N2.L1.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(loop_reset.len(), 1);
+        assert_eq!(loop_reset.get(&Location::new("N2")?), Some(&1));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_task_in_loop_mid_iteration() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_loop_graph()?;
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 0,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 1,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 2,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let invalid_locations = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N2.L1.N1")?,
+        )
+        .await?;
+
+        let exclude = invalid_locations.clear_roots;
+        let loop_reset = invalid_locations.reset_loop_index;
+        let truncate = invalid_locations.truncate_exact;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.L1.N1")?));
+        assert!(exclude.contains(&Location::new("N2.L1.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(loop_reset.len(), 1);
+        assert_eq!(loop_reset.get(&Location::new("N2")?), Some(&1));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn find_invalidated_task_in_map() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = example_map_graph()?;
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::MapStarted {
+                        input_sets: vec![HashMap::new(), HashMap::new(), HashMap::new()],
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let invalid_locations1 = build_node_copy_filter(
+            graph.clone(),
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N2.M0.N1")?,
+        )
+        .await?;
+
+        let exclude = &invalid_locations1.clear_roots;
+        let map_reset = &invalid_locations1.reset_map_elems;
+        let truncate = &invalid_locations1.truncate_exact;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.M0.N1")?));
+        assert!(exclude.contains(&Location::new("N2.M0.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(map_reset.len(), 1);
+        assert_eq!(
+            map_reset.get(&Location::new("N2")?),
+            Some(&BitVec::from_bitslice(bits![u8, Lsb0; 1]))
+        );
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        let invalid_locations2 = build_node_copy_filter(
+            graph,
+            &source_state,
+            &asset_storage_registry,
+            Location::new("N2.M2.N1")?,
+        )
+        .await?;
+
+        let exclude = &invalid_locations2.clear_roots;
+        let map_reset = &invalid_locations2.reset_map_elems;
+        let truncate = &invalid_locations2.truncate_exact;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.M2.N1")?));
+        assert!(exclude.contains(&Location::new("N2.M2.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(map_reset.len(), 1);
+        assert_eq!(
+            map_reset.get(&Location::new("N2")?),
+            Some(&BitVec::from_bitslice(bits![u8, Lsb0; 0, 0, 1]))
+        );
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        let merged_invalid_locations = invalid_locations1.merge(invalid_locations2);
+
+        let exclude = merged_invalid_locations.clear_roots;
+        let map_reset = merged_invalid_locations.reset_map_elems;
+        let truncate = merged_invalid_locations.truncate_exact;
+
+        assert_eq!(exclude.len(), 5);
+        assert!(exclude.contains(&Location::new("N2.M0.N1")?));
+        assert!(exclude.contains(&Location::new("N2.M0.N0")?));
+        assert!(exclude.contains(&Location::new("N2.M2.N1")?));
+        assert!(exclude.contains(&Location::new("N2.M2.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(map_reset.len(), 1);
+        assert_eq!(
+            map_reset.get(&Location::new("N2")?),
+            Some(&BitVec::from_bitslice(bits![u8, Lsb0; 1, 0, 1]))
+        );
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
 }

@@ -471,6 +471,16 @@ struct LegacyNodeMetadata {
 }
 
 impl LegacyWorkflowGraph {
+    pub(crate) fn node_annotations(&self, index: usize) -> (Option<&str>, Option<&str>) {
+        let Ok(index) = u32::try_from(index) else {
+            return (None, None);
+        };
+        let Some(metadata) = self.node_metadata.get(&index) else {
+            return (None, None);
+        };
+        (metadata.context.as_deref(), metadata.executor.as_deref())
+    }
+
     /// Convert the `LegacyWorkflowGraph` into a `WorkflowGraph` that can be run by the Orchestrator.
     ///
     /// # Errors

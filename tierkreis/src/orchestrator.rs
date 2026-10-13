@@ -296,6 +296,7 @@ impl Orchestrator {
                     NodeDefinition::Task {
                         worker_name,
                         task_name,
+                        ..
                     } => stream_action_result(build_task_action(
                         workflow_graph.clone(),
                         &node_states,
@@ -304,7 +305,7 @@ impl Orchestrator {
                         worker_name,
                         task_name,
                     )),
-                    NodeDefinition::Eval {} => self
+                    NodeDefinition::Eval { .. } => self
                         .build_eval_actions(
                             workflow_graph.clone(),
                             context.workflow_run_state.clone(),
@@ -315,7 +316,7 @@ impl Orchestrator {
                         )
                         .try_flatten_stream()
                         .boxed_local(),
-                    NodeDefinition::Loop {} => self
+                    NodeDefinition::Loop { .. } => self
                         .build_loop_actions(
                             context.clone(),
                             workflow_graph.clone(),
@@ -325,7 +326,7 @@ impl Orchestrator {
                         )
                         .try_flatten_stream()
                         .boxed_local(),
-                    NodeDefinition::Map { mapped_ports } => self
+                    NodeDefinition::Map { mapped_ports, .. } => self
                         .build_map_actions(
                             workflow_graph.clone(),
                             context.workflow_run_state.clone(),

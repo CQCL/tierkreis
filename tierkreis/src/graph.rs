@@ -42,15 +42,41 @@ pub enum NodeDefinition {
         worker_name: String,
         /// The name of the Task to perform.
         task_name: String,
+        /// Portable execution context requested by this task.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context: Option<String>,
+        /// Executor requested by this task.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        executor: Option<String>,
     },
     /// A node that defines that a Subgraph needs to be evaluated.
-    Eval {},
+    Eval {
+        /// Default execution context of the subgraph.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context: Option<String>,
+        /// Default executor of the subgraph.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        executor: Option<String>,
+    },
     /// A node that defines that a Subgraph needs to be evaluated repeatedly until a condition is met.
-    Loop {},
+    Loop {
+        /// Default execution context of the loop body.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context: Option<String>,
+        /// Default executor of the loop body.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        executor: Option<String>,
+    },
     /// A node that defines that a Subgraph needs to be evaluated across multiple inputs.
     Map {
         /// The input ports of the Map node that are mapped over.
         mapped_ports: HashSet<String>,
+        /// Default execution context of the map body.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        context: Option<String>,
+        /// Default executor of the map body.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        executor: Option<String>,
     },
 }
 
@@ -432,6 +458,16 @@ pub struct LegacyWorkflowGraph {
     pub(crate) nodes: Vec<LegacyNodeDef>,
     graph_inputs: Vec<String>,
     graph_output_idx: Option<u32>,
+    #[serde(default)]
+    node_metadata: BTreeMap<u32, LegacyNodeMetadata>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+struct LegacyNodeMetadata {
+    #[serde(default)]
+    context: Option<String>,
+    #[serde(default)]
+    executor: Option<String>,
 }
 
 impl LegacyWorkflowGraph {
@@ -443,8 +479,30 @@ impl LegacyWorkflowGraph {
     pub fn to_workflow_graph(self) -> miette::Result<WorkflowGraph> {
         let mut state = ConversionState::new(self.nodes.len());
 
-        for node in self.nodes {
+        for (index, node) in self.nodes.into_iter().enumerate() {
             state.convert_node(node)?;
+            if let Some(metadata) = self
+                .node_metadata
+                .get(&u32::try_from(index).into_diagnostic()?)
+            {
+                match state.node_definitions.get_mut(&NodeIndex::new(index)) {
+                    Some(
+                        NodeDefinition::Task {
+                            context, executor, ..
+                        }
+                        | NodeDefinition::Eval { context, executor }
+                        | NodeDefinition::Loop { context, executor }
+                        | NodeDefinition::Map {
+                            context, executor, ..
+                        },
+                    ) => {
+                        *context = metadata.context.clone();
+                        *executor = metadata.executor.clone();
+                    }
+                    _ if metadata.context.is_none() && metadata.executor.is_none() => {}
+                    _ => return Err(miette!("Execution metadata on unsupported node {index}")),
+                }
+            }
         }
 
         state.link_ports()?;
@@ -511,6 +569,7 @@ impl ConversionState {
                     &NodeDefinition::Task {
                         worker_name,
                         task_name,
+                        ..
                     } if worker_name == "builtins" && task_name == "unfold_values"
                 )
             })
@@ -534,6 +593,7 @@ impl ConversionState {
                         &NodeDefinition::Task {
                             worker_name,
                             task_name,
+                            ..
                         } if worker_name == "builtins" && task_name == "fold_values"
                     )
                 })
@@ -594,7 +654,7 @@ impl ConversionState {
         self.node_definitions
             .iter_mut()
             .filter_map(|(_, node_definition)| {
-                if let NodeDefinition::Map { mapped_ports } = node_definition {
+                if let NodeDefinition::Map { mapped_ports, .. } = node_definition {
                     Some(mapped_ports)
                 } else {
                     None
@@ -817,8 +877,13 @@ impl ConversionState {
         let outgoing = outputs.len();
         let node_index = self.graph.add_node(incoming + 1, outgoing);
 
-        self.node_definitions
-            .insert(node_index, NodeDefinition::Eval {});
+        self.node_definitions.insert(
+            node_index,
+            NodeDefinition::Eval {
+                context: None,
+                executor: None,
+            },
+        );
 
         self.build_inputs(
             [("graph".to_string(), graph_source)]
@@ -840,8 +905,13 @@ impl ConversionState {
         let outgoing = outputs.len();
         let node_index = self.graph.add_node(incoming + 1, outgoing);
 
-        self.node_definitions
-            .insert(node_index, NodeDefinition::Loop {});
+        self.node_definitions.insert(
+            node_index,
+            NodeDefinition::Loop {
+                context: None,
+                executor: None,
+            },
+        );
         if let Some(name) = name {
             self.node_names.insert(node_index, name);
         }
@@ -873,8 +943,14 @@ impl ConversionState {
             }
         }
 
-        self.node_definitions
-            .insert(node_index, NodeDefinition::Map { mapped_ports });
+        self.node_definitions.insert(
+            node_index,
+            NodeDefinition::Map {
+                mapped_ports,
+                context: None,
+                executor: None,
+            },
+        );
 
         self.build_inputs(
             [("graph".to_string(), graph_source)]
@@ -912,6 +988,8 @@ impl ConversionState {
             NodeDefinition::Task {
                 worker_name: worker_name.to_owned(),
                 task_name: task_name.to_owned(),
+                context: None,
+                executor: None,
             },
         );
         self.build_inputs(inputs, node_index);
@@ -980,6 +1058,27 @@ mod tests {
         Ok(())
     }
 
+    #[test]
+    fn convert_node_context_metadata() -> miette::Result<()> {
+        let legacy: LegacyWorkflowGraph =
+            serde_json::from_str(include_str!("../tests/cli/data/factorial")).into_diagnostic()?;
+        let index = legacy
+            .nodes
+            .iter()
+            .position(|node| matches!(node, LegacyNodeDef::Func { .. }))
+            .unwrap();
+        let converted = legacy.to_workflow_graph()?;
+        assert!(matches!(
+            converted.node_definition(NodeIndex::new(index)),
+            Some(NodeDefinition::Task {
+                context: Some(context),
+                executor: Some(executor),
+                ..
+            }) if context == "gpu_large" && executor == "subprocess"
+        ));
+        Ok(())
+    }
+
     #[rstest]
     #[case(include_str!("../tests/cli/data/sample_graph"))]
     #[case(include_str!("../tests/cli/data/factorial"))]
@@ -1008,6 +1107,7 @@ mod tests {
                     NodeDefinition::Task {
                         worker_name,
                         task_name,
+                        ..
                     },
                 ) => {
                     assert_eq!(function_name, &format!("{worker_name}.{task_name}"));
@@ -1032,7 +1132,7 @@ mod tests {
                 ) => {
                     assert_eq!(original_name, converted_name);
                 }
-                (LegacyNodeDef::Eval { .. }, NodeDefinition::Eval {})
+                (LegacyNodeDef::Eval { .. }, NodeDefinition::Eval { .. })
                 | (LegacyNodeDef::IfElse { .. }, NodeDefinition::IfElse {})
                 | (LegacyNodeDef::Output { .. }, NodeDefinition::Output {})
                 | (LegacyNodeDef::EagerIfElse { .. }, NodeDefinition::EagerIfElse {}) => {}

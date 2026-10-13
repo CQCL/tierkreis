@@ -399,8 +399,8 @@ pub async fn build_py_graph(
             finished_time: state
                 .complete_time
                 .map_or_else(String::new, |t| t.to_rfc3339()),
-            context: def.context().map(|s| s.to_string()),
-            executor: def.executor().map(|s| s.to_string()),
+            context: def.context().map(std::string::ToString::to_string),
+            executor: def.executor().map(std::string::ToString::to_string),
         });
     }
 

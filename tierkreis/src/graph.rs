@@ -506,8 +506,8 @@ impl LegacyWorkflowGraph {
                             context, executor, ..
                         },
                     ) => {
-                        *context = metadata.context.clone();
-                        *executor = metadata.executor.clone();
+                        context.clone_from(&metadata.context);
+                        executor.clone_from(&metadata.executor);
                     }
                     _ if metadata.context.is_none() && metadata.executor.is_none() => {}
                     _ => return Err(miette!("Execution metadata on unsupported node {index}")),

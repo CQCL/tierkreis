@@ -606,6 +606,9 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
     }
 }
 
+// Difficult to reduce the number of lines here without introducing functions that
+// would cause unnecessary overhead.
+#[allow(clippy::too_many_lines)]
 fn handle_node_events(
     mut run_state: dashmap::mapref::one::RefMut<'_, (Uuid, u32), RunAttemptState>,
     node_events: Vec<NodeEvent>,
@@ -641,8 +644,6 @@ fn handle_node_events(
             } => {
                 if node_state.running_time.is_none() {
                     node_state.running_time = Some(now);
-                }
-                if node_state.cond.is_none() {
                     node_state.cond = Some(cond);
                 }
             }
@@ -652,8 +653,6 @@ fn handle_node_events(
             } => {
                 if node_state.running_time.is_none() {
                     node_state.running_time = Some(now);
-                }
-                if !run_state.inputs.contains_key(&node_event.loc) {
                     run_state
                         .inputs
                         .insert(node_event.loc.clone(), inputs.clone());
@@ -668,9 +667,7 @@ fn handle_node_events(
                 }
                 if node_state.loop_index != Some(index) {
                     node_state.loop_index = Some(index);
-                }
-                let loop_loc = node_event.loc.with_loop_index(index);
-                if !run_state.inputs.contains_key(&loop_loc) {
+                    let loop_loc = node_event.loc.with_loop_index(index);
                     run_state.inputs.insert(loop_loc, inputs.clone());
                 }
             }
@@ -680,13 +677,9 @@ fn handle_node_events(
             } => {
                 if node_state.running_time.is_none() {
                     node_state.running_time = Some(now);
-                }
-                if node_state.map_completed.is_none() {
                     node_state.map_completed = Some(BitVec::repeat(false, input_sets.len()));
-                }
-                for (index, inputs) in input_sets.iter().enumerate() {
-                    let map_loc = node_event.loc.with_map_index(index);
-                    if !run_state.inputs.contains_key(&map_loc) {
+                    for (index, inputs) in input_sets.iter().enumerate() {
+                        let map_loc = node_event.loc.with_map_index(index);
                         run_state.inputs.insert(map_loc, inputs.clone());
                     }
                 }
@@ -695,9 +688,6 @@ fn handle_node_events(
                 state_update: Some(RunningStateUpdate::MapElemComplete { bits }),
                 ..
             } => {
-                if node_state.running_time.is_none() {
-                    node_state.running_time = Some(now);
-                }
                 if let Some(map_completed) = node_state.map_completed.as_mut() {
                     map_completed.bitor_assign(&bits);
                 }

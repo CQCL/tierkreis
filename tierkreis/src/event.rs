@@ -133,7 +133,11 @@ pub enum RunningStateUpdate {
         /// The value that the `pred` port resolved to.
         cond: bool,
     },
+    /// The node is "evalling" a subgraph with the specified inputs.
+    ///
+    /// This state is triggered by an `Eval` node when it starts to run.
     Evalling {
+        /// The inputs to the `Eval` node to be persisted.
         inputs: HashMap<String, AssetSpec>,
     },
     /// The node is "looping" with the specified index.
@@ -143,12 +147,14 @@ pub enum RunningStateUpdate {
     Looping {
         /// The index of the next iteration to perform.
         index: u32,
+        /// The inputs to the `Loop` node to be persisted.
         inputs: HashMap<String, AssetSpec>,
     },
     /// The node is "mapping" over a data structure of a specified size.
     ///
     /// This state is triggered by a `Map` node when it begins running.
     MapStarted {
+        /// The input sets to the `Map` node to be persisted.
         input_sets: Vec<HashMap<String, AssetSpec>>,
     },
     /// An output for a `Map` node is ready at a specific index.
@@ -357,7 +363,7 @@ pub async fn send_running_eval(
     workflow_run_id: Uuid,
     attempt: u32,
     loc: Location,
-    inputs: HashMap<String, AssetSpec>,
+    inputs: HashMap<String, AssetSpec, RandomState>,
 ) -> miette::Result<()> {
     let event = RuntimeEvent::WorkflowRun {
         workflow_run_id,
@@ -389,7 +395,7 @@ pub async fn send_running_loop(
     attempt: u32,
     loc: Location,
     index: u32,
-    inputs: HashMap<String, AssetSpec>,
+    inputs: HashMap<String, AssetSpec, RandomState>,
     name: Option<String>,
 ) -> miette::Result<()> {
     let event = RuntimeEvent::WorkflowRun {
@@ -422,7 +428,7 @@ pub async fn send_running_map(
     workflow_run_id: Uuid,
     attempt: u32,
     loc: Location,
-    input_sets: Vec<HashMap<String, AssetSpec>>,
+    input_sets: Vec<HashMap<String, AssetSpec, RandomState>>,
 ) -> miette::Result<()> {
     let event = RuntimeEvent::WorkflowRun {
         workflow_run_id,

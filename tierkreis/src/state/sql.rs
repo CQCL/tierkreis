@@ -726,7 +726,7 @@ impl SqliteWorkflowRunState {
                             subgraph_inputs.push(NewWorkflowRunInput {
                                 workflow_run_id: &workflow_run_id_str,
                                 location: location_str.clone(),
-                                name: &port,
+                                name: port,
                                 asset_kind: asset_spec.kind.to_string(),
                                 storage_name: &asset_spec.storage_name,
                                 asset_key: asset_spec.asset_key.to_string(),
@@ -748,7 +748,7 @@ impl SqliteWorkflowRunState {
                                 subgraph_inputs.push(NewWorkflowRunInput {
                                     workflow_run_id: &workflow_run_id_str,
                                     location: location_str.clone(),
-                                    name: &port,
+                                    name: port,
                                     asset_kind: asset_spec.kind.to_string(),
                                     storage_name: &asset_spec.storage_name,
                                     asset_key: asset_spec.asset_key.to_string(),

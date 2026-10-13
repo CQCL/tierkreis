@@ -53,8 +53,16 @@ class ExecutionContext:
         self._executors: list[Token[str | None]] = []
 
     def __enter__(self) -> Self:
-        self._names.append(_current_context.set(self.name))
-        self._executors.append(_current_executor.set(self.executor))
+        self._names.append(
+            _current_context.set(
+                self.name if self.name is not None else _current_context.get()
+            )
+        )
+        self._executors.append(
+            _current_executor.set(
+                self.executor if self.executor is not None else _current_executor.get()
+            )
+        )
         return self
 
     def __exit__(
@@ -547,7 +555,11 @@ class Graph[Inputs: TModel, Outputs: TModel]:
             body = self.graph_const(body)
 
         if isinstance(body, Callable):
-            with ExecutionContext(context) if context is not None else nullcontext():
+            with (
+                ExecutionContext(context, executor)
+                if context is not None or executor is not None
+                else nullcontext()
+            ):
                 if isinstance(map_inputs, TList):
                     return self._map_fn_single_out(map_inputs, body)
                 if isinstance(map_inputs, TKR):

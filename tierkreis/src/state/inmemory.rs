@@ -615,7 +615,7 @@ fn handle_node_events(
 ) {
     let now = Utc::now();
     for node_event in node_events {
-        let node_state = run_state.nodes.entry(node_event.loc).or_default();
+        let node_state = run_state.nodes.entry(node_event.loc.clone()).or_default();
         if node_event.name.is_some() {
             node_state.name.clone_from(&node_event.name);
         }
@@ -648,18 +648,16 @@ fn handle_node_events(
                 }
             }
             crate::event::NodeStatus::Running {
-                state_update: Some(RunningStateUpdate::Evalling { ref inputs }),
+                state_update: Some(RunningStateUpdate::Evalling { inputs }),
                 ..
             } => {
                 if node_state.running_time.is_none() {
                     node_state.running_time = Some(now);
-                    run_state
-                        .inputs
-                        .insert(node_event.loc.clone(), inputs.clone());
+                    run_state.inputs.insert(node_event.loc, inputs);
                 }
             }
             crate::event::NodeStatus::Running {
-                state_update: Some(RunningStateUpdate::Looping { index, ref inputs }),
+                state_update: Some(RunningStateUpdate::Looping { index, inputs }),
                 ..
             } => {
                 if node_state.running_time.is_none() {
@@ -668,19 +666,19 @@ fn handle_node_events(
                 if node_state.loop_index != Some(index) {
                     node_state.loop_index = Some(index);
                     let loop_loc = node_event.loc.with_loop_index(index);
-                    run_state.inputs.insert(loop_loc, inputs.clone());
+                    run_state.inputs.insert(loop_loc, inputs);
                 }
             }
             crate::event::NodeStatus::Running {
-                state_update: Some(RunningStateUpdate::MapStarted { ref input_sets }),
+                state_update: Some(RunningStateUpdate::MapStarted { input_sets }),
                 ..
             } => {
                 if node_state.running_time.is_none() {
                     node_state.running_time = Some(now);
                     node_state.map_completed = Some(BitVec::repeat(false, input_sets.len()));
-                    for (index, inputs) in input_sets.iter().enumerate() {
+                    for (index, inputs) in input_sets.into_iter().enumerate() {
                         let map_loc = node_event.loc.with_map_index(index);
-                        run_state.inputs.insert(map_loc, inputs.clone());
+                        run_state.inputs.insert(map_loc, inputs);
                     }
                 }
             }

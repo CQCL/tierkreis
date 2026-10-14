@@ -366,7 +366,7 @@ mod tests {
             "executor = \"slurm\"\ncpu = \"500m\"\nmemory = \"1536Mi\"\n[native.slurm]\n\"--exclusive\" = true\n[env]\nTOKEN = \"present\"\n",
         );
 
-        let profiles = ResourceProfiles::load(&[root.0.clone()], "cluster")?;
+        let profiles = ResourceProfiles::load(std::slice::from_ref(&root.0), "cluster")?;
         let context = profiles.resolve(Some("gpu"))?;
         assert_eq!(context.executor.as_deref(), Some("slurm"));
         assert_eq!(context.resources["cpu"], "500m");
@@ -385,7 +385,7 @@ mod tests {
         let root = TestDir::new();
         let profile = root.profile("cluster");
         write_context(&profile, "local", "cpu = 2\n");
-        let profiles = ResourceProfiles::load(&[root.0.clone()], "cluster")?;
+        let profiles = ResourceProfiles::load(std::slice::from_ref(&root.0), "cluster")?;
 
         assert_eq!(profiles.resolve(None)?, ResolvedContext::default());
         assert!(profiles.resolve(Some("missing")).is_err());

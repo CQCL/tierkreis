@@ -136,7 +136,11 @@ pub async fn build_loop_py_graph(
             id: iter_loc.to_string(),
             status,
             function_name: format!("L{i}"),
-            node_type: NodeDefinition::Eval {}.node_type(),
+            node_type: NodeDefinition::Eval {
+                context: None,
+                executor: None,
+            }
+            .node_type(),
             node_location: iter_loc.to_string(),
             outputs: output_names.clone(),
             inputs: Vec::new(),
@@ -157,6 +161,8 @@ pub async fn build_loop_py_graph(
             } else {
                 String::new()
             },
+            context: None,
+            executor: None,
         });
     }
 
@@ -240,7 +246,11 @@ pub async fn build_map_py_graph(
             id: elem_loc.to_string(),
             status,
             function_name: format!("M{i}"),
-            node_type: NodeDefinition::Eval {}.node_type(),
+            node_type: NodeDefinition::Eval {
+                context: None,
+                executor: None,
+            }
+            .node_type(),
             node_location: elem_loc.to_string(),
             outputs: output_names.clone(),
             inputs: Vec::new(),
@@ -255,6 +265,8 @@ pub async fn build_map_py_graph(
             } else {
                 String::new()
             },
+            context: None,
+            executor: None,
         });
     }
 
@@ -387,6 +399,8 @@ pub async fn build_py_graph(
             finished_time: state
                 .complete_time
                 .map_or_else(String::new, |t| t.to_rfc3339()),
+            context: def.context().map(std::string::ToString::to_string),
+            executor: def.executor().map(std::string::ToString::to_string),
         });
     }
 
@@ -445,6 +459,7 @@ pub fn build_graph_data_py_graph(
         }
 
         let inputs = input_links.into_iter().map(|(_, input)| input).collect();
+        let (context, executor) = graph_data.node_annotations(index);
         nodes.push(PyNode {
             id: node_location.clone(),
             status: NodeStatus::NotStarted,
@@ -456,6 +471,8 @@ pub fn build_graph_data_py_graph(
             value,
             started_time: String::new(),
             finished_time: String::new(),
+            context: context.map(str::to_string),
+            executor: executor.map(str::to_string),
         });
     }
 
@@ -692,11 +709,11 @@ pub async fn load_graph(
                     .ok_or_else(|| miette::miette!("Node {node:?} not found in graph"))?;
 
                 match def {
-                    NodeDefinition::Eval {} => {
+                    NodeDefinition::Eval { .. } => {
                         prefix = node_loc;
                         current_graph = load_subgraph_from_const_node(&current_graph, *node)?;
                     }
-                    NodeDefinition::Loop {} => {
+                    NodeDefinition::Loop { .. } => {
                         // If the next component is a LoopIndex, descend and continue walking.
                         // Otherwise this is the terminal location: return iteration placeholders.
                         let next_is_loop_index = i + 1 < n
@@ -774,7 +791,10 @@ mod graph_data_conversion_tests {
                 }
             ],
             "graph_inputs": [],
-            "graph_output_idx": null
+            "graph_output_idx": null,
+            "node_metadata": {
+                "1": {"context": "gpu_large", "executor": "subprocess"}
+            }
         });
 
         let graph_data: LegacyWorkflowGraph = serde_json::from_value(graph_data)
@@ -786,6 +806,8 @@ mod graph_data_conversion_tests {
         assert_eq!(graph.edges[0].from_node, "N0");
         assert_eq!(graph.edges[0].to_node, "N1");
         assert_eq!(graph.nodes[1].node_type, "function");
+        assert_eq!(graph.nodes[1].context.as_deref(), Some("gpu_large"));
+        assert_eq!(graph.nodes[1].executor.as_deref(), Some("subprocess"));
         Ok(())
     }
 

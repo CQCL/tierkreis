@@ -78,7 +78,7 @@ pub async fn resolve_location(
                 if let Some(prev_node) = current_node
                     && matches!(
                         current_graph.node_definition(prev_node),
-                        Some(NodeDefinition::Eval {})
+                        Some(NodeDefinition::Eval { .. })
                     )
                 {
                     let inputs =

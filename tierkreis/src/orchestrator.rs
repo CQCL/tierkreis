@@ -241,31 +241,7 @@ impl Orchestrator {
             return Ok(stream::empty().boxed());
         }
 
-        let mut ready_nodes: Vec<_> = {
-            let scheduled_this_lifetime = context.scheduled_this_lifetime.read().await;
-            Self::find_ready_nodes(
-                &context.parent_loc,
-                &workflow_graph,
-                &node_states,
-                &scheduled_this_lifetime,
-            )
-            .collect()
-        };
-        if context.breakpoints_enabled {
-            let mut startables = Vec::with_capacity(ready_nodes.len());
-            for node in ready_nodes {
-                let location = context.parent_loc.with_node(node);
-                if !workflow_graph.has_breakpoint(node)
-                    || !context
-                        .workflow_run_state
-                        .pause_at_breakpoint(&location)
-                        .await?
-                {
-                    startables.push(node);
-                }
-            }
-            ready_nodes = startables;
-        }
+        let ready_nodes = Self::find_ready_nodes(&context, &workflow_graph, &node_states).await?;
         // Abort if the workflow is deadlocked.
         if ready_nodes.is_empty()
             && node_states
@@ -386,74 +362,101 @@ impl Orchestrator {
             .await
     }
 
-    /// Find nodes which are ready for execution, mark them as scheduled then return them.
-    fn find_ready_nodes<'a>(
-        parent_location: &'a Location,
-        workflow_graph: &'a WorkflowGraph,
-        node_states: &'a NodeStates,
-        scheduled_this_lifetime: &'a HashSet<Location>,
-    ) -> impl Iterator<Item = NodeIndex> + 'a {
-        // Find nodes that are ready for scheduling.
-        workflow_graph
-            // Traverse the graph to find nodes that are yet to run, starting
-            // from the output node.
-            //
-            // TODO: We shouldn't really need to sort every time
-            .toposort_filtered_from_output_node(
-                // Returns true if a node should be traversed.
-                move |n| {
-                    let definition = workflow_graph
-                        .node_definition(n)
-                        .expect("Node definition not found");
+    /// Find ready nodes, pausing breakpoint nodes and excluding paused nodes from scheduling.
+    async fn find_ready_nodes(
+        context: &OrchestrationContext,
+        workflow_graph: &WorkflowGraph,
+        node_states: &NodeStates,
+    ) -> miette::Result<Vec<NodeIndex>> {
+        let candidates = {
+            let scheduled_this_lifetime = context.scheduled_this_lifetime.read().await;
+            workflow_graph
+                // Traverse the graph to find nodes that are yet to run, starting
+                // from the output node.
+                //
+                // TODO: We shouldn't really need to sort every time
+                .toposort_filtered_from_output_node(
+                    // Returns true if a node should be traversed.
+                    |n| {
+                        let definition = workflow_graph
+                            .node_definition(n)
+                            .expect("Node definition not found");
 
-                    // A node scheduled in a previous process will be rescheduled.
-                    // The executor deals with reattaching.
-                    let scheduled_this_lifetime =
-                        scheduled_this_lifetime.contains(&parent_location.with_node(n));
-                    let always_run = matches!(
-                        definition,
-                        NodeDefinition::Task { .. }
-                            | NodeDefinition::Input { .. }
-                            | NodeDefinition::Const { .. }
-                            | NodeDefinition::Output {}
-                    );
+                        // A node scheduled in a previous process will be rescheduled.
+                        // The executor deals with reattaching.
+                        let scheduled =
+                            scheduled_this_lifetime.contains(&context.parent_loc.with_node(n));
+                        let always_run = matches!(
+                            definition,
+                            NodeDefinition::Task { .. }
+                                | NodeDefinition::Input { .. }
+                                | NodeDefinition::Const { .. }
+                                | NodeDefinition::Output {}
+                        );
 
-                    let outputs_missing = node_states
-                        .get(&parent_location.with_node(n))
-                        .is_none_or(|state| state.outputs.is_none());
-                    outputs_missing && !(always_run && scheduled_this_lifetime)
-                },
-                // Returns true if a port should be traversed.
-                |n, p| {
+                        let outputs_missing = node_states
+                            .get(&context.parent_loc.with_node(n))
+                            .is_none_or(|state| state.outputs.is_none());
+                        outputs_missing && !(always_run && scheduled)
+                    },
+                    // Returns true if a port should be traversed.
+                    |n, p| {
+                        let definition = workflow_graph
+                            .node_definition(n)
+                            .expect("Node definition not found");
+                        if matches!(definition, NodeDefinition::IfElse {}) {
+                            let cond = node_states
+                                .get(&context.parent_loc.with_node(n))
+                                .and_then(|state| state.cond);
+                            should_traverse_if_else_port(workflow_graph, cond, p)
+                        } else {
+                            true
+                        }
+                    },
+                )
+                // Only candidates whose inputs are ready need breakpoint checks.
+                .filter(|n| {
                     let definition = workflow_graph
-                        .node_definition(n)
+                        .node_definition(*n)
                         .expect("Node definition not found");
                     if matches!(definition, NodeDefinition::IfElse {}) {
-                        let cond = node_states
-                            .get(&parent_location.with_node(n))
-                            .and_then(|state| state.cond);
-                        should_traverse_if_else_port(workflow_graph, cond, p)
+                        Self::if_else_ready(workflow_graph, node_states, &context.parent_loc, *n)
                     } else {
-                        true
+                        workflow_graph.all_inputs(*n, |incoming| {
+                            node_states
+                                .get(&context.parent_loc.with_node(incoming))
+                                .is_some_and(|state| state.outputs.is_some())
+                        })
                     }
-                },
-            )
-            // Of the nodes that have not yet run, find the nodes that can run.
-            // (Because their inputs are ready or otherwise.)
-            .filter(|n| {
-                let definition = workflow_graph
-                    .node_definition(*n)
-                    .expect("Node definition not found");
-                if matches!(definition, NodeDefinition::IfElse {}) {
-                    Self::if_else_ready(workflow_graph, node_states, parent_location, *n)
-                } else {
-                    workflow_graph.all_inputs(*n, |incoming| {
-                        node_states
-                            .get(&parent_location.with_node(incoming))
-                            .is_some_and(|state| state.outputs.is_some())
-                    })
-                }
-            })
+                })
+                .collect::<Vec<_>>()
+        };
+
+        let mut ready_nodes = Vec::with_capacity(candidates.len());
+        for node in candidates {
+            let location = context.parent_loc.with_node(node);
+            let node_state = node_states.get(&location);
+            let paused = node_state
+                .is_some_and(|state| state.paused_time.is_some() && state.unpaused_time.is_none());
+            if paused {
+                continue;
+            }
+
+            let resumed = node_state.is_some_and(|state| state.unpaused_time.is_some());
+            if context.breakpoints_enabled
+                && workflow_graph.has_breakpoint(node)
+                && !resumed
+                && context
+                    .workflow_run_state
+                    .pause_at_breakpoint(&location)
+                    .await?
+            {
+                continue;
+            }
+            ready_nodes.push(node);
+        }
+
+        Ok(ready_nodes)
     }
 
     // Returns true if an `IfElse` node is runnable.

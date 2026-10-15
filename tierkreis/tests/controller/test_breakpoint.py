@@ -41,12 +41,13 @@ async def test_breakpoints(
             run_id = await runtime.start_new_run(
                 workflow_id, {"value": 3}, enable_breakpoints=True
             )
-            breakpoints = await runtime.wait_until(
-                run_id, WaitUntil.Breakpoint, timeout=10
+            breakpoints = await runtime.wait_for(
+                run_id, condition=WaitUntil.Breakpoint, timeout=10
             )
             assert breakpoints == [locs["left"]]
-            # WaitUntil.Idle  here is undefined behavior since locs["right"] could be in ["Unknown", "Running", "Complete"]
-            breakpoints = await runtime.wait_until(run_id, WaitUntil.Idle, timeout=10)
+            breakpoints = await runtime.wait_for(
+                run_id, condition=WaitUntil.Blocked, timeout=10
+            )
             assert breakpoints == [locs["left"]]
             assert await runtime.paused_nodes(run_id) == [locs["left"]]
             states = await runtime.debug_read_node_states(
@@ -62,17 +63,19 @@ async def test_breakpoints(
             assert await runtime.resume_breakpoints(run_id, [locs["left"]]) == [
                 locs["left"]
             ]
-            breakpoints = await runtime.wait_until(
-                run_id, WaitUntil.Breakpoint, timeout=10
+            breakpoints = await runtime.wait_for(
+                run_id, condition=WaitUntil.Breakpoint, timeout=10
             )
             assert breakpoints == [locs["joined"]]
             states = await runtime.debug_read_node_states(run_id, 0, [locs["left"]])
             assert await runtime.resume_breakpoints(run_id) == [locs["joined"]]
         else:
             run_id = await runtime.start_new_run(workflow_id, {"value": 3})
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Idle, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Blocked, timeout=10
+        )
         assert breakpoints == []
-        await runtime.wait_for(run_id, timeout=10)
+        assert await runtime.wait_for(run_id, timeout=10) == []
         assert await runtime.get_outputs(run_id) == 9
         assert await runtime.paused_nodes(run_id) == []
 
@@ -99,25 +102,32 @@ async def test_nested_breakpoints(
         run_id = await runtime.start_new_run(
             workflow_id, {"value": [0, 1, 2]}, enable_breakpoints=True
         )
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Breakpoint, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Breakpoint, timeout=10
+        )
         assert breakpoints == ["N3"]
         await runtime.resume_breakpoints(run_id, ["N3"])
         # Using WaitUntil.Breakpoint here is undefined behavior since we can hit any of the inner breakpoints in any order
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Idle, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Blocked, timeout=10
+        )
         assert breakpoints == [locs["M0"], locs["M1"], locs["M2"]]
         await runtime.resume_breakpoints(run_id, [locs["M0"]])
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Idle, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Blocked, timeout=10
+        )
         assert breakpoints == [locs["M1"], locs["M2"]]
         states = await runtime.debug_read_node_states(
             run_id, 0, [locs["M0"], locs["M1"], locs["M2"]]
         )
-        # Flaky here: sometimes M0 is not complete yet
-        assert states[locs["M0"]].status in ["Complete", "Unpaused"]
+        assert states[locs["M0"]].status == "Complete"
         assert states[locs["M1"]].status == "Paused"
         assert states[locs["M2"]].status == "Paused"
         assert await runtime.paused_nodes(run_id) == [locs["M1"], locs["M2"]]
         await runtime.resume_breakpoints(run_id)
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Idle, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Blocked, timeout=10
+        )
         assert breakpoints == []
         assert await runtime.get_outputs(run_id) == [1, 2, 3]
 
@@ -135,25 +145,31 @@ async def test_nested_breakpoints_unpaused(
         run_id = await runtime.start_new_run(
             workflow_id, {"value": [0, 1, 2]}, enable_breakpoints=True
         )
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Breakpoint, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Breakpoint, timeout=10
+        )
         assert breakpoints == ["N3"]
         await runtime.resume_breakpoints(run_id, ["N3"])
         # Using WaitUntil.Breakpoint here is undefined behavior since we can hit any of the inner breakpoints in any order
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Idle, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Blocked, timeout=10
+        )
         assert breakpoints == [locs["M0"], locs["M1"], locs["M2"]]
         await runtime.resume_breakpoints(run_id, [locs["M0"]])
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Breakpoint, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Breakpoint, timeout=10
+        )
         assert breakpoints == [locs["M1"], locs["M2"]]
         states = await runtime.debug_read_node_states(
             run_id, 0, [locs["M0"], locs["M1"], locs["M2"]]
         )
-        assert (
-            states[locs["M0"]].status == "Unpaused"
-        )  # Unblocked but we're still waiting
+        assert states[locs["M0"]].status != "Paused"
         assert states[locs["M1"]].status == "Paused"
         assert states[locs["M2"]].status == "Paused"
         assert await runtime.paused_nodes(run_id) == [locs["M1"], locs["M2"]]
         await runtime.resume_breakpoints(run_id)
-        breakpoints = await runtime.wait_until(run_id, WaitUntil.Idle, timeout=10)
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Blocked, timeout=10
+        )
         assert breakpoints == []
         assert await runtime.get_outputs(run_id) == [1, 2, 3]

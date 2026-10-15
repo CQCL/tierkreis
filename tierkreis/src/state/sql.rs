@@ -514,6 +514,19 @@ impl WorkflowRunState for SqliteWorkflowRunState {
             let mut workflow_update = UpsertWorkflowRun::default();
 
             match event {
+                WorkflowRunEvent::Paused { ref locations } => {
+                    let updates = self.update_sender.subscribe();
+                    let paused = self.paused_nodes().await?;
+                    if !paused.is_empty() && &paused == locations {
+                        self.update_sender.send_if_modified(|watch| {
+                            if updates.has_changed().unwrap_or(true) {
+                                return false;
+                            }
+                            watch.active_runs.remove(&(self.run_id, self.attempt))
+                        });
+                    }
+                    return Ok(());
+                }
                 WorkflowRunEvent::Started {} => {
                     workflow_update.started_time = Some(now);
                 }
@@ -536,7 +549,10 @@ impl WorkflowRunState for SqliteWorkflowRunState {
                 }
             }
 
-            if !matches!(event, WorkflowRunEvent::NodeEvents(_)) {
+            if !matches!(
+                event,
+                WorkflowRunEvent::NodeEvents(_) | WorkflowRunEvent::Paused { .. }
+            ) {
                 let attempt = self.attempt.try_into().into_diagnostic()?;
                 let mut conn = self.get_conn().await?;
                 update_workflow_run(
@@ -668,7 +684,9 @@ impl WorkflowRunState for SqliteWorkflowRunState {
             let attempt = i32::try_from(self.attempt).into_diagnostic()?;
             let released = resume_breakpoints(&mut conn, run_id, attempt, locations).await?;
             if !released.is_empty() {
-                self.update_sender.send_modify(|_| {});
+                self.update_sender.send_modify(|watch| {
+                    watch.active_runs.insert((self.run_id, self.attempt));
+                });
             }
             Ok(released)
         }

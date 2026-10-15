@@ -39,7 +39,9 @@ pub struct RunOptions {
 /// what to run next.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct RuntimeWatchState {
-    /// The set of runs currently being executed by the runtime.
+    /// The set of runs currently being executed by the runtime
+    /// Excluding terminal attempts and attempts paused at breakpoints.
+    /// Paused attempts are reinserted when a breakpoint is resumed.
     pub active_runs: HashSet<(Uuid, u32)>,
 }
 

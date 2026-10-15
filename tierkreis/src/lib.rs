@@ -360,32 +360,12 @@ mod tierkreis {
             }
         }
 
-        #[pyo3(signature = (run_id, attempt=0, /, timeout=604_800))]
-        async fn wait_for(&self, run_id: Uuid, attempt: u32, timeout: u64) -> PyResult<()> {
-            let inner = self.inner.clone();
-            get_runtime()
-                .spawn(async move {
-                    let fut = inner.wait_for(run_id, attempt);
-                    tokio::time::timeout(Duration::from_secs(timeout), fut)
-                        .await
-                        .into_diagnostic()??;
-                    Ok(())
-                })
-                .await
-                .map_err(|err| {
-                    Python::attach(|py| convert_err(py, miette!("Failed to join future: {err}")))
-                })?
-                .map_err(|err| Python::attach(|py| convert_err(py, err)))?;
-
-            Ok(())
-        }
-
-        #[pyo3(signature = (run_id, condition=None, attempt=0, /, timeout=604_800))]
-        async fn wait_until(
+        #[pyo3(signature = (run_id, attempt=0, /, *, condition=None, timeout=604_800))]
+        async fn wait_for(
             &self,
             run_id: Uuid,
-            condition: Option<Py<PyAny>>,
             attempt: u32,
+            condition: Option<Py<PyAny>>,
             timeout: u64,
         ) -> PyResult<Vec<String>> {
             let until = Python::attach(|py| -> PyResult<_> {
@@ -404,7 +384,7 @@ mod tierkreis {
                 .spawn(async move {
                     tokio::time::timeout(
                         Duration::from_secs(timeout),
-                        inner.wait_until(run_id, attempt, until),
+                        inner.wait_for(run_id, attempt, until),
                     )
                     .await
                     .into_diagnostic()?

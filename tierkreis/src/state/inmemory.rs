@@ -396,6 +396,18 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
         let mut send_workflow_stopped = false;
 
         match event {
+            WorkflowRunEvent::Paused { locations } => {
+                let paused: HashSet<_> = run_state
+                    .nodes
+                    .iter()
+                    .filter(|(_, node)| node.paused_time.is_some() && node.unpaused_time.is_none())
+                    .map(|(loc, _)| loc.clone())
+                    .collect();
+                if paused.is_empty() || paused != locations.into_iter().collect() {
+                    return future::ok(()).boxed();
+                }
+                send_workflow_stopped = true;
+            }
             WorkflowRunEvent::Started {} => {
                 if run_state.started_time.is_none() {
                     run_state.started_time = Some(now);
@@ -603,10 +615,12 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
                     released.push(loc);
                 }
             }
-            drop(run);
             if !released.is_empty() {
-                self.update_sender.send_modify(|_| {});
+                self.update_sender.send_modify(|watch| {
+                    watch.active_runs.insert((self.run_id, self.attempt));
+                });
             }
+            drop(run);
             released.sort_by_key(ToString::to_string);
             Ok(released)
         }

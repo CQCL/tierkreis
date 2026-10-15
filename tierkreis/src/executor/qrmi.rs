@@ -221,7 +221,7 @@ impl BackgroundTask {
 }
 
 enum TaskRegistration {
-    Watching(String),
+    Watching { task_id: String },
     CancelBeforeRegistration,
 }
 
@@ -407,7 +407,7 @@ async fn process_tasks(
         tokio::select! {
             Some(key) = cancel_receiver.next() => {
                 match registrations.remove(&key) {
-                    Some(TaskRegistration::Watching(task_id)) => {
+                    Some(TaskRegistration::Watching {task_id }) => {
                         if let Err(err) = resource.lock().await.task_stop(&task_id).await {
                             let err = miette!("Failed to stop QRMI task `{task_id}`: {err}");
                             let _ = send_error(&mut event_sender, key.0, key.1, key.2, &err).await;
@@ -436,7 +436,7 @@ async fn process_tasks(
                         ).await;
                     }
                 } else {
-                    registrations.insert(key, TaskRegistration::Watching(task.task_id.clone()));
+                    registrations.insert(key, TaskRegistration::Watching { task_id: task.task_id.clone() });
                 }
                 running.push(monitor_task(
                     Arc::clone(&resource),

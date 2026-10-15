@@ -66,19 +66,19 @@ struct BackgroundTask {
     _worker_args: PathBuf,
 }
 
-enum InternalJobMonitoringStatus {
+enum TaskRegistration {
     Watching {
         job_id: String,
         task: BackgroundTask,
         status: Option<SchedulerStatus>,
     },
-    Cancelling,
+    CancelBeforeRegistration,
 }
 
 type Key = (Uuid, u32, Location);
 type TaskReceiver = mpsc::Receiver<BackgroundTaskPlan>;
 type CancelReceiver = mpsc::Receiver<Key>;
-type JobHandles = HashMap<Key, InternalJobMonitoringStatus>;
+type JobHandles = HashMap<Key, TaskRegistration>;
 type OutputSpecs = (HashMap<String, AssetSpec>, HashMap<String, PathBuf>);
 
 // Identical to nexus
@@ -94,16 +94,16 @@ async fn process_cancelled_task<T: SchedulerWrapper>(
     let handle = job_handles.remove(&key);
     match handle {
         // We know the job id, cancel the job.
-        Some(InternalJobMonitoringStatus::Watching { job_id, .. }) => {
+        Some(TaskRegistration::Watching { job_id, .. }) => {
             tracing::info!("Cancelling job for node: {key:?}");
             scheduler.cancel(job_id.clone()).await?;
         }
         // We are already planning to cancel the job if we see this node.
-        Some(InternalJobMonitoringStatus::Cancelling) => {}
+        Some(TaskRegistration::CancelBeforeRegistration) => {}
         // Register that the node needs to be cancelled if we see it.
         None => {
             warn!("Got cancel request before registering job_id for node: {key:?}");
-            job_handles.insert(key, InternalJobMonitoringStatus::Cancelling);
+            job_handles.insert(key, TaskRegistration::CancelBeforeRegistration);
         }
     }
     Ok(())
@@ -187,11 +187,11 @@ async fn monitor_task<T: SchedulerWrapper>(
     let key = (workflow_run_id, attempt, loc.clone());
     let should_cancel = matches!(
         job_handles.get(&key),
-        Some(InternalJobMonitoringStatus::Cancelling)
+        Some(TaskRegistration::CancelBeforeRegistration)
     );
     job_handles.insert(
         key,
-        InternalJobMonitoringStatus::Watching {
+        TaskRegistration::Watching {
             job_id: job_id.clone(),
             task: BackgroundTask {
                 workflow_run_id,
@@ -219,10 +219,8 @@ async fn check_jobs<T: SchedulerWrapper>(
     let jobs: Vec<_> = job_handles
         .iter()
         .filter_map(|(key, status)| match status {
-            InternalJobMonitoringStatus::Watching { job_id, .. } => {
-                Some((key.clone(), job_id.clone()))
-            }
-            InternalJobMonitoringStatus::Cancelling => None,
+            TaskRegistration::Watching { job_id, .. } => Some((key.clone(), job_id.clone())),
+            TaskRegistration::CancelBeforeRegistration => None,
         })
         .collect();
     if jobs.is_empty() {
@@ -243,7 +241,7 @@ async fn check_jobs<T: SchedulerWrapper>(
         };
         match status {
             SchedulerStatus::Queued | SchedulerStatus::Running => {
-                let InternalJobMonitoringStatus::Watching {
+                let TaskRegistration::Watching {
                     task,
                     status: previous_status,
                     ..
@@ -267,9 +265,7 @@ async fn check_jobs<T: SchedulerWrapper>(
             SchedulerStatus::Complete
             | SchedulerStatus::Cancelled
             | SchedulerStatus::Error { .. } => {
-                let Some(InternalJobMonitoringStatus::Watching { task, .. }) =
-                    job_handles.remove(&key)
-                else {
+                let Some(TaskRegistration::Watching { task, .. }) = job_handles.remove(&key) else {
                     continue;
                 };
                 process_finished_task(

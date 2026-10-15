@@ -61,9 +61,9 @@ struct BackgroundTask {
     outputs: HashMap<String, AssetSpec>,
 }
 
-enum InternalJobMonitoringStatus {
+enum TaskRegistration {
     Watching { job_id: Uuid },
-    Cancelling,
+    CancelBeforeRegistration,
 }
 
 type TaskSender = mpsc::Sender<BackgroundTaskPlan>;
@@ -73,7 +73,7 @@ type CancelReceiver = mpsc::Receiver<(Uuid, u32, Location)>;
 
 type RunningFutures<'a> = FuturesUnordered<BoxFuture<'a, (BackgroundTask, miette::Result<()>)>>;
 // Mapping of Node to the internal monitoring status of the Node..
-type JobHandles = HashMap<(Uuid, u32, Location), InternalJobMonitoringStatus>;
+type JobHandles = HashMap<(Uuid, u32, Location), TaskRegistration>;
 
 #[instrument(skip_all, err)]
 async fn process_cancelled_task(
@@ -87,16 +87,16 @@ async fn process_cancelled_task(
     let handle = job_handles.remove(&key);
     match handle {
         // We know the job id, cancel the job.
-        Some(InternalJobMonitoringStatus::Watching { job_id }) => {
+        Some(TaskRegistration::Watching { job_id }) => {
             tracing::info!("Cancelling job for node: {key:?}");
             client.cancel_job(job_id).await?;
         }
         // We are already planning to cancel the job if we see this node.
-        Some(InternalJobMonitoringStatus::Cancelling) => {}
+        Some(TaskRegistration::CancelBeforeRegistration) => {}
         // Register that the node needs to be cancelled if we see it.
         None => {
             warn!("Got cancel request before registering job_id for node: {key:?}");
-            job_handles.insert(key, InternalJobMonitoringStatus::Cancelling);
+            job_handles.insert(key, TaskRegistration::CancelBeforeRegistration);
         }
     }
     Ok(())
@@ -297,10 +297,10 @@ async fn monitor_task(
 
     let key = (workflow_run_id, attempt, loc.clone());
     // If we are meant to cancel this job, signal this to the cancellation routine.
-    if let Some(InternalJobMonitoringStatus::Cancelling) = job_handles.get(&key) {
+    if let Some(TaskRegistration::CancelBeforeRegistration) = job_handles.get(&key) {
         cancel_sender.send(key.clone()).await.into_diagnostic()?;
     }
-    job_handles.insert(key, InternalJobMonitoringStatus::Watching { job_id });
+    job_handles.insert(key, TaskRegistration::Watching { job_id });
     running.push(task.boxed());
     Ok(())
 }

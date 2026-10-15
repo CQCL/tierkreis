@@ -18,11 +18,19 @@ pub(crate) enum Quantity {
     Text(String),
 }
 
+fn to_f64(value: u64) -> f64 {
+    Into::<f64>::into(TryInto::<u32>::try_into(value).unwrap())
+}
+
+#[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+fn downcast(value: f64) -> u32 {
+    (value).clamp(0.0, f64::from(u32::MAX)).trunc() as u32
+}
+
 impl Quantity {
-    #[allow(clippy::cast_precision_loss)]
     fn value(&self) -> Result<f64> {
         let value = match self {
-            Self::Integer(number) => *number as f64,
+            Self::Integer(number) => to_f64(*number),
             Self::Float(number) => *number,
             Self::Text(text) => {
                 const SUFFIXES: [(&str, f64); 12] = [
@@ -61,22 +69,20 @@ impl Quantity {
         Ok(value)
     }
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     pub(crate) fn count(&self) -> Result<u32> {
         let count = self.value()?.ceil();
-        if count > f64::from(u32::MAX) {
+        if count > u32::MAX.into() {
             return Err(miette!("Resource quantity exceeds u32 range"));
         }
-        Ok(count as u32)
+        Ok(downcast(count))
     }
 
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     pub(crate) fn gib(&self) -> Result<u32> {
         let gib = (self.value()? / 1_073_741_824.0).ceil();
-        if gib > f64::from(u32::MAX) {
+        if gib > u32::MAX.into() {
             return Err(miette!("Memory quantity exceeds u32 range"));
         }
-        Ok(gib as u32)
+        Ok(downcast(gib))
     }
 
     fn has_unit(&self) -> bool {
@@ -96,7 +102,7 @@ struct ExecutionContext {
     #[serde(skip_serializing_if = "Option::is_none")]
     memory: Option<Quantity>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    gpu: Option<Quantity>,
+    gpu: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_concurrency: Option<u32>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -129,14 +135,13 @@ struct ExecutionContext {
 
 impl ExecutionContext {
     fn validate(&self, name: &str) -> Result<()> {
-        for (key, quantity) in [("cpu", &self.cpu), ("gpu", &self.gpu)] {
-            if let Some(quantity) = quantity
-                && quantity.value()? <= 0.0
-            {
-                return Err(miette!(
-                    "Context `{name}` requires a positive {key} quantity"
-                ));
-            }
+        if let Some(cpu) = &self.cpu
+            && cpu.value()? <= 0.0
+        {
+            return Err(miette!("Context `{name}` requires a positive cpu quantity"));
+        }
+        if self.gpu == Some(0) {
+            return Err(miette!("Context `{name}` requires a positive gpu quantity"));
         }
         if self.nodes == Some(0) {
             return Err(miette!("Context `{name}` must request at least one node"));

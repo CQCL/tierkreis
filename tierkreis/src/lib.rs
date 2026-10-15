@@ -203,7 +203,8 @@ mod tierkreis {
     #[pyclass(name = "WaitUntil")]
     enum PyWaitUntil {
         Breakpoint,
-        Idle,
+        Blocked,
+        Complete,
     }
 
     impl From<crate::state::interface::NodeState> for PyNodeState {
@@ -379,18 +380,25 @@ mod tierkreis {
             Ok(())
         }
 
-        #[pyo3(signature = (run_id, condition, attempt=0, /, timeout=604_800))]
+        #[pyo3(signature = (run_id, condition=None, attempt=0, /, timeout=604_800))]
         async fn wait_until(
             &self,
             run_id: Uuid,
-            condition: Py<PyWaitUntil>,
+            condition: Option<Py<PyAny>>,
             attempt: u32,
             timeout: u64,
         ) -> PyResult<Vec<String>> {
-            let until = Python::attach(|py| match *condition.borrow(py) {
-                PyWaitUntil::Breakpoint => crate::runtime::WaitUntil::Breakpoint,
-                PyWaitUntil::Idle => crate::runtime::WaitUntil::Idle,
-            });
+            let until = Python::attach(|py| -> PyResult<_> {
+                let Some(condition) = condition else {
+                    return Ok(crate::runtime::WaitUntil::Complete);
+                };
+                let condition = condition.bind(py).extract::<PyRef<'_, PyWaitUntil>>()?;
+                Ok(match &*condition {
+                    PyWaitUntil::Breakpoint => crate::runtime::WaitUntil::Breakpoint,
+                    PyWaitUntil::Blocked => crate::runtime::WaitUntil::Blocked,
+                    PyWaitUntil::Complete => crate::runtime::WaitUntil::Complete,
+                })
+            })?;
             let inner = self.inner.clone();
             let locations = get_runtime()
                 .spawn(async move {

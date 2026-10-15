@@ -48,7 +48,9 @@ pub enum WaitUntil {
     /// Return as soon as one or more breakpoints have been hit.
     Breakpoint,
     /// Return after breakpoints have been hit and all pending work has finished.
-    Idle,
+    Blocked,
+    /// Return after all work has finished, regardless of breakpoints.
+    Complete,
 }
 
 /// `RuntimeConfig` defines the configuration for the runtime
@@ -516,7 +518,9 @@ impl Runtime {
                     context.clone()
                 } else {
                     let inputs = workflow_run_state.load_inputs().await?;
-                    let context = OrchestrationContext::new(&workflow_run_state, inputs);
+                    let breakpoints_enabled = workflow_run_state.breakpoints_enabled().await?;
+                    let context =
+                        OrchestrationContext::new(&workflow_run_state, inputs, breakpoints_enabled);
                     contexts.insert((run_id, attempt), context.clone());
                     context
                 };
@@ -657,9 +661,10 @@ impl Runtime {
             let paused = workflow_state.paused_nodes().await?;
             let condition_met = match until {
                 WaitUntil::Breakpoint => !paused.is_empty(),
-                WaitUntil::Idle => {
+                WaitUntil::Blocked => {
                     !paused.is_empty() && idle_recv.borrow().get(&key) == Some(&paused)
                 }
+                WaitUntil::Complete => paused.is_empty() && idle_recv.borrow().get(&key).is_none(),
             };
             if condition_met {
                 return Ok(paused);
@@ -667,7 +672,7 @@ impl Runtime {
 
             tokio::select! {
                 result = state_recv.changed() => result.into_diagnostic()?,
-                result = idle_recv.changed(), if until == WaitUntil::Idle => {
+                result = idle_recv.changed(), if until == WaitUntil::Blocked => {
                     result.into_diagnostic()?;
                 }
             }

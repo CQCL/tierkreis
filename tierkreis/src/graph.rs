@@ -167,7 +167,7 @@ impl WorkflowGraph {
     /// # Errors
     /// Returns an error if the node does not exist in this graph.
     pub fn set_breakpoint(&mut self, node: NodeIndex, enabled: bool) -> miette::Result<()> {
-        if self.node_definition(node).is_none() {
+        if !self.node_definitions.contains_key(&node) {
             return Err(miette!("Breakpoint node does not exist: {node:?}"));
         }
         self.node_metadata.entry(node).or_default().has_breakpoint = enabled;

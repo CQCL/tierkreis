@@ -1167,7 +1167,7 @@ pub async fn read_paused_nodes(
     attempt: i32,
 ) -> diesel::QueryResult<Vec<Location>> {
     use crate::state::schema::node_states::dsl as ns;
-    let mut locations: Vec<Location> = ns::node_states
+    let locations: Vec<Location> = ns::node_states
         .filter(ns::run_id.eq(run_id))
         .filter(ns::attempt.eq(attempt))
         .filter(ns::paused_time.is_not_null())
@@ -1175,7 +1175,8 @@ pub async fn read_paused_nodes(
         .select(ns::node_location)
         .load(conn)
         .await?;
-    locations.sort_by_key(ToString::to_string);
+    // could sort for convenience
+    //locations.sort_by_key(ToString::to_string);
     Ok(locations)
 }
 

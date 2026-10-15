@@ -562,43 +562,48 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
         truncate: &'a HashSet<Location>,
     ) -> BoxFuture<'a, miette::Result<()>> {
         async move {
-            let nodes: HashMap<Location, NodeState> = {
-                let source_run = self
-                    .global_state
-                    .runs
-                    .get(&(source.run_id(), source.attempt()))
-                    .ok_or_else(|| miette!("Source run attempt not found"))?;
+            // This assumes that the source runtime state shares the same global state.
+            let source_run = self
+                .global_state
+                .runs
+                .get(&(source.run_id(), source.attempt()))
+                .ok_or_else(|| miette!("Source run attempt not found"))?;
+            let nodes = source_run
+                .nodes
+                .iter()
+                .filter(|(loc, _)| !exclude.contains(*loc))
+                .map(|(loc, state)| {
+                    let mut state = state.clone();
+                    if truncate.contains(loc) {
+                        state.scheduled_time = None;
+                        state.queued_time = None;
+                        state.running_time = None;
+                        state.complete_time = None;
+                        state.cancelled_time = None;
+                        state.error_time = None;
+                        state.outputs = None;
+                        state.map_completed = None;
+                        state.error = None;
+                        state.error_detail = None;
+                        state.handle = None;
+                    }
+                    (loc.clone(), state)
+                });
 
-                source_run
-                    .nodes
-                    .iter()
-                    .filter(|(loc, _)| !exclude.contains(*loc))
-                    .map(|(loc, state)| {
-                        let mut state = state.clone();
-                        if truncate.contains(loc) {
-                            state.scheduled_time = None;
-                            state.queued_time = None;
-                            state.running_time = None;
-                            state.complete_time = None;
-                            state.cancelled_time = None;
-                            state.error_time = None;
-                            state.outputs = None;
-                            state.map_completed = None;
-                            state.error = None;
-                            state.error_detail = None;
-                            state.handle = None;
-                        }
-                        (loc.clone(), state)
-                    })
-                    .collect()
-            };
+            let inputs = source_run
+                .inputs
+                .iter()
+                .filter(|(loc, _)| !exclude.iter().any(|e| e.is_ancestor(loc)))
+                .map(|(loc, inputs)| (loc.clone(), inputs.clone()));
 
-            self.global_state
+            let mut target_run = self
+                .global_state
                 .runs
                 .entry((self.run_id, self.attempt))
-                .or_default()
-                .nodes
-                .extend(nodes);
+                .or_default();
+
+            target_run.nodes.extend(nodes);
+            target_run.inputs.extend(inputs);
 
             Ok(())
         }

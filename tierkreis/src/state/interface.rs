@@ -191,27 +191,13 @@ pub trait RuntimeState: Debug + Send + Sync {
             let (_workflow_name, workflow_graph) = self.load_workflow(workflow_id).await?;
             let workflow_graph = Arc::new(workflow_graph);
 
-            let mut exclude = HashSet::new();
-            let mut truncate = HashSet::new();
-
-            for loc in &locs {
-                let (graph, _, node) =
-                    resolve_location(asset_storage_registry, &source_state, &workflow_graph, loc)
-                        .await?;
-                if !matches!(
-                    graph.node_definition(node),
-                    Some(NodeDefinition::Task { .. })
-                ) {
-                    return Err(miette!("Can only restart Task nodes, {loc} is not a Task"));
-                }
-
-                exclude.insert(loc.clone());
-                exclude.extend(
-                    dependents(asset_storage_registry, &source_state, &workflow_graph, loc).await?,
-                );
-                truncate.extend(loc.node_ancestors());
-            }
-            truncate.retain(|loc| !exclude.contains(loc));
+            let (exclude, truncate) = compute_exclude_and_truncate(
+                asset_storage_registry,
+                &source_state,
+                &workflow_graph,
+                locs.iter(),
+            )
+            .await?;
 
             let new_state = self.new_attempt(run_id).await?;
             new_state
@@ -279,4 +265,426 @@ pub trait WorkflowRunState: Debug + Send + Sync {
         exclude: &'a HashSet<Location>,
         truncate: &'a HashSet<Location>,
     ) -> BoxFuture<'a, miette::Result<()>>;
+}
+
+/// Return a set of [`Location`] to exclude from copying and a set to truncate
+/// based the invalidation of the provided locations and existing workflow state.
+async fn compute_exclude_and_truncate(
+    asset_storage_registry: &AssetStorageRegistry,
+    source_state: &Arc<dyn WorkflowRunState>,
+    workflow_graph: &Arc<WorkflowGraph>,
+    locs: impl Iterator<Item = &Location>,
+) -> miette::Result<(HashSet<Location>, HashSet<Location>)> {
+    let mut exclude = HashSet::new();
+    let mut truncate = HashSet::new();
+
+    for loc in locs {
+        let (graph, _, node) =
+            resolve_location(asset_storage_registry, source_state, workflow_graph, loc).await?;
+        if !matches!(
+            graph.node_definition(node),
+            Some(NodeDefinition::Task { .. })
+        ) {
+            return Err(miette!("Can only restart Task nodes, {loc} is not a Task"));
+        }
+
+        exclude.insert(loc.clone());
+        exclude
+            .extend(dependents(asset_storage_registry, source_state, workflow_graph, loc).await?);
+        truncate.extend(loc.node_ancestors());
+    }
+    truncate.retain(|loc| !exclude.contains(loc));
+
+    Ok((exclude, truncate))
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use crate::{
+        asset_storage::test_storage_registry,
+        builder::{constant, eval, link, loop_node, map_node, task},
+        event::{NodeEvent, NodeStatus, RunningStateUpdate},
+        state::InMemoryRuntimeState,
+    };
+
+    use super::*;
+
+    fn example_task_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let task_node = task(&mut graph, "foo", "bar", [], ["out"]);
+        link(&mut graph, (task_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    fn example_eval_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let const_node_and_name = constant(&mut graph, example_task_graph()?)?;
+        let eval_node = eval(&mut graph, [], ["out"]);
+
+        link(&mut graph, const_node_and_name, (eval_node, "graph"))?;
+        link(&mut graph, (eval_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    fn example_loop_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let const_node_and_name = constant(&mut graph, example_task_graph()?)?;
+        let loop_node = loop_node(&mut graph, [], ["out"]);
+
+        link(&mut graph, const_node_and_name, (loop_node, "graph"))?;
+        link(&mut graph, (loop_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    fn example_map_graph() -> miette::Result<WorkflowGraph> {
+        let mut graph = WorkflowGraph::new(["out".to_string()]);
+        let output_node = graph.output_idx();
+        let const_node_and_name = constant(&mut graph, example_task_graph()?)?;
+        let map_node = map_node(&mut graph, [], [], ["out"]);
+
+        link(&mut graph, const_node_and_name, (map_node, "graph"))?;
+        link(&mut graph, (map_node, "out"), (output_node, "out"))?;
+
+        Ok(graph)
+    }
+
+    #[tokio::test]
+    async fn exclude_and_truncate_task() -> miette::Result<()> {
+        let (asset_storage_registry, _, _dir) = test_storage_registry([], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = Arc::new(example_task_graph()?);
+
+        let locs = &[Location::new("N1")?];
+
+        let (exclude, truncate) = compute_exclude_and_truncate(
+            &asset_storage_registry,
+            &source_state,
+            &graph,
+            locs.iter(),
+        )
+        .await?;
+
+        assert_eq!(exclude.len(), 2);
+        assert!(exclude.contains(&Location::new("N1")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert!(truncate.is_empty());
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn exclude_and_truncate_task_in_eval() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = Arc::new(example_eval_graph()?);
+
+        let locs = &[Location::new("N2.N1")?];
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Evalling {
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let (exclude, truncate) = compute_exclude_and_truncate(
+            &asset_storage_registry,
+            &source_state,
+            &graph,
+            locs.iter(),
+        )
+        .await?;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.N1")?));
+        assert!(exclude.contains(&Location::new("N2.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn exclude_and_truncate_task_in_loop() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = Arc::new(example_loop_graph()?);
+        let locs = &[Location::new("N2.L0.N1")?];
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 0,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let (exclude, truncate) = compute_exclude_and_truncate(
+            &asset_storage_registry,
+            &source_state,
+            &graph,
+            locs.iter(),
+        )
+        .await?;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.L0.N1")?));
+        assert!(exclude.contains(&Location::new("N2.L0.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn exclude_and_truncate_task_in_loop_iteration() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = Arc::new(example_loop_graph()?);
+        let locs = &[Location::new("N2.L1.N1")?];
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 0,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 1,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let (exclude, truncate) = compute_exclude_and_truncate(
+            &asset_storage_registry,
+            &source_state,
+            &graph,
+            locs.iter(),
+        )
+        .await?;
+
+        assert_eq!(exclude.len(), 3);
+        assert!(exclude.contains(&Location::new("N2.L1.N1")?));
+        assert!(exclude.contains(&Location::new("N2.L1.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn exclude_and_truncate_task_in_loop_mid_iteration() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = Arc::new(example_loop_graph()?);
+        let locs = &[Location::new("N2.L1.N1")?];
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 0,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 1,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Looping {
+                        index: 2,
+                        inputs: HashMap::new(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let (exclude, truncate) = compute_exclude_and_truncate(
+            &asset_storage_registry,
+            &source_state,
+            &graph,
+            locs.iter(),
+        )
+        .await?;
+
+        dbg!(&exclude, &truncate);
+        assert_eq!(exclude.len(), 4);
+        assert!(exclude.contains(&Location::new("N2.L1.N1")?));
+        assert!(exclude.contains(&Location::new("N2.L1.N0")?));
+        assert!(exclude.contains(&Location::new("N2.L2")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn exclude_and_truncate_task_in_map() -> miette::Result<()> {
+        let (asset_storage_registry, asset_sets, _dir) =
+            test_storage_registry([json!({"value": example_task_graph()?})], []).await;
+        let state = Arc::new(InMemoryRuntimeState::new());
+        let source_state = state
+            .new_workflow_run_state(Uuid::now_v7(), HashMap::new())
+            .await?;
+
+        let graph = Arc::new(example_map_graph()?);
+        let locs = &[Location::new("N2.M0.N1")?, Location::new("N2.M2.N1")?];
+
+        source_state.write(WorkflowRunEvent::Started {}).await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Complete {
+                    outputs: asset_sets[0].clone(),
+                },
+                name: None,
+            }]))
+            .await?;
+        source_state
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N2")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::MapStarted {
+                        input_sets: vec![HashMap::new(), HashMap::new(), HashMap::new()],
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+
+        let (exclude, truncate) = compute_exclude_and_truncate(
+            &asset_storage_registry,
+            &source_state,
+            &graph,
+            locs.iter(),
+        )
+        .await?;
+
+        assert_eq!(exclude.len(), 5);
+        assert!(exclude.contains(&Location::new("N2.M0.N1")?));
+        assert!(exclude.contains(&Location::new("N2.M0.N0")?));
+        assert!(exclude.contains(&Location::new("N2.M2.N1")?));
+        assert!(exclude.contains(&Location::new("N2.M2.N0")?));
+        assert!(exclude.contains(&Location::new("N0")?));
+        assert_eq!(truncate.len(), 1);
+        assert!(truncate.contains(&Location::new("N2")?));
+
+        Ok(())
+    }
 }

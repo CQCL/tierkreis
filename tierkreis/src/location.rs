@@ -103,6 +103,27 @@ impl Location {
         Self(Vec::new())
     }
 
+    /// Returns true if the [`Location`] is a prefix (ancestor) for another provided [`Location`].
+    ///
+    /// ```
+    /// use tierkreis::location::Location;
+    ///
+    /// let a = Location::new("N1").unwrap();
+    /// let b = Location::new("N1.L3").unwrap();
+    /// let c = Location::new("N1.L3.N4").unwrap();
+    ///
+    /// assert!(a.is_ancestor(&b));
+    /// assert!(b.is_ancestor(&c));
+    /// assert!(!c.is_ancestor(&a));
+    /// ```
+    pub fn is_ancestor(&self, potential_descendent: &Location) -> bool {
+        self.0.len() < potential_descendent.0.len()
+            && potential_descendent
+                .components()
+                .zip(self.components())
+                .all(|(x, y)| x == y)
+    }
+
     /// Construct a [`Location`] from an iterator of [`usize`].
     ///
     /// This method cannot be used to construct Map or Loop components.
@@ -123,6 +144,18 @@ impl Location {
     }
 
     /// Returns true if the Location represents an iteration of a loop.
+    ///
+    /// ```
+    /// use tierkreis::location::Location;
+    ///
+    /// let a = Location::new("N1").unwrap();
+    /// let b = Location::new("N1.L3").unwrap();
+    /// let c = Location::new("N1.L3.N4").unwrap();
+    ///
+    /// assert!(!a.is_loop());
+    /// assert!(b.is_loop());
+    /// assert!(!c.is_loop());
+    /// ```
     #[must_use]
     pub fn is_loop(&self) -> bool {
         matches!(self.0.last(), Some(LocationComponent::LoopIndex { .. }))

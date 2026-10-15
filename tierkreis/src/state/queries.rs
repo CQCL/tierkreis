@@ -663,6 +663,7 @@ pub async fn read_workflow_run_inputs(
 pub async fn read_workflow_run_input_from_location(
     conn: &mut impl AsyncConnection<Backend = Sqlite>,
     workflow_run_id: &str,
+    attempt: i32,
     location: &str,
     name: &str,
 ) -> miette::Result<AssetSpec> {
@@ -671,6 +672,7 @@ pub async fn read_workflow_run_input_from_location(
     let input = wri::workflow_run_inputs
         .select(WorkflowRunInput::as_select())
         .filter(wri::workflow_run_id.eq(workflow_run_id))
+        .filter(wri::attempt.eq(attempt))
         .filter(wri::location.eq(location))
         .filter(wri::name.eq(name))
         .first(conn)
@@ -1093,10 +1095,10 @@ pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
             .await?;
 
         for row in rows {
-            if exclude.contains(&row.node_location) {
+            if exclude.iter().any(|e| e.is_ancestor(&row.node_location)) {
                 continue;
             }
-            let is_truncated = truncate.contains(&row.node_location);
+            let is_truncated = truncate.iter().any(|t| t.is_ancestor(&row.node_location));
             // copy over node state TODO: clarify which times to retain.
             let new_row = if is_truncated {
                 UpsertNodeState {

@@ -333,6 +333,7 @@ impl RuntimeState for SqliteRuntimeState {
                 let root_location_str = Location::root().to_string();
                 let workflow_inputs = inputs.iter().map(|(name, asset)| NewWorkflowRunInput {
                     workflow_run_id: &run_id_str,
+                    attempt: 0,
                     location: root_location_str.clone(),
                     name,
                     asset_kind: asset.kind.to_string(),
@@ -501,6 +502,7 @@ impl WorkflowRunState for SqliteWorkflowRunState {
             read_workflow_run_input_from_location(
                 &mut conn,
                 &self.run_id.to_string(),
+                self.attempt.try_into().into_diagnostic()?,
                 &location.to_string(),
                 name,
             )
@@ -701,11 +703,13 @@ impl SqliteWorkflowRunState {
                         ..
                     } => {
                         row.running_time = Some(now);
+                        let attempt = i32::try_from(self.attempt).into_diagnostic()?;
 
                         let location_str = event.loc.to_string();
                         for (port, asset_spec) in inputs {
                             subgraph_inputs.push(NewWorkflowRunInput {
                                 workflow_run_id: &workflow_run_id_str,
+                                attempt,
                                 location: location_str.clone(),
                                 name: port,
                                 asset_kind: asset_spec.kind.to_string(),
@@ -720,11 +724,13 @@ impl SqliteWorkflowRunState {
                     } => {
                         row.running_time = Some(now);
                         row.loop_index = Some(index.try_into().into_diagnostic()?);
+                        let attempt = i32::try_from(self.attempt).into_diagnostic()?;
 
                         let location_str = event.loc.with_loop_index(index).to_string();
                         for (port, asset_spec) in inputs {
                             subgraph_inputs.push(NewWorkflowRunInput {
                                 workflow_run_id: &workflow_run_id_str,
+                                attempt,
                                 location: location_str.clone(),
                                 name: port,
                                 asset_kind: asset_spec.kind.to_string(),
@@ -741,12 +747,14 @@ impl SqliteWorkflowRunState {
                         let size = input_sets.len();
                         row.map_size = Some(size.try_into().into_diagnostic()?);
                         row.map_completed = Some(BitVec::<u8>::repeat(false, size).into_vec());
+                        let attempt = i32::try_from(self.attempt).into_diagnostic()?;
 
                         for (index, inputs) in input_sets.iter().enumerate() {
                             let location_str = event.loc.with_map_index(index).to_string();
                             for (port, asset_spec) in inputs {
                                 subgraph_inputs.push(NewWorkflowRunInput {
                                     workflow_run_id: &workflow_run_id_str,
+                                    attempt,
                                     location: location_str.clone(),
                                     name: port,
                                     asset_kind: asset_spec.kind.to_string(),

@@ -18,8 +18,10 @@ pub(crate) enum Quantity {
     Text(String),
 }
 
-fn to_f64(value: u64) -> f64 {
-    Into::<f64>::into(TryInto::<u32>::try_into(value).unwrap())
+fn to_f64(value: u64) -> Result<f64> {
+    Ok(Into::<f64>::into(
+        TryInto::<u32>::try_into(value).into_diagnostic()?,
+    ))
 }
 
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
@@ -30,7 +32,7 @@ fn downcast(value: f64) -> u32 {
 impl Quantity {
     fn value(&self) -> Result<f64> {
         let value = match self {
-            Self::Integer(number) => to_f64(*number),
+            Self::Integer(number) => to_f64(*number)?,
             Self::Float(number) => *number,
             Self::Text(text) => {
                 const SUFFIXES: [(&str, f64); 12] = [

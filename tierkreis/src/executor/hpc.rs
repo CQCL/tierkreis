@@ -23,16 +23,21 @@ use uuid::Uuid;
 use which::which_re;
 
 use crate::{
-    asset_storage::{AssetSpec, AssetStorageRegistry, reserve_asset_specs, transfer_assets}, event::{
+    asset_storage::{AssetSpec, AssetStorageRegistry, reserve_asset_specs, transfer_assets},
+    event::{
         EventReceiver, EventSender, RuntimeEvent, send_cancelled, send_complete, send_error,
         send_queued, send_running,
-    }, executor::{
+    },
+    executor::{
         hpc::spec::{
             ContainerSpec, HPCResourceSpec, JobSpec, MpiSpec, SchedulerStatus, SchedulerWrapper,
             UserSpec,
         },
         interface::{Executor, TaskHandle, TaskPlan, WorkerSpec},
-    }, location::Location, monitoring::{EnvironmentCarrier, inject_trace_context}, resource_profiles::downcast,
+    },
+    location::Location,
+    monitoring::{EnvironmentCarrier, inject_trace_context},
+    resource_profiles::downcast,
 };
 
 #[derive(serde::Deserialize, Default)]

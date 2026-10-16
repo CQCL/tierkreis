@@ -568,7 +568,9 @@ fn handle_node_events(
             node_state.name.clone_from(&node_event.name);
         }
         match node_event.status {
-            crate::event::NodeStatus::Scheduled { ref execution_context } => {
+            crate::event::NodeStatus::Scheduled {
+                ref execution_context,
+            } => {
                 if node_state.scheduled_time.is_none() {
                     node_state.scheduled_time = Some(now);
                 }

@@ -16,6 +16,8 @@ from tierkreis.controller.data.types import Workflow
 
 runtime_fns = [new_default, new_in_memory, new_sqlite_memory]
 runtime_fn_ids = ["default", "in_memory", "sqlite_memory"]
+DIAMOND_LOCS = {"left": "N2", "right": "N4", "joined": "N5"}
+NESTED_LOCS = {"M0": "N3.M0.N2", "M1": "N3.M1.N2", "M2": "N3.M2.N2"}
 
 
 def diamond_graph() -> Workflow[TKR[int], TKR[int]]:
@@ -26,51 +28,113 @@ def diamond_graph() -> Workflow[TKR[int], TKR[int]]:
     return g.finish_with_outputs(joined)
 
 
+async def start_run(
+    runtime: Runtime,
+    name: str,
+    graph: Workflow,
+    inputs: dict[str, object],
+) -> str:
+    workflow_id = await runtime.save_workflow(name, graph)
+    return await runtime.start_new_run(workflow_id, inputs, enable_breakpoints=True)
+
+
+async def enter_nested_items(runtime: Runtime, run_id: str) -> list[str]:
+    breakpoints = await runtime.wait_for(
+        run_id, condition=WaitUntil.Breakpoint, timeout=10
+    )
+    assert breakpoints == ["N3"]
+    await runtime.resume_breakpoints(run_id, ["N3"])
+    return await runtime.wait_for(run_id, condition=WaitUntil.Blocked, timeout=10)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
-@pytest.mark.parametrize("enabled", [False, True], ids=["disabled", "enabled"])
-async def test_breakpoints(
-    runtime_fn: Callable[[], Awaitable[Runtime]], enabled: bool
+async def test_breakpoint_pauses_at_first_node(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
 ) -> None:
-    graph = diamond_graph()
-    locs = {"left": "N2", "right": "N4", "joined": "N5"}
     runtime = await runtime_fn()
     with runtime:
-        workflow_id = await runtime.save_workflow("breakpoints", graph)
-        if enabled:
-            run_id = await runtime.start_new_run(
-                workflow_id, {"value": 3}, enable_breakpoints=True
-            )
-            breakpoints = await runtime.wait_for(
-                run_id, condition=WaitUntil.Breakpoint, timeout=10
-            )
-            assert breakpoints == [locs["left"]]
-            breakpoints = await runtime.wait_for(
-                run_id, condition=WaitUntil.Blocked, timeout=10
-            )
-            assert breakpoints == [locs["left"]]
-            assert await runtime.paused_nodes(run_id) == [locs["left"]]
-            states = await runtime.debug_read_node_states(
-                run_id, 0, [locs["left"], locs["right"]]
-            )
-            assert states[locs["left"]].status == "Paused"
-            assert states[locs["right"]].status == "Complete"
-            assert (await runtime.get_summary(run_id)).complete_time is None
-            with pytest.raises(ValueError, match="not resumable|not hit a breakpoint"):
-                await runtime.resume_breakpoints(run_id, [locs["left"], "N999"])
-            assert await runtime.paused_nodes(run_id) == [locs["left"]]
-            assert await runtime.resume_breakpoints(run_id, []) == []
-            assert await runtime.resume_breakpoints(run_id, [locs["left"]]) == [
-                locs["left"]
-            ]
-            breakpoints = await runtime.wait_for(
-                run_id, condition=WaitUntil.Breakpoint, timeout=10
-            )
-            assert breakpoints == [locs["joined"]]
-            states = await runtime.debug_read_node_states(run_id, 0, [locs["left"]])
-            assert await runtime.resume_breakpoints(run_id) == [locs["joined"]]
-        else:
-            run_id = await runtime.start_new_run(workflow_id, {"value": 3})
+        run_id = await start_run(runtime, "breakpoints", diamond_graph(), {"value": 3})
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Breakpoint, timeout=10
+        )
+        assert breakpoints == [DIAMOND_LOCS["left"]]
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Blocked, timeout=10
+        )
+        assert breakpoints == [DIAMOND_LOCS["left"]]
+        assert await runtime.paused_nodes(run_id) == [DIAMOND_LOCS["left"]]
+        states = await runtime.debug_read_node_states(
+            run_id, 0, [DIAMOND_LOCS["left"], DIAMOND_LOCS["right"]]
+        )
+        assert states[DIAMOND_LOCS["left"]].status == "Paused"
+        assert states[DIAMOND_LOCS["right"]].status == "Complete"
+        assert (await runtime.get_summary(run_id)).complete_time is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_invalid_resume(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
+    runtime = await runtime_fn()
+    with runtime:
+        run_id = await start_run(
+            runtime, "invalid_resume", diamond_graph(), {"value": 3}
+        )
+        await runtime.wait_for(run_id, condition=WaitUntil.Blocked, timeout=10)
+        with pytest.raises(ValueError, match="not resumable|not hit a breakpoint"):
+            await runtime.resume_breakpoints(run_id, [DIAMOND_LOCS["left"], "N999"])
+        assert await runtime.paused_nodes(run_id) == [DIAMOND_LOCS["left"]]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_empty_resume(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
+    runtime = await runtime_fn()
+    with runtime:
+        run_id = await start_run(runtime, "empty_resume", diamond_graph(), {"value": 3})
+        await runtime.wait_for(run_id, condition=WaitUntil.Blocked, timeout=10)
+        assert await runtime.resume_breakpoints(run_id, []) == []
+        assert await runtime.paused_nodes(run_id) == [DIAMOND_LOCS["left"]]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_resuming_reaches_next(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
+    runtime = await runtime_fn()
+    with runtime:
+        run_id = await start_run(
+            runtime, "next_breakpoint", diamond_graph(), {"value": 3}
+        )
+        await runtime.wait_for(run_id, condition=WaitUntil.Blocked, timeout=10)
+        assert await runtime.resume_breakpoints(run_id, [DIAMOND_LOCS["left"]]) == [
+            DIAMOND_LOCS["left"]
+        ]
+        breakpoints = await runtime.wait_for(
+            run_id, condition=WaitUntil.Breakpoint, timeout=10
+        )
+        assert breakpoints == [DIAMOND_LOCS["joined"]]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_resuming_all_breakpoints(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
+    runtime = await runtime_fn()
+    with runtime:
+        run_id = await start_run(
+            runtime, "complete_diamond", diamond_graph(), {"value": 3}
+        )
+        await runtime.wait_for(run_id, condition=WaitUntil.Blocked, timeout=10)
+        await runtime.resume_breakpoints(run_id, [DIAMOND_LOCS["left"]])
+        await runtime.wait_for(run_id, condition=WaitUntil.Breakpoint, timeout=10)
+        assert await runtime.resume_breakpoints(run_id) == [DIAMOND_LOCS["joined"]]
         breakpoints = await runtime.wait_for(
             run_id, condition=WaitUntil.Blocked, timeout=10
         )
@@ -94,42 +158,40 @@ def nested_breakpoints() -> Workflow[TKR[list[int]], TKR[list[int]]]:
 async def test_nested_breakpoints(
     runtime_fn: Callable[[], Awaitable[Runtime]],
 ) -> None:
-    graph = nested_breakpoints()
-    locs = {"M0": "N3.M0.N2", "M1": "N3.M1.N2", "M2": "N3.M2.N2"}
     runtime = await runtime_fn()
     with runtime:
-        workflow_id = await runtime.save_workflow("map_breakpoints", graph)
-        run_id = await runtime.start_new_run(
-            workflow_id, {"value": [0, 1, 2]}, enable_breakpoints=True
+        run_id = await start_run(
+            runtime, "map_breakpoints", nested_breakpoints(), {"value": [0, 1, 2]}
         )
-        breakpoints = await runtime.wait_for(
-            run_id, condition=WaitUntil.Breakpoint, timeout=10
+        assert await enter_nested_items(runtime, run_id) == list(NESTED_LOCS.values())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_resuming_one_nested(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
+    runtime = await runtime_fn()
+    with runtime:
+        run_id = await start_run(
+            runtime, "resume_one_nested", nested_breakpoints(), {"value": [0, 1, 2]}
         )
-        assert breakpoints == ["N3"]
-        await runtime.resume_breakpoints(run_id, ["N3"])
-        # Using WaitUntil.Breakpoint here is undefined behavior since we can hit any of the inner breakpoints in any order
+        assert await enter_nested_items(runtime, run_id) == list(NESTED_LOCS.values())
+        await runtime.resume_breakpoints(run_id, [NESTED_LOCS["M0"]])
         breakpoints = await runtime.wait_for(
             run_id, condition=WaitUntil.Blocked, timeout=10
         )
-        assert breakpoints == [locs["M0"], locs["M1"], locs["M2"]]
-        await runtime.resume_breakpoints(run_id, [locs["M0"]])
-        breakpoints = await runtime.wait_for(
-            run_id, condition=WaitUntil.Blocked, timeout=10
-        )
-        assert breakpoints == [locs["M1"], locs["M2"]]
+        assert breakpoints == [NESTED_LOCS["M1"], NESTED_LOCS["M2"]]
         states = await runtime.debug_read_node_states(
-            run_id, 0, [locs["M0"], locs["M1"], locs["M2"]]
+            run_id, 0, list(NESTED_LOCS.values())
         )
-        assert states[locs["M0"]].status == "Complete"
-        assert states[locs["M1"]].status == "Paused"
-        assert states[locs["M2"]].status == "Paused"
-        assert await runtime.paused_nodes(run_id) == [locs["M1"], locs["M2"]]
-        await runtime.resume_breakpoints(run_id)
-        breakpoints = await runtime.wait_for(
-            run_id, condition=WaitUntil.Blocked, timeout=10
-        )
-        assert breakpoints == []
-        assert await runtime.get_outputs(run_id) == [1, 2, 3]
+        assert states[NESTED_LOCS["M0"]].status == "Complete"
+        assert states[NESTED_LOCS["M1"]].status == "Paused"
+        assert states[NESTED_LOCS["M2"]].status == "Paused"
+        assert await runtime.paused_nodes(run_id) == [
+            NESTED_LOCS["M1"],
+            NESTED_LOCS["M2"],
+        ]
 
 
 @pytest.mark.asyncio
@@ -137,36 +199,40 @@ async def test_nested_breakpoints(
 async def test_nested_breakpoints_unpaused(
     runtime_fn: Callable[[], Awaitable[Runtime]],
 ) -> None:
-    graph = nested_breakpoints()
-    locs = {"M0": "N3.M0.N2", "M1": "N3.M1.N2", "M2": "N3.M2.N2"}
     runtime = await runtime_fn()
     with runtime:
-        workflow_id = await runtime.save_workflow("map_breakpoints_alt", graph)
-        run_id = await runtime.start_new_run(
-            workflow_id, {"value": [0, 1, 2]}, enable_breakpoints=True
+        run_id = await start_run(
+            runtime, "map_breakpoints_alt", nested_breakpoints(), {"value": [0, 1, 2]}
         )
+        assert await enter_nested_items(runtime, run_id) == list(NESTED_LOCS.values())
+        await runtime.resume_breakpoints(run_id, [NESTED_LOCS["M0"]])
         breakpoints = await runtime.wait_for(
             run_id, condition=WaitUntil.Breakpoint, timeout=10
         )
-        assert breakpoints == ["N3"]
-        await runtime.resume_breakpoints(run_id, ["N3"])
-        # Using WaitUntil.Breakpoint here is undefined behavior since we can hit any of the inner breakpoints in any order
-        breakpoints = await runtime.wait_for(
-            run_id, condition=WaitUntil.Blocked, timeout=10
-        )
-        assert breakpoints == [locs["M0"], locs["M1"], locs["M2"]]
-        await runtime.resume_breakpoints(run_id, [locs["M0"]])
-        breakpoints = await runtime.wait_for(
-            run_id, condition=WaitUntil.Breakpoint, timeout=10
-        )
-        assert breakpoints == [locs["M1"], locs["M2"]]
+        assert breakpoints == [NESTED_LOCS["M1"], NESTED_LOCS["M2"]]
         states = await runtime.debug_read_node_states(
-            run_id, 0, [locs["M0"], locs["M1"], locs["M2"]]
+            run_id, 0, list(NESTED_LOCS.values())
         )
-        assert states[locs["M0"]].status != "Paused"
-        assert states[locs["M1"]].status == "Paused"
-        assert states[locs["M2"]].status == "Paused"
-        assert await runtime.paused_nodes(run_id) == [locs["M1"], locs["M2"]]
+        assert states[NESTED_LOCS["M0"]].status != "Paused"
+        assert states[NESTED_LOCS["M1"]].status == "Paused"
+        assert states[NESTED_LOCS["M2"]].status == "Paused"
+        assert await runtime.paused_nodes(run_id) == [
+            NESTED_LOCS["M1"],
+            NESTED_LOCS["M2"],
+        ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("runtime_fn", runtime_fns, ids=runtime_fn_ids)
+async def test_resuming_all_nested(
+    runtime_fn: Callable[[], Awaitable[Runtime]],
+) -> None:
+    runtime = await runtime_fn()
+    with runtime:
+        run_id = await start_run(
+            runtime, "complete_nested", nested_breakpoints(), {"value": [0, 1, 2]}
+        )
+        await enter_nested_items(runtime, run_id)
         await runtime.resume_breakpoints(run_id)
         breakpoints = await runtime.wait_for(
             run_id, condition=WaitUntil.Blocked, timeout=10

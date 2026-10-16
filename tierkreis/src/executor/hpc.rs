@@ -573,14 +573,6 @@ impl<T: SchedulerWrapper + 'static> HPCExecutor<T> {
             .unwrap_or_else(|| format!("tkr-{}", task.worker_name.replace('_', "-")));
         let command = format!("{worker_command} {}", worker_args_path.display());
         let request = ResourceRequest::try_from(task.resources.clone())?;
-        let extra_scheduler_args = task
-            .resources
-            .get("extra_scheduler_args")
-            .map(|value| serde_json::from_value(value.clone()))
-            .transpose()
-            .into_diagnostic()
-            .wrap_err("Invalid HPC extra scheduler arguments")?
-            .unwrap_or_default();
         let hpc_environment =
             serde_json::from_value(task.environment.clone().into_iter().collect())
                 .into_diagnostic()
@@ -597,7 +589,7 @@ impl<T: SchedulerWrapper + 'static> HPCExecutor<T> {
             user: request.user,
             mpi: request.mpi,
             container: request.container,
-            extra_scheduler_args,
+            extra_scheduler_args: request.extra_scheduler_args,
             ..Default::default()
         };
         let context = tracing::Span::current().context();

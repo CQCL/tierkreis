@@ -1137,6 +1137,7 @@ impl Orchestrator {
     /// # Errors
     ///
     /// Will return Err if a Node cannot be run or dispatched.
+    #[allow(clippy::too_many_lines)]
     #[instrument(skip(self, actions), fields(run_id = %workflow_run_id, attempt), err)]
     pub async fn perform_actions(
         &self,

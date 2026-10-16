@@ -25,6 +25,7 @@ runs:
       with:
         version: "0.12.3"
         enable-cache: true
+        prune-cache: false
         cache-suffix: ${{ inputs.python_version }}
         python-version: ${{ inputs.python_version }}
         cache-dependency-glob: uv.lock

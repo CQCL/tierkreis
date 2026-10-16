@@ -1,9 +1,6 @@
 name: Python package CI
 
 on:
-  pull_request:
-    branches:
-      - main
   push:
     branches:
       - main
@@ -28,6 +25,7 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
+          prune-cache: false
           python-version: ${{ matrix.python-version }}
           cache-dependency-glob: uv.lock
 
@@ -56,6 +54,7 @@ jobs:
         with:
           version: ${{ env.UV_VERSION }}
           enable-cache: true
+          prune-cache: false
           python-version: ${{ matrix.python-version }}
           cache-dependency-glob: uv.lock
 

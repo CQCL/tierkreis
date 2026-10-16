@@ -1151,12 +1151,18 @@ mod tests {
                         Duration::from_millis(20),
                         runtime.wait_for(run_id, attempt, WaitUntil::Complete),
                     ).await.is_err());
-                    assert!(runtime.resume_breakpoints(run_id, attempt, Some(Vec::new())).await?.is_empty());
+                    assert_eq!(
+                        runtime.resume_breakpoints(run_id, attempt, Some(Vec::new())).await?,
+                        Vec::<Location>::new()
+                    );
                     assert!(!runtime.listen().borrow().active_runs.contains(&(run_id, attempt)));
 
                     let (other_run, other_attempt) = runtime
                         .start_new_run(workflow_id, inputs.clone(), None).await?;
-                    assert!(runtime.wait_for(other_run, other_attempt, WaitUntil::Complete).await?.is_empty());
+                    assert_eq!(
+                        runtime.wait_for(other_run, other_attempt, WaitUntil::Complete).await?,
+                        Vec::<Location>::new()
+                    );
                     assert!(!runtime.listen().borrow().active_runs.contains(&(run_id, attempt)));
                     assert_eq!(runtime.wait_for(run_id, attempt, WaitUntil::Breakpoint).await?, vec![left_loc.clone(), right_loc.clone()]);
 
@@ -1165,9 +1171,15 @@ mod tests {
                     let states = runtime.read_node_states(run_id, attempt, [left_loc.clone()].into_iter()).await?;
                     assert!(states[&left_loc].complete_time.is_some());
                     runtime.resume_breakpoints(run_id, attempt, None).await?;
-                    assert!(runtime.wait_for(run_id, attempt, WaitUntil::Complete).await?.is_empty());
+                    assert_eq!(
+                        runtime.wait_for(run_id, attempt, WaitUntil::Complete).await?,
+                        Vec::<Location>::new()
+                    );
                     for until in [WaitUntil::Breakpoint, WaitUntil::Blocked, WaitUntil::Complete] {
-                        assert!(runtime.wait_for(run_id, attempt, until).await?.is_empty());
+                        assert_eq!(
+                            runtime.wait_for(run_id, attempt, until).await?,
+                            Vec::<Location>::new()
+                        );
                     }
                     assert_eq!(runtime.get_outputs(run_id, attempt).await?, inputs);
                     Ok(())

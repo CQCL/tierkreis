@@ -14,6 +14,8 @@ pub mod graph;
 pub mod location;
 pub mod monitoring;
 pub mod orchestrator;
+#[allow(dead_code)]
+mod resource_profiles;
 pub mod runtime;
 pub mod server;
 pub mod state;

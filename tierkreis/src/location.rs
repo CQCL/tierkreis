@@ -116,12 +116,19 @@ impl Location {
     /// assert!(b.is_ancestor(&c));
     /// assert!(!c.is_ancestor(&a));
     /// ```
+    #[must_use]
     pub fn is_ancestor(&self, potential_descendent: &Location) -> bool {
         self.0.len() < potential_descendent.0.len()
             && potential_descendent
                 .components()
                 .zip(self.components())
                 .all(|(x, y)| x == y)
+    }
+
+    /// Returns true if this location is equal to or an ancestor of another location.
+    #[must_use]
+    pub fn contains(&self, location: &Location) -> bool {
+        self == location || self.is_ancestor(location)
     }
 
     /// Construct a [`Location`] from an iterator of [`usize`].

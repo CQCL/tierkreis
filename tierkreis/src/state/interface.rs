@@ -105,6 +105,73 @@ pub struct NodeState {
     pub handle: Option<TaskHandle>,
 }
 
+/// Describes the state which must not be copied into a restarted run attempt.
+#[derive(Debug, Clone)]
+pub struct RestartPlan {
+    invalidated: HashSet<Location>,
+    truncated: HashSet<Location>,
+    loop_restarts: HashMap<Location, u32>,
+}
+
+impl RestartPlan {
+    pub(crate) fn new(invalidated: HashSet<Location>, truncated: HashSet<Location>) -> Self {
+        let loop_restarts = truncated
+            .iter()
+            .filter_map(|container| {
+                invalidated
+                    .iter()
+                    .filter_map(|location| {
+                        if !container.is_ancestor(location) {
+                            return None;
+                        }
+                        location
+                            .components()
+                            .nth(container.components().count())
+                            .and_then(|component| match component {
+                                crate::location::LocationComponent::LoopIndex { index } => {
+                                    Some(*index)
+                                }
+                                _ => None,
+                            })
+                    })
+                    .min()
+                    .map(|index| (container.clone(), index))
+            })
+            .collect();
+
+        Self {
+            invalidated,
+            truncated,
+            loop_restarts,
+        }
+    }
+
+    /// Whether a location is fully invalidated, including locations below an
+    /// invalidated iteration or container.
+    #[must_use]
+    pub fn excludes(&self, location: &Location) -> bool {
+        self.invalidated
+            .iter()
+            .any(|invalidated| invalidated.contains(location))
+    }
+
+    /// Whether the state at exactly this container location is truncated.
+    #[must_use]
+    pub fn truncates(&self, location: &Location) -> bool {
+        self.truncated.contains(location)
+    }
+
+    /// The iteration from which a truncated loop must resume, if applicable.
+    #[must_use]
+    pub fn loop_restart(&self, location: &Location) -> Option<u32> {
+        self.loop_restarts.get(location).copied()
+    }
+
+    fn into_invalidated(self) -> HashSet<Location> {
+        self.invalidated
+    }
+}
+
 /// [`RuntimeState`] is an interface to the state of the overall tierkreis runtime, across
 /// all of the running and completed Workflows.
 ///
@@ -160,7 +227,16 @@ pub trait RuntimeState: Debug + Send + Sync {
     fn new_attempt(&self, run_id: Uuid)
     -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>>;
 
-    /// Restart Task nodes in a new attempt, preserving unaffected node state.
+    /// Atomically create a new attempt by copying reusable state and inputs
+    /// from `source` according to `restart_plan`.
+    fn new_attempt_from<'a>(
+        &'a self,
+        source: &'a dyn WorkflowRunState,
+        restart_plan: &'a RestartPlan,
+    ) -> BoxFuture<'a, miette::Result<Arc<dyn WorkflowRunState>>>;
+
+    /// Restart Task nodes in a new attempt, preserving unaffected node state
+    /// and the persisted inputs required to resume invalidated subgraphs.
     ///
     /// An empty `locs` restarts all errored nodes from the source attempt.
     /// Returns the new attempt number and sorted fully invalidated locations.
@@ -191,7 +267,7 @@ pub trait RuntimeState: Debug + Send + Sync {
             let (_workflow_name, workflow_graph) = self.load_workflow(workflow_id).await?;
             let workflow_graph = Arc::new(workflow_graph);
 
-            let (exclude, truncate) = compute_exclude_and_truncate(
+            let restart_plan = compute_restart_plan(
                 asset_storage_registry,
                 &source_state,
                 &workflow_graph,
@@ -199,12 +275,10 @@ pub trait RuntimeState: Debug + Send + Sync {
             )
             .await?;
 
-            let new_state = self.new_attempt(run_id).await?;
-            new_state
-                .copy_node_states_from(&*source_state, &exclude, &truncate)
-                .await?;
+            let new_state = self.new_attempt_from(&*source_state, &restart_plan).await?;
 
-            let mut invalidated: Vec<Location> = exclude.into_iter().collect();
+            let mut invalidated: Vec<Location> =
+                restart_plan.into_invalidated().into_iter().collect();
             invalidated.sort_by_key(ToString::to_string);
 
             Ok((new_state.attempt(), invalidated))
@@ -253,28 +327,16 @@ pub trait WorkflowRunState: Debug + Send + Sync {
     fn add_metadata(&self, metadata: HashMap<String, String>) -> BoxFuture<'_, miette::Result<()>>;
     /// Read the metadata for the Workflow run.
     fn read_metadata(&self) -> BoxFuture<'_, miette::Result<HashMap<String, String>>>;
-
-    /// Copy node state (and outputs) from `source` into `self`.
-    ///
-    /// Locations in `exclude` are skipped to reset them
-    /// Locations in `truncate` retain structural state such as `cond` and `loop_index` is
-    /// map progress is reset
-    fn copy_node_states_from<'a>(
-        &'a self,
-        source: &'a dyn WorkflowRunState,
-        exclude: &'a HashSet<Location>,
-        truncate: &'a HashSet<Location>,
-    ) -> BoxFuture<'a, miette::Result<()>>;
 }
 
 /// Return a set of [`Location`] to exclude from copying and a set to truncate
 /// based the invalidation of the provided locations and existing workflow state.
-async fn compute_exclude_and_truncate(
+async fn compute_restart_plan(
     asset_storage_registry: &AssetStorageRegistry,
     source_state: &Arc<dyn WorkflowRunState>,
     workflow_graph: &Arc<WorkflowGraph>,
     locs: impl Iterator<Item = &Location>,
-) -> miette::Result<(HashSet<Location>, HashSet<Location>)> {
+) -> miette::Result<RestartPlan> {
     let mut exclude = HashSet::new();
     let mut truncate = HashSet::new();
 
@@ -295,7 +357,19 @@ async fn compute_exclude_and_truncate(
     }
     truncate.retain(|loc| !exclude.contains(loc));
 
-    Ok((exclude, truncate))
+    Ok(RestartPlan::new(exclude, truncate))
+}
+
+#[cfg(test)]
+async fn compute_exclude_and_truncate(
+    asset_storage_registry: &AssetStorageRegistry,
+    source_state: &Arc<dyn WorkflowRunState>,
+    workflow_graph: &Arc<WorkflowGraph>,
+    locs: impl Iterator<Item = &Location>,
+) -> miette::Result<(HashSet<Location>, HashSet<Location>)> {
+    let plan =
+        compute_restart_plan(asset_storage_registry, source_state, workflow_graph, locs).await?;
+    Ok((plan.invalidated, plan.truncated))
 }
 
 #[cfg(test)]
@@ -303,10 +377,10 @@ mod tests {
     use serde_json::json;
 
     use crate::{
-        asset_storage::test_storage_registry,
+        asset_storage::{AssetKey, AssetKind, AssetSpec, test_storage_registry},
         builder::{constant, eval, link, loop_node, map_node, task},
         event::{NodeEvent, NodeStatus, RunningStateUpdate},
-        state::InMemoryRuntimeState,
+        state::{InMemoryRuntimeState, SqliteRuntimeState},
     };
 
     use super::*;
@@ -354,6 +428,122 @@ mod tests {
         link(&mut graph, (map_node, "out"), (output_node, "out"))?;
 
         Ok(graph)
+    }
+
+    fn test_asset() -> AssetSpec {
+        AssetSpec {
+            kind: AssetKind::Memory,
+            storage_name: "test".to_string(),
+            asset_key: AssetKey::new(),
+        }
+    }
+
+    async fn restart_copy_contract(runtime: &dyn RuntimeState) -> miette::Result<()> {
+        let root_asset = test_asset();
+        let workflow_id = runtime.save_workflow(None, example_loop_graph()?).await?;
+        let source = runtime
+            .new_workflow_run_state(
+                workflow_id,
+                HashMap::from([("root".to_string(), root_asset.clone())]),
+            )
+            .await?;
+        let loop_loc = Location::new("N2")?;
+        let selected_iteration = Location::new("N2.L1")?;
+        let later_iteration = Location::new("N2.L2")?;
+        let selected_task = Location::new("N2.L1.N1")?;
+        let later_task = Location::new("N2.L2.N1")?;
+        let unaffected_task = Location::new("N9")?;
+        let selected_input = test_asset();
+        let later_input = test_asset();
+        let output = HashMap::from([("value".to_string(), test_asset())]);
+
+        for (index, input) in [
+            (0, test_asset()),
+            (1, selected_input.clone()),
+            (2, later_input),
+        ] {
+            source
+                .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                    loc: loop_loc.clone(),
+                    status: NodeStatus::Running {
+                        state_update: Some(RunningStateUpdate::Looping {
+                            index,
+                            inputs: HashMap::from([("value".to_string(), input)]),
+                        }),
+                    },
+                    name: None,
+                }]))
+                .await?;
+        }
+        source
+            .write(WorkflowRunEvent::NodeEvents(vec![
+                NodeEvent {
+                    loc: selected_task.clone(),
+                    status: NodeStatus::Complete {
+                        outputs: output.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: later_task.clone(),
+                    status: NodeStatus::Complete {
+                        outputs: output.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: unaffected_task.clone(),
+                    status: NodeStatus::Complete { outputs: output },
+                    name: None,
+                },
+            ]))
+            .await?;
+        source.write(WorkflowRunEvent::Completed {}).await?;
+
+        let plan = RestartPlan::new(
+            HashSet::from([selected_task.clone(), later_iteration.clone()]),
+            HashSet::from([loop_loc.clone()]),
+        );
+        let restarted = runtime.new_attempt_from(&*source, &plan).await?;
+
+        assert_eq!(restarted.attempt(), 1);
+        assert_eq!(restarted.load_inputs().await?["root"], root_asset);
+        assert_eq!(
+            restarted
+                .load_named_input_from_location(&selected_iteration, "value")
+                .await?,
+            selected_input
+        );
+        assert!(
+            restarted
+                .load_named_input_from_location(&later_iteration, "value")
+                .await
+                .is_err()
+        );
+        assert!(restarted.read(&selected_task).await?.outputs.is_none());
+        assert!(restarted.read(&later_task).await?.outputs.is_none());
+        assert!(restarted.read(&unaffected_task).await?.outputs.is_some());
+
+        let loop_state = restarted.read(&loop_loc).await?;
+        assert_eq!(loop_state.loop_index, Some(1));
+        assert!(loop_state.running_time.is_none());
+        assert!(loop_state.outputs.is_none());
+
+        // Copying into the new attempt must never mutate the source attempt.
+        assert!(source.read(&selected_task).await?.outputs.is_some());
+        assert_eq!(source.read(&loop_loc).await?.loop_index, Some(2));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn restart_copy_contract_in_memory() -> miette::Result<()> {
+        restart_copy_contract(&InMemoryRuntimeState::new()).await
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn restart_copy_contract_sqlite() -> miette::Result<()> {
+        restart_copy_contract(&SqliteRuntimeState::try_new_in_memory().await?).await
     }
 
     #[tokio::test]

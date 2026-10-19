@@ -122,17 +122,26 @@ async def test_concurrent_runs_override_default_profile() -> None:
             )
 
 
+profiles = ["slurm", "pbs"]
+
+
+## How to use:
+## This test runs with either the slurm or pbs profile.
+## Make sure to start the correct cluster and then select the
+## appropriate profile name.
 @pytest.mark.skip(reason="HPC setup needed")
 @pytest.mark.asyncio
+@pytest.mark.parametrize("profile", profiles)
 async def test_profile_routes_task_to_hpc_docker_worker(
+    profile: str,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ) -> None:
-    slurm_bin_dir = Path(__file__).parents[3] / "infra" / "slurm_local"
+    scheduler_bin_dir = Path(__file__).parents[3] / "infra" / f"{profile}_local"
     monkeypatch.setenv(
         "PATH",
         os.pathsep.join((
-            str(slurm_bin_dir),
+            str(scheduler_bin_dir),
             os.environ.get("PATH", ""),
         )),
     )
@@ -148,8 +157,9 @@ async def test_profile_routes_task_to_hpc_docker_worker(
         workflow_id = await runtime.save_workflow(
             "hpc_profile", mpi_graph_with_profile()
         )
-        run_id = await runtime.start_new_run(workflow_id, {}, profile="hpc_docker")
-        await runtime.wait_for(run_id, timeout=300)
+        run_id = await runtime.start_new_run(workflow_id, {}, profile=profile)
+        # Timeout can happen because the cluster rebuilds the entire environment.
+        await runtime.wait_for(run_id, timeout=600)
         outputs = await runtime.get_outputs(run_id)
         states = await runtime.debug_read_node_states(run_id, 0, ["N1"])
 

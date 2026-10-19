@@ -488,10 +488,7 @@ impl<T: SchedulerWrapper + 'static> HPCExecutor<T> {
             return Err(miette!("output_storage_name not in registry"));
         }
         for (worker, command) in &worker_commands {
-            if command
-                .first()
-                .is_none_or(std::string::String::is_empty)
-            {
+            if command.first().is_none_or(std::string::String::is_empty) {
                 return Err(miette!("Worker `{worker}` requires a nonempty executable"));
             }
         }

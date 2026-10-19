@@ -63,19 +63,18 @@ struct ResourceSettings {
 }
 
 impl ResourceSettings {
-    fn load_profiles(&self) -> miette::Result<Option<ResourceProfiles>> {
-        let environment = self
-            .environment
+    fn selected_profile(&self) -> Option<String> {
+        self.environment
             .clone()
-            .or_else(|| std::env::var(TKR_ENV_VAR).ok());
-        let Some(environment) = environment else {
-            return Ok(None);
-        };
+            .or_else(|| std::env::var(TKR_ENV_VAR).ok())
+    }
 
-        let roots = resource_profile_search_paths(&self.paths);
-        ResourceProfiles::load(&roots, &environment).map(Some)
+    fn load_profile(&self, profile: &str) -> miette::Result<ResourceProfiles> {
+        ResourceProfiles::load(&resource_profile_search_paths(&self.paths), profile)
     }
 }
+
+const RUN_PROFILE_METADATA_KEY: &str = "tierkreis.profile";
 
 impl RuntimeConfig {
     /// Select a deployment profile for this runtime configuration.
@@ -245,6 +244,7 @@ pub struct Runtime {
     state: Arc<dyn RuntimeState>,
     asset_storage_registry: AssetStorageRegistry,
     default_storage_name: String,
+    resources: ResourceSettings,
 
     background_task: Option<AbortOnDrop>,
 }
@@ -270,15 +270,12 @@ impl Runtime {
             executor_registry_from_config(&asset_storage_registry, config).await?;
 
         init_logging_and_tracing(&config.logging_config);
-        let mut orchestrator = Orchestrator::try_new(
+        let orchestrator = Orchestrator::try_new(
             &asset_storage_registry,
             &executor_registry,
             &config.default_storage_name,
             &config.default_executor_name,
         )?;
-        if let Some(profiles) = config.resources.load_profiles()? {
-            orchestrator.set_profiles(profiles);
-        }
         let runtime_state: Arc<dyn RuntimeState> = match &config.runtime_state {
             RuntimeStateConfig::Memory {} => Arc::new(InMemoryRuntimeState::new()),
             RuntimeStateConfig::Sqlite { memory: true, .. } => {
@@ -296,6 +293,7 @@ impl Runtime {
             state: runtime_state,
             asset_storage_registry,
             default_storage_name: config.default_storage_name.clone(),
+            resources: config.resources.clone(),
             background_task: None,
         };
 
@@ -359,6 +357,8 @@ impl Runtime {
 
     /// Start a new workflow run of a specific workflow with some inputs.
     ///
+    /// The explicit profile overrides the runtime default and is persisted for resume and restart.
+    ///
     /// # Errors
     ///
     /// Will return Err if the input assets cannot be written or if
@@ -367,7 +367,16 @@ impl Runtime {
         &self,
         workflow_id: Uuid,
         inputs: HashMap<String, Vec<u8>, S>,
+        profile: Option<String>,
     ) -> miette::Result<(Uuid, u32)> {
+        let profile = profile.or_else(|| self.resources.selected_profile());
+        if let Some(profile) = &profile {
+            self.resources.load_profile(profile)?;
+        }
+        let metadata = HashMap::from([(
+            RUN_PROFILE_METADATA_KEY.to_string(),
+            serde_json::to_string(&profile).into_diagnostic()?,
+        )]);
         let inputs = save_assets(
             &self.asset_storage_registry,
             &self.default_storage_name,
@@ -376,7 +385,7 @@ impl Runtime {
         .await?;
         let workflow_run_state = self
             .state
-            .new_workflow_run_state(workflow_id, inputs)
+            .new_workflow_run_state_with_metadata(workflow_id, inputs, metadata)
             .await?;
         let attempt = workflow_run_state.attempt();
         let run_id = workflow_run_state.run_id();
@@ -534,7 +543,16 @@ impl Runtime {
                     context.clone()
                 } else {
                     let inputs = workflow_run_state.load_inputs().await?;
-                    let context = OrchestrationContext::new(&workflow_run_state, inputs);
+                    let metadata = workflow_run_state.read_metadata().await?;
+                    let profile: Option<String> = match metadata.get(RUN_PROFILE_METADATA_KEY) {
+                        Some(profile) => serde_json::from_str(profile).into_diagnostic()?,
+                        None => self.resources.selected_profile(),
+                    };
+                    let profiles = profile
+                        .as_deref()
+                        .map(|profile| self.resources.load_profile(profile))
+                        .transpose()?;
+                    let context = OrchestrationContext::new(&workflow_run_state, inputs, profiles);
                     contexts.insert((run_id, attempt), context.clone());
                     context
                 };
@@ -1006,6 +1024,242 @@ mod tests {
         Ok((workflow_graph, Location::root().with_node(task)))
     }
 
+    #[rstest::rstest]
+    #[case(false, false)]
+    #[case(true, false)]
+    #[case(true, true)]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn run_profiles_are_isolated_and_persisted(
+        #[case] sqlite: bool,
+        #[case] reopen: bool,
+    ) -> miette::Result<()> {
+        let directory = tempfile::tempdir().into_diagnostic()?;
+        let mut config = RuntimeConfig::memory();
+        config.resources.paths = vec![directory.path().to_path_buf()];
+        config.resources.environment = Some("first".to_string());
+        if sqlite {
+            config.asset_storage.insert(
+                "file".to_string(),
+                AssetStorageConfig::File {
+                    asset_dir: directory.path().join("assets"),
+                },
+            );
+            config.default_storage_name = "file".to_string();
+            config.runtime_state = RuntimeStateConfig::Sqlite {
+                memory: false,
+                url: Some(
+                    directory
+                        .path()
+                        .join("state.db")
+                        .to_string_lossy()
+                        .into_owned(),
+                ),
+            };
+        }
+        let runtime = Runtime::from_config(&config).await?;
+        let inputs = HashMap::from([(
+            "delay_seconds".to_string(),
+            serde_json::to_vec(&0).into_diagnostic()?,
+        )]);
+        let mut runs = Vec::new();
+        for profile in ["first", "second"] {
+            let profile_dir = directory.path().join(profile);
+            std::fs::create_dir_all(&profile_dir).into_diagnostic()?;
+            std::fs::write(
+                profile_dir.join(format!("{profile}.toml")),
+                "executor = 'memory'",
+            )
+            .into_diagnostic()?;
+            let mut graph = workflow(["result"]);
+            let delay = input(&mut graph, "delay_seconds");
+            let task = graph.add_node(
+                crate::graph::NodeDefinition::Task {
+                    worker_name: "builtin".to_string(),
+                    task_name: "sleep".to_string(),
+                    context: Some(profile.to_string()),
+                    executor: None,
+                },
+                ["delay_seconds".to_string()],
+                ["value".to_string()],
+            );
+            link(&mut graph, delay, (task, "delay_seconds"))?;
+            let result = output(&graph, "result");
+            link(&mut graph, (task, "value"), result)?;
+            let workflow_id = runtime.save_workflow(None, graph).await?;
+            let selected = (profile == "second").then(|| profile.to_string());
+            let (run_id, attempt) = runtime
+                .start_new_run(workflow_id, inputs.clone(), selected)
+                .await?;
+            let state = runtime
+                .state
+                .load_workflow_run_state(run_id, attempt)
+                .await?;
+            assert_eq!(
+                state.read_metadata().await?[RUN_PROFILE_METADATA_KEY],
+                serde_json::to_string(&Some(profile)).into_diagnostic()?
+            );
+            runs.push((
+                workflow_id,
+                run_id,
+                attempt,
+                Location::root().with_node(task),
+                profile,
+            ));
+        }
+        assert!(
+            runtime
+                .start_new_run(runs[0].0, inputs, Some("missing".to_string()))
+                .await
+                .is_err()
+        );
+        assert_eq!(runtime.state.list_workflow_run_summaries().await?.len(), 2);
+
+        let mut runtime = runtime;
+        runtime.resources.environment = None;
+        let (graph, _) = sleep_graph_with_task_location()?;
+        let workflow_id = runtime.save_workflow(None, graph).await?;
+        let (unprofiled_run, unprofiled_attempt) = runtime
+            .start_new_run(
+                workflow_id,
+                HashMap::from([("delay_seconds".to_string(), b"0".to_vec())]),
+                None,
+            )
+            .await?;
+        let unprofiled_state = runtime
+            .state
+            .load_workflow_run_state(unprofiled_run, unprofiled_attempt)
+            .await?;
+        assert_eq!(
+            unprofiled_state.read_metadata().await?[RUN_PROFILE_METADATA_KEY],
+            "null"
+        );
+        let runtime = if reopen {
+            drop(runtime);
+            config.resources.environment = Some("missing".to_string());
+            Runtime::from_config(&config).await?
+        } else {
+            runtime
+        };
+        tokio::select! {
+            result = runtime.run() => {
+                result?;
+                panic!("runtime stopped before both runs completed");
+            }
+            result = timeout(Duration::from_secs(5), async {
+                futures::try_join!(
+                    runtime.wait_for(runs[0].1, runs[0].2),
+                    runtime.wait_for(runs[1].1, runs[1].2),
+                    runtime.wait_for(unprofiled_run, unprofiled_attempt),
+                )
+            }) => { result.into_diagnostic()??; }
+        }
+        for (_, run_id, attempt, location, profile) in &runs {
+            let state = runtime
+                .state
+                .load_workflow_run_state(*run_id, *attempt)
+                .await?;
+            let node = state.read(location).await?;
+            assert!(node.complete_time.is_some());
+            assert_eq!(node.execution_context.as_deref(), Some(*profile));
+        }
+        let retried = runtime.state.new_attempt(runs[1].1).await?;
+        assert_eq!(
+            retried.read_metadata().await?[RUN_PROFILE_METADATA_KEY],
+            "\"second\""
+        );
+        let attempt = retried.attempt();
+        run_until_finished(&Arc::new(runtime), runs[1].1, attempt).await?;
+        Ok(())
+    }
+
+    #[rstest::rstest]
+    #[case("eval")]
+    #[case("loop")]
+    #[case("map")]
+    #[tokio::test]
+    async fn run_profile_reaches_nested_graphs(#[case] container: &str) -> miette::Result<()> {
+        let directory = tempfile::tempdir().into_diagnostic()?;
+        let profile_dir = directory.path().join("nested");
+        std::fs::create_dir_all(&profile_dir).into_diagnostic()?;
+        std::fs::write(profile_dir.join("only.toml"), "executor = 'memory'").into_diagnostic()?;
+        let mut config = RuntimeConfig::memory();
+        config.resources.paths = vec![directory.path().to_path_buf()];
+        let runtime = Arc::new(Runtime::from_config(&config).await?);
+
+        let mut body = workflow(["result", "should_continue"]);
+        let delay = input(&mut body, "delay_seconds");
+        let task = body.add_node(
+            crate::graph::NodeDefinition::Task {
+                worker_name: "builtin".to_string(),
+                task_name: "sleep".to_string(),
+                context: Some("only".to_string()),
+                executor: None,
+            },
+            ["delay_seconds".to_string()],
+            ["value".to_string()],
+        );
+        link(&mut body, delay, (task, "delay_seconds"))?;
+        let result = output(&body, "result");
+        link(&mut body, (task, "value"), result)?;
+        let stop = constant(&mut body, false)?;
+        let should_continue = output(&body, "should_continue");
+        link(&mut body, stop, should_continue)?;
+
+        let mut graph = workflow(["result"]);
+        let delay = input(&mut graph, "delay_seconds");
+        let subgraph = constant(&mut graph, body)?;
+        let nested = match container {
+            "eval" => {
+                crate::builder::eval(&mut graph, ["delay_seconds"], ["result", "should_continue"])
+            }
+            "loop" => crate::builder::loop_node(
+                &mut graph,
+                ["delay_seconds"],
+                ["result", "should_continue"],
+            ),
+            "map" => crate::builder::map_node(
+                &mut graph,
+                ["delay_seconds"],
+                [],
+                ["result", "should_continue"],
+            ),
+            _ => unreachable!(),
+        };
+        link(&mut graph, subgraph, (nested, "graph"))?;
+        link(&mut graph, delay, (nested, "delay_seconds"))?;
+        let result = output(&graph, "result");
+        link(&mut graph, (nested, "result"), result)?;
+        let workflow_id = runtime.save_workflow(None, graph).await?;
+        let input = if container == "map" {
+            b"[0]".to_vec()
+        } else {
+            b"0".to_vec()
+        };
+        let (run_id, attempt) = runtime
+            .start_new_run(
+                workflow_id,
+                HashMap::from([("delay_seconds".to_string(), input)]),
+                Some("nested".to_string()),
+            )
+            .await?;
+        run_until_finished(&runtime, run_id, attempt).await?;
+        let location = Location::root().with_node(nested);
+        let location = match container {
+            "loop" => location.with_loop_index(0),
+            "map" => location.with_map_index(0),
+            _ => location,
+        }
+        .with_node(task);
+        let state = runtime
+            .state
+            .load_workflow_run_state(run_id, attempt)
+            .await?;
+        let node = state.read(&location).await?;
+        assert!(node.complete_time.is_some());
+        assert_eq!(node.execution_context.as_deref(), Some("only"));
+        Ok(())
+    }
+
     #[tokio::test(flavor = "multi_thread")]
     async fn run_can_resume_after_runtime_is_terminated() -> miette::Result<()> {
         let database_file = NamedTempFile::new().into_diagnostic()?;
@@ -1017,7 +1271,7 @@ mod tests {
             "delay_seconds".to_string(),
             serde_json::to_vec(&1).into_diagnostic()?,
         )]);
-        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs).await?;
+        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs, None).await?;
         let workflow_run_state = runtime
             .state
             .load_workflow_run_state(run_id, attempt)
@@ -1306,7 +1560,7 @@ mod tests {
 
         let workflow_id = runtime.save_workflow(None, workflow_graph.clone()).await?;
         let inputs = HashMap::from([("hugr_package".to_string(), hugr_package_bytes()?)]);
-        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs).await?;
+        let (run_id, attempt) = runtime.start_new_run(workflow_id, inputs, None).await?;
         let workflow_run_state = runtime
             .state
             .load_workflow_run_state(run_id, attempt)

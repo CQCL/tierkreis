@@ -53,12 +53,14 @@ profiles = ["runtime_e2e", "runtime_e2e2"]
 @pytest.mark.usefixtures("runtime_e2e_profile")
 @pytest.mark.parametrize("profile", profiles)
 async def test_nested_profile_routes_map_tasks_to_memory(profile: str) -> None:
-    runtime = await new_default(profile)
+    runtime = await new_default()
     with runtime:
         workflow_id = await runtime.save_workflow(
             "nested_profile", nested_builtin_map()
         )
-        run_id = await runtime.start_new_run(workflow_id, {"value": [1, 2, 3]})
+        run_id = await runtime.start_new_run(
+            workflow_id, {"value": [1, 2, 3]}, profile=profile
+        )
         await runtime.wait_for(run_id, timeout=10)
         outputs = await runtime.get_outputs(run_id)
         states = await runtime.debug_read_node_states(
@@ -99,6 +101,29 @@ async def test_profile_env_reaches_subprocess_worker(profile: str) -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("runtime_e2e_profile")
+async def test_concurrent_runs_override_default_profile() -> None:
+    runtime = await new_default("runtime_e2e")
+    with runtime:
+        workflow_id = await runtime.save_workflow("profile_env", read_profile_env())
+        default_run = await runtime.start_new_run(
+            workflow_id, {"value": PROFILE_ENV_VAR}
+        )
+        override_run = await runtime.start_new_run(
+            workflow_id, {"value": PROFILE_ENV_VAR}, profile="runtime_e2e2"
+        )
+        await runtime.wait_for(default_run, timeout=10)
+        await runtime.wait_for(override_run, timeout=10)
+        assert await runtime.get_outputs(default_run) == "from-runtime-e2e-profile"
+        assert await runtime.get_outputs(override_run) == "from-runtime-e2e2-profile"
+        with pytest.raises(ValueError, match="Unknown resource profile"):
+            await runtime.start_new_run(
+                workflow_id, {"value": PROFILE_ENV_VAR}, profile="missing_profile"
+            )
+
+
+@pytest.mark.skip(reason="HPC setup needed")
+@pytest.mark.asyncio
 async def test_profile_routes_task_to_hpc_docker_worker(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
@@ -123,7 +148,7 @@ async def test_profile_routes_task_to_hpc_docker_worker(
         workflow_id = await runtime.save_workflow(
             "hpc_profile", mpi_graph_with_profile()
         )
-        run_id = await runtime.start_new_run(workflow_id, {})
+        run_id = await runtime.start_new_run(workflow_id, {}, profile="hpc_docker")
         await runtime.wait_for(run_id, timeout=300)
         outputs = await runtime.get_outputs(run_id)
         states = await runtime.debug_read_node_states(run_id, 0, ["N1"])

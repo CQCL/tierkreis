@@ -326,14 +326,16 @@ mod tierkreis {
             }
         }
 
+        #[pyo3(signature = (workflow_id, inputs, *, profile=None))]
         async fn start_new_run(
             &self,
             workflow_id: Uuid,
             inputs: PyWorkflowInputs,
+            profile: Option<String>,
         ) -> PyResult<Uuid> {
             let inner = self.inner.clone();
             let res = get_runtime()
-                .spawn(async move { inner.start_new_run(workflow_id, inputs.0).await })
+                .spawn(async move { inner.start_new_run(workflow_id, inputs.0, profile).await })
                 .await
                 .map_err(|err| {
                     Python::attach(|py| convert_err(py, miette!("Failed to join future: {err}")))

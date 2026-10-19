@@ -127,6 +127,7 @@ struct ActionPlan {
 pub struct OrchestrationContext {
     parent_loc: Location,
     graph_inputs: HashMap<String, AssetSpec>,
+    profiles: Option<Arc<ResourceProfiles>>,
     inherited_context: Option<String>,
     inherited_executor: Option<String>,
     workflow_run_state: Arc<dyn WorkflowRunState>,
@@ -140,6 +141,7 @@ impl Clone for OrchestrationContext {
         Self {
             parent_loc: self.parent_loc.clone(),
             graph_inputs: self.graph_inputs.clone(),
+            profiles: self.profiles.clone(),
             inherited_context: self.inherited_context.clone(),
             inherited_executor: self.inherited_executor.clone(),
             workflow_run_state: Arc::clone(&self.workflow_run_state),
@@ -153,10 +155,12 @@ impl OrchestrationContext {
     pub fn new(
         workflow_run_state: &Arc<dyn WorkflowRunState>,
         inputs: HashMap<String, AssetSpec>,
+        profiles: Option<ResourceProfiles>,
     ) -> Self {
         Self {
             parent_loc: Location::root(),
             graph_inputs: inputs,
+            profiles: profiles.map(Arc::new),
             inherited_context: None,
             inherited_executor: None,
             workflow_run_state: Arc::clone(workflow_run_state),
@@ -176,7 +180,6 @@ pub struct Orchestrator {
     event_receiver: Mutex<Option<EventReceiver>>,
 
     default_executor_name: String,
-    profiles: Option<Arc<ResourceProfiles>>,
     executor_registry: ExecutorRegistry,
 
     default_storage_name: String,
@@ -216,15 +219,9 @@ impl Orchestrator {
 
             default_executor_name: default_executor_name.to_string(),
             executor_registry: Arc::clone(executor_registry),
-            profiles: None,
             default_storage_name: default_storage_name.to_string(),
             asset_storage_registry: Arc::clone(asset_storage_registry),
         })
-    }
-
-    /// Configure site-specific execution contexts for task placement.
-    pub fn set_profiles(&mut self, profiles: ResourceProfiles) {
-        self.profiles = Some(Arc::new(profiles));
     }
 
     /// Create a stream of [`Action`]s based on [`OrchstrationContext`] and a [`WorkflowGraph`].
@@ -325,7 +322,7 @@ impl Orchestrator {
                         requested_executor.as_deref(),
                         context.inherited_context.as_deref(),
                         context.inherited_executor.as_deref(),
-                        self.profiles.as_deref(),
+                        context.profiles.as_deref(),
                     )),
                     NodeDefinition::Eval {
                         context: node_context,
@@ -335,6 +332,7 @@ impl Orchestrator {
                             workflow_graph.clone(),
                             context.workflow_run_state.clone(),
                             context.scheduled_this_lifetime.clone(),
+                            context.profiles.clone(),
                             node_states,
                             parent_location,
                             n,
@@ -375,6 +373,7 @@ impl Orchestrator {
                             workflow_graph.clone(),
                             context.workflow_run_state.clone(),
                             context.scheduled_this_lifetime.clone(),
+                            context.profiles.clone(),
                             node_states,
                             mapped_ports.clone(),
                             parent_location,
@@ -745,6 +744,7 @@ impl Orchestrator {
         workflow_graph: Arc<WorkflowGraph>,
         workflow_run_state: Arc<dyn WorkflowRunState>,
         scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
+        profiles: Option<Arc<ResourceProfiles>>,
         node_states: Arc<NodeStates>,
         parent_location: Location,
         n: NodeIndex,
@@ -781,6 +781,7 @@ impl Orchestrator {
                 OrchestrationContext {
                     parent_loc: loc,
                     graph_inputs: inputs,
+                    profiles,
                     inherited_context,
                     inherited_executor,
                     workflow_run_state: workflow_run_state.clone(),
@@ -854,6 +855,7 @@ impl Orchestrator {
                                 OrchestrationContext {
                                     parent_loc: loop_loc,
                                     graph_inputs: inputs,
+                                    profiles: context.profiles.clone(),
                                     inherited_context,
                                     inherited_executor,
                                     workflow_run_state: Arc::clone(&context.workflow_run_state),
@@ -903,6 +905,7 @@ impl Orchestrator {
         workflow_graph: Arc<WorkflowGraph>,
         workflow_run_state: Arc<dyn WorkflowRunState>,
         scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
+        profiles: Option<Arc<ResourceProfiles>>,
         node_states: Arc<NodeStates>,
         mapped_ports: HashSet<String>,
         parent_location: Location,
@@ -921,6 +924,7 @@ impl Orchestrator {
                 self.build_initial_map_actions(
                     workflow_run_state,
                     scheduled_this_lifetime,
+                    profiles,
                     mapped_ports,
                     parent_location.with_node(n),
                     inputs,
@@ -945,6 +949,7 @@ impl Orchestrator {
                 self.build_subsequent_map_actions(
                     workflow_run_state,
                     scheduled_this_lifetime,
+                    profiles,
                     parent_location.with_node(n),
                     completed.to_bitvec(),
                     inputs,
@@ -967,6 +972,7 @@ impl Orchestrator {
         &'a self,
         workflow_run_state: Arc<dyn WorkflowRunState>,
         scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
+        profiles: Option<Arc<ResourceProfiles>>,
         mapped_ports: HashSet<String>,
         location: Location,
         inputs: HashMap<String, AssetSpec>,
@@ -999,6 +1005,7 @@ impl Orchestrator {
                     OrchestrationContext {
                         parent_loc: map_loc,
                         graph_inputs: inputs,
+                        profiles: profiles.clone(),
                         inherited_context: inherited_context.clone(),
                         inherited_executor: inherited_executor.clone(),
                         workflow_run_state: Arc::clone(&workflow_run_state),
@@ -1026,6 +1033,7 @@ impl Orchestrator {
         &'a self,
         workflow_run_state: Arc<dyn WorkflowRunState>,
         scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
+        profiles: Option<Arc<ResourceProfiles>>,
         location: Location,
         completed: BitVec<u8>,
         inputs: HashMap<String, AssetSpec>,
@@ -1046,6 +1054,7 @@ impl Orchestrator {
                     OrchestrationContext {
                         parent_loc: map_loc,
                         graph_inputs: inputs.clone(),
+                        profiles: profiles.clone(),
                         inherited_context: inherited_context.clone(),
                         inherited_executor: inherited_executor.clone(),
                         workflow_run_state: Arc::clone(&workflow_run_state),
@@ -1603,14 +1612,7 @@ mod tests {
         workflow_run_state: &Arc<dyn WorkflowRunState>,
         inputs: &HashMap<String, AssetSpec>,
     ) -> miette::Result<Vec<Action>> {
-        let context = OrchestrationContext {
-            parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
-            inherited_context: None,
-            inherited_executor: None,
-            workflow_run_state: Arc::clone(workflow_run_state),
-            scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
-        };
+        let context = OrchestrationContext::new(workflow_run_state, inputs.clone(), None);
         let actions = orchestrator
             .build_actions(context, Arc::clone(workflow_graph))
             .await?;
@@ -1918,14 +1920,7 @@ mod tests {
         let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
-        let context = OrchestrationContext {
-            parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
-            inherited_context: None,
-            inherited_executor: None,
-            workflow_run_state: Arc::clone(&workflow_run_state),
-            scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
-        };
+        let context = OrchestrationContext::new(&workflow_run_state, inputs.clone(), None);
         let mut stream = orchestrator.listen()?;
         let state = Arc::clone(&workflow_run_state);
 
@@ -2026,14 +2021,7 @@ mod tests {
         let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
-        let context = OrchestrationContext {
-            parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
-            inherited_context: None,
-            inherited_executor: None,
-            workflow_run_state: Arc::clone(&workflow_run_state),
-            scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
-        };
+        let context = OrchestrationContext::new(&workflow_run_state, inputs.clone(), None);
         let mut stream = orchestrator.listen()?;
         let state = Arc::clone(&workflow_run_state);
 
@@ -2144,14 +2132,7 @@ mod tests {
         let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let inputs = input_sets[0].clone();
-        let context = OrchestrationContext {
-            parent_loc: Location::root(),
-            graph_inputs: inputs.clone(),
-            inherited_context: None,
-            inherited_executor: None,
-            workflow_run_state: Arc::clone(&workflow_run_state),
-            scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
-        };
+        let context = OrchestrationContext::new(&workflow_run_state, inputs.clone(), None);
         let mut stream = orchestrator.listen()?;
         let state = Arc::clone(&workflow_run_state);
 
@@ -2227,14 +2208,7 @@ mod tests {
 
         let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test();
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
-        let context = OrchestrationContext {
-            parent_loc: Location::root(),
-            graph_inputs: HashMap::new(),
-            inherited_context: None,
-            inherited_executor: None,
-            workflow_run_state: Arc::clone(&workflow_run_state),
-            scheduled_this_lifetime: Arc::new(RwLock::new(HashSet::new())),
-        };
+        let context = OrchestrationContext::new(&workflow_run_state, HashMap::new(), None);
         let mut stream = orchestrator.listen()?;
         let state = Arc::clone(&workflow_run_state);
 

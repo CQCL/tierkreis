@@ -490,7 +490,7 @@ impl<T: SchedulerWrapper + 'static> HPCExecutor<T> {
         for (worker, command) in &worker_commands {
             if command
                 .first()
-                .is_none_or(|executable| executable.is_empty())
+                .is_none_or(std::string::String::is_empty)
             {
                 return Err(miette!("Worker `{worker}` requires a nonempty executable"));
             }

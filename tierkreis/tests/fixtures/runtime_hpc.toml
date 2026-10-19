@@ -23,7 +23,3 @@ gpus_per_node = 0
 
 [runtime_state]
 type = "Memory"
-
-[resources]
-environment = "hpc_docker"
-paths = []

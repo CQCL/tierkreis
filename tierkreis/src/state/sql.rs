@@ -313,21 +313,23 @@ impl RuntimeState for SqliteRuntimeState {
         .boxed()
     }
 
-    fn new_workflow_run_state(
+    fn new_workflow_run_state_with_metadata(
         &self,
         workflow_id: Uuid,
         inputs: HashMap<String, crate::asset_storage::AssetSpec>,
+        metadata: HashMap<String, String>,
     ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>> {
         async move {
             let mut conn = self.get_conn().await?;
             let run_id = Uuid::now_v7();
             let run_id_str = run_id.to_string();
+            let metadata = serde_json::to_vec(&metadata).into_diagnostic()?;
             conn.transaction(async |conn| {
                 let run = NewWorkflowRun {
                     id: &run_id_str,
                     workflow_id: &workflow_id.to_string(),
                 };
-                insert_workflow_run(conn, &run).await?;
+                insert_workflow_run(conn, &run, &metadata).await?;
 
                 let workflow_inputs = inputs.iter().map(|(name, asset)| NewWorkflowRunInput {
                     workflow_run_id: &run_id_str,
@@ -410,11 +412,8 @@ impl RuntimeState for SqliteRuntimeState {
                 .ok_or_else(|| miette!("No existing run found for run_id: {run_id}"))?
                 + 1;
             let next_attempt = u32::try_from(next_attempt_i32).into_diagnostic()?;
-            let max_attempt_summary = self
-                .load_workflow_run_state(run_id, next_attempt - 1)
-                .await?
-                .summary()
-                .await?;
+            let max_attempt_summary =
+                get_workflow_run_summary(&mut conn, run_id, next_attempt - 1).await?;
             if max_attempt_summary.cancelled_time.is_none()
                 && max_attempt_summary.error_time.is_none()
                 && max_attempt_summary.complete_time.is_none()

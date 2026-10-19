@@ -112,6 +112,7 @@ pub async fn read_workflow_run(
 pub async fn insert_workflow_run(
     conn: &mut impl AsyncConnection<Backend = Sqlite>,
     run: &NewWorkflowRun<'_>,
+    metadata: &[u8],
 ) -> diesel::result::QueryResult<WorkflowRun> {
     use crate::state::schema::workflow_run_attempts::dsl as wra;
     use crate::state::schema::workflow_runs::dsl as wr;
@@ -131,12 +132,18 @@ pub async fn insert_workflow_run(
         .values((
             wra::workflow_run_id.eq(&workflow_run.id),
             wra::started_time.eq(Some(now)),
+            wra::run_metadata.eq(jsonb(metadata)),
         ))
         .execute(conn)
         .await?;
 
     Ok(workflow_run)
 }
+
+define_sql_function!(
+    /// Convert JSON bytes to `SQLite` JSONB.
+    fn jsonb(value: Binary) -> Binary;
+);
 
 define_sql_function!(
     /// `COALESCE` for datetime data.
@@ -1027,11 +1034,19 @@ pub async fn insert_workflow_run_attempt(
 ) -> miette::Result<()> {
     use crate::state::schema::workflow_run_attempts::dsl as wra;
 
+    let metadata = wra::workflow_run_attempts
+        .filter(wra::workflow_run_id.eq(run_id))
+        .filter(wra::attempt.eq(attempt - 1))
+        .select(wra::run_metadata)
+        .first::<Vec<u8>>(conn)
+        .await
+        .into_diagnostic()?;
     let now = chrono::Utc::now().naive_utc();
     diesel::insert_into(wra::workflow_run_attempts)
         .values((
             wra::workflow_run_id.eq(run_id),
             wra::attempt.eq(attempt),
+            wra::run_metadata.eq(metadata),
             wra::started_time.eq(Some(now)),
         ))
         .execute(conn)

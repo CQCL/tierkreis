@@ -135,6 +135,15 @@ pub trait RuntimeState: Debug + Send + Sync {
         &self,
         workflow_id: Uuid,
         inputs: HashMap<String, AssetSpec>,
+    ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>> {
+        self.new_workflow_run_state_with_metadata(workflow_id, inputs, HashMap::new())
+    }
+    /// Create a run with metadata persisted before the run becomes active.
+    fn new_workflow_run_state_with_metadata(
+        &self,
+        workflow_id: Uuid,
+        inputs: HashMap<String, AssetSpec>,
+        metadata: HashMap<String, String>,
     ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>>;
     /// Retrieve a handle to a [`WorkflowRunState`] depending on the `run_id` and attempt number.
     ///

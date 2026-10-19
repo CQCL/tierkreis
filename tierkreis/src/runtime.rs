@@ -20,7 +20,7 @@ use crate::{
         AssetStorage, AssetStorageRegistry, FileAssetStorage, InMemoryStorage, load_assets,
         save_assets,
     },
-    config::tierkreis_home_dir,
+    config::{TKR_ENV_VAR, resource_profile_search_paths, tierkreis_home_dir},
     event::{NodeStatus, RuntimeEvent, WorkflowRunEvent},
     executor::{
         Executor, ExecutorRegistry, HPCExecutor, InMemoryExecutor, PbsWrapper, PjsubWrapper,
@@ -33,6 +33,7 @@ use crate::{
     location::Location,
     monitoring::{LoggingConfig, flush_logs, init_logging_and_tracing},
     orchestrator::{OrchestrationContext, Orchestrator},
+    resource_profiles::ResourceProfiles,
     state::{
         InMemoryRuntimeState, RuntimeState, RuntimeWatchState, SqliteRuntimeState,
         interface::{NodeState, WorkflowRunStateSummary},
@@ -50,9 +51,40 @@ pub struct RuntimeConfig {
     default_storage_name: String,
     default_executor_name: String,
     logging_config: Option<LoggingConfig>,
+    #[serde(default)]
+    resources: ResourceSettings,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+struct ResourceSettings {
+    environment: Option<String>,
+    #[serde(default)]
+    paths: Vec<PathBuf>,
+}
+
+impl ResourceSettings {
+    fn load_profiles(&self) -> miette::Result<Option<ResourceProfiles>> {
+        let environment = self
+            .environment
+            .clone()
+            .or_else(|| std::env::var(TKR_ENV_VAR).ok());
+        let Some(environment) = environment else {
+            return Ok(None);
+        };
+
+        let roots = resource_profile_search_paths(&self.paths);
+        ResourceProfiles::load(&roots, &environment).map(Some)
+    }
 }
 
 impl RuntimeConfig {
+    /// Select a deployment profile for this runtime configuration.
+    #[must_use]
+    pub fn with_profile(mut self, profile: String) -> Self {
+        self.resources.environment = Some(profile);
+        self
+    }
+
     /// Override the configured logging level.
     pub fn set_log_level(&mut self, log_level: impl Into<String>) {
         let mut logging_config = self.logging_config.take().unwrap_or_default();
@@ -80,6 +112,7 @@ impl RuntimeConfig {
             default_storage_name: "memory".to_string(),
             default_executor_name: "memory".to_string(),
             logging_config: Some(LoggingConfig::default()),
+            resources: ResourceSettings::default(),
         }
     }
 
@@ -127,6 +160,7 @@ impl Default for RuntimeConfig {
             default_storage_name: "file".to_string(),
             default_executor_name: "subprocess".to_string(),
             logging_config: Some(LoggingConfig::default()),
+            resources: ResourceSettings::default(),
         }
     }
 }
@@ -234,12 +268,15 @@ impl Runtime {
             executor_registry_from_config(&asset_storage_registry, config).await?;
 
         init_logging_and_tracing(&config.logging_config);
-        let orchestrator = Orchestrator::try_new(
+        let mut orchestrator = Orchestrator::try_new(
             &asset_storage_registry,
             &executor_registry,
             &config.default_storage_name,
             &config.default_executor_name,
         )?;
+        if let Some(profiles) = config.resources.load_profiles()? {
+            orchestrator.set_profiles(profiles);
+        }
         let runtime_state: Arc<dyn RuntimeState> = match &config.runtime_state {
             RuntimeStateConfig::Memory {} => Arc::new(InMemoryRuntimeState::new()),
             RuntimeStateConfig::Sqlite { memory: true, .. } => {

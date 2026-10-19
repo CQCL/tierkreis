@@ -71,14 +71,6 @@ impl Quantity {
         Ok(value)
     }
 
-    pub(crate) fn count(&self) -> Result<u32> {
-        let count = self.value()?.ceil();
-        if count > u32::MAX.into() {
-            return Err(miette!("Resource quantity exceeds u32 range"));
-        }
-        Ok(downcast(count))
-    }
-
     pub(crate) fn gib(&self) -> Result<u32> {
         let gib = (self.value()? / 1_073_741_824.0).ceil();
         if gib > u32::MAX.into() {
@@ -376,7 +368,6 @@ mod tests {
         assert!((Quantity::Text("500m".into()).value()? - 0.5).abs() < f64::EPSILON);
         assert_eq!(Quantity::Text("1536Mi".into()).gib()?, 2);
         assert_eq!(Quantity::Text("2Gi".into()).gib()?, 2);
-        assert_eq!(Quantity::Text("1.5".into()).count()?, 2);
         assert!(Quantity::Text("lots".into()).value().is_err());
         assert!(Quantity::Text("-1Gi".into()).value().is_err());
         assert!(Quantity::Float(f64::INFINITY).value().is_err());

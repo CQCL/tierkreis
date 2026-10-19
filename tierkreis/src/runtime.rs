@@ -196,6 +196,8 @@ enum ExecutorConfig {
         scheduler: HpcSchedulerConfig,
         poll_interval_secs: Option<u64>,
         resources: HPCResourceSpec,
+        #[serde(default)]
+        worker_commands: HashMap<String, Vec<String>>,
     },
 }
 
@@ -845,6 +847,7 @@ async fn executor_registry_from_config(
                 scheduler,
                 poll_interval_secs,
                 resources,
+                worker_commands,
             } => match scheduler {
                 HpcSchedulerConfig::Pbs => {
                     let scheduler = Arc::new(PbsWrapper::with_templates(templates.clone()));
@@ -857,6 +860,7 @@ async fn executor_registry_from_config(
                             scheduler,
                             resources.clone(),
                             std::time::Duration::from_secs(poll_interval_secs.unwrap_or(1)),
+                            worker_commands.clone(),
                         )?),
                     )
                 }
@@ -871,6 +875,7 @@ async fn executor_registry_from_config(
                             scheduler,
                             resources.clone(),
                             std::time::Duration::from_secs(poll_interval_secs.unwrap_or(1)),
+                            worker_commands.clone(),
                         )?),
                     )
                 }
@@ -885,6 +890,7 @@ async fn executor_registry_from_config(
                             scheduler,
                             resources.clone(),
                             std::time::Duration::from_secs(poll_interval_secs.unwrap_or(1)),
+                            worker_commands.clone(),
                         )?),
                     )
                 }

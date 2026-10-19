@@ -1,0 +1,29 @@
+default_storage_name = "file"
+default_executor_name = "hpc"
+
+[asset_storage.file]
+type = "File"
+asset_dir = "$HOME/.tierkreis/assets"
+
+[executors.hpc]
+type = "Hpc"
+hpc_storage_name = "file"
+output_storage_name = "file"
+scheduler = "slurm"
+poll_interval_secs = 1
+
+[executors.hpc.worker_commands]
+mpi_worker = ["uv", "run", "/mpi_worker/main.py"]
+
+# max available resources
+[executors.hpc.resources]
+nodes = 2
+cores_per_node = 1
+gpus_per_node = 0
+
+[runtime_state]
+type = "Memory"
+
+[resources]
+environment = "hpc_docker"
+paths = []

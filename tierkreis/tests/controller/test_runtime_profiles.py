@@ -2,14 +2,16 @@ import os
 from pathlib import Path
 
 import pytest
-from tierkreis._tierkreis import new_default
+from tierkreis._tierkreis import load_runtime_config, new_default, new_from_config
 
+from tests.executor.stubs import mpi_rank_info
 from tests.workers.env_worker.stubs import read_env
 from tierkreis.builder import ExecutionContext, Graph
 from tierkreis.builtins import iadd, sum_list
 from tierkreis.models import TKR, Workflow
 
 FIXTURE_ROOT = Path(__file__).parent.parent / "fixtures" / "resource_profiles"
+HPC_RUNTIME_CONFIG = Path(__file__).parent.parent / "fixtures" / "runtime_hpc.toml"
 PROFILE_ENV_VAR = "TKR_PROFILE_MARKER"
 
 
@@ -29,6 +31,12 @@ def read_profile_env() -> Workflow[TKR[str], TKR[str]]:
     graph = Graph(TKR[str], TKR[str])
     value = graph.task(read_env(name=graph.inputs), context="subprocess")
     return graph.finish_with_outputs(value)
+
+
+def mpi_graph_with_profile() -> Workflow[TKR[None], TKR[str | None]]:
+    graph = Graph(TKR[None], TKR[str | None])
+    result = graph.task(mpi_rank_info(), context="hpc")
+    return graph.finish_with_outputs(result)
 
 
 @pytest.fixture
@@ -88,3 +96,38 @@ async def test_profile_env_reaches_subprocess_worker(profile: str) -> None:
     assert outputs == f"from-{profile.replace('_', '-')}-profile"
     assert states["N1"].execution_context == "subprocess"
     assert PROFILE_ENV_VAR not in os.environ
+
+
+@pytest.mark.asyncio
+async def test_profile_routes_task_to_hpc_docker_worker(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    slurm_bin_dir = Path(__file__).parents[3] / "infra" / "slurm_local"
+    monkeypatch.setenv(
+        "PATH",
+        os.pathsep.join((
+            str(slurm_bin_dir),
+            os.environ.get("PATH", ""),
+        )),
+    )
+    monkeypatch.setenv("TKR_RESOURCE_PATH", os.fspath(FIXTURE_ROOT))
+
+    runtime_config_path = tmp_path / "hpc_runtime.toml"
+    runtime_config_path.write_text(os.path.expandvars(HPC_RUNTIME_CONFIG.read_text()))
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("TKR_CONFIG", os.fspath(runtime_config_path))
+    config = load_runtime_config()
+    runtime = await new_from_config(config)
+    with runtime:
+        workflow_id = await runtime.save_workflow(
+            "hpc_profile", mpi_graph_with_profile()
+        )
+        run_id = await runtime.start_new_run(workflow_id, {})
+        await runtime.wait_for(run_id, timeout=300)
+        outputs = await runtime.get_outputs(run_id)
+        states = await runtime.debug_read_node_states(run_id, 0, ["N1"])
+
+    assert "Rank 0 out of 2" in outputs
+    assert "Rank 1 out of 2" in outputs
+    assert states["N1"].execution_context == "hpc"

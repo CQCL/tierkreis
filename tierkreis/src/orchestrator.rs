@@ -111,8 +111,6 @@ pub enum ActionKind {
 struct ActionPlan {
     // map executor -> tasks
     tasks: HashMap<String, Vec<TaskPlan>>,
-    // (loc, context)
-    scheduled_tasks: Vec<(Location, Option<String>)>,
     switching: Vec<(Location, bool)>,
     looping: Vec<(Location, u32, Option<String>)>,
     mapping: Vec<(Location, usize)>,
@@ -318,10 +316,12 @@ impl Orchestrator {
                         n,
                         worker_name,
                         task_name,
-                        requested_context.as_deref(),
-                        requested_executor.as_deref(),
-                        context.inherited_context.as_deref(),
-                        context.inherited_executor.as_deref(),
+                        requested_context
+                            .as_deref()
+                            .or(context.inherited_context.as_deref()),
+                        requested_executor
+                            .as_deref()
+                            .or(context.inherited_executor.as_deref()),
                         context.profiles.as_deref(),
                     )),
                     NodeDefinition::Eval {
@@ -1170,8 +1170,6 @@ impl Orchestrator {
                     resources,
                 } => {
                     let resolved = *resources;
-                    plan.scheduled_tasks
-                        .push((loc.clone(), resolved.name.clone()));
                     plan.tasks
                         .entry(
                             resolved
@@ -1183,6 +1181,7 @@ impl Orchestrator {
                             workflow_run_id,
                             attempt,
                             loc,
+                            execution_context: resolved.name,
                             worker_name,
                             task_name,
                             inputs,
@@ -1221,15 +1220,17 @@ impl Orchestrator {
             }
         }
 
-        for (loc, execution_context) in plan.scheduled_tasks {
-            send_scheduled(
-                &mut event_sender,
-                workflow_run_id,
-                attempt,
-                loc,
-                execution_context,
-            )
-            .await?;
+        for tasks in plan.tasks.values() {
+            for task in tasks {
+                send_scheduled(
+                    &mut event_sender,
+                    workflow_run_id,
+                    attempt,
+                    task.loc.clone(),
+                    task.execution_context.clone(),
+                )
+                .await?;
+            }
         }
 
         if !plan.node_complete.is_empty() {
@@ -1263,15 +1264,10 @@ impl Orchestrator {
             send_running_switching(&mut event_sender, workflow_run_id, attempt, loc, cond).await?;
         }
 
-        for name in plan.tasks.keys() {
-            if !self.executor_registry.contains_key(name) {
-                return Err(miette!(
-                    "Unknown executor `{name}` selected by execution context"
-                ));
-            }
-        }
         for (name, tasks) in plan.tasks {
-            self.executor_registry[&name]
+            self.executor_registry
+                .get(&name)
+                .ok_or_else(|| miette!("Unknown executor `{name}` selected by execution context"))?
                 .execute(tasks)
                 .await
                 .wrap_err_with(|| format!("Could not run Task Nodes on `{name}`"))?;
@@ -1343,19 +1339,14 @@ fn build_task_action(
     n: NodeIndex,
     worker_name: &str,
     task_name: &str,
-    // Not sure if this is the most elegant way
     requested_context: Option<&str>,
     requested_executor: Option<&str>,
-    inherited_context: Option<&str>,
-    inherited_executor: Option<&str>,
     profiles: Option<&ResourceProfiles>,
 ) -> miette::Result<Action> {
     let loc = parent_location.with_node(n);
     let inputs = collect_inputs(&workflow_graph, node_states, parent_location, n)?;
     let outputs = workflow_graph.output_names(n)?.cloned().collect();
     let task_handle = node_states.get(&loc).and_then(|state| state.handle.clone());
-    let requested_context = requested_context.or(inherited_context);
-    let requested_executor = requested_executor.or(inherited_executor);
     let resolved = match profiles {
         Some(profiles) => profiles.resolve(requested_context, requested_executor)?,
         None if requested_context.is_some() => {

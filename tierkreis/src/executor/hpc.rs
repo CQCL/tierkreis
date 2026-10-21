@@ -45,12 +45,16 @@ fn shell_quote(argument: &str) -> String {
 }
 
 /// Builds the worker invocation command escaping each argument for the shell.
-/// falls back to tkr-<worker_name> if no command is specified
-/// Else uses the command specified for the worker in the commands map.
-/// e.g.
+/// Falls back to `tkr-<worker_name>` if no command is specified.
+/// Otherwise uses the command specified for the worker in the commands map.
+/// For example:
+///
+/// ```toml
 /// [executors.slurm.worker_commands]
 /// mpi_worker = ["uv", "run", "/mpi_worker/main.py"]
-/// will invoke the command ["uv", "run", "/mpi_worker/main.py", "<worker_args_path>"]
+/// ```
+///
+/// This invokes `["uv", "run", "/mpi_worker/main.py", "<worker_args_path>"]`.
 fn worker_invocation(
     commands: &HashMap<String, Vec<String>>,
     worker_name: &str,

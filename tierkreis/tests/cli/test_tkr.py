@@ -1,5 +1,6 @@
 import ast
 import sys
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -109,8 +110,14 @@ cli_params = [
     ids=["simple_eval_cli", "factorial_cli"],
 )
 def test_end_to_end(
-    args: list[str], result: dict[str, int], capsys: pytest.CaptureFixture[str]
+    args: list[str],
+    result: dict[str, int],
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    profile_root = Path(__file__).parent.parent / "fixtures" / "resource_profiles"
+    monkeypatch.setenv("TKR_ENV", "runtime_e2e")
+    monkeypatch.setenv("TKR_RESOURCE_PATH", str(profile_root))
     with mock.patch.object(sys, "argv", args):
         main()
     assert ast.literal_eval(capsys.readouterr().out) == result

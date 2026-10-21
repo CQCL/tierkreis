@@ -103,6 +103,9 @@ pub struct NodeState {
 
     /// The handle to the node
     pub handle: Option<TaskHandle>,
+
+    /// Assigned execution context for the node if any.
+    pub execution_context: Option<String>,
 }
 
 /// [`RuntimeState`] is an interface to the state of the overall tierkreis runtime, across
@@ -132,6 +135,15 @@ pub trait RuntimeState: Debug + Send + Sync {
         &self,
         workflow_id: Uuid,
         inputs: HashMap<String, AssetSpec>,
+    ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>> {
+        self.new_workflow_run_state_with_metadata(workflow_id, inputs, HashMap::new())
+    }
+    /// Create a run with metadata persisted before the run becomes active.
+    fn new_workflow_run_state_with_metadata(
+        &self,
+        workflow_id: Uuid,
+        inputs: HashMap<String, AssetSpec>,
+        metadata: HashMap<String, String>,
     ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>>;
     /// Retrieve a handle to a [`WorkflowRunState`] depending on the `run_id` and attempt number.
     ///

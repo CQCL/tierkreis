@@ -120,10 +120,11 @@ impl RuntimeState for InMemoryRuntimeState {
         future::ok(workflow_id).boxed()
     }
 
-    fn new_workflow_run_state(
+    fn new_workflow_run_state_with_metadata(
         &self,
         workflow_id: Uuid,
         inputs: HashMap<String, AssetSpec>,
+        metadata: HashMap<String, String>,
     ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>> {
         let run_id = Uuid::now_v7();
         let attempt = 0;
@@ -131,6 +132,7 @@ impl RuntimeState for InMemoryRuntimeState {
         let mut entry = self.inner.runs.entry((run_id, attempt)).or_default();
         entry.workflow_id = workflow_id;
         entry.inputs = inputs;
+        entry.metadata = metadata;
         entry.started_time = Some(chrono::Utc::now());
 
         self.update_sender.send_modify(|active_runs| {
@@ -215,9 +217,11 @@ impl RuntimeState for InMemoryRuntimeState {
     ) -> BoxFuture<'_, miette::Result<Arc<dyn WorkflowRunState>>> {
         async move {
             let mut latest: Option<(u32, Uuid, HashMap<String, AssetSpec>)> = None;
+            let mut metadata = HashMap::new();
             let mut attempt = 0;
             while let Some(item) = self.inner.runs.get(&(run_id, attempt)) {
                 latest = Some((attempt, item.workflow_id, item.inputs.clone()));
+                metadata = item.metadata.clone();
                 attempt += 1;
             }
             let (max_attempt, workflow_id, inputs) =
@@ -241,6 +245,7 @@ impl RuntimeState for InMemoryRuntimeState {
             let mut entry = self.inner.runs.entry((run_id, next_attempt)).or_default();
             entry.workflow_id = workflow_id;
             entry.inputs = inputs;
+            entry.metadata = metadata;
             entry.started_time = Some(Utc::now());
 
             self.update_sender.send_modify(|active_runs| {
@@ -568,9 +573,14 @@ fn handle_node_events(
             node_state.name.clone_from(&node_event.name);
         }
         match node_event.status {
-            crate::event::NodeStatus::Scheduled {} => {
+            crate::event::NodeStatus::Scheduled {
+                ref execution_context,
+            } => {
                 if node_state.scheduled_time.is_none() {
                     node_state.scheduled_time = Some(now);
+                }
+                if execution_context.is_some() {
+                    node_state.execution_context.clone_from(execution_context);
                 }
             }
             crate::event::NodeStatus::Queued { handle } => {
@@ -694,7 +704,9 @@ mod tests {
         workflow_run_state
             .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
                 loc: Location::root(),
-                status: NodeStatus::Scheduled {},
+                status: NodeStatus::Scheduled {
+                    execution_context: None,
+                },
                 name: None,
             }]))
             .await?;
@@ -725,7 +737,9 @@ mod tests {
         workflow_run_state
             .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
                 loc: Location::root(),
-                status: NodeStatus::Scheduled {},
+                status: NodeStatus::Scheduled {
+                    execution_context: None,
+                },
                 name: None,
             }]))
             .await?;

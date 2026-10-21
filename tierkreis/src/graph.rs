@@ -1084,7 +1084,7 @@ mod tests {
                 context: Some(context),
                 executor: Some(executor),
                 ..
-            }) if context == "gpu_large" && executor == "subprocess"
+            }) if executor == "memory" && context == "subprocess"
         ));
         Ok(())
     }

@@ -14,8 +14,7 @@ pub mod graph;
 pub mod location;
 pub mod monitoring;
 pub mod orchestrator;
-#[allow(dead_code)]
-mod resource_profiles;
+pub mod resource_profiles;
 pub mod runtime;
 pub mod server;
 pub mod state;
@@ -160,6 +159,8 @@ mod tierkreis {
         pub name: Option<String>,
         #[pyo3(get)]
         pub status: String,
+        #[pyo3(get)]
+        pub execution_context: Option<String>,
     }
 
     #[pyclass(name = "WorkflowSummary")]
@@ -219,6 +220,7 @@ mod tierkreis {
             Self {
                 name: node_state.name,
                 status,
+                execution_context: node_state.execution_context,
             }
         }
     }
@@ -230,8 +232,13 @@ mod tierkreis {
     }
 
     #[pyfunction]
-    async fn new_default() -> PyResult<PyRuntime> {
-        new_from_config(PyRuntimeConfig(RuntimeConfig::default())).await
+    #[pyo3(signature = (profile=None))]
+    async fn new_default(profile: Option<String>) -> PyResult<PyRuntime> {
+        let config = match profile {
+            Some(profile) => RuntimeConfig::default().with_profile(profile),
+            None => RuntimeConfig::default(),
+        };
+        new_from_config(PyRuntimeConfig(config)).await
     }
 
     #[pyfunction]
@@ -319,14 +326,16 @@ mod tierkreis {
             }
         }
 
+        #[pyo3(signature = (workflow_id, inputs, *, profile=None))]
         async fn start_new_run(
             &self,
             workflow_id: Uuid,
             inputs: PyWorkflowInputs,
+            profile: Option<String>,
         ) -> PyResult<Uuid> {
             let inner = self.inner.clone();
             let res = get_runtime()
-                .spawn(async move { inner.start_new_run(workflow_id, inputs.0).await })
+                .spawn(async move { inner.start_new_run(workflow_id, inputs.0, profile).await })
                 .await
                 .map_err(|err| {
                     Python::attach(|py| convert_err(py, miette!("Failed to join future: {err}")))

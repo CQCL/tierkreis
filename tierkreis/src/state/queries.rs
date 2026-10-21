@@ -112,6 +112,7 @@ pub async fn read_workflow_run(
 pub async fn insert_workflow_run(
     conn: &mut impl AsyncConnection<Backend = Sqlite>,
     run: &NewWorkflowRun<'_>,
+    metadata: &[u8],
 ) -> diesel::result::QueryResult<WorkflowRun> {
     use crate::state::schema::workflow_run_attempts::dsl as wra;
     use crate::state::schema::workflow_runs::dsl as wr;
@@ -131,12 +132,18 @@ pub async fn insert_workflow_run(
         .values((
             wra::workflow_run_id.eq(&workflow_run.id),
             wra::started_time.eq(Some(now)),
+            wra::run_metadata.eq(jsonb(metadata)),
         ))
         .execute(conn)
         .await?;
 
     Ok(workflow_run)
 }
+
+define_sql_function!(
+    /// Convert JSON bytes to `SQLite` JSONB.
+    fn jsonb(value: Binary) -> Binary;
+);
 
 define_sql_function!(
     /// `COALESCE` for datetime data.
@@ -287,6 +294,10 @@ pub fn update_node_state<'a>(
                         ns::map_completed,
                     )),
                     ns::handle.eq(coalesce_text(excluded(ns::handle), ns::handle)),
+                    ns::execution_context.eq(coalesce_text(
+                        excluded(ns::execution_context),
+                        ns::execution_context,
+                    )),
                     ns::error.eq(coalesce_text(ns::error, excluded(ns::error))),
                     ns::error_detail
                         .eq(coalesce_text(ns::error_detail, excluded(ns::error_detail))),
@@ -425,6 +436,7 @@ pub async fn read_node_state(
             error_detail: db_node.error_detail.clone(),
             outputs,
             handle,
+            execution_context: db_node.execution_context.clone(),
         })
     } else {
         Ok(crate::state::interface::NodeState::default())
@@ -507,6 +519,7 @@ pub async fn read_node_states_by_name(
                 error_detail: db_node.error_detail.clone(),
                 outputs,
                 handle,
+                execution_context: db_node.execution_context.clone(),
             },
         );
     }
@@ -590,6 +603,7 @@ pub async fn read_node_states(
                 error_detail: db_node.error_detail.clone(),
                 outputs,
                 handle,
+                execution_context: db_node.execution_context.clone(),
             },
         );
     }
@@ -1020,11 +1034,19 @@ pub async fn insert_workflow_run_attempt(
 ) -> miette::Result<()> {
     use crate::state::schema::workflow_run_attempts::dsl as wra;
 
+    let metadata = wra::workflow_run_attempts
+        .filter(wra::workflow_run_id.eq(run_id))
+        .filter(wra::attempt.eq(attempt - 1))
+        .select(wra::run_metadata)
+        .first::<Vec<u8>>(conn)
+        .await
+        .into_diagnostic()?;
     let now = chrono::Utc::now().naive_utc();
     diesel::insert_into(wra::workflow_run_attempts)
         .values((
             wra::workflow_run_id.eq(run_id),
             wra::attempt.eq(attempt),
+            wra::run_metadata.eq(metadata),
             wra::started_time.eq(Some(now)),
         ))
         .execute(conn)
@@ -1087,6 +1109,7 @@ pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
                     handle: None,
                     error: None,
                     error_detail: None,
+                    execution_context: row.execution_context.clone(),
                 }
             } else {
                 UpsertNodeState {
@@ -1107,6 +1130,7 @@ pub fn copy_node_states<'a, S: ::std::hash::BuildHasher + std::marker::Sync>(
                     handle: row.handle.clone(),
                     error: row.error.clone(),
                     error_detail: row.error_detail.clone(),
+                    execution_context: row.execution_context.clone(),
                 }
             };
 

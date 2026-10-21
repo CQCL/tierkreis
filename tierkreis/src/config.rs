@@ -17,13 +17,19 @@ use crate::runtime::RuntimeConfig;
 pub const CONFIG_FILE_NAME: &str = "runtime.toml";
 /// Fallback env var
 pub const CONFIG_ENV_VAR: &str = "TKR_CONFIG";
+/// Fallback file name for the runtime configuration.
+pub const TKR_ENV_VAR: &str = "TKR_ENV";
+/// Name of the directory containing resource profiles.
+const RESOURCE_PROFILES_DIR_NAME: &str = "resource_profiles";
+/// Environment variable containing additional resource profile search paths.
+const RESOURCE_PATH_ENV_VAR: &str = "TKR_RESOURCE_PATH";
 /// Name of the temporary files directory under the Tierkreis home directory.
 pub const TMP_DIR_NAME: &str = "tmp";
 /// Name of the default file asset storage directory un                                      der the Tierkreis home directory.
 pub const ASSETS_DIR_NAME: &str = "assets";
 
 /// Return the canonical Tierkreis home directory (`~/.tierkreis`), falling back
-/// to `/tmp/.tierkreis` if the user's home directory cannot be determined.
+/// to `/tmp/tierkreis` if the user's home directory cannot be determined.
 #[must_use]
 pub fn tierkreis_home_dir() -> PathBuf {
     if let Some(home_dir) = home_dir() {
@@ -31,6 +37,26 @@ pub fn tierkreis_home_dir() -> PathBuf {
     } else {
         "/tmp/tierkreis".into()
     }
+}
+
+/// Build the resource profile search roots from project, runtime, and environment settings.
+pub(crate) fn resource_profile_search_paths(configured_paths: &[PathBuf]) -> Vec<PathBuf> {
+    let project_root = discover_config_path()
+        .and_then(|path| path.parent().map(PathBuf::from))
+        .or_else(|| env::current_dir().ok());
+    let mut roots = Vec::new();
+    if let Some(project_root) = &project_root {
+        roots.push(project_root.join(RESOURCE_PROFILES_DIR_NAME));
+    }
+    roots.extend(configured_paths.iter().map(|path| match &project_root {
+        Some(root) if path.is_relative() => root.join(path),
+        _ => path.clone(),
+    }));
+    roots.push(tierkreis_home_dir());
+    if let Some(paths) = env::var_os(RESOURCE_PATH_ENV_VAR) {
+        roots.extend(env::split_paths(&paths));
+    }
+    roots
 }
 
 /// Locate a `RuntimeConfig` TOML file, searching:

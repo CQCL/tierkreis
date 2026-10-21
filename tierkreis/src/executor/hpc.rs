@@ -44,6 +44,13 @@ fn shell_quote(argument: &str) -> String {
     format!("'{}'", argument.replace('\'', "'\"'\"'"))
 }
 
+/// Builds the worker invocation command escaping each argument for the shell.
+/// falls back to tkr-<worker_name> if no command is specified
+/// Else uses the command specified for the worker in the commands map.
+/// e.g.
+/// [executors.slurm.worker_commands]
+/// mpi_worker = ["uv", "run", "/mpi_worker/main.py"]
+/// will invoke the command ["uv", "run", "/mpi_worker/main.py", "<worker_args_path>"]
 fn worker_invocation(
     commands: &HashMap<String, Vec<String>>,
     worker_name: &str,
@@ -479,6 +486,9 @@ impl<T: SchedulerWrapper + 'static> HPCExecutor<T> {
         scheduler: Arc<T>,
         max_resources: HPCResourceSpec,
         poll_interval: Duration,
+        // Specific commands to invoke e.g.
+        // [executors.slurm.worker_commands]
+        // mpi_worker = ["uv", "run", "/mpi_worker/main.py"]
         worker_commands: HashMap<String, Vec<String>>,
     ) -> miette::Result<Self> {
         if !asset_storage_registry.contains_key(hpc_storage_name) {

@@ -86,10 +86,12 @@ async def test_nested_profile_routes_map_tasks_to_memory(profile: str) -> None:
 @pytest.mark.usefixtures("runtime_e2e_profile")
 @pytest.mark.parametrize("profile", profiles)
 async def test_profile_env_reaches_subprocess_worker(profile: str) -> None:
-    runtime = await new_default(profile)
+    runtime = await new_default()
     with runtime:
         workflow_id = await runtime.save_workflow("profile_env", read_profile_env())
-        run_id = await runtime.start_new_run(workflow_id, {"value": PROFILE_ENV_VAR})
+        run_id = await runtime.start_new_run(
+            workflow_id, {"value": PROFILE_ENV_VAR}, profile=profile
+        )
         await runtime.wait_for(run_id, timeout=10)
         outputs = await runtime.get_outputs(run_id)
         states = await runtime.debug_read_node_states(run_id, 0, ["N1"])
@@ -103,11 +105,11 @@ async def test_profile_env_reaches_subprocess_worker(profile: str) -> None:
 @pytest.mark.asyncio
 @pytest.mark.usefixtures("runtime_e2e_profile")
 async def test_concurrent_runs_override_default_profile() -> None:
-    runtime = await new_default("runtime_e2e")
+    runtime = await new_default()
     with runtime:
         workflow_id = await runtime.save_workflow("profile_env", read_profile_env())
         default_run = await runtime.start_new_run(
-            workflow_id, {"value": PROFILE_ENV_VAR}
+            workflow_id, {"value": PROFILE_ENV_VAR}, profile="runtime_e2e"
         )
         override_run = await runtime.start_new_run(
             workflow_id, {"value": PROFILE_ENV_VAR}, profile="runtime_e2e2"

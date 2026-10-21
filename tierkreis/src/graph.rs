@@ -1081,10 +1081,10 @@ mod tests {
         assert!(matches!(
             converted.node_definition(NodeIndex::new(index)),
             Some(NodeDefinition::Task {
-                context: None, // TODO: enable once we have a context
+                context: Some(context),
                 executor: Some(executor),
                 ..
-            }) if executor == "memory" // && context == "gpu_large" TODO enable again
+            }) if executor == "memory" && context == "subprocess"
         ));
         Ok(())
     }

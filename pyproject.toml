@@ -12,7 +12,7 @@ exclude = [
 
 [tool.uv]
 exclude-newer = "P7D"
-required-version = ">=0.12.3"
+required-version = ">=0.13.1"
 
 [tool.uv.sources]
 tierkreis = { workspace = true }

@@ -311,6 +311,7 @@ impl Orchestrator {
     ///
     /// Will return Err if the function fails to retrieve the state of nodes from the workflow context
     /// or if it fails to record that nodes are being scheduled.
+    #[allow(clippy::too_many_lines)]
     #[instrument(skip_all, fields(run_id = %context.workflow_run_state.run_id(), attempt = context.workflow_run_state.attempt()), err)]
     pub async fn build_actions<'a>(
         &'a self,

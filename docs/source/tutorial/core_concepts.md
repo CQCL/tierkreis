@@ -38,6 +38,10 @@ with runtime:
 configuration. `new_in_memory()` is useful for builtin-only tests, while
 `new_sqlite_memory()` keeps SQL state without writing a database file.
 
+`get_outputs()` decodes JSON-compatible results into Python values. For binary
+formats, `get_raw_outputs()` returns a dictionary mapping output names to their
+serialized bytes so that the owning library can deserialize them.
+
 ## State and assets
 
 Runtime state records workflows, runs, attempts, nodes, and asset keys. Asset

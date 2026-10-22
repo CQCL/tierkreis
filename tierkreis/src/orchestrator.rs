@@ -179,21 +179,25 @@ impl OrchestrationContext {
 
     /// Consume this [`OrchestrationContext`] for a new one at the specified Location.
     #[must_use]
-    pub fn with_new_sub_context(
+    pub fn with_location(self, location: Location) -> Self {
+        Self {
+            parent_loc: location,
+            ..self
+        }
+    }
+
+    /// Consume this [`OrchestrationContext`] for a new one with specific information
+    /// for executors in this context.
+    #[must_use]
+    pub fn with_execution_context(
         self,
-        location: Location,
-        profiles: Option<Arc<ResourceProfiles>>,
         inherited_context: Option<String>,
         inherited_executor: Option<String>,
     ) -> Self {
         Self {
-            parent_loc: location,
-            profiles,
-            inherited_context,
-            inherited_executor,
-            workflow_run_state: self.workflow_run_state,
-            scheduled_this_lifetime: self.scheduled_this_lifetime,
-            subworkflow_cache: self.subworkflow_cache,
+            inherited_context: inherited_context.or(self.inherited_context),
+            inherited_executor: inherited_executor.or(self.inherited_executor),
+            ..self
         }
     }
 
@@ -391,36 +395,28 @@ impl Orchestrator {
                         executor: requested_executor,
                         ..
                     } => stream_action_result(build_task_action(
+                        context.clone().with_execution_context(
+                            requested_context.clone(),
+                            requested_executor.clone(),
+                        ),
                         workflow_graph.clone(),
                         &node_states,
-                        &parent_location,
                         n,
                         worker_name,
                         task_name,
-                        requested_context
-                            .as_deref()
-                            .or(context.inherited_context.as_deref()),
-                        requested_executor
-                            .as_deref()
-                            .or(context.inherited_executor.as_deref()),
-                        context.profiles.as_deref(),
                     )),
                     NodeDefinition::Eval {
                         context: node_context,
                         executor: node_executor,
                     } => self
                         .build_eval_actions(
-                            context.clone(),
+                            context.clone().with_execution_context(
+                                node_context.clone(),
+                                node_executor.clone(),
+                            ),
                             workflow_graph.clone(),
-                            context.profiles.clone(),
                             node_states,
                             n,
-                            node_context
-                                .clone()
-                                .or_else(|| context.inherited_context.clone()),
-                            node_executor
-                                .clone()
-                                .or_else(|| context.inherited_executor.clone()),
                         )
                         .try_flatten_stream()
                         .boxed_local(),
@@ -429,17 +425,13 @@ impl Orchestrator {
                         executor: node_executor,
                     } => self
                         .build_loop_actions(
-                            context.clone(),
+                            context.clone().with_execution_context(
+                                node_context.clone(),
+                                node_executor.clone(),
+                            ),
                             workflow_graph.clone(),
-                            context.profiles.clone(),
                             node_states,
                             n,
-                            node_context
-                                .clone()
-                                .or_else(|| context.inherited_context.clone()),
-                            node_executor
-                                .clone()
-                                .or_else(|| context.inherited_executor.clone()),
                             workflow_graph.node_name(n),
                         )
                         .try_flatten_stream()
@@ -450,18 +442,14 @@ impl Orchestrator {
                         executor: node_executor,
                     } => self
                         .build_map_actions(
-                            context.clone(),
+                            context.clone().with_execution_context(
+                                node_context.clone(),
+                                node_executor.clone(),
+                            ),
                             workflow_graph.clone(),
-                            context.profiles.clone(),
                             node_states,
                             mapped_ports.clone(),
                             n,
-                            node_context
-                                .clone()
-                                .or_else(|| context.inherited_context.clone()),
-                            node_executor
-                                .clone()
-                                .or_else(|| context.inherited_executor.clone()),
                         )
                         .try_flatten_stream()
                         .boxed_local(),
@@ -816,16 +804,12 @@ impl Orchestrator {
         fields(location = %context.parent_loc.with_node(n)),
         err,
     )]
-    #[allow(clippy::too_many_arguments)]
     async fn build_eval_actions<'a>(
         &'a self,
         context: OrchestrationContext,
         workflow_graph: Arc<WorkflowGraph>,
-        profiles: Option<Arc<ResourceProfiles>>,
         node_states: Arc<NodeStates>,
         n: NodeIndex,
-        inherited_context: Option<String>,
-        inherited_executor: Option<String>,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
         let is_running = node_states
             .get(&context.parent_loc.with_node(n))
@@ -859,15 +843,7 @@ impl Orchestrator {
             }
 
             let stream = self
-                .build_actions(
-                    context.with_new_sub_context(
-                        location,
-                        profiles,
-                        inherited_context,
-                        inherited_executor,
-                    ),
-                    subgraph,
-                )
+                .build_actions(context.with_location(location), subgraph)
                 .await?;
 
             Ok(stream.boxed_local())
@@ -891,16 +867,12 @@ impl Orchestrator {
         fields(location = %context.parent_loc.with_node(n)),
         err,
     )]
-    #[allow(clippy::too_many_arguments)]
     async fn build_loop_actions<'a>(
         &'a self,
         context: OrchestrationContext,
         workflow_graph: Arc<WorkflowGraph>,
-        profiles: Option<Arc<ResourceProfiles>>,
         node_states: Arc<NodeStates>,
         n: NodeIndex,
-        inherited_context: Option<String>,
-        inherited_executor: Option<String>,
         name: Option<String>,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
         let loc = context.parent_loc.with_node(n);
@@ -942,15 +914,7 @@ impl Orchestrator {
                 match loop_iteration_output_state.outputs {
                     None => {
                         return self
-                            .build_actions(
-                                context.with_new_sub_context(
-                                    loop_loc,
-                                    profiles.clone(),
-                                    inherited_context,
-                                    inherited_executor,
-                                ),
-                                subgraph,
-                            )
+                            .build_actions(context.with_location(loop_loc), subgraph)
                             .await;
                     }
                     Some(outputs) => {
@@ -988,7 +952,6 @@ impl Orchestrator {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[instrument(
         skip_all,
         fields(location = %context.parent_loc.with_node(n)),
@@ -998,12 +961,9 @@ impl Orchestrator {
         &'a self,
         context: OrchestrationContext,
         workflow_graph: Arc<WorkflowGraph>,
-        profiles: Option<Arc<ResourceProfiles>>,
         node_states: Arc<NodeStates>,
         mapped_ports: HashSet<String>,
         n: NodeIndex,
-        inherited_context: Option<String>,
-        inherited_executor: Option<String>,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
         let subgraph = context
             .load_subgraph(
@@ -1041,16 +1001,8 @@ impl Orchestrator {
                 .into_stream()
                 .boxed_local(),
             Some(completed) => {
-                self.build_subsequent_map_actions(
-                    context,
-                    profiles,
-                    n,
-                    completed.to_bitvec(),
-                    subgraph,
-                    inherited_context,
-                    inherited_executor,
-                )
-                .await?
+                self.build_subsequent_map_actions(context, n, completed.to_bitvec(), subgraph)
+                    .await?
             }
         })
     }
@@ -1060,7 +1012,6 @@ impl Orchestrator {
         fields(mapped_ports = ?mapped_ports),
         err,
     )]
-    #[allow(clippy::too_many_arguments)]
     async fn build_initial_map_actions<'a>(
         &'a self,
         context: OrchestrationContext,
@@ -1097,16 +1048,12 @@ impl Orchestrator {
     }
 
     #[instrument(skip_all, err)]
-    #[allow(clippy::too_many_arguments)]
     async fn build_subsequent_map_actions<'a>(
         &'a self,
         context: OrchestrationContext,
-        profiles: Option<Arc<ResourceProfiles>>,
         n: NodeIndex,
         completed: BitVec<u8>,
         subgraph: Arc<WorkflowGraph>,
-        inherited_context: Option<String>,
-        inherited_executor: Option<String>,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
         let output_idx = subgraph.output_idx();
         let map_size = completed.len();
@@ -1117,38 +1064,30 @@ impl Orchestrator {
                 let location = context.parent_loc.with_node(n);
                 let map_loc = location.with_map_index(index);
                 let map_loc_copy = map_loc.clone();
-                self.build_actions(
-                    context.clone().with_new_sub_context(
-                        map_loc,
-                        profiles.clone(),
-                        inherited_context.clone(),
-                        inherited_executor.clone(),
-                    ),
-                    subgraph.clone(),
-                )
-                .try_flatten_stream()
-                .chain({
-                    let workflow_run_state_copy = context.workflow_run_state.clone();
-                    async move {
-                        let subgraph_output_state = workflow_run_state_copy
-                            .read(&map_loc_copy.with_node(output_idx))
-                            .await?;
-
-                        match subgraph_output_state.outputs {
-                            None => Ok(stream::empty().boxed()),
-                            Some(_) => Ok(stream::once(future::ok(Action {
-                                loc: location,
-                                kind: ActionKind::SetMapElemComplete {
-                                    index,
-                                    size: map_size,
-                                },
-                            }))
-                            .boxed()),
-                        }
-                    }
+                self.build_actions(context.clone().with_location(map_loc), subgraph.clone())
                     .try_flatten_stream()
-                })
-                .boxed_local()
+                    .chain({
+                        let workflow_run_state_copy = context.workflow_run_state.clone();
+                        async move {
+                            let subgraph_output_state = workflow_run_state_copy
+                                .read(&map_loc_copy.with_node(output_idx))
+                                .await?;
+
+                            match subgraph_output_state.outputs {
+                                None => Ok(stream::empty().boxed()),
+                                Some(_) => Ok(stream::once(future::ok(Action {
+                                    loc: location,
+                                    kind: ActionKind::SetMapElemComplete {
+                                        index,
+                                        size: map_size,
+                                    },
+                                }))
+                                .boxed()),
+                            }
+                        }
+                        .try_flatten_stream()
+                    })
+                    .boxed_local()
             })
             .boxed_local())
     }
@@ -1210,7 +1149,6 @@ impl Orchestrator {
     /// # Errors
     ///
     /// Will return Err if a Node cannot be run or dispatched.
-    #[allow(clippy::too_many_lines)]
     #[instrument(skip(self, actions), fields(run_id = %workflow_run_id, attempt), err)]
     pub async fn perform_actions(
         &self,
@@ -1407,36 +1345,35 @@ fn stream_error<'a>(err: miette::Error) -> BoxStream<'a, miette::Result<Action>>
 }
 
 #[instrument(
-    skip(workflow_graph, node_states, parent_location, n),
-    fields(location = %parent_location.with_node(n)),
+    skip_all,
+    fields(location = %context.parent_loc.with_node(n)),
     err,
 )]
-#[allow(clippy::too_many_arguments)]
 fn build_task_action(
+    context: OrchestrationContext,
     workflow_graph: Arc<WorkflowGraph>,
     node_states: &NodeStates,
-    parent_location: &Location,
     n: NodeIndex,
     worker_name: &str,
     task_name: &str,
-    requested_context: Option<&str>,
-    requested_executor: Option<&str>,
-    profiles: Option<&ResourceProfiles>,
 ) -> miette::Result<Action> {
-    let loc = parent_location.with_node(n);
-    let inputs = collect_inputs(&workflow_graph, node_states, parent_location, n)?;
+    let loc = context.parent_loc.with_node(n);
+    let inputs = collect_inputs(&workflow_graph, node_states, &context.parent_loc, n)?;
     let outputs = workflow_graph.output_names(n)?.cloned().collect();
     let task_handle = node_states.get(&loc).and_then(|state| state.handle.clone());
-    let resolved = match profiles {
-        Some(profiles) => profiles.resolve(requested_context, requested_executor)?,
-        None if requested_context.is_some() => {
+    let resolved = match context.profiles {
+        Some(profiles) => profiles.resolve(
+            context.inherited_context.as_deref(),
+            context.inherited_executor.as_deref(),
+        )?,
+        None if context.inherited_context.is_some() => {
             return Err(miette!(
                 "Task at {loc} requests execution context `{}` but no resource deployment is selected",
-                requested_context.unwrap()
+                context.inherited_context.unwrap()
             ));
         }
         None => ResolvedContext {
-            executor: requested_executor.map(str::to_owned),
+            executor: context.inherited_executor,
             ..ResolvedContext::default()
         },
     };

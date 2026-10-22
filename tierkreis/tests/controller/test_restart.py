@@ -81,7 +81,6 @@ async def test_restart_runtime(
         assert new_attempt != 0
         # In the new implementation roos it not represent by -.
 
-        print(g.data)
         expected = {
             f"N{plus_one.node_index}",
             f"N{left.node_index}",

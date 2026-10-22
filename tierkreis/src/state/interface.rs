@@ -11,7 +11,7 @@ use std::{
 use bitvec::vec::BitVec;
 use chrono::{DateTime, Utc};
 use futures::{FutureExt, future::BoxFuture};
-use miette::miette;
+use miette::{Context, miette};
 use tokio::sync::watch;
 use uuid::Uuid;
 
@@ -19,9 +19,9 @@ use crate::{
     asset_storage::{AssetSpec, AssetStorageRegistry},
     event::WorkflowRunEvent,
     executor::interface::TaskHandle,
-    graph::{NodeDefinition, WorkflowGraph},
+    graph::WorkflowGraph,
     location::Location,
-    workflow_state_query::{dependents, resolve_location},
+    workflow_state_query::{NodeCopyFilter, build_node_copy_filter},
 };
 
 /// [`RuntimeWatchState`] is a struct that is updated by the [`RuntimeState`] interface
@@ -189,7 +189,10 @@ pub trait RuntimeState: Debug + Send + Sync {
         locs: Vec<Location>,
     ) -> BoxFuture<'a, miette::Result<(u32, Vec<Location>)>> {
         async move {
-            let source_state = self.load_workflow_run_state(run_id, attempt).await?;
+            let source_state = self
+                .load_workflow_run_state(run_id, attempt)
+                .await
+                .wrap_err("Failed to load existing state")?;
             let locs = if locs.is_empty() {
                 let errored_locations = source_state.summary().await?.errored_locations;
                 if errored_locations.is_empty() {
@@ -200,37 +203,34 @@ pub trait RuntimeState: Debug + Send + Sync {
                 locs
             };
             let workflow_id = source_state.workflow_id();
-            let (_workflow_name, workflow_graph) = self.load_workflow(workflow_id).await?;
-            let workflow_graph = Arc::new(workflow_graph);
+            let (_workflow_name, workflow_graph) = self
+                .load_workflow(workflow_id)
+                .await
+                .wrap_err("Failed to load workflow")?;
 
-            let mut exclude = HashSet::new();
-            let mut truncate = HashSet::new();
-
-            for loc in &locs {
-                let (graph, _, node) =
-                    resolve_location(asset_storage_registry, &source_state, &workflow_graph, loc)
-                        .await?;
-                if !matches!(
-                    graph.node_definition(node),
-                    Some(NodeDefinition::Task { .. })
-                ) {
-                    return Err(miette!("Can only restart Task nodes, {loc} is not a Task"));
-                }
-
-                exclude.insert(loc.clone());
-                exclude.extend(
-                    dependents(asset_storage_registry, &source_state, &workflow_graph, loc).await?,
-                );
-                truncate.extend(loc.node_ancestors());
+            let mut invalidated = NodeCopyFilter::default();
+            for location in locs {
+                let location_invalidated = build_node_copy_filter(
+                    workflow_graph.clone(),
+                    &source_state,
+                    asset_storage_registry,
+                    location,
+                )
+                .await
+                .wrap_err("Failed to find locations invalidated for new attempt")?;
+                invalidated = invalidated.merge(location_invalidated);
             }
-            truncate.retain(|loc| !exclude.contains(loc));
 
-            let new_state = self.new_attempt(run_id).await?;
+            let new_state = self
+                .new_attempt(run_id)
+                .await
+                .wrap_err("Failed to create a new attempt")?;
             new_state
-                .copy_node_states_from(&*source_state, &exclude, &truncate)
-                .await?;
+                .copy_node_states_from(&*source_state, &invalidated)
+                .await
+                .wrap_err("Failed to copy over new state")?;
 
-            let mut invalidated: Vec<Location> = exclude.into_iter().collect();
+            let mut invalidated: Vec<Location> = invalidated.clear_roots.into_iter().collect();
             invalidated.sort_by_key(ToString::to_string);
 
             Ok((new_state.attempt(), invalidated))
@@ -251,6 +251,12 @@ pub trait WorkflowRunState: Debug + Send + Sync {
     fn summary(&self) -> BoxFuture<'_, miette::Result<WorkflowRunStateSummary>>;
     /// Retrieve the workflow inputs associated with this `WorkflowRunState`.
     fn load_inputs(&self) -> BoxFuture<'_, miette::Result<HashMap<String, AssetSpec>>>;
+    /// Retrieve the workflow inputs associated with this `WorkflowRunState`.
+    fn load_named_input_from_location<'a>(
+        &'a self,
+        location: &'a Location,
+        name: &'a str,
+    ) -> BoxFuture<'a, miette::Result<AssetSpec>>;
     /// Update the [`WorkflowRunState`] from a [`WorkflowRunEvent`].
     fn write(&self, event: WorkflowRunEvent) -> BoxFuture<'_, miette::Result<()>>;
     /// Read the state of a Node at the specified [`Location`].
@@ -282,7 +288,6 @@ pub trait WorkflowRunState: Debug + Send + Sync {
     fn copy_node_states_from<'a>(
         &'a self,
         source: &'a dyn WorkflowRunState,
-        exclude: &'a HashSet<Location>,
-        truncate: &'a HashSet<Location>,
+        node_copy_filter: &'a NodeCopyFilter,
     ) -> BoxFuture<'a, miette::Result<()>>;
 }

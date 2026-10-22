@@ -3563,8 +3563,7 @@ dependencies = [
 [[package]]
 name = "portgraph"
 version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e762fc26f3f5fb04f00bfc24158edc4c0ee46836683f70e4ad2db62574bd48c6"
+source = "git+https://github.com/Quantinuum/portgraph.git?branch=enable-generic-postorder#635516d151dbbfe6436c91ada26aee547d8d872f"
 dependencies = [
  "bitvec",
  "delegate",

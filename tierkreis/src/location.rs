@@ -103,6 +103,28 @@ impl Location {
         Self(Vec::new())
     }
 
+    /// Returns true if the [`Location`] is a prefix (ancestor) for another provided [`Location`].
+    ///
+    /// ```
+    /// use tierkreis::location::Location;
+    ///
+    /// let a = Location::new("N1").unwrap();
+    /// let b = Location::new("N1.L3").unwrap();
+    /// let c = Location::new("N1.L3.N4").unwrap();
+    ///
+    /// assert!(a.is_ancestor(&b));
+    /// assert!(b.is_ancestor(&c));
+    /// assert!(!c.is_ancestor(&a));
+    /// ```
+    #[must_use]
+    pub fn is_ancestor(&self, potential_descendent: &Location) -> bool {
+        self.0.len() < potential_descendent.0.len()
+            && potential_descendent
+                .components()
+                .zip(self.components())
+                .all(|(x, y)| x == y)
+    }
+
     /// Construct a [`Location`] from an iterator of [`usize`].
     ///
     /// This method cannot be used to construct Map or Loop components.
@@ -123,6 +145,18 @@ impl Location {
     }
 
     /// Returns true if the Location represents an iteration of a loop.
+    ///
+    /// ```
+    /// use tierkreis::location::Location;
+    ///
+    /// let a = Location::new("N1").unwrap();
+    /// let b = Location::new("N1.L3").unwrap();
+    /// let c = Location::new("N1.L3.N4").unwrap();
+    ///
+    /// assert!(!a.is_loop());
+    /// assert!(b.is_loop());
+    /// assert!(!c.is_loop());
+    /// ```
     #[must_use]
     pub fn is_loop(&self) -> bool {
         matches!(self.0.last(), Some(LocationComponent::LoopIndex { .. }))
@@ -185,20 +219,27 @@ impl Location {
         Some((Location(components), last))
     }
 
-    /// Returns the ancestor Locations of `self` that end in a N* component
-    #[must_use]
-    pub fn node_ancestors(&self) -> Vec<Location> {
-        let mut ancestors = Vec::new();
-        let mut prefix = Vec::new();
-        let mut components = self.0.iter();
-        components.next_back(); // self is not its ancestor
-        for component in components {
-            prefix.push(component.clone());
-            if let LocationComponent::Node { .. } = component {
-                ancestors.push(Location(prefix.clone()));
-            }
-        }
-        ancestors
+    /// Returns the ancestor Locations of `self`.
+    ///
+    /// ```
+    /// use tierkreis::location::Location;
+    ///
+    /// let loc = Location::new("N1.L3.N4.M6.N4").unwrap();
+    /// let mut ancestors = loc.node_ancestors();
+    ///
+    /// assert_eq!(ancestors.next(), Some(Location::root()));
+    /// assert_eq!(ancestors.next(), Some(Location::new("N1").unwrap()));
+    /// assert_eq!(ancestors.next(), Some(Location::new("N1.L3").unwrap()));
+    /// assert_eq!(ancestors.next(), Some(Location::new("N1.L3.N4").unwrap()));
+    /// assert_eq!(ancestors.next(), Some(Location::new("N1.L3.N4.M6").unwrap()));
+    /// ```
+    pub fn node_ancestors(&self) -> impl Iterator<Item = Location> {
+        self.components()
+            .scan(Location::root(), |prefix, component| {
+                let ancestor = prefix.clone();
+                prefix.0.push(component.clone());
+                Some(ancestor)
+            })
     }
 
     /// Returns index of the loop if it is the last component

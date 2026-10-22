@@ -6,8 +6,8 @@ These implementations are intended to be used for testing and debugging as their
 state is not persisted beyond the lifetime of the process.
 */
 use std::{
-    collections::{HashMap, HashSet},
-    ops::BitOrAssign,
+    collections::HashMap,
+    ops::{BitOrAssign, BitXorAssign},
     sync::Arc,
 };
 
@@ -21,7 +21,6 @@ use tokio::sync::watch;
 use tracing::instrument;
 use uuid::Uuid;
 
-use crate::state::interface::WorkflowRunStateSummary;
 use crate::{
     asset_storage::AssetSpec, event::WorkflowRunEvent, graph::WorkflowGraph,
     state::interface::RuntimeWatchState,
@@ -34,12 +33,13 @@ use crate::{
         interface::{NodeState, RuntimeState},
     },
 };
+use crate::{state::interface::WorkflowRunStateSummary, workflow_state_query::NodeCopyFilter};
 
 /// [`RunAttemptState`] is the full state of a run.
 #[derive(Debug, Default)]
 struct RunAttemptState {
     workflow_id: Uuid,
-    inputs: HashMap<String, AssetSpec>,
+    inputs: HashMap<Location, HashMap<String, AssetSpec>>,
     nodes: HashMap<Location, NodeState>,
     metadata: HashMap<String, String>,
     started_time: Option<chrono::DateTime<Utc>>,
@@ -131,7 +131,8 @@ impl RuntimeState for InMemoryRuntimeState {
 
         let mut entry = self.inner.runs.entry((run_id, attempt)).or_default();
         entry.workflow_id = workflow_id;
-        entry.inputs = inputs;
+        entry.inputs = HashMap::new();
+        entry.inputs.insert(Location::root(), inputs);
         entry.metadata = metadata;
         entry.started_time = Some(chrono::Utc::now());
 
@@ -220,7 +221,14 @@ impl RuntimeState for InMemoryRuntimeState {
             let mut metadata = HashMap::new();
             let mut attempt = 0;
             while let Some(item) = self.inner.runs.get(&(run_id, attempt)) {
-                latest = Some((attempt, item.workflow_id, item.inputs.clone()));
+                latest = Some((
+                    attempt,
+                    item.workflow_id,
+                    item.inputs
+                        .get(&Location::root())
+                        .ok_or_else(|| miette!("No inputs found for previous run"))?
+                        .clone(),
+                ));
                 metadata = item.metadata.clone();
                 attempt += 1;
             }
@@ -244,7 +252,8 @@ impl RuntimeState for InMemoryRuntimeState {
             // TODO: same as new_workflow_run_state just with provided run_id and attempt, consolidate?
             let mut entry = self.inner.runs.entry((run_id, next_attempt)).or_default();
             entry.workflow_id = workflow_id;
-            entry.inputs = inputs;
+            entry.inputs = HashMap::new();
+            entry.inputs.insert(Location::root(), inputs);
             entry.metadata = metadata;
             entry.started_time = Some(Utc::now());
 
@@ -286,13 +295,21 @@ impl InMemoryWorkflowRunState {
     /// Will panic if `listen` returns an error, but this should be impossible.
     #[cfg(test)]
     #[must_use]
-    pub fn test() -> (Self, watch::Receiver<RuntimeWatchState>) {
+    pub fn test(
+        test_inputs: HashMap<String, AssetSpec>,
+    ) -> (Self, watch::Receiver<RuntimeWatchState>) {
         let global_state = InMemoryRuntimeState::new();
         let events = global_state.listen();
-        global_state
-            .inner
-            .runs
-            .insert((Uuid::nil(), 0), RunAttemptState::default());
+        let mut inputs = HashMap::new();
+        inputs.insert(Location::root(), test_inputs);
+
+        global_state.inner.runs.insert(
+            (Uuid::nil(), 0),
+            RunAttemptState {
+                inputs,
+                ..Default::default()
+            },
+        );
         global_state
             .update_sender
             .send_modify(|run_attempt_updated| {
@@ -379,7 +396,39 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
                 .runs
                 .get(&(self.run_id, self.attempt))
                 .ok_or_else(|| miette!("Workflow run not found"))?;
-            Ok(run.inputs.clone())
+            Ok(run
+                .inputs
+                .get(&Location::root())
+                .ok_or_else(|| miette!("Workflow inputs not found"))?
+                .clone())
+        }
+        .boxed()
+    }
+
+    fn load_named_input_from_location<'a>(
+        &'a self,
+        location: &'a Location,
+        name: &'a str,
+    ) -> BoxFuture<'a, miette::Result<AssetSpec>> {
+        async move {
+            let run = self
+                .global_state
+                .runs
+                .get(&(self.run_id, self.attempt))
+                .ok_or_else(|| miette!("Workflow run not found"))?;
+            Ok(run
+                .inputs
+                .get(location)
+                .ok_or_else(|| miette!("Inputs not found for location: `{}`", location))?
+                .get(name)
+                .ok_or_else(|| {
+                    miette!(
+                        "Input not found with name: `{}` at location: {}",
+                        name,
+                        location
+                    )
+                })?
+                .clone())
         }
         .boxed()
     }
@@ -514,47 +563,76 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
     fn copy_node_states_from<'a>(
         &'a self,
         source: &'a dyn WorkflowRunState,
-        exclude: &'a HashSet<Location>,
-        truncate: &'a HashSet<Location>,
+        node_copy_filter: &'a NodeCopyFilter,
     ) -> BoxFuture<'a, miette::Result<()>> {
         async move {
-            let nodes: HashMap<Location, NodeState> = {
+            // This assumes that the source runtime state shares the same global state.
+            let (nodes, inputs) = {
                 let source_run = self
                     .global_state
                     .runs
                     .get(&(source.run_id(), source.attempt()))
                     .ok_or_else(|| miette!("Source run attempt not found"))?;
-
-                source_run
+                let nodes = source_run
                     .nodes
                     .iter()
-                    .filter(|(loc, _)| !exclude.contains(*loc))
+                    .filter(|(loc, _)| {
+                        !node_copy_filter.clear_roots.contains(loc)
+                            && !loc
+                                .node_ancestors()
+                                .any(|ancestor| node_copy_filter.clear_roots.contains(&ancestor))
+                    })
                     .map(|(loc, state)| {
                         let mut state = state.clone();
-                        if truncate.contains(loc) {
+                        if node_copy_filter.truncate_exact.contains(loc) {
                             state.scheduled_time = None;
                             state.queued_time = None;
                             state.running_time = None;
                             state.complete_time = None;
                             state.cancelled_time = None;
                             state.error_time = None;
+
                             state.outputs = None;
-                            state.map_completed = None;
                             state.error = None;
                             state.error_detail = None;
                             state.handle = None;
                         }
+                        if let Some(index) = node_copy_filter.reset_loop_index.get(loc) {
+                            state.loop_index = Some(*index);
+                        }
+                        if let Some(bitset) = node_copy_filter.reset_map_elems.get(loc)
+                            && let Some(map_completed) = state.map_completed.as_mut()
+                        {
+                            map_completed.bitxor_assign(bitset);
+                        }
+
                         (loc.clone(), state)
                     })
-                    .collect()
+                    .collect::<Vec<_>>();
+
+                let inputs = source_run
+                    .inputs
+                    .iter()
+                    .filter(|(loc, _)| {
+                        !node_copy_filter.clear_roots.contains(loc)
+                            && !loc
+                                .node_ancestors()
+                                .any(|ancestor| node_copy_filter.clear_roots.contains(&ancestor))
+                    })
+                    .map(|(loc, inputs)| (loc.clone(), inputs.clone()))
+                    .collect::<Vec<_>>();
+
+                (nodes, inputs)
             };
 
-            self.global_state
+            let mut target_run = self
+                .global_state
                 .runs
                 .entry((self.run_id, self.attempt))
-                .or_default()
-                .nodes
-                .extend(nodes);
+                .or_default();
+
+            target_run.nodes.extend(nodes);
+            target_run.inputs.extend(inputs);
 
             Ok(())
         }
@@ -562,13 +640,16 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
     }
 }
 
+// Difficult to reduce the number of lines here without introducing functions that
+// would cause unnecessary overhead.
+#[allow(clippy::too_many_lines)]
 fn handle_node_events(
     mut run_state: dashmap::mapref::one::RefMut<'_, (Uuid, u32), RunAttemptState>,
     node_events: Vec<NodeEvent>,
 ) {
     let now = Utc::now();
     for node_event in node_events {
-        let node_state = run_state.nodes.entry(node_event.loc).or_default();
+        let node_state = run_state.nodes.entry(node_event.loc.clone()).or_default();
         if node_event.name.is_some() {
             node_state.name.clone_from(&node_event.name);
         }
@@ -602,13 +683,20 @@ fn handle_node_events(
             } => {
                 if node_state.running_time.is_none() {
                     node_state.running_time = Some(now);
-                }
-                if node_state.cond.is_none() {
                     node_state.cond = Some(cond);
                 }
             }
             crate::event::NodeStatus::Running {
-                state_update: Some(RunningStateUpdate::Looping { index }),
+                state_update: Some(RunningStateUpdate::Evalling { inputs }),
+                ..
+            } => {
+                if node_state.running_time.is_none() {
+                    node_state.running_time = Some(now);
+                    run_state.inputs.insert(node_event.loc, inputs);
+                }
+            }
+            crate::event::NodeStatus::Running {
+                state_update: Some(RunningStateUpdate::Looping { index, inputs }),
                 ..
             } => {
                 if node_state.running_time.is_none() {
@@ -616,26 +704,27 @@ fn handle_node_events(
                 }
                 if node_state.loop_index != Some(index) {
                     node_state.loop_index = Some(index);
+                    let loop_loc = node_event.loc.with_loop_index(index);
+                    run_state.inputs.insert(loop_loc, inputs);
                 }
             }
             crate::event::NodeStatus::Running {
-                state_update: Some(RunningStateUpdate::MapStarted { size }),
+                state_update: Some(RunningStateUpdate::MapStarted { input_sets }),
                 ..
             } => {
                 if node_state.running_time.is_none() {
                     node_state.running_time = Some(now);
-                }
-                if node_state.map_completed.is_none() {
-                    node_state.map_completed = Some(BitVec::repeat(false, size as usize));
+                    node_state.map_completed = Some(BitVec::repeat(false, input_sets.len()));
+                    for (index, inputs) in input_sets.into_iter().enumerate() {
+                        let map_loc = node_event.loc.with_map_index(index);
+                        run_state.inputs.insert(map_loc, inputs);
+                    }
                 }
             }
             crate::event::NodeStatus::Running {
                 state_update: Some(RunningStateUpdate::MapElemComplete { bits }),
                 ..
             } => {
-                if node_state.running_time.is_none() {
-                    node_state.running_time = Some(now);
-                }
                 if let Some(map_completed) = node_state.map_completed.as_mut() {
                     map_completed.bitor_assign(&bits);
                 }
@@ -666,7 +755,10 @@ fn handle_node_events(
 mod tests {
     use std::collections::HashSet;
 
-    use crate::event::NodeStatus;
+    use crate::{
+        asset_storage::{AssetKey, AssetKind},
+        event::NodeStatus,
+    };
 
     use super::*;
 
@@ -747,6 +839,378 @@ mod tests {
         let node_state = workflow_run_state.read(&Location::root()).await?;
 
         assert!(node_state.scheduled_time.is_some());
+
+        Ok(())
+    }
+
+    /// Test that we can read and write workflow run state.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn copy_node_states() -> miette::Result<()> {
+        let runtime_state = InMemoryRuntimeState::new();
+
+        let workflow_id = runtime_state
+            .save_workflow(None, WorkflowGraph::new([]))
+            .await?;
+        let workflow_run_state1 = runtime_state
+            .new_workflow_run_state(workflow_id, HashMap::new())
+            .await?;
+
+        let mut outputs = HashMap::new();
+        outputs.insert(
+            "foo".to_string(),
+            AssetSpec {
+                kind: AssetKind::Memory,
+                storage_name: "my_cool_storage".to_string(),
+                asset_key: AssetKey::new(),
+            },
+        );
+        workflow_run_state1
+            .write(WorkflowRunEvent::NodeEvents(vec![
+                NodeEvent {
+                    loc: Location::new("N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1.N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1")?,
+                    status: NodeStatus::Complete { outputs },
+                    name: None,
+                },
+            ]))
+            .await?;
+        workflow_run_state1
+            .write(WorkflowRunEvent::Completed {})
+            .await?;
+
+        let workflow_run_state2 = runtime_state
+            .new_attempt(workflow_run_state1.run_id())
+            .await?;
+        workflow_run_state2
+            .copy_node_states_from(&*workflow_run_state1, &NodeCopyFilter::default())
+            .await?;
+
+        let node_state = workflow_run_state1.read(&Location::new("N1")?).await?;
+
+        assert!(node_state.outputs.is_some());
+
+        let node_state = workflow_run_state1.read(&Location::new("N1.N0")?).await?;
+
+        assert!(node_state.outputs.is_some());
+
+        Ok(())
+    }
+
+    /// Test that we can read and write workflow run state.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn copy_node_states_invalidated() -> miette::Result<()> {
+        let runtime_state = InMemoryRuntimeState::new();
+
+        let workflow_id = runtime_state
+            .save_workflow(None, WorkflowGraph::new([]))
+            .await?;
+        let workflow_run_state1 = runtime_state
+            .new_workflow_run_state(workflow_id, HashMap::new())
+            .await?;
+
+        let mut outputs = HashMap::new();
+        outputs.insert(
+            "foo".to_string(),
+            AssetSpec {
+                kind: AssetKind::Memory,
+                storage_name: "my_cool_storage".to_string(),
+                asset_key: AssetKey::new(),
+            },
+        );
+        workflow_run_state1
+            .write(WorkflowRunEvent::NodeEvents(vec![
+                NodeEvent {
+                    loc: Location::new("N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1.N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1")?,
+                    status: NodeStatus::Complete { outputs },
+                    name: None,
+                },
+            ]))
+            .await?;
+        workflow_run_state1
+            .write(WorkflowRunEvent::Completed {})
+            .await?;
+
+        let workflow_run_state2 = runtime_state
+            .new_attempt(workflow_run_state1.run_id())
+            .await?;
+        let mut invalidated_locations = NodeCopyFilter::default();
+        invalidated_locations
+            .clear_roots
+            .insert(Location::new("N1")?);
+        workflow_run_state2
+            .copy_node_states_from(&*workflow_run_state1, &invalidated_locations)
+            .await?;
+
+        let node_state = workflow_run_state2.read(&Location::new("N0")?).await?;
+
+        assert!(node_state.outputs.is_some());
+
+        let node_state = workflow_run_state2.read(&Location::new("N1")?).await?;
+
+        assert!(node_state.outputs.is_none());
+
+        let node_state = workflow_run_state2.read(&Location::new("N1.N0")?).await?;
+
+        assert!(node_state.outputs.is_none());
+
+        Ok(())
+    }
+
+    /// Test that we can read and write workflow run state.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn copy_node_states_truncate() -> miette::Result<()> {
+        let runtime_state = InMemoryRuntimeState::new();
+
+        let workflow_id = runtime_state
+            .save_workflow(None, WorkflowGraph::new([]))
+            .await?;
+        let workflow_run_state1 = runtime_state
+            .new_workflow_run_state(workflow_id, HashMap::new())
+            .await?;
+
+        let mut outputs = HashMap::new();
+        outputs.insert(
+            "foo".to_string(),
+            AssetSpec {
+                kind: AssetKind::Memory,
+                storage_name: "my_cool_storage".to_string(),
+                asset_key: AssetKey::new(),
+            },
+        );
+        workflow_run_state1
+            .write(WorkflowRunEvent::NodeEvents(vec![
+                NodeEvent {
+                    loc: Location::new("N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1.N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1")?,
+                    status: NodeStatus::Complete { outputs },
+                    name: None,
+                },
+            ]))
+            .await?;
+        workflow_run_state1
+            .write(WorkflowRunEvent::Completed {})
+            .await?;
+
+        let node_state = workflow_run_state1.read(&Location::new("N1")?).await?;
+
+        assert!(node_state.complete_time.is_some());
+
+        let workflow_run_state2 = runtime_state
+            .new_attempt(workflow_run_state1.run_id())
+            .await?;
+        let mut invalidated_locations = NodeCopyFilter::default();
+
+        // Truncate an eval node
+        invalidated_locations
+            .truncate_exact
+            .insert(Location::new("N1")?);
+        workflow_run_state2
+            .copy_node_states_from(&*workflow_run_state1, &invalidated_locations)
+            .await?;
+
+        let node_state = workflow_run_state2.read(&Location::new("N1")?).await?;
+
+        assert!(node_state.complete_time.is_none());
+
+        Ok(())
+    }
+
+    /// Test that we can copy inputs to an eval node.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn copy_node_states_copy_inputs() -> miette::Result<()> {
+        let runtime_state = InMemoryRuntimeState::new();
+
+        let workflow_id = runtime_state
+            .save_workflow(None, WorkflowGraph::new([]))
+            .await?;
+        let workflow_run_state1 = runtime_state
+            .new_workflow_run_state(workflow_id, HashMap::new())
+            .await?;
+
+        let mut outputs = HashMap::new();
+        outputs.insert(
+            "foo".to_string(),
+            AssetSpec {
+                kind: AssetKind::Memory,
+                storage_name: "my_cool_storage".to_string(),
+                asset_key: AssetKey::new(),
+            },
+        );
+        workflow_run_state1
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Evalling {
+                        inputs: outputs.clone(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        workflow_run_state1
+            .write(WorkflowRunEvent::NodeEvents(vec![
+                NodeEvent {
+                    loc: Location::new("N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1.N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1")?,
+                    status: NodeStatus::Complete { outputs },
+                    name: None,
+                },
+            ]))
+            .await?;
+        workflow_run_state1
+            .write(WorkflowRunEvent::Completed {})
+            .await?;
+        let input_res = workflow_run_state1
+            .load_named_input_from_location(&Location::new("N1")?, "foo")
+            .await;
+        assert!(input_res.is_ok());
+
+        let workflow_run_state2 = runtime_state
+            .new_attempt(workflow_run_state1.run_id())
+            .await?;
+        workflow_run_state2
+            .copy_node_states_from(&*workflow_run_state1, &NodeCopyFilter::default())
+            .await?;
+
+        let input_res = workflow_run_state2
+            .load_named_input_from_location(&Location::new("N1")?, "foo")
+            .await;
+        assert!(input_res.is_ok());
+
+        Ok(())
+    }
+
+    /// Test that we can clear inputs to an eval node.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn copy_node_states_clear_inputs() -> miette::Result<()> {
+        let runtime_state = InMemoryRuntimeState::new();
+
+        let workflow_id = runtime_state
+            .save_workflow(None, WorkflowGraph::new([]))
+            .await?;
+        let workflow_run_state1 = runtime_state
+            .new_workflow_run_state(workflow_id, HashMap::new())
+            .await?;
+
+        let mut outputs = HashMap::new();
+        outputs.insert(
+            "foo".to_string(),
+            AssetSpec {
+                kind: AssetKind::Memory,
+                storage_name: "my_cool_storage".to_string(),
+                asset_key: AssetKey::new(),
+            },
+        );
+        workflow_run_state1
+            .write(WorkflowRunEvent::NodeEvents(vec![NodeEvent {
+                loc: Location::new("N1")?,
+                status: NodeStatus::Running {
+                    state_update: Some(RunningStateUpdate::Evalling {
+                        inputs: outputs.clone(),
+                    }),
+                },
+                name: None,
+            }]))
+            .await?;
+        workflow_run_state1
+            .write(WorkflowRunEvent::NodeEvents(vec![
+                NodeEvent {
+                    loc: Location::new("N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1.N0")?,
+                    status: NodeStatus::Complete {
+                        outputs: outputs.clone(),
+                    },
+                    name: None,
+                },
+                NodeEvent {
+                    loc: Location::new("N1")?,
+                    status: NodeStatus::Complete { outputs },
+                    name: None,
+                },
+            ]))
+            .await?;
+        workflow_run_state1
+            .write(WorkflowRunEvent::Completed {})
+            .await?;
+        let input_res = workflow_run_state1
+            .load_named_input_from_location(&Location::new("N1")?, "foo")
+            .await;
+        assert!(input_res.is_ok());
+
+        let workflow_run_state2 = runtime_state
+            .new_attempt(workflow_run_state1.run_id())
+            .await?;
+        let mut invalidated_locations = NodeCopyFilter::default();
+        invalidated_locations
+            .clear_roots
+            .insert(Location::new("N1")?);
+        workflow_run_state2
+            .copy_node_states_from(&*workflow_run_state1, &invalidated_locations)
+            .await?;
+
+        let input_res = workflow_run_state2
+            .load_named_input_from_location(&Location::new("N1")?, "foo")
+            .await;
+        assert!(input_res.is_err());
 
         Ok(())
     }

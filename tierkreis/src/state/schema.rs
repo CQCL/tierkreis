@@ -53,6 +53,8 @@ diesel::table! {
     workflow_run_inputs (id) {
         id -> Integer,
         workflow_run_id -> Text,
+        attempt -> Integer,
+        location -> Text,
         name -> Text,
         asset_kind -> Text,
         storage_name -> Text,
@@ -78,7 +80,6 @@ diesel::table! {
 
 diesel::joinable!(node_outputs -> node_states (node_state_id));
 diesel::joinable!(workflow_run_attempts -> workflow_runs (workflow_run_id));
-diesel::joinable!(workflow_run_inputs -> workflow_runs (workflow_run_id));
 diesel::joinable!(workflow_runs -> workflows (workflow_id));
 
 diesel::allow_tables_to_appear_in_same_query!(

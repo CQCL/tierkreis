@@ -8,7 +8,7 @@ use bitvec::vec::BitVec;
 use miette::{Context, IntoDiagnostic, miette};
 use portgraph::{
     Direction, LinkMut, LinkView, MultiPortGraph, NodeIndex, PortIndex, PortMut, PortView,
-    algorithms::{TopoSort, toposort_filtered},
+    algorithms::{PostOrder, TopoSort, postorder, toposort_filtered},
     multiportgraph::SubportIndex,
 };
 use serde::{Deserialize, Serialize};
@@ -357,6 +357,13 @@ impl WorkflowGraph {
     /// Returns the `node`s direct dependents
     pub fn output_neighbours(&self, node: NodeIndex) -> impl Iterator<Item = NodeIndex> + '_ {
         self.graph.output_neighbours(node)
+    }
+
+    /// Return an iterator that returns the `NodeIndex` of Nodes in the Outgoing direction
+    /// from the provided `NodeIndex` until all subsequent Outgoing links are visited.
+    #[must_use]
+    pub fn dependents(&self, node: NodeIndex) -> PostOrder<'_, &MultiPortGraph> {
+        postorder(&self.graph, vec![node], Direction::Outgoing)
     }
 
     /// Return an iterator that returns the `NodeIndex` of Nodes where

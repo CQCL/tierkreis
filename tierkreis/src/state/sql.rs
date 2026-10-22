@@ -33,12 +33,12 @@ use crate::{
         interface::{RuntimeWatchState, WorkflowRunStateSummary},
         models::{NewWorkflow, NewWorkflowRun, NewWorkflowRunInput, UpsertWorkflowRun},
         queries::{
-            add_run_attempt_metadata, copy_node_states, get_workflow_run_summary, insert_workflow,
-            insert_workflow_run, insert_workflow_run_attempt, insert_workflow_run_inputs,
-            list_active_runs, list_workflow_run_summaries, max_attempt, read_node_state,
-            read_node_states, read_node_states_by_name, read_run_attempt_metadata, read_workflow,
-            read_workflow_run, read_workflow_run_input_from_location, read_workflow_run_inputs,
-            update_node_state, update_workflow_run,
+            add_run_attempt_metadata, copy_inputs, copy_node_states, get_workflow_run_summary,
+            insert_workflow, insert_workflow_run, insert_workflow_run_attempt,
+            insert_workflow_run_inputs, list_active_runs, list_workflow_run_summaries, max_attempt,
+            read_node_state, read_node_states, read_node_states_by_name, read_run_attempt_metadata,
+            read_workflow, read_workflow_run, read_workflow_run_input_from_location,
+            read_workflow_run_inputs, update_node_state, update_workflow_run,
         },
     },
     workflow_state_query::NodeCopyFilter,
@@ -406,12 +406,15 @@ impl RuntimeState for SqliteRuntimeState {
         async move {
             let mut conn = self.get_conn().await?;
             let run_id_str = run_id.to_string();
-            let next_attempt_i32 = max_attempt(&mut conn, &run_id_str)
+            let last_attempt_i32 = max_attempt(&mut conn, &run_id_str)
                 .await?
-                .ok_or_else(|| miette!("No existing run found for run_id: {run_id}"))?
-                + 1;
+                .ok_or_else(|| miette!("No existing run found for run_id: {run_id}"))?;
+            let last_attempt = u32::try_from(last_attempt_i32).into_diagnostic()?;
+
+            let next_attempt_i32 = last_attempt_i32 + 1;
             let next_attempt = u32::try_from(next_attempt_i32).into_diagnostic()?;
-            let (run, attempt) = read_workflow_run(&mut conn, run_id, next_attempt - 1).await?;
+
+            let (run, attempt) = read_workflow_run(&mut conn, run_id, last_attempt).await?;
             if attempt.cancelled_time.is_none()
                 && attempt.error_time.is_none()
                 && attempt.complete_time.is_none()
@@ -422,6 +425,15 @@ impl RuntimeState for SqliteRuntimeState {
             }
 
             insert_workflow_run_attempt(&mut conn, &run_id_str, next_attempt_i32).await?;
+            copy_inputs(
+                &mut conn,
+                &run_id_str,
+                last_attempt_i32,
+                next_attempt_i32,
+                &Location::root(),
+            )
+            .await
+            .into_diagnostic()?;
 
             let workflow_id = run.workflow_id.parse().into_diagnostic()?;
 

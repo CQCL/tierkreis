@@ -1239,7 +1239,9 @@ async fn copy_outputs(
     Ok(())
 }
 
-async fn copy_inputs(
+/// Copy workflow for a workflow run from one attempt to another
+/// at a specific location.
+pub async fn copy_inputs(
     conn: &mut impl AsyncConnection<Backend = Sqlite>,
     run_id: &str,
     source_attempt: i32,

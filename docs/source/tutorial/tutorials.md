@@ -37,3 +37,21 @@ cd tierkreis && uv sync --all-extras
 
 Note that some third-party packages e.g. qulacs, automatically included via `uv sync --all-extras`, have other dependencies that you'll need to have installed on your system first: CMake and Boost (>=1.71).
 When running the notebooks select the kernel corresponding to the uv environment.
+
+## Runtime compatibility
+
+Most examples use the Rust runtime. `parallelism` relies on lazy loading of the
+selected conditional branch, and `restart` demonstrates attempt-based task
+restarts. Simulator-heavy parallelism, credentialed Nexus, and HPC examples
+require deployment-specific resources and are not executed by the documentation
+build.
+
+Three examples remain on the legacy controller for a specific reason:
+
+- `guppy_graph` and `scipy` return binary values that the Python runtime output
+  API cannot decode yet;
+- `signing_graph` uses arbitrary shell and stdin/stdout adapters that do not
+  have Rust-runtime equivalents.
+
+The default-argument portion of `types_and_defaults` supplies the value
+explicitly because runtime support for omitted worker defaults is still pending.

@@ -150,7 +150,7 @@ def default_graph(worker_name: str) -> str:
     return f"""import asyncio
 from typing import NamedTuple
 
-from tierkreis._tierkreis import load_runtime_config, new_from_config
+from tierkreis.runtime import load_runtime_config, new_from_config
 from tierkreis.builder import Graph
 from tierkreis.models import OpaqueType, TKR, Workflow
 from tierkreis.storage import FileStorage, read_outputs

@@ -8,11 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from tierkreis._tierkreis import (
-    DEFAULT_CONFIG_FILE_NAME,
-    create_default_config,
-    create_default_directories,
-)
 from tierkreis.cli.templates import (
     default_graph,
     external_worker_idl,
@@ -28,6 +23,11 @@ from tierkreis.cli.templates import (
 )
 from tierkreis.exceptions import TierkreisError
 from tierkreis.namespace import Namespace
+from tierkreis.runtime import (
+    DEFAULT_CONFIG_FILE_NAME,
+    create_default_config,
+    create_default_directories,
+)
 
 logger = logging.getLogger(__name__)
 

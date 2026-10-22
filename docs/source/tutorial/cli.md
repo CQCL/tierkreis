@@ -155,7 +155,7 @@ You can specify the graph in two ways:
    - Example: `examples.hello_world:hello_graph`
    - Example: `./my_graphs/workflow.py:my_workflow`
 
-2. **JSON file:** Use `-f/--from-file` to load a serialized graph
+2. **Serialized graph file:** Use `-f/--from-file` to load a graph
 
 **Input Specification:**
 
@@ -178,25 +178,18 @@ You can provide inputs in two ways:
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `-g, --graph-location` | STRING | `./tkr/graphs/main.py:workflow` | Load graph from Python module or file |
-| `-f, --from-file` | PATH | `workflow_inputs.json` | Load a serialized graph from a `.json` file |
-| `-i, --input-files` | LIST | - | Input sources: `key:path` pairs |
+| `-f, --from-file` | PATH | — | Load a serialized graph from a file |
+| `-i, --input-files` | LIST | `workflow_inputs.json` | One JSON file, `key:path` pairs, or `None` |
 | `-o, --print-output` | FLAG | False | Print the outputs of the top-level graph node |
 | `--name` | STRING | — | Workflow name (for identification in logs) |
-| `--run-id` | INT | — | Numeric run ID for tracking |
-| `-n, --n-iterations` | INT | — | Maximum number of iterations for the workflow |
-| `-p, --polling-interval-seconds` | FLOAT | — | Controller polling interval (tick rate) |
-| `-r, --do-clean-restart` | FLAG | False | Clear all graph files before running |
-| `--uv` | FLAG | False | Use `uv` as the executor |
-| `--registry-path` | PATH | None | Location of executable tasks/binaries |
+| `--config` | PATH | discovered default | Runtime TOML configuration |
 | `-l, --loglevel` | {CRITICAL, FATAL, ERROR, WARN, WARNING, INFO, DEBUG, NOTSET} | WARNING | Set logging level |
 | `-v, --verbose` | FLAG | False | Enable verbose output |
 
 
-```{note}
-The `--registry-path` resolve the namespace for workers automatically.
-For example, if you have custom task `my_task` from an external worker `my_worker`, Tierkreis will invoke
-`<registry_path>/my_task/main.sh`. See more [here](../worker/index.md)
-```
+Installed subprocess workers are discovered as `tkr-<worker-name>-worker`.
+Alternative commands, executors, asset stores, and resource profiles belong in
+the runtime configuration; see [Executors](../executors/index.md).
 
 **Examples:**
 
@@ -222,28 +215,17 @@ uv run tkr run -i value:input count:count
 uv run tkr run \
   -g examples.quantum:circuit \
   -i inputs.json \
+  --config ./tierkreis.toml \
   --name "quantum-run-001" \
   -o -v
-
-# Clean restart and run with custom tick rate
-uv run tkr run -r -p 0.5 --uv
-
-# Set logging level and run ID
-uv run tkr run \
-  -l DEBUG \
-  --run-id 42 \
-  --n-iterations 100
-
-# Use custom registry path
-uv run tkr run --registry-path ./path/to/custom_workers
 ```
 
 **What happens:**
 1. The graph is loaded from the specified location
 2. Inputs are loaded from the specified files
-3. The workflow is executed by the Tierkreis controller
+3. The graph is saved and executed by the Rust runtime
 4. If `-o` is specified, outputs are printed to console
-5. Checkpoints are saved to `TKR_DIR` (default: `~/.tierkreis/checkpoints`)
+5. State and assets are stored according to the runtime configuration
 
 ---
 

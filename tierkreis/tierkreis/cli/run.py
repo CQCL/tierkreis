@@ -11,11 +11,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from tierkreis._tierkreis import load_runtime_config, new_from_config
 from tierkreis.builder import Graph
 from tierkreis.controller.data.graph import GraphData
 from tierkreis.controller.data.types import PType, Workflow, ptype_from_bytes
 from tierkreis.exceptions import TierkreisError
+from tierkreis.runtime import load_runtime_config, new_from_config
 
 if TYPE_CHECKING:
     import argparse

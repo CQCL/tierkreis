@@ -1241,6 +1241,10 @@ async fn copy_outputs(
 
 /// Copy workflow for a workflow run from one attempt to another
 /// at a specific location.
+///
+/// # Errors
+///
+/// Will return Err if the query fails.
 pub async fn copy_inputs(
     conn: &mut impl AsyncConnection<Backend = Sqlite>,
     run_id: &str,

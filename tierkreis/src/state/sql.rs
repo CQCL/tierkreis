@@ -533,6 +533,12 @@ impl WorkflowRunState for SqliteWorkflowRunState {
                 WorkflowRunEvent::Started {} => {
                     workflow_update.started_time = Some(now);
                 }
+                WorkflowRunEvent::Paused {} => {
+                    workflow_update.paused_time = Some(now);
+                }
+                WorkflowRunEvent::Unpaused {} => {
+                    workflow_update.paused_time = None;
+                }
                 WorkflowRunEvent::Queued {} => workflow_update.queued_time = Some(now),
                 WorkflowRunEvent::Cancelled {} => {
                     workflow_update.cancelled_time = Some(now);
@@ -692,6 +698,12 @@ impl SqliteWorkflowRunState {
                     NodeStatus::Queued { ref handle } => {
                         row.queued_time = Some(now);
                         row.handle.clone_from(handle);
+                    }
+                    NodeStatus::Paused {} => {
+                        row.paused_time = Some(now);
+                    }
+                    NodeStatus::Unpaused {} => {
+                        row.paused_time = None;
                     }
                     NodeStatus::Running {
                         state_update: None, ..

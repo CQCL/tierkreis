@@ -75,6 +75,8 @@ pub struct NodeState {
     pub scheduled_time: Option<DateTime<Utc>>,
     /// The time at which the node was queued by an [`Executor`] if any.
     pub queued_time: Option<DateTime<Utc>>,
+    /// The time at which the node was paused by the [`Orchestrator`] if any.
+    pub paused_time: Option<DateTime<Utc>>,
     /// The time at which the node started running by an [`Executor`] if any.
     pub running_time: Option<DateTime<Utc>>,
     /// The time at which the node was completed by the [`Orchestrator`] or an [`Executor`] if any.

@@ -85,6 +85,7 @@ pub struct WorkflowRunAttempt {
 pub struct UpsertWorkflowRun {
     pub started_time: Option<NaiveDateTime>,
     pub queued_time: Option<NaiveDateTime>,
+    pub paused_time: Option<NaiveDateTime>,
     pub complete_time: Option<NaiveDateTime>,
     pub cancelled_time: Option<NaiveDateTime>,
     pub error_time: Option<NaiveDateTime>,
@@ -104,6 +105,7 @@ pub struct NodeState {
     pub attempt: i32,
     pub node_location: Location,
     pub scheduled_time: Option<NaiveDateTime>,
+    pub paused_time: Option<NaiveDateTime>,
     pub queued_time: Option<NaiveDateTime>,
     pub running_time: Option<NaiveDateTime>,
     pub complete_time: Option<NaiveDateTime>,
@@ -130,6 +132,7 @@ pub struct UpsertNodeState {
     pub node_location: Location,
     pub scheduled_time: Option<NaiveDateTime>,
     pub queued_time: Option<NaiveDateTime>,
+    pub paused_time: Option<NaiveDateTime>,
     pub running_time: Option<NaiveDateTime>,
     pub complete_time: Option<NaiveDateTime>,
     pub cancelled_time: Option<NaiveDateTime>,

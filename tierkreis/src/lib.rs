@@ -55,6 +55,12 @@ mod tierkreis {
     }
 
     #[pyfunction]
+    fn flush_traces(py: Python<'_>) -> PyResult<()> {
+        py.detach(crate::monitoring::flush_traces)
+            .map_err(|err| convert_err(py, err))
+    }
+
+    #[pyfunction]
     #[pyo3(signature = (graph, port=3000))]
     fn serve_graph(py: Python<'_>, graph: &Bound<'_, PyAny>, port: u16) -> PyResult<()> {
         let graph_json: String = if graph.hasattr("data")? {

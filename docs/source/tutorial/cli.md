@@ -147,6 +147,17 @@ uv run tkr run [OPTIONS]
 Runs a Tierkreis workflow graph. By default, it loads the graph from `./tkr/graphs/main.py:workflow` and reads inputs from `workflow_inputs.json`.
 You can specify a different graph location or load from a JSON file, and provide inputs either as a JSON file or as binary files with key-value pairs.
 
+Use `--profile NAME` to select a resource profile for named execution contexts.
+Without this option, the runtime's default profile selection is preserved.
+Use `--timeout SECONDS` to change the completion wait limit (default: 30 seconds);
+the value is an integer number of seconds. A wait timeout does not cancel the run.
+Pending telemetry is flushed before the CLI exits, including after failures.
+
+```bash
+uv run tkr run -g my_project.graphs.he:workflow -i he_input.json \
+  --config runtime.toml --profile local --timeout 86400 -o
+```
+
 **Graph Specification:**
 
 You can specify the graph in two ways:

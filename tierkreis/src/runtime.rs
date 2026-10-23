@@ -329,8 +329,8 @@ impl Runtime {
                     match res {
                         Ok(()) => {},
                         Err(err) => {
-                            tracing::error!("Error while processing events: {err}");
-                            eprintln!("{err}");
+                            tracing::error!("Error while processing events: {err:?}");
+                            eprintln!("{err:?}");
                         }
                     }
                 }

@@ -56,6 +56,15 @@ impl RuntimeEvent {
 pub enum WorkflowRunEvent {
     /// The workflow run has started.
     Started {},
+    /// The workflow run has paused.
+    ///
+    /// This is typically due to the runtime reaching a breakpoint and
+    /// having no other nodes to run.
+    Paused {},
+    /// The workflow run has paused.
+    ///
+    /// This is typically due to user intervention.
+    Unpaused {},
     /// The workflow run has been cancelled.
     Cancelled {},
     /// The workflow run has errored during running.
@@ -182,6 +191,10 @@ pub enum NodeStatus {
         /// An update to the state of the Node to apply.
         state_update: Option<RunningStateUpdate>,
     },
+    /// The node is paused as a result of hitting a breakpoint.
+    Paused {},
+    /// The node is unpaused due to user intervention.
+    Unpaused {},
     /// The node is finished and has outputs.
     Complete {
         /// The outputs from the node

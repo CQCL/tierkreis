@@ -44,6 +44,7 @@ struct RunAttemptState {
     metadata: HashMap<String, String>,
     started_time: Option<chrono::DateTime<Utc>>,
     queued_time: Option<chrono::DateTime<Utc>>,
+    paused_time: Option<chrono::DateTime<Utc>>,
     complete_time: Option<chrono::DateTime<Utc>>,
     cancelled_time: Option<chrono::DateTime<Utc>>,
     error_time: Option<chrono::DateTime<Utc>>,
@@ -455,6 +456,14 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
                     run_state.queued_time = Some(now);
                 }
             }
+            WorkflowRunEvent::Paused {} => {
+                if run_state.paused_time.is_none() {
+                    run_state.paused_time = Some(now);
+                }
+            }
+            WorkflowRunEvent::Unpaused {} => {
+                run_state.paused_time = None;
+            }
             WorkflowRunEvent::Cancelled {} => {
                 if run_state.cancelled_time.is_none() {
                     run_state.cancelled_time = Some(now);
@@ -669,6 +678,14 @@ fn handle_node_events(
                 if node_state.queued_time.is_none() {
                     node_state.queued_time = Some(now);
                 }
+            }
+            crate::event::NodeStatus::Paused {} => {
+                if node_state.paused_time.is_none() {
+                    node_state.paused_time = Some(now);
+                }
+            }
+            crate::event::NodeStatus::Unpaused {} => {
+                node_state.paused_time = None;
             }
             crate::event::NodeStatus::Running {
                 state_update: None, ..

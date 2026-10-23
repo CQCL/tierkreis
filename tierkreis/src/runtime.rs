@@ -420,6 +420,12 @@ impl Runtime {
                         WorkflowRunEvent::Queued {} => {
                             tracing::info!(workflow_id = %workflow_id, run_id = %workflow_run_id, attempt, "workflow queued");
                         }
+                        WorkflowRunEvent::Paused {} => {
+                            tracing::info!(workflow_id = %workflow_id, run_id = %workflow_run_id, attempt, "workflow paused");
+                        }
+                        WorkflowRunEvent::Unpaused {} => {
+                            tracing::info!(workflow_id = %workflow_id, run_id = %workflow_run_id, attempt, "workflow unpaused");
+                        }
                         WorkflowRunEvent::Completed {} => {
                             tracing::info!(workflow_id = %workflow_id, run_id = %workflow_run_id, attempt, "workflow completed");
                         }
@@ -463,6 +469,26 @@ impl Runtime {
                                             loc = %node_event.loc,
                                             ?state_update,
                                             "node running  "
+                                        );
+                                    }
+                                    NodeStatus::Paused { .. } => {
+                                        tracing::info!(
+                                            target: "tierkreis::events",
+                                            workflow_id = %workflow_id,
+                                            run_id = %workflow_run_id,
+                                            attempt,
+                                            loc = %node_event.loc,
+                                            "node paused"
+                                        );
+                                    }
+                                    NodeStatus::Unpaused { .. } => {
+                                        tracing::info!(
+                                            target: "tierkreis::events",
+                                            workflow_id = %workflow_id,
+                                            run_id = %workflow_run_id,
+                                            attempt,
+                                            loc = %node_event.loc,
+                                            "node unpaused"
                                         );
                                     }
                                     NodeStatus::Complete { .. } => {

@@ -140,7 +140,11 @@ impl NodeDefinition {
             NodeDefinition::Const { .. } => "const".to_string(),
             NodeDefinition::Task { .. } => "function".to_string(),
             NodeDefinition::Map { .. } => "map".to_string(),
-            _ => serde_plain::to_string(self).unwrap_or_else(|_| "unknown".to_string()),
+            NodeDefinition::Eval { .. } => "eval".to_string(),
+            NodeDefinition::Loop { .. } => "loop".to_string(),
+            NodeDefinition::Output {} => "output".to_string(),
+            NodeDefinition::IfElse {} => "ifelse".to_string(),
+            NodeDefinition::EagerIfElse {} => "eifelse".to_string(),
         }
     }
 

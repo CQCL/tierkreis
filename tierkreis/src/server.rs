@@ -27,6 +27,7 @@ use std::net::Ipv4Addr;
 fn api_router() -> OpenApiRouter<models::AppState> {
     OpenApiRouter::new()
         .routes(routes!(routes::get_info))
+        .routes(routes!(routes::subscribe_node_updates))
         .routes(routes!(routes::list_workflows))
         .routes(routes!(routes::list_nodes))
         .routes(routes!(routes::get_all_outputs))
@@ -112,7 +113,7 @@ async fn server(
 #[tokio::main]
 pub async fn serve(host: IpAddr, port: u16) -> miette::Result<()> {
     let runtime_state: Arc<dyn RuntimeState> = Arc::new(SqliteRuntimeState::try_new().await?);
-    let asset_registry = asset_storage_registry_from_config(&RuntimeConfig::default())?;
+    let asset_registry = asset_storage_registry_from_config(&RuntimeConfig::load()?)?;
     server(runtime_state, asset_registry, host, port, None).await
 }
 

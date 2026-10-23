@@ -2,12 +2,16 @@ use super::models::{AppState, RuntimeMetadata, WorkflowDisplay};
 
 use axum::{
     Json,
-    extract::{Path, State},
+    extract::{
+        Path, State, WebSocketUpgrade,
+        ws::{CloseFrame, Message, WebSocket},
+    },
     http::StatusCode,
     response::{IntoResponse, Response},
 };
 use axum_extra::extract::Query;
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc, time::Duration};
+use tokio::time::{MissedTickBehavior, interval};
 
 use crate::{
     location::Location,
@@ -18,6 +22,7 @@ use crate::{
             try_load_output_value, try_load_outputs,
         },
     },
+    state::WorkflowRunState,
 };
 use uuid::Uuid;
 
@@ -26,6 +31,92 @@ pub async fn get_info() -> Json<RuntimeMetadata> {
     Json(RuntimeMetadata {
         version: env!("CARGO_PKG_VERSION").to_string(),
     })
+}
+
+/// Notify the frontend to refresh graph state, including changes from another process.
+#[utoipa::path(
+    get,
+    path = "/workflows/{workflow_id}/nodes/{node_location_str}",
+    params(
+        ("workflow_id" = Uuid, Path, description = "Run ID"),
+        ("node_location_str" = String, Path, description = "Location string"),
+    ),
+    responses((status = 101, description = "Graph refresh notifications"))
+)]
+pub async fn subscribe_node_updates(
+    State(state): State<AppState>,
+    Path((run_id, location_str)): Path<(Uuid, String)>,
+    websocket: WebSocketUpgrade,
+) -> HandlerResult<Response> {
+    parse_location(&location_str)?;
+    let run_state = if state.display_graph.is_some() {
+        None
+    } else {
+        if !state
+            .runtime_state
+            .list_workflow_run_summaries()
+            .await?
+            .iter()
+            .any(|summary| summary.run_id == run_id)
+        {
+            return Err(miette::miette!("Unknown workflow run {run_id}").into());
+        }
+        Some(
+            state
+                .runtime_state
+                .load_workflow_run_state(run_id, 0)
+                .await?,
+        )
+    };
+    Ok(websocket.on_upgrade(move |socket| stream_node_updates(socket, run_state)))
+}
+
+async fn stream_node_updates(mut socket: WebSocket, run_state: Option<Arc<dyn WorkflowRunState>>) {
+    // Runtime watch channels are process-local; the viewer can read a separate SQLite writer.
+    let mut updates = interval(Duration::from_secs(1));
+    updates.set_missed_tick_behavior(MissedTickBehavior::Skip);
+    let mut watching = true;
+    loop {
+        tokio::select! {
+            incoming = socket.recv() => match incoming {
+                None | Some(Ok(Message::Close(_))) => break,
+                Some(Err(error)) => {
+                    tracing::warn!(%error, "Graph update WebSocket receive failed");
+                    break;
+                }
+                Some(Ok(Message::Ping(_) | Message::Pong(_))) => {}
+                Some(Ok(_)) => {
+                    tracing::warn!("Unexpected client payload on graph update WebSocket");
+                    break;
+                }
+            },
+            _ = updates.tick(), if watching => {
+                watching = if let Some(run_state) = &run_state {
+                    match run_state.summary().await {
+                        Ok(summary) => summary.complete_time.is_none()
+                            && summary.cancelled_time.is_none()
+                            && summary.error_time.is_none(),
+                        Err(error) => {
+                            tracing::error!(%error, "Failed to read graph update state");
+                            if let Err(error) = socket.send(Message::Close(Some(CloseFrame {
+                                code: 1011,
+                                reason: "Failed to read workflow state".into(),
+                            }))).await {
+                                tracing::warn!(%error, "Graph update WebSocket close failed");
+                            }
+                            break;
+                        }
+                    }
+                } else {
+                    false
+                };
+                if let Err(error) = socket.send(Message::Text("refresh".into())).await {
+                    tracing::warn!(%error, "Graph update WebSocket send failed");
+                    break;
+                }
+            }
+        }
+    }
 }
 
 /// List all workflows in the database, returning a summary of each.

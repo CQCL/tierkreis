@@ -197,6 +197,20 @@ impl RuntimeState for InMemoryRuntimeState {
                     complete_time: run_state.complete_time,
                     cancelled_time: run_state.cancelled_time,
                     error_time: run_state.error_time,
+                    paused_locations: run_state
+                        .nodes
+                        .iter()
+                        // Collect all locations that have an paused time and no unpaused time.
+                        .filter_map(|(loc, node_state)| {
+                            if node_state.paused_time.is_some()
+                                && node_state.unpaused_time.is_none()
+                            {
+                                Some(loc.clone())
+                            } else {
+                                None
+                            }
+                        })
+                        .collect(),
                     errored_locations: run_state
                         .nodes
                         .iter()
@@ -379,6 +393,18 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
                 complete_time: run.complete_time,
                 cancelled_time: run.cancelled_time,
                 error_time: run.error_time,
+                paused_locations: run
+                    .nodes
+                    .iter()
+                    // Collect all locations that have an paused time and no unpaused time.
+                    .filter_map(|(loc, node_state)| {
+                        if node_state.paused_time.is_some() && node_state.unpaused_time.is_none() {
+                            Some(loc.clone())
+                        } else {
+                            None
+                        }
+                    })
+                    .collect(),
                 errored_locations: run
                     .nodes
                     .iter()
@@ -461,9 +487,6 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
                     run_state.paused_time = Some(now);
                 }
                 send_workflow_stopped = true;
-            }
-            WorkflowRunEvent::Unpaused {} => {
-                run_state.paused_time = None;
             }
             WorkflowRunEvent::Cancelled {} => {
                 if run_state.cancelled_time.is_none() {
@@ -568,6 +591,31 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
         let entry = self.global_state.runs.entry((self.run_id, self.attempt));
         let metadata = entry.or_default().value().metadata.clone();
         future::ok(metadata).boxed()
+    }
+
+    fn unpause<'a>(&'a self, locations: &'a [Location]) -> BoxFuture<'a, miette::Result<()>> {
+        let global_state = &self.global_state;
+        let mut run_state = global_state
+            .runs
+            .entry((self.run_id, self.attempt))
+            .or_default();
+
+        let now = Utc::now();
+
+        for location in locations {
+            let node_state = run_state.nodes.entry(location.clone()).or_default();
+            node_state.unpaused_time = Some(now);
+        }
+
+        if !locations.is_empty() {
+            self.update_sender.send_modify(|run_attempt_updated| {
+                run_attempt_updated
+                    .active_runs
+                    .insert((self.run_id, self.attempt));
+            });
+        }
+
+        future::ok(()).boxed()
     }
 
     fn copy_node_states_from<'a>(
@@ -683,11 +731,6 @@ fn handle_node_events(
             crate::event::NodeStatus::Paused {} => {
                 if node_state.paused_time.is_none() {
                     node_state.paused_time = Some(now);
-                }
-            }
-            crate::event::NodeStatus::Unpaused {} => {
-                if node_state.unpaused_time.is_none() {
-                    node_state.unpaused_time = Some(now);
                 }
             }
             crate::event::NodeStatus::Running {

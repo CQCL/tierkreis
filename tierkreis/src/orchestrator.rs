@@ -331,7 +331,6 @@ impl Orchestrator {
         workflow_graph: Arc<WorkflowGraph>,
     ) -> miette::Result<LocalBoxStream<'a, miette::Result<Action>>> {
         let node_states = Self::collect_node_states(&context, &workflow_graph).await?;
-
         let loc = context.parent_loc.with_node(workflow_graph.output_idx());
 
         if context.scheduled_this_lifetime.read().await.contains(&loc) {
@@ -353,7 +352,7 @@ impl Orchestrator {
         if ready_nodes.is_empty() {
             if node_states
                 .iter()
-                .any(|node_state| node_state.1.error_time.is_some())
+                .any(|(_, node_state)| node_state.error_time.is_some())
             {
                 return Ok(stream::once(future::ok(Action {
                     loc: context.parent_loc,
@@ -361,9 +360,10 @@ impl Orchestrator {
                 }))
                 .boxed());
             }
-            if node_states.iter().any(|node_state| {
-                node_state.1.paused_time.is_some() && node_state.1.unpaused_time.is_none()
-            }) {
+            if node_states
+                .iter()
+                .any(|(_, node_state)| node_state.is_paused())
+            {
                 return Ok(stream::once(future::ok(Action {
                     loc: context.parent_loc,
                     kind: ActionKind::WorkflowPaused {},
@@ -390,12 +390,15 @@ impl Orchestrator {
                 if workflow_graph.has_breakpoint(n)
                     && node_states
                         .get(&context.parent_loc.with_node(n))
-                        .is_none_or(|state| state.paused_time.is_none())
+                        .is_none_or(|state| state.unpaused_time.is_none())
                 {
-                    return stream_action_result(Ok(Action {
-                        loc: context.parent_loc.with_node(n),
-                        kind: ActionKind::SetPaused {},
-                    }));
+                    return Self::build_pause_action(
+                        context.scheduled_this_lifetime.clone(),
+                        context.parent_loc.clone(),
+                        n,
+                    )
+                    .into_stream()
+                    .boxed();
                 }
 
                 match definition {
@@ -558,12 +561,9 @@ impl Orchestrator {
                     let outputs_missing = node_states
                         .get(&parent_location.with_node(n))
                         .is_none_or(|state| state.outputs.is_none());
-                    let not_paused =
-                        node_states
-                            .get(&parent_location.with_node(n))
-                            .is_none_or(|state| {
-                                state.paused_time.is_none() || state.unpaused_time.is_some()
-                            });
+                    let not_paused = node_states
+                        .get(&parent_location.with_node(n))
+                        .is_none_or(|state| !state.is_paused());
                     outputs_missing && not_paused && !(always_run && scheduled_this_lifetime)
                 },
                 // Returns true if a port should be traversed.
@@ -1182,6 +1182,26 @@ impl Orchestrator {
         })
     }
 
+    #[instrument(
+        skip_all,
+        fields(location = %parent_location.with_node(n)),
+        err,
+    )]
+    async fn build_pause_action(
+        scheduled_this_lifetime: Arc<RwLock<ScheduledSet>>,
+        parent_location: Location,
+        n: NodeIndex,
+    ) -> miette::Result<Action> {
+        let loc = parent_location.with_node(n);
+        let mut scheduled = scheduled_this_lifetime.write().await;
+        scheduled.remove(&loc);
+
+        Ok(Action {
+            loc,
+            kind: ActionKind::SetPaused {},
+        })
+    }
+
     /// Perform a series of actions, dispatching to [`Executor`]s when necessary.
     ///
     /// # Errors
@@ -1469,6 +1489,7 @@ mod tests {
     use futures::StreamExt;
     use rstest::{fixture, rstest};
     use serde_json::json;
+    use tokio::sync::watch::Receiver;
 
     use crate::{
         asset_storage::{assert_registry_contains_values, test_storage_registry},
@@ -1478,7 +1499,7 @@ mod tests {
             inmemory::InMemoryExecutor, interface::Executor, subprocess::SubprocessExecutor,
         },
         graph::LegacyWorkflowGraph,
-        state::{inmemory::InMemoryWorkflowRunState, interface::NodeState},
+        state::{RuntimeWatchState, inmemory::InMemoryWorkflowRunState, interface::NodeState},
     };
 
     use super::*;
@@ -1733,6 +1754,37 @@ mod tests {
             .into_iter()
             .collect::<Result<Vec<_>, _>>()?;
         Ok(actions)
+    }
+
+    async fn run_until_inactive(
+        mut state_recv: Receiver<RuntimeWatchState>,
+        orchestrator: &Orchestrator,
+        context: OrchestrationContext,
+        workflow_graph: &Arc<WorkflowGraph>,
+        workflow_run_state: &Arc<dyn WorkflowRunState>,
+    ) -> miette::Result<()> {
+        loop {
+            {
+                let updated = state_recv.borrow_and_update();
+                if updated.active_runs.is_empty() {
+                    break;
+                }
+            }
+
+            let actions = orchestrator
+                .build_actions(context.clone(), workflow_graph.clone())
+                .await?;
+
+            orchestrator
+                .perform_actions(
+                    workflow_run_state.run_id(),
+                    workflow_run_state.attempt(),
+                    actions,
+                )
+                .await?;
+            state_recv.changed().await.into_diagnostic()?;
+        }
+        Ok(())
     }
 
     // Test that we can plan a workflow with two input nodes.
@@ -2043,7 +2095,7 @@ mod tests {
         )?;
 
         let inputs = input_sets[0].clone();
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let (workflow_run_state, state_recv) = InMemoryWorkflowRunState::test(inputs);
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext::new(&workflow_run_state, None);
         let mut stream = orchestrator.listen()?;
@@ -2058,27 +2110,14 @@ mod tests {
                 }
             }
         });
-        loop {
-            {
-                let updated = state_recv.borrow_and_update();
-                if updated.active_runs.is_empty() {
-                    break;
-                }
-            }
-
-            let actions = orchestrator
-                .build_actions(context.clone(), workflow_graph.clone())
-                .await?;
-
-            orchestrator
-                .perform_actions(
-                    workflow_run_state.run_id(),
-                    workflow_run_state.attempt(),
-                    actions,
-                )
-                .await?;
-            state_recv.changed().await.into_diagnostic()?;
-        }
+        run_until_inactive(
+            state_recv,
+            &orchestrator,
+            context,
+            &workflow_graph,
+            &workflow_run_state,
+        )
+        .await?;
 
         let a_input_state = workflow_run_state.read(&Location::new("N1")?).await?;
 
@@ -2151,7 +2190,7 @@ mod tests {
         )?;
 
         let inputs = input_sets[0].clone();
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let (workflow_run_state, state_recv) = InMemoryWorkflowRunState::test(inputs);
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext::new(&workflow_run_state, None);
         let mut stream = orchestrator.listen()?;
@@ -2166,27 +2205,14 @@ mod tests {
                 }
             }
         });
-        loop {
-            {
-                let updated = state_recv.borrow_and_update();
-                if updated.active_runs.is_empty() {
-                    break;
-                }
-            }
-
-            let actions = orchestrator
-                .build_actions(context.clone(), workflow_graph.clone())
-                .await?;
-
-            orchestrator
-                .perform_actions(
-                    workflow_run_state.run_id(),
-                    workflow_run_state.attempt(),
-                    actions,
-                )
-                .await?;
-            state_recv.changed().await.into_diagnostic()?;
-        }
+        run_until_inactive(
+            state_recv.clone(),
+            &orchestrator,
+            context.clone(),
+            &workflow_graph,
+            &workflow_run_state,
+        )
+        .await?;
 
         let a_input_state = workflow_run_state.read(&Location::new("N1")?).await?;
 
@@ -2216,6 +2242,32 @@ mod tests {
             task_state,
             NodeState {
                 paused_time: Some(_),
+                ..
+            }
+        );
+
+        workflow_run_state.unpause(&[Location::new("N3")?]).await?;
+
+        // We need a fresh orchestration context as "scheduled_life_time"
+        // prevents the nodes from being rescheduled otherwise.
+        run_until_inactive(
+            state_recv,
+            &orchestrator,
+            context,
+            &workflow_graph,
+            &workflow_run_state,
+        )
+        .await?;
+
+        let task_state = workflow_run_state.read(&Location::new("N3")?).await?;
+
+        assert_matches!(
+            task_state,
+            NodeState {
+                paused_time: Some(_),
+                unpaused_time: Some(_),
+                complete_time: Some(_),
+                outputs: Some(..),
                 ..
             }
         );
@@ -2250,7 +2302,7 @@ mod tests {
         )?;
 
         let inputs = input_sets[0].clone();
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let (workflow_run_state, state_recv) = InMemoryWorkflowRunState::test(inputs);
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext::new(&workflow_run_state, None);
         let mut stream = orchestrator.listen()?;
@@ -2265,27 +2317,14 @@ mod tests {
                 }
             }
         });
-
-        loop {
-            {
-                let updated = state_recv.borrow_and_update();
-                if updated.active_runs.is_empty() {
-                    break;
-                }
-            }
-
-            let actions = orchestrator
-                .build_actions(context.clone(), workflow_graph.clone())
-                .await?;
-            orchestrator
-                .perform_actions(
-                    workflow_run_state.run_id(),
-                    workflow_run_state.attempt(),
-                    actions,
-                )
-                .await?;
-            state_recv.changed().await.into_diagnostic()?;
-        }
+        run_until_inactive(
+            state_recv,
+            &orchestrator,
+            context,
+            &workflow_graph,
+            &workflow_run_state,
+        )
+        .await?;
 
         let a_input_state = workflow_run_state.read(&Location::new("N1")?).await?;
 
@@ -2362,7 +2401,7 @@ mod tests {
         )?;
 
         let inputs = input_sets[0].clone();
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let (workflow_run_state, state_recv) = InMemoryWorkflowRunState::test(inputs);
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext::new(&workflow_run_state, None);
         let mut stream = orchestrator.listen()?;
@@ -2378,26 +2417,14 @@ mod tests {
             }
         });
 
-        loop {
-            {
-                let updated = state_recv.borrow_and_update();
-                if updated.active_runs.is_empty() {
-                    break;
-                }
-            }
-
-            let actions = orchestrator
-                .build_actions(context.clone(), workflow_graph.clone())
-                .await?;
-            orchestrator
-                .perform_actions(
-                    workflow_run_state.run_id(),
-                    workflow_run_state.attempt(),
-                    actions,
-                )
-                .await?;
-            state_recv.changed().await.into_diagnostic()?;
-        }
+        run_until_inactive(
+            state_recv,
+            &orchestrator,
+            context,
+            &workflow_graph,
+            &workflow_run_state,
+        )
+        .await?;
 
         let output_state = workflow_run_state
             .read(&Location::from_node_index_iter([
@@ -2438,7 +2465,7 @@ mod tests {
             "memory",
         )?;
 
-        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(HashMap::new());
+        let (workflow_run_state, state_recv) = InMemoryWorkflowRunState::test(HashMap::new());
         let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
         let context = OrchestrationContext::new(&workflow_run_state, None);
         let mut stream = orchestrator.listen()?;
@@ -2454,26 +2481,14 @@ mod tests {
             }
         });
 
-        loop {
-            {
-                let updated = state_recv.borrow_and_update();
-                if updated.active_runs.is_empty() {
-                    break;
-                }
-            }
-
-            let actions = orchestrator
-                .build_actions(context.clone(), workflow_graph.clone())
-                .await?;
-            orchestrator
-                .perform_actions(
-                    workflow_run_state.run_id(),
-                    workflow_run_state.attempt(),
-                    actions,
-                )
-                .await?;
-            state_recv.changed().await.into_diagnostic()?;
-        }
+        run_until_inactive(
+            state_recv,
+            &orchestrator,
+            context,
+            &workflow_graph,
+            &workflow_run_state,
+        )
+        .await?;
 
         let output_state = workflow_run_state
             .read(&Location::from_node_index_iter([

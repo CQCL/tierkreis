@@ -537,9 +537,6 @@ impl WorkflowRunState for SqliteWorkflowRunState {
                     workflow_update.paused_time = Some(now);
                     send_workflow_stopped = true;
                 }
-                WorkflowRunEvent::Unpaused {} => {
-                    workflow_update.paused_time = None;
-                }
                 WorkflowRunEvent::Queued {} => workflow_update.queued_time = Some(now),
                 WorkflowRunEvent::Cancelled {} => {
                     workflow_update.cancelled_time = Some(now);
@@ -635,6 +632,45 @@ impl WorkflowRunState for SqliteWorkflowRunState {
         .boxed()
     }
 
+    fn unpause<'a>(&'a self, locations: &'a [Location]) -> BoxFuture<'a, miette::Result<()>> {
+        async move {
+            let mut conn = self.get_conn().await?;
+            let attempt = self.attempt.try_into().into_diagnostic()?;
+            let now = Utc::now().naive_utc();
+
+            let node_updates = locations
+                .iter()
+                .map(|location| UpsertNodeState {
+                    run_id: self.run_id.to_string(),
+                    attempt,
+                    node_location: location.clone(),
+                    unpaused_time: Some(now),
+                    ..Default::default()
+                })
+                .collect();
+            update_node_state(
+                &mut conn,
+                &self.run_id.to_string(),
+                attempt,
+                node_updates,
+                Vec::new(),
+            )
+            .await
+            .wrap_err("Failed to update node state")?;
+
+            if !locations.is_empty() {
+                self.update_sender.send_modify(|run_attempt_updated| {
+                    run_attempt_updated
+                        .active_runs
+                        .insert((self.run_id, self.attempt));
+                });
+            }
+
+            Ok(())
+        }
+        .boxed()
+    }
+
     fn copy_node_states_from<'a>(
         &'a self,
         source: &'a dyn WorkflowRunState,
@@ -702,9 +738,6 @@ impl SqliteWorkflowRunState {
                     }
                     NodeStatus::Paused {} => {
                         row.paused_time = Some(now);
-                    }
-                    NodeStatus::Unpaused {} => {
-                        row.unpaused_time = Some(now);
                     }
                     NodeStatus::Running {
                         state_update: None, ..

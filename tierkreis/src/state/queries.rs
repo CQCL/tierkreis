@@ -917,6 +917,17 @@ pub async fn list_workflow_run_summaries(
             .into_diagnostic()
             .wrap_err_with(|| miette!("Invalid attempt value: {}", run_attempt.attempt))?;
 
+        let paused_locations: Vec<Location> = ns::node_states
+            .select(ns::node_location)
+            .filter(ns::run_id.eq(&run.id))
+            .filter(ns::attempt.eq(run_attempt.attempt))
+            .filter(ns::paused_time.is_not_null())
+            .filter(ns::unpaused_time.is_null())
+            .get_results(conn)
+            .await
+            .into_diagnostic()
+            .wrap_err_with(|| miette!("Failed to list paused nodes for run {}", run.id))?;
+
         let errored_locations: Vec<Location> = ns::node_states
             .select(ns::node_location)
             .filter(ns::run_id.eq(&run.id))
@@ -937,6 +948,7 @@ pub async fn list_workflow_run_summaries(
             complete_time: run_attempt.complete_time.map(utc_timestamp),
             cancelled_time: run_attempt.cancelled_time.map(utc_timestamp),
             error_time: run_attempt.error_time.map(utc_timestamp),
+            paused_locations,
             errored_locations,
         });
     }
@@ -987,6 +999,17 @@ pub async fn get_workflow_run_summary(
         .into_diagnostic()
         .wrap_err_with(|| miette!("Invalid workflow UUID: {}", run.workflow_id))?;
 
+    let paused_locations: Vec<Location> = ns::node_states
+        .select(ns::node_location)
+        .filter(ns::run_id.eq(&run.id))
+        .filter(ns::attempt.eq(run_attempt.attempt))
+        .filter(ns::paused_time.is_not_null())
+        .filter(ns::unpaused_time.is_null())
+        .get_results(conn)
+        .await
+        .into_diagnostic()
+        .wrap_err_with(|| miette!("Failed to list paused nodes for run {}", run.id))?;
+
     let errored_locations: Vec<Location> = ns::node_states
         .select(ns::node_location)
         .filter(ns::run_id.eq(&run_id_str))
@@ -1007,6 +1030,7 @@ pub async fn get_workflow_run_summary(
         complete_time: run_attempt.complete_time.map(utc_timestamp),
         cancelled_time: run_attempt.cancelled_time.map(utc_timestamp),
         error_time: run_attempt.error_time.map(utc_timestamp),
+        paused_locations,
         errored_locations,
     })
 }

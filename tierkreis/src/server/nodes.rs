@@ -459,7 +459,7 @@ pub fn build_graph_data_py_graph(
         }
 
         let inputs = input_links.into_iter().map(|(_, input)| input).collect();
-        let (context, executor) = graph_data.node_annotations(index);
+        let metadata = graph_data.get_node_metadata(index);
         nodes.push(PyNode {
             id: node_location.clone(),
             status: NodeStatus::NotStarted,
@@ -471,8 +471,8 @@ pub fn build_graph_data_py_graph(
             value,
             started_time: String::new(),
             finished_time: String::new(),
-            context: context.map(str::to_string),
-            executor: executor.map(str::to_string),
+            context: metadata.context,
+            executor: metadata.executor,
         });
     }
 

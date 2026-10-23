@@ -86,12 +86,20 @@ pub enum NodeDefinition {
 pub struct WorkflowGraph {
     graph: MultiPortGraph,
     node_definitions: BTreeMap<NodeIndex, NodeDefinition>,
+    node_metadata: BTreeMap<NodeIndex, NodeMetadata>,
     input_port_indices: BTreeMap<NodeIndex, BTreeMap<String, PortIndex>>,
     output_port_indices: BTreeMap<NodeIndex, BTreeMap<String, PortIndex>>,
     node_names: BTreeMap<NodeIndex, String>,
     port_names: BTreeMap<PortIndex, String>,
 
     output_node: NodeIndex,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+struct NodeMetadata {
+    /// Stop before executing this node when breakpoints are enabled.
+    #[serde(default)]
+    pub has_breakpoint: bool,
 }
 
 impl WorkflowGraph {
@@ -125,6 +133,7 @@ impl WorkflowGraph {
         Self {
             graph,
             node_definitions,
+            node_metadata: BTreeMap::new(),
             input_port_indices,
             output_port_indices,
             port_names,
@@ -464,30 +473,23 @@ impl LegacyNodeDef {
 pub struct LegacyWorkflowGraph {
     pub(crate) nodes: Vec<LegacyNodeDef>,
     graph_inputs: Vec<String>,
-    graph_output_idx: Option<u32>,
+    graph_output_idx: Option<usize>,
     #[serde(default)]
-    node_metadata: BTreeMap<u32, LegacyNodeMetadata>,
+    node_metadata: BTreeMap<usize, LegacyNodeMetadata>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-struct LegacyNodeMetadata {
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+pub(crate) struct LegacyNodeMetadata {
     #[serde(default)]
-    context: Option<String>,
+    pub context: Option<String>,
     #[serde(default)]
-    executor: Option<String>,
+    pub executor: Option<String>,
+    /// Stop before executing this node when breakpoints are enabled.
+    #[serde(default)]
+    pub has_breakpoint: bool,
 }
 
 impl LegacyWorkflowGraph {
-    pub(crate) fn node_annotations(&self, index: usize) -> (Option<&str>, Option<&str>) {
-        let Ok(index) = u32::try_from(index) else {
-            return (None, None);
-        };
-        let Some(metadata) = self.node_metadata.get(&index) else {
-            return (None, None);
-        };
-        (metadata.context.as_deref(), metadata.executor.as_deref())
-    }
-
     /// Convert the `LegacyWorkflowGraph` into a `WorkflowGraph` that can be run by the Orchestrator.
     ///
     /// # Errors
@@ -497,29 +499,8 @@ impl LegacyWorkflowGraph {
         let mut state = ConversionState::new(self.nodes.len());
 
         for (index, node) in self.nodes.into_iter().enumerate() {
-            state.convert_node(node)?;
-            if let Some(metadata) = self
-                .node_metadata
-                .get(&u32::try_from(index).into_diagnostic()?)
-            {
-                match state.node_definitions.get_mut(&NodeIndex::new(index)) {
-                    Some(
-                        NodeDefinition::Task {
-                            context, executor, ..
-                        }
-                        | NodeDefinition::Eval { context, executor }
-                        | NodeDefinition::Loop { context, executor }
-                        | NodeDefinition::Map {
-                            context, executor, ..
-                        },
-                    ) => {
-                        context.clone_from(&metadata.context);
-                        executor.clone_from(&metadata.executor);
-                    }
-                    _ if metadata.context.is_none() && metadata.executor.is_none() => {}
-                    _ => return Err(miette!("Execution metadata on unsupported node {index}")),
-                }
-            }
+            let metadata = self.node_metadata.get(&index);
+            state.convert_node(node, metadata)?;
         }
 
         state.link_ports()?;
@@ -529,6 +510,7 @@ impl LegacyWorkflowGraph {
         Ok(WorkflowGraph {
             graph: state.graph,
             node_definitions: state.node_definitions,
+            node_metadata: state.node_metadata,
             input_port_indices: state.input_port_indices,
             output_port_indices: state.output_port_indices,
             port_names: state.port_names,
@@ -538,11 +520,20 @@ impl LegacyWorkflowGraph {
                 .ok_or_else(|| miette!("Output node not found"))?,
         })
     }
+
+    pub(crate) fn get_node_metadata(&self, node_index: usize) -> LegacyNodeMetadata {
+        self.node_metadata
+            .get(&node_index)
+            .cloned()
+            .unwrap_or_else(LegacyNodeMetadata::default)
+    }
 }
 
+#[derive(Default)]
 struct ConversionState {
     pub graph: MultiPortGraph,
     pub node_definitions: BTreeMap<NodeIndex, NodeDefinition>,
+    pub node_metadata: BTreeMap<NodeIndex, NodeMetadata>,
     pub input_port_indices: BTreeMap<NodeIndex, BTreeMap<String, PortIndex>>,
     pub output_port_indices: BTreeMap<NodeIndex, BTreeMap<String, PortIndex>>,
     pub port_names: BTreeMap<PortIndex, String>,
@@ -556,23 +547,9 @@ impl ConversionState {
         // Rought heuristic that we will likely have around 2 ports per node.
         let graph = MultiPortGraph::with_capacity(total_nodes, total_nodes * 2);
 
-        let node_definitions = BTreeMap::new();
-        let input_port_indices = BTreeMap::new();
-        let output_port_indices = BTreeMap::new();
-        let node_names = BTreeMap::new();
-        let port_names = BTreeMap::new();
-        let to_link = BTreeMap::new();
-        let output_node = None;
-
         Self {
             graph,
-            node_definitions,
-            input_port_indices,
-            output_port_indices,
-            port_names,
-            node_names,
-            to_link,
-            output_node,
+            ..Default::default()
         }
     }
 
@@ -761,21 +738,25 @@ impl ConversionState {
         Ok(())
     }
 
-    fn convert_node(&mut self, node: LegacyNodeDef) -> Result<(), miette::Error> {
+    fn convert_node(
+        &mut self,
+        node: LegacyNodeDef,
+        metadata: Option<&LegacyNodeMetadata>,
+    ) -> Result<(), miette::Error> {
         match node {
             LegacyNodeDef::Func {
                 function_name,
                 inputs,
                 outputs,
             } => {
-                self.convert_func(&function_name, inputs, outputs)?;
+                self.convert_func(&function_name, inputs, outputs, metadata)?;
             }
             LegacyNodeDef::Eval {
                 graph: graph_source,
                 inputs,
                 outputs,
             } => {
-                self.convert_eval(graph_source, inputs, outputs);
+                self.convert_eval(graph_source, inputs, outputs, metadata);
             }
             LegacyNodeDef::Loop {
                 body,
@@ -784,44 +765,48 @@ impl ConversionState {
                 outputs,
                 name,
             } => {
-                self.convert_loop(body, inputs, outputs, name);
+                self.convert_loop(body, inputs, outputs, name, metadata);
             }
             LegacyNodeDef::Map {
                 body,
                 inputs,
                 outputs,
             } => {
-                self.convert_map(body, inputs, outputs);
+                self.convert_map(body, inputs, outputs, metadata);
             }
             LegacyNodeDef::Const { value } => {
-                self.convert_const(value);
+                self.convert_const(value, metadata);
             }
             LegacyNodeDef::IfElse {
                 pred,
                 if_true,
                 if_false,
             } => {
-                self.convert_if_else(pred, if_true, if_false);
+                self.convert_if_else(pred, if_true, if_false, metadata);
             }
             LegacyNodeDef::EagerIfElse {
                 pred,
                 if_true,
                 if_false,
             } => {
-                self.convert_eager_if_else(pred, if_true, if_false);
+                self.convert_eager_if_else(pred, if_true, if_false, metadata);
             }
             LegacyNodeDef::Input { name } => {
-                self.convert_input(name);
+                self.convert_input(name, metadata);
             }
             LegacyNodeDef::Output { inputs } => {
-                self.convert_output(inputs);
+                self.convert_output(inputs, metadata);
             }
         }
 
         Ok(())
     }
 
-    fn convert_output(&mut self, inputs: HashMap<String, ValueRef>) {
+    fn convert_output(
+        &mut self,
+        inputs: HashMap<String, ValueRef>,
+        metadata: Option<&LegacyNodeMetadata>,
+    ) {
         let incoming = inputs.len();
         let node_index = self.graph.add_node(incoming, 0);
         self.output_node = Some(node_index);
@@ -830,18 +815,26 @@ impl ConversionState {
             .insert(node_index, NodeDefinition::Output {});
 
         self.build_inputs(inputs, node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
-    fn convert_input(&mut self, name: String) {
+    fn convert_input(&mut self, name: String, metadata: Option<&LegacyNodeMetadata>) {
         let node_index = self.graph.add_node(0, 1);
 
         self.node_definitions
             .insert(node_index, NodeDefinition::Input { name: name.clone() });
 
         self.build_outputs([name], node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
-    fn convert_eager_if_else(&mut self, pred: ValueRef, if_true: ValueRef, if_false: ValueRef) {
+    fn convert_eager_if_else(
+        &mut self,
+        pred: ValueRef,
+        if_true: ValueRef,
+        if_false: ValueRef,
+        metadata: Option<&LegacyNodeMetadata>,
+    ) {
         let node_index = self.graph.add_node(3, 1);
 
         self.node_definitions
@@ -856,9 +849,16 @@ impl ConversionState {
             node_index,
         );
         self.build_outputs(["value".to_string()], node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
-    fn convert_if_else(&mut self, pred: ValueRef, if_true: ValueRef, if_false: ValueRef) {
+    fn convert_if_else(
+        &mut self,
+        pred: ValueRef,
+        if_true: ValueRef,
+        if_false: ValueRef,
+        metadata: Option<&LegacyNodeMetadata>,
+    ) {
         let node_index = self.graph.add_node(3, 1);
 
         self.node_definitions
@@ -873,15 +873,17 @@ impl ConversionState {
             node_index,
         );
         self.build_outputs(["value".to_string()], node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
-    fn convert_const(&mut self, value: serde_json::Value) {
+    fn convert_const(&mut self, value: serde_json::Value, metadata: Option<&LegacyNodeMetadata>) {
         let node_index = self.graph.add_node(0, 1);
 
         self.node_definitions
             .insert(node_index, NodeDefinition::Const { value });
 
         self.build_outputs(["value".to_string()], node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
     fn convert_eval(
@@ -889,6 +891,7 @@ impl ConversionState {
         graph_source: ValueRef,
         inputs: HashMap<String, ValueRef>,
         outputs: HashMap<String, Vec<u32>>,
+        metadata: Option<&LegacyNodeMetadata>,
     ) {
         let incoming = inputs.len();
         let outgoing = outputs.len();
@@ -897,8 +900,8 @@ impl ConversionState {
         self.node_definitions.insert(
             node_index,
             NodeDefinition::Eval {
-                context: None,
-                executor: None,
+                context: metadata.and_then(|metadata| metadata.context.clone()),
+                executor: metadata.and_then(|metadata| metadata.executor.clone()),
             },
         );
 
@@ -909,6 +912,7 @@ impl ConversionState {
             node_index,
         );
         self.build_outputs(outputs.into_keys(), node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
     fn convert_loop(
@@ -917,6 +921,7 @@ impl ConversionState {
         inputs: HashMap<String, ValueRef>,
         outputs: HashMap<String, Vec<u32>>,
         name: Option<String>,
+        metadata: Option<&LegacyNodeMetadata>,
     ) {
         let incoming = inputs.len();
         let outgoing = outputs.len();
@@ -925,8 +930,8 @@ impl ConversionState {
         self.node_definitions.insert(
             node_index,
             NodeDefinition::Loop {
-                context: None,
-                executor: None,
+                context: metadata.and_then(|metadata| metadata.context.clone()),
+                executor: metadata.and_then(|metadata| metadata.executor.clone()),
             },
         );
         if let Some(name) = name {
@@ -940,6 +945,7 @@ impl ConversionState {
             node_index,
         );
         self.build_outputs(outputs.into_keys(), node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
     fn convert_map(
@@ -947,6 +953,7 @@ impl ConversionState {
         graph_source: ValueRef,
         inputs: HashMap<String, ValueRef>,
         outputs: HashMap<String, Vec<u32>>,
+        metadata: Option<&LegacyNodeMetadata>,
     ) {
         let incoming = inputs.len();
         let outgoing = outputs.len();
@@ -964,8 +971,8 @@ impl ConversionState {
             node_index,
             NodeDefinition::Map {
                 mapped_ports,
-                context: None,
-                executor: None,
+                context: metadata.and_then(|metadata| metadata.context.clone()),
+                executor: metadata.and_then(|metadata| metadata.executor.clone()),
             },
         );
 
@@ -976,6 +983,7 @@ impl ConversionState {
             node_index,
         );
         self.build_outputs(outputs.into_keys(), node_index);
+        self.convert_metadata(metadata, node_index);
     }
 
     fn convert_func(
@@ -983,6 +991,7 @@ impl ConversionState {
         function_name: &str,
         inputs: HashMap<String, ValueRef>,
         outputs: HashMap<String, Vec<u32>>,
+        metadata: Option<&LegacyNodeMetadata>,
     ) -> Result<(), miette::Error> {
         let incoming = inputs.len();
         let outgoing = outputs.len();
@@ -1005,12 +1014,13 @@ impl ConversionState {
             NodeDefinition::Task {
                 worker_name: worker_name.to_owned(),
                 task_name: task_name.to_owned(),
-                context: None,
-                executor: None,
+                context: metadata.and_then(|metadata| metadata.context.clone()),
+                executor: metadata.and_then(|metadata| metadata.executor.clone()),
             },
         );
         self.build_inputs(inputs, node_index);
         self.build_outputs(outputs.into_keys(), node_index);
+        self.convert_metadata(metadata, node_index);
 
         Ok(())
     }
@@ -1044,6 +1054,17 @@ impl ConversionState {
             });
         self.output_port_indices
             .insert(node_index, node_output_port_indices);
+    }
+
+    fn convert_metadata(&mut self, metadata: Option<&LegacyNodeMetadata>, node_index: NodeIndex) {
+        if let Some(metadata) = metadata {
+            self.node_metadata.insert(
+                node_index,
+                NodeMetadata {
+                    has_breakpoint: metadata.has_breakpoint,
+                },
+            );
+        }
     }
 }
 
@@ -1109,7 +1130,7 @@ mod tests {
 
         assert_eq!(
             original.graph_output_idx,
-            Some(u32::try_from(converted.output_idx().index()).unwrap())
+            Some(converted.output_idx().index())
         );
 
         assert_eq!(original.nodes.len(), converted.node_definitions.len());

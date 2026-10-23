@@ -423,9 +423,6 @@ impl Runtime {
                         WorkflowRunEvent::Paused {} => {
                             tracing::info!(workflow_id = %workflow_id, run_id = %workflow_run_id, attempt, "workflow paused");
                         }
-                        WorkflowRunEvent::Unpaused {} => {
-                            tracing::info!(workflow_id = %workflow_id, run_id = %workflow_run_id, attempt, "workflow unpaused");
-                        }
                         WorkflowRunEvent::Completed {} => {
                             tracing::info!(workflow_id = %workflow_id, run_id = %workflow_run_id, attempt, "workflow completed");
                         }
@@ -479,16 +476,6 @@ impl Runtime {
                                             attempt,
                                             loc = %node_event.loc,
                                             "node paused"
-                                        );
-                                    }
-                                    NodeStatus::Unpaused { .. } => {
-                                        tracing::info!(
-                                            target: "tierkreis::events",
-                                            workflow_id = %workflow_id,
-                                            run_id = %workflow_run_id,
-                                            attempt,
-                                            loc = %node_event.loc,
-                                            "node unpaused"
                                         );
                                     }
                                     NodeStatus::Complete { .. } => {
@@ -801,6 +788,20 @@ impl Runtime {
         let workflow_state = self.state.load_workflow_run_state(run_id, attempt).await?;
         let node_states = workflow_state.read_many(&mut locations).await?;
         Ok(node_states)
+    }
+
+    /// Unpause one or more nodes within a workflow run.
+    ///
+    /// # Errors
+    ///
+    /// Will return Err if there are no paused nodes or if access to the state fails.
+    pub async fn unpause_node(
+        &self,
+        run_id: Uuid,
+        attempt: u32,
+        locs: Vec<Location>,
+    ) -> miette::Result<Vec<Location>> {
+        self.state.unpause_nodes(run_id, attempt, locs).await
     }
 
     /// Restart one or more `Task` nodes within a workflow run.

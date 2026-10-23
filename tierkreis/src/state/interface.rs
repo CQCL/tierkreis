@@ -58,6 +58,8 @@ pub struct WorkflowRunStateSummary {
     pub cancelled_time: Option<chrono::DateTime<Utc>>,
     /// The time that the workflow errored.
     pub error_time: Option<chrono::DateTime<Utc>>,
+    /// Locations of nodes that have paused in this run.
+    pub paused_locations: Vec<Location>,
     /// Locations of nodes that have errored in this run.
     pub errored_locations: Vec<Location>,
 }
@@ -110,6 +112,14 @@ pub struct NodeState {
 
     /// Assigned execution context for the node if any.
     pub execution_context: Option<String>,
+}
+
+impl NodeState {
+    /// Find if the [`NodeState`] is considered "paused" by having a paused time and no unpaused time.
+    #[must_use]
+    pub fn is_paused(&self) -> bool {
+        self.paused_time.is_some() && self.unpaused_time.is_none()
+    }
 }
 
 /// [`RuntimeState`] is an interface to the state of the overall tierkreis runtime, across
@@ -241,6 +251,41 @@ pub trait RuntimeState: Debug + Send + Sync {
         }
         .boxed()
     }
+
+    /// Unpause all paused nodes or nodes at specific locations.
+    ///
+    /// An empty `locs` unpauses all paused nodes.
+    ///
+    /// # Errors
+    ///
+    /// Returns Err if there are no paused nodes.
+    fn unpause_nodes(
+        &self,
+        run_id: Uuid,
+        attempt: u32,
+        locs: Vec<Location>,
+    ) -> BoxFuture<'_, miette::Result<Vec<Location>>> {
+        async move {
+            let workflow_run_state = self
+                .load_workflow_run_state(run_id, attempt)
+                .await
+                .wrap_err("Failed to load existing state")?;
+            let locs = if locs.is_empty() {
+                let paused_locations = workflow_run_state.summary().await?.paused_locations;
+                if paused_locations.is_empty() {
+                    return Err(miette!("No paused nodes to unpause"));
+                }
+                paused_locations
+            } else {
+                locs
+            };
+
+            workflow_run_state.unpause(&locs).await?;
+
+            Ok(locs)
+        }
+        .boxed()
+    }
 }
 
 /// [`WorkflowRunState`] is an interface to the state of an individual Workflow run attempt.
@@ -283,6 +328,9 @@ pub trait WorkflowRunState: Debug + Send + Sync {
     fn add_metadata(&self, metadata: HashMap<String, String>) -> BoxFuture<'_, miette::Result<()>>;
     /// Read the metadata for the Workflow run.
     fn read_metadata(&self) -> BoxFuture<'_, miette::Result<HashMap<String, String>>>;
+
+    /// Unpause nodes at the specified locations.
+    fn unpause<'a>(&'a self, locations: &'a [Location]) -> BoxFuture<'a, miette::Result<()>>;
 
     /// Copy node state (and outputs) from `source` into `self`.
     ///

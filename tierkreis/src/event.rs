@@ -61,10 +61,6 @@ pub enum WorkflowRunEvent {
     /// This is typically due to the runtime reaching a breakpoint and
     /// having no other nodes to run.
     Paused {},
-    /// The workflow run has paused.
-    ///
-    /// This is typically due to user intervention.
-    Unpaused {},
     /// The workflow run has been cancelled.
     Cancelled {},
     /// The workflow run has errored during running.
@@ -193,8 +189,6 @@ pub enum NodeStatus {
     },
     /// The node is paused as a result of hitting a breakpoint.
     Paused {},
-    /// The node is unpaused due to user intervention.
-    Unpaused {},
     /// The node is finished and has outputs.
     Complete {
         /// The outputs from the node

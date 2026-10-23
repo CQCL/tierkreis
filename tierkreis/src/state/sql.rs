@@ -535,6 +535,7 @@ impl WorkflowRunState for SqliteWorkflowRunState {
                 }
                 WorkflowRunEvent::Paused {} => {
                     workflow_update.paused_time = Some(now);
+                    send_workflow_stopped = true;
                 }
                 WorkflowRunEvent::Unpaused {} => {
                     workflow_update.paused_time = None;
@@ -703,7 +704,7 @@ impl SqliteWorkflowRunState {
                         row.paused_time = Some(now);
                     }
                     NodeStatus::Unpaused {} => {
-                        row.paused_time = None;
+                        row.unpaused_time = Some(now);
                     }
                     NodeStatus::Running {
                         state_update: None, ..

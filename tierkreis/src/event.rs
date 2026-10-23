@@ -333,6 +333,38 @@ pub async fn send_queued(
         .wrap_err("Failed to send node queued event")
 }
 
+/// Utility function to send a new [`Event`] with [`NodeStatus::Paused`].
+///
+/// # Errors
+///
+/// Will return Err if the channel for `event_sender` is full or closed.
+pub async fn send_paused(
+    event_sender: &mut EventSender,
+    workflow_run_id: Uuid,
+    attempt: u32,
+    locations: Vec<Location>,
+) -> miette::Result<()> {
+    let event = RuntimeEvent::WorkflowRun {
+        workflow_run_id,
+        attempt,
+        event: WorkflowRunEvent::NodeEvents(
+            locations
+                .into_iter()
+                .map(|loc| NodeEvent {
+                    loc,
+                    status: NodeStatus::Paused {},
+                    name: None,
+                })
+                .collect(),
+        ),
+    };
+    event_sender
+        .send(event)
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to send node paused event")
+}
+
 /// Utility function to send a new [`Event`] with [`NodeStatus::Complete`] and output [`AssetSpec`]s.
 ///
 /// # Errors
@@ -556,6 +588,28 @@ pub async fn send_error(
         .await
         .into_diagnostic()
         .wrap_err("Failed to send node error event")
+}
+
+/// Utility function to send a new [`Event`] with [`WorkflowRunEvent::Paused`].
+///
+/// # Errors
+///
+/// Will return Err if the channel for `event_sender` is full or closed.
+pub async fn send_workflow_run_paused(
+    event_sender: &mut EventSender,
+    workflow_run_id: Uuid,
+    attempt: u32,
+) -> miette::Result<()> {
+    let event = RuntimeEvent::WorkflowRun {
+        workflow_run_id,
+        attempt,
+        event: WorkflowRunEvent::Paused {},
+    };
+    event_sender
+        .send(event)
+        .await
+        .into_diagnostic()
+        .wrap_err("Failed to send workflow paused event")
 }
 
 /// Utility function to send a new [`Event`] with [`WorkflowRunEvent::Errored`].

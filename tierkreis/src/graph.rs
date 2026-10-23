@@ -160,6 +160,19 @@ impl WorkflowGraph {
         self.node_definitions.get(&node)
     }
 
+    /// Set a breakpoint for a particular node.
+    pub fn set_breakpoint(&mut self, node: NodeIndex) {
+        self.node_metadata.entry(node).or_default().has_breakpoint = true;
+    }
+
+    /// Check if the [`NodeDefinition`] has a breakpoint.
+    #[must_use]
+    pub fn has_breakpoint(&self, node: NodeIndex) -> bool {
+        self.node_metadata
+            .get(&node)
+            .is_some_and(|metadata| metadata.has_breakpoint)
+    }
+
     /// Iterate over the indices of all the nodes in the graph.
     pub fn node_ids(&self) -> impl Iterator<Item = NodeIndex> {
         self.graph.nodes_iter()

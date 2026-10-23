@@ -29,8 +29,9 @@ use crate::{
     },
     event::{
         EventReceiver, EventSender, RuntimeEvent, send_complete, send_map_elem_complete,
-        send_running_eval, send_running_loop, send_running_map, send_running_switching,
-        send_scheduled, send_workflow_run_complete, send_workflow_run_errored,
+        send_paused, send_running_eval, send_running_loop, send_running_map,
+        send_running_switching, send_scheduled, send_workflow_run_complete,
+        send_workflow_run_errored, send_workflow_run_paused,
     },
     executor::{
         ExecutorRegistry,
@@ -72,6 +73,8 @@ pub enum ActionKind {
         /// Arbitrary resource requirements used for executor selection.
         resources: Box<ResolvedContext>,
     },
+    /// Mark the node as paused as breakpoint has been hit.
+    SetPaused {},
     /// Mark the node as switching with a particular value.
     SetSwitching {
         /// The value to mark the node with.
@@ -108,28 +111,37 @@ pub enum ActionKind {
         /// The output values for the node.
         outputs: HashMap<String, AssetSpec>,
     },
+    /// Mark the overall workflow as paused.
+    WorkflowPaused {},
     /// Mark the overall workflow as errored.
     WorkflowErrored {},
     /// Mark the overall workflow as complete.
-    WorkflowFinished {},
+    WorkflowCompleted {},
 }
 
 type EvallingActions = (Location, HashMap<String, AssetSpec>);
 type LoopingActions = (Location, u32, HashMap<String, AssetSpec>, Option<String>);
 type MappingActions = (Location, Vec<HashMap<String, AssetSpec>>);
 
+#[derive(Debug, Clone)]
+enum SetWorkflowState {
+    Paused,
+    Errored,
+    Completed,
+}
+
 #[derive(Debug, Clone, Default)]
 struct ActionPlan {
     // map executor -> tasks
     tasks: HashMap<String, Vec<TaskPlan>>,
+    pause: Vec<Location>,
     switching: Vec<(Location, bool)>,
     evalling: Vec<EvallingActions>,
     looping: Vec<LoopingActions>,
     mapping: Vec<MappingActions>,
     map_elem_complete: HashMap<Location, BitVec<u8>>,
     node_complete: Vec<(Location, HashMap<String, AssetSpec>)>,
-    workflow_error: bool,
-    workflow_complete: bool,
+    set_workflow_state: Option<SetWorkflowState>,
 }
 
 /// The context state for the orchestration
@@ -338,16 +350,26 @@ impl Orchestrator {
             .collect()
         };
         // Abort if the workflow is deadlocked.
-        if ready_nodes.is_empty()
-            && node_states
+        if ready_nodes.is_empty() {
+            if node_states
                 .iter()
                 .any(|node_state| node_state.1.error_time.is_some())
-        {
-            return Ok(stream::once(future::ok(Action {
-                loc: context.parent_loc,
-                kind: ActionKind::WorkflowErrored {},
-            }))
-            .boxed());
+            {
+                return Ok(stream::once(future::ok(Action {
+                    loc: context.parent_loc,
+                    kind: ActionKind::WorkflowErrored {},
+                }))
+                .boxed());
+            }
+            if node_states.iter().any(|node_state| {
+                node_state.1.paused_time.is_some() && node_state.1.unpaused_time.is_none()
+            }) {
+                return Ok(stream::once(future::ok(Action {
+                    loc: context.parent_loc,
+                    kind: ActionKind::WorkflowPaused {},
+                }))
+                .boxed());
+            }
         }
         // Mark all ready nodes as scheduled.
         // Self::mark_nodes_scheduled(&context, ready_nodes.iter()).await?;
@@ -365,25 +387,35 @@ impl Orchestrator {
                     return stream_error(miette!("Could not find node definition"));
                 };
 
-                let parent_location = context.parent_loc.clone();
+                if workflow_graph.has_breakpoint(n)
+                    && node_states
+                        .get(&context.parent_loc.with_node(n))
+                        .is_none_or(|state| state.paused_time.is_none())
+                {
+                    return stream_action_result(Ok(Action {
+                        loc: context.parent_loc.with_node(n),
+                        kind: ActionKind::SetPaused {},
+                    }));
+                }
+
                 match definition {
                     NodeDefinition::Input { name } => Self::build_input_action(
                         context.workflow_run_state.clone(),
-                        parent_location,
+                        context.parent_loc.clone(),
                         n,
                         name.clone(),
                     )
                     .into_stream()
                     .boxed(),
                     NodeDefinition::Const { value } => self
-                        .build_const_action(parent_location, n, value.clone())
+                        .build_const_action(context.parent_loc.clone(), n, value.clone())
                         .into_stream()
                         .boxed(),
                     NodeDefinition::Output {} => self
                         .build_output_actions(
                             workflow_graph.clone(),
                             node_states,
-                            parent_location,
+                            context.parent_loc.clone(),
                             n,
                         )
                         .try_flatten_stream()
@@ -458,7 +490,7 @@ impl Orchestrator {
                         .build_if_else_action(
                             workflow_graph.clone(),
                             node_states,
-                            parent_location,
+                            context.parent_loc.clone(),
                             n,
                         )
                         .into_stream()
@@ -467,7 +499,7 @@ impl Orchestrator {
                         .build_eager_if_else_action(
                             workflow_graph.clone(),
                             node_states,
-                            parent_location,
+                            context.parent_loc.clone(),
                             n,
                         )
                         .into_stream()
@@ -526,7 +558,13 @@ impl Orchestrator {
                     let outputs_missing = node_states
                         .get(&parent_location.with_node(n))
                         .is_none_or(|state| state.outputs.is_none());
-                    outputs_missing && !(always_run && scheduled_this_lifetime)
+                    let not_paused =
+                        node_states
+                            .get(&parent_location.with_node(n))
+                            .is_none_or(|state| {
+                                state.paused_time.is_none() || state.unpaused_time.is_some()
+                            });
+                    outputs_missing && not_paused && !(always_run && scheduled_this_lifetime)
                 },
                 // Returns true if a port should be traversed.
                 |n, p| {
@@ -792,7 +830,7 @@ impl Orchestrator {
         if is_root_workflow {
             actions.push(Ok(Action {
                 loc,
-                kind: ActionKind::WorkflowFinished {},
+                kind: ActionKind::WorkflowCompleted {},
             }));
         }
 
@@ -1193,6 +1231,9 @@ impl Orchestrator {
                             task_handle,
                         });
                 }
+                ActionKind::SetPaused {} => {
+                    plan.pause.push(loc);
+                }
                 ActionKind::SetSwitching { cond } => {
                     plan.switching.push((loc, cond));
                 }
@@ -1217,11 +1258,14 @@ impl Orchestrator {
                 ActionKind::SetComplete { outputs } => {
                     plan.node_complete.push((loc, outputs));
                 }
-                ActionKind::WorkflowErrored {} => {
-                    plan.workflow_error = true;
+                ActionKind::WorkflowPaused {} => {
+                    plan.set_workflow_state = Some(SetWorkflowState::Paused);
                 }
-                ActionKind::WorkflowFinished {} => {
-                    plan.workflow_complete = true;
+                ActionKind::WorkflowErrored {} => {
+                    plan.set_workflow_state = Some(SetWorkflowState::Errored);
+                }
+                ActionKind::WorkflowCompleted {} => {
+                    plan.set_workflow_state = Some(SetWorkflowState::Completed);
                 }
             }
         }
@@ -1245,6 +1289,9 @@ impl Orchestrator {
                 plan.node_complete,
             )
             .await?;
+        }
+        if !plan.pause.is_empty() {
+            send_paused(&mut event_sender, workflow_run_id, attempt, plan.pause).await?;
         }
 
         for (loc, inputs) in plan.evalling {
@@ -1291,11 +1338,18 @@ impl Orchestrator {
                 .wrap_err_with(|| format!("Could not run Task Nodes on `{name}`"))?;
         }
 
-        if plan.workflow_error {
-            send_workflow_run_errored(&mut event_sender, workflow_run_id, attempt).await?;
-        }
-        if plan.workflow_complete {
-            send_workflow_run_complete(&mut event_sender, workflow_run_id, attempt).await?;
+        if let Some(set_workflow_state) = plan.set_workflow_state {
+            match set_workflow_state {
+                SetWorkflowState::Paused => {
+                    send_workflow_run_paused(&mut event_sender, workflow_run_id, attempt).await?;
+                }
+                SetWorkflowState::Errored => {
+                    send_workflow_run_errored(&mut event_sender, workflow_run_id, attempt).await?;
+                }
+                SetWorkflowState::Completed => {
+                    send_workflow_run_complete(&mut event_sender, workflow_run_id, attempt).await?;
+                }
+            }
         }
 
         Ok(())
@@ -1647,6 +1701,23 @@ mod tests {
         wf
     }
 
+    #[fixture]
+    fn breakpoints_task() -> WorkflowGraph {
+        let mut wf = workflow(["out"]);
+        let a = input(&mut wf, "a");
+        let c = constant(&mut wf, 3).expect("failed to serialize");
+        let add = task(&mut wf, "builtins", "iadd", ["a", "b"], ["value"]);
+        let out = output(&wf, "out");
+
+        breakpoint(&mut wf, add);
+
+        link(&mut wf, a, (add, "a")).expect("failed to link");
+        link(&mut wf, c, (add, "b")).expect("failed to link");
+        link(&mut wf, (add, "value"), out).expect("failed to link");
+
+        wf
+    }
+
     async fn next_actions(
         orchestrator: &Orchestrator,
         workflow_graph: &Arc<WorkflowGraph>,
@@ -1759,7 +1830,7 @@ mod tests {
             actions[1].loc,
             Location::from_node_index_iter([workflow_graph.output_idx()])
         );
-        assert_matches!(actions[1].kind, ActionKind::WorkflowFinished {});
+        assert_matches!(actions[1].kind, ActionKind::WorkflowCompleted {});
 
         orchestrator
             .perform_actions(
@@ -2020,10 +2091,21 @@ mod tests {
             }
         );
 
-        let subworkflow_input_state = workflow_run_state.read(&Location::new("N2")?).await?;
+        let const_state = workflow_run_state.read(&Location::new("N2")?).await?;
 
         assert_matches!(
-            subworkflow_input_state,
+            const_state,
+            NodeState {
+                complete_time: Some(..),
+                outputs: Some(..),
+                ..
+            }
+        );
+
+        let task_state = workflow_run_state.read(&Location::new("N3")?).await?;
+
+        assert_matches!(
+            task_state,
             NodeState {
                 complete_time: Some(..),
                 outputs: Some(..),
@@ -2042,6 +2124,101 @@ mod tests {
             json!({"out": 4}),
         )
         .await;
+
+        Ok(())
+    }
+
+    // Test that we can plan the first actions of a workflow and run them.
+    #[rstest]
+    #[case::memory("memory")]
+    #[case::file("file")]
+    #[tokio::test]
+    #[test_log::test]
+    async fn run_breakpoint_task_workflow(
+        #[case] default_storage_name: &str,
+        breakpoints_task: WorkflowGraph,
+    ) -> miette::Result<()> {
+        let workflow_graph = Arc::new(breakpoints_task);
+
+        let (registry, input_sets, _dir) =
+            test_storage_registry(vec![json!({"a": 1})], vec![]).await;
+        let executor_registry = test_executor_registry(&registry);
+        let orchestrator = Orchestrator::try_new(
+            &registry,
+            &executor_registry,
+            default_storage_name,
+            "memory",
+        )?;
+
+        let inputs = input_sets[0].clone();
+        let (workflow_run_state, mut state_recv) = InMemoryWorkflowRunState::test(inputs);
+        let workflow_run_state: Arc<dyn WorkflowRunState> = Arc::new(workflow_run_state);
+        let context = OrchestrationContext::new(&workflow_run_state, None);
+        let mut stream = orchestrator.listen()?;
+        let state = Arc::clone(&workflow_run_state);
+
+        tokio::spawn(async move {
+            while let Some(event) = stream.next().await {
+                match event {
+                    RuntimeEvent::WorkflowRun { event, .. } => {
+                        state.write(event).await.unwrap();
+                    }
+                }
+            }
+        });
+        loop {
+            {
+                let updated = state_recv.borrow_and_update();
+                if updated.active_runs.is_empty() {
+                    break;
+                }
+            }
+
+            let actions = orchestrator
+                .build_actions(context.clone(), workflow_graph.clone())
+                .await?;
+
+            orchestrator
+                .perform_actions(
+                    workflow_run_state.run_id(),
+                    workflow_run_state.attempt(),
+                    actions,
+                )
+                .await?;
+            state_recv.changed().await.into_diagnostic()?;
+        }
+
+        let a_input_state = workflow_run_state.read(&Location::new("N1")?).await?;
+
+        assert_matches!(
+            a_input_state,
+            NodeState {
+                complete_time: Some(..),
+                outputs: Some(..),
+                ..
+            }
+        );
+
+        let const_state = workflow_run_state.read(&Location::new("N2")?).await?;
+
+        assert_matches!(
+            const_state,
+            NodeState {
+                complete_time: Some(..),
+                outputs: Some(..),
+                ..
+            }
+        );
+
+        let task_state = workflow_run_state.read(&Location::new("N3")?).await?;
+
+        assert_matches!(
+            task_state,
+            NodeState {
+                paused_time: Some(_),
+                ..
+            }
+        );
 
         Ok(())
     }

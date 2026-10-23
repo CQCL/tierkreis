@@ -59,6 +59,7 @@ pub struct NewWorkflowRunAttempt<'a> {
     pub run_metadata: &'a [u8], // JSON blob
     pub started_time: Option<NaiveDateTime>,
     pub queued_time: Option<NaiveDateTime>,
+    pub paused_time: Option<NaiveDateTime>,
     pub complete_time: Option<NaiveDateTime>,
     pub cancelled_time: Option<NaiveDateTime>,
     pub error_time: Option<NaiveDateTime>,
@@ -74,6 +75,7 @@ pub struct WorkflowRunAttempt {
     pub run_metadata: Vec<u8>, // JSON blob
     pub started_time: Option<NaiveDateTime>,
     pub queued_time: Option<NaiveDateTime>,
+    pub paused_time: Option<NaiveDateTime>,
     pub complete_time: Option<NaiveDateTime>,
     pub cancelled_time: Option<NaiveDateTime>,
     pub error_time: Option<NaiveDateTime>,
@@ -106,6 +108,7 @@ pub struct NodeState {
     pub node_location: Location,
     pub scheduled_time: Option<NaiveDateTime>,
     pub paused_time: Option<NaiveDateTime>,
+    pub unpaused_time: Option<NaiveDateTime>,
     pub queued_time: Option<NaiveDateTime>,
     pub running_time: Option<NaiveDateTime>,
     pub complete_time: Option<NaiveDateTime>,
@@ -133,6 +136,7 @@ pub struct UpsertNodeState {
     pub scheduled_time: Option<NaiveDateTime>,
     pub queued_time: Option<NaiveDateTime>,
     pub paused_time: Option<NaiveDateTime>,
+    pub unpaused_time: Option<NaiveDateTime>,
     pub running_time: Option<NaiveDateTime>,
     pub complete_time: Option<NaiveDateTime>,
     pub cancelled_time: Option<NaiveDateTime>,

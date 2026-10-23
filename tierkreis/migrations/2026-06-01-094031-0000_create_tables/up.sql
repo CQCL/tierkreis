@@ -7,6 +7,7 @@ CREATE TABLE `node_states`(
 	`node_location` TEXT NOT NULL,
 	`scheduled_time` TIMESTAMP DEFAULT NULL,
 	`paused_time` TIMESTAMP DEFAULT NULL,
+	`unpaused_time` TIMESTAMP DEFAULT NULL,
 	`queued_time` TIMESTAMP DEFAULT NULL,
 	`running_time` TIMESTAMP DEFAULT NULL,
 	`complete_time` TIMESTAMP DEFAULT NULL,

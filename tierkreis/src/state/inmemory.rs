@@ -460,6 +460,7 @@ impl WorkflowRunState for InMemoryWorkflowRunState {
                 if run_state.paused_time.is_none() {
                     run_state.paused_time = Some(now);
                 }
+                send_workflow_stopped = true;
             }
             WorkflowRunEvent::Unpaused {} => {
                 run_state.paused_time = None;
@@ -685,7 +686,9 @@ fn handle_node_events(
                 }
             }
             crate::event::NodeStatus::Unpaused {} => {
-                node_state.paused_time = None;
+                if node_state.unpaused_time.is_none() {
+                    node_state.unpaused_time = Some(now);
+                }
             }
             crate::event::NodeStatus::Running {
                 state_update: None, ..

@@ -152,3 +152,7 @@ where
     let (to, to_input) = to;
     graph.link_nodes_by_port_name(from, from_output.as_ref(), to, to_input.as_ref())
 }
+
+pub(crate) fn breakpoint(graph: &mut WorkflowGraph, node: NodeIndex) {
+    graph.set_breakpoint(node);
+}

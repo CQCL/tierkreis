@@ -425,6 +425,32 @@ mod tierkreis {
             }
         }
 
+        /// Fetch the serialized outputs of a workflow run without decoding them.
+        #[pyo3(signature = (run_id, attempt=0, /))]
+        async fn get_raw_outputs(
+            &self,
+            run_id: Uuid,
+            attempt: u32,
+        ) -> PyResult<HashMap<String, Py<PyBytes>>> {
+            let inner = self.inner.clone();
+            let res = get_runtime()
+                .spawn(async move { inner.get_outputs(run_id, attempt).await })
+                .await
+                .map_err(|err| {
+                    Python::attach(|py| convert_err(py, miette!("Failed to join future: {err}")))
+                })?;
+
+            match res {
+                Ok(outputs) => Python::attach(|py| {
+                    Ok(outputs
+                        .into_iter()
+                        .map(|(name, value)| (name, PyBytes::new(py, &value).unbind()))
+                        .collect())
+                }),
+                Err(err) => Python::attach(|py| Err(convert_err(py, err))),
+            }
+        }
+
         /// Same as `get_loop_trace_by_name`, but shaped as one dict per iteration
         /// E.g. `[
         ///     {"output1": val1, "output2": val3},

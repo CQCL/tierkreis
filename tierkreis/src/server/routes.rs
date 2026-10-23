@@ -37,6 +37,10 @@ pub async fn get_info() -> Json<RuntimeMetadata> {
 }
 
 /// Notify the frontend to refresh graph state, including changes from another process.
+///
+/// # Errors
+///
+/// Returns an error if the node location string cannot be parsed or the workflow run is unknown.
 #[utoipa::path(
     get,
     path = "/workflows/{workflow_id}/nodes/{node_location_str}",

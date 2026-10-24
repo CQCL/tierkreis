@@ -57,7 +57,7 @@ struct BackgroundTaskPlan {
     workflow_run_id: Uuid,
     attempt: u32,
     loc: Location,
-    worker_name: String,
+    worker_command: Vec<String>,
     environment: HashMap<String, String>,
     output_storage_name: String,
     worker_args: NamedTempFile,
@@ -196,7 +196,7 @@ async fn start_task(
     let res = {
         let _enter = parent_span.enter();
         spawn_worker(
-            &internal_task.worker_name,
+            &internal_task.worker_command,
             worker_args_path,
             &internal_task.environment,
         )
@@ -348,6 +348,8 @@ pub struct SubprocessExecutor {
     // If this is the same as the subprocess storage name,
     // no copying will occur.
     output_storage_name: String,
+    // Commands used instead of the default `tkr-<worker-name>` executable.
+    worker_commands: HashMap<String, Vec<String>>,
     asset_storage_registry: AssetStorageRegistry,
 }
 
@@ -370,11 +372,13 @@ impl SubprocessExecutor {
     /// # Errors
     ///
     /// This function will return Err if the specified `subprocess_storage_name` or
-    /// `output_storage_name` does not exist inside the [`AssetStorageRegistry`].
+    /// `output_storage_name` does not exist inside the [`AssetStorageRegistry`], or a configured
+    /// worker command has no executable.
     pub fn try_new(
         asset_storage_registry: &AssetStorageRegistry,
         subprocess_storage_name: &str,
         output_storage_name: &str,
+        worker_commands: HashMap<String, Vec<String>>,
     ) -> miette::Result<Self> {
         if let Some(subprocess_storage) = asset_storage_registry.get(subprocess_storage_name) {
             let subprocess_storage: &dyn Any = subprocess_storage as &dyn Any;
@@ -389,6 +393,11 @@ impl SubprocessExecutor {
 
         if !asset_storage_registry.contains_key(output_storage_name) {
             return Err(miette!("output_storage_name not in registry"));
+        }
+        for (worker, command) in &worker_commands {
+            if command.first().is_none_or(std::string::String::is_empty) {
+                return Err(miette!("Worker `{worker}` requires a nonempty executable"));
+            }
         }
 
         let background_asset_storage_registry = Arc::clone(asset_storage_registry);
@@ -412,23 +421,31 @@ impl SubprocessExecutor {
             background_abort_handle: background_task.abort_handle(),
             subprocess_storage_name: subprocess_storage_name.to_string(),
             output_storage_name: output_storage_name.to_string(),
+            worker_commands,
             asset_storage_registry,
         })
     }
 
     async fn workers(&self) -> miette::Result<Vec<WorkerSpec>> {
-        let task = tokio::task::spawn_blocking(|| {
+        let configured_workers = self.worker_commands.keys().cloned().collect::<HashSet<_>>();
+        let task = tokio::task::spawn_blocking(move || {
             let re = Regex::new(r"tkr-.*-worker")
                 .into_diagnostic()
                 .wrap_err("Failed to compile Worker name regex")?;
             let paths = which_re(&re)
                 .into_diagnostic()
                 .wrap_err("Failed to search for Worker binaries")?;
-            Ok(paths
+            let mut workers = paths
                 .map(|path| WorkerSpec {
                     worker_name: path.file_name().unwrap().to_str().unwrap().to_string(),
                 })
-                .collect())
+                .collect::<Vec<_>>();
+            workers.extend(
+                configured_workers
+                    .into_iter()
+                    .map(|worker_name| WorkerSpec { worker_name }),
+            );
+            Ok(workers)
         });
         task.await.into_diagnostic()?
     }
@@ -465,12 +482,15 @@ impl SubprocessExecutor {
 }
 
 fn spawn_worker(
-    worker_name: &str,
+    worker_command: &[String],
     worker_args_path: &Path,
     environment: &HashMap<String, String>,
 ) -> miette::Result<tokio::process::Child> {
-    let cmd = format!("tkr-{}", worker_name.replace('_', "-"));
-    let mut command = Command::new(&cmd);
+    let (executable, arguments) = worker_command
+        .split_first()
+        .ok_or_else(|| miette!("Worker command requires a nonempty executable"))?;
+    let mut command = Command::new(executable);
+    command.args(arguments);
     command.envs(environment);
     let cx = tracing::Span::current().context();
     inject_trace_context(&cx, &mut CommandEnvCarrier(&mut command));
@@ -483,7 +503,7 @@ fn spawn_worker(
     let child = command
         .spawn()
         .into_diagnostic()
-        .wrap_err_with(|| miette!("Could not spawn worker `{cmd}`"))?;
+        .wrap_err_with(|| miette!("Could not spawn worker `{executable}`"))?;
     Ok(child)
 }
 
@@ -639,12 +659,20 @@ impl Executor for SubprocessExecutor {
                     .clone()
                     .unwrap_or_else(|| self.output_storage_name.clone());
 
+                let worker_command = self
+                    .worker_commands
+                    .get(&task_plan.worker_name)
+                    .cloned()
+                    .unwrap_or_else(|| {
+                        vec![format!("tkr-{}", task_plan.worker_name.replace('_', "-"))]
+                    });
+
                 task_sender
                     .send(BackgroundTaskPlan {
                         workflow_run_id: task_plan.workflow_run_id,
                         attempt: task_plan.attempt,
                         loc: task_plan.loc,
-                        worker_name: task_plan.worker_name,
+                        worker_command,
                         environment,
                         output_storage_name,
                         worker_args,
@@ -715,7 +743,7 @@ mod tests {
     #[tokio::test]
     async fn subprocess_workers() -> miette::Result<()> {
         let (registry, _, _) = test_storage_registry(vec![], vec![]).await;
-        let executor = SubprocessExecutor::try_new(&registry, "file", "file")?;
+        let executor = SubprocessExecutor::try_new(&registry, "file", "file", HashMap::new())?;
 
         let workers = executor.workers().await?;
 
@@ -734,6 +762,54 @@ mod tests {
         // We should not include the main cli tool in the worker list.
         assert!(workers.iter().all(|workers| workers.worker_name != "tkr"));
 
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn subprocess_workers_include_configured_names() -> miette::Result<()> {
+        let (registry, _, _) = test_storage_registry(vec![], vec![]).await;
+        let executor = SubprocessExecutor::try_new(
+            &registry,
+            "file",
+            "file",
+            HashMap::from([(
+                "worker_alias".to_string(),
+                vec!["tkr-hello-world-worker".to_string()],
+            )]),
+        )?;
+
+        let workers = executor.workers().await?;
+
+        assert!(
+            workers
+                .iter()
+                .any(|worker| worker.worker_name == "worker_alias")
+        );
+        Ok(())
+    }
+
+    #[rstest]
+    #[case(Vec::new())]
+    #[case(vec![String::new()])]
+    #[tokio::test]
+    async fn configured_worker_requires_an_executable(
+        #[case] command: Vec<String>,
+    ) -> miette::Result<()> {
+        let (registry, _, _) = test_storage_registry(vec![], vec![]).await;
+
+        let error = SubprocessExecutor::try_new(
+            &registry,
+            "file",
+            "file",
+            HashMap::from([("worker_alias".to_string(), command)]),
+        )
+        .err()
+        .expect("empty worker command should be rejected");
+
+        assert_eq!(
+            error.to_string(),
+            "Worker `worker_alias` requires a nonempty executable"
+        );
         Ok(())
     }
 
@@ -760,7 +836,8 @@ mod tests {
             outputs,
             ..Default::default()
         }];
-        let executor = SubprocessExecutor::try_new(&registry, "file", output_storage_name)?;
+        let executor =
+            SubprocessExecutor::try_new(&registry, "file", output_storage_name, HashMap::new())?;
 
         let stream = executor.listen()?;
         executor.execute(task_plans).await?;
@@ -799,6 +876,52 @@ mod tests {
         Ok(())
     }
 
+    #[tokio::test]
+    async fn execute_subprocess_with_configured_worker_command() -> miette::Result<()> {
+        let (registry, input_sets, _dir) = test_storage_registry(
+            vec![json!({"greeting": "hello ", "subject": "dave"})],
+            vec![],
+        )
+        .await;
+        let task_plans = vec![TaskPlan {
+            worker_name: "worker_alias".to_string(),
+            task_name: "greet".to_string(),
+            inputs: input_sets[0].clone(),
+            outputs: HashSet::from(["value".to_string()]),
+            ..Default::default()
+        }];
+        let executor = SubprocessExecutor::try_new(
+            &registry,
+            "file",
+            "file",
+            HashMap::from([(
+                "worker_alias".to_string(),
+                vec!["tkr-hello-world-worker".to_string()],
+            )]),
+        )?;
+
+        let stream = executor.listen()?;
+        executor.execute(task_plans).await?;
+
+        let events = stream.take(3).collect::<Vec<_>>().await;
+        assert_matches!(
+            events[2],
+            RuntimeEvent::WorkflowRun {
+                event: WorkflowRunEvent::NodeEvents(ref node_events),
+                ..
+            } if matches!(node_events[0].status, NodeStatus::Complete { .. })
+        );
+        assert_registry_contains_values(
+            &registry,
+            "file",
+            &events[2].clone().outputs()[0],
+            json!({"value": "hello dave"}),
+        )
+        .await;
+
+        Ok(())
+    }
+
     // Test that we can launch a single task and listen for
     // the status changes when reading the input values from
     // a FileAssetStorage.
@@ -826,7 +949,8 @@ mod tests {
 
             ..Default::default()
         }];
-        let executor = SubprocessExecutor::try_new(&registry, "file", output_storage_name)?;
+        let executor =
+            SubprocessExecutor::try_new(&registry, "file", output_storage_name, HashMap::new())?;
 
         let stream = executor.listen()?;
         executor.execute(task_plans).await?;
@@ -907,7 +1031,8 @@ mod tests {
                 ..Default::default()
             },
         ];
-        let executor = SubprocessExecutor::try_new(&registry, "file", output_storage_name)?;
+        let executor =
+            SubprocessExecutor::try_new(&registry, "file", output_storage_name, HashMap::new())?;
 
         let stream = executor.listen()?;
         executor.execute(task_plans).await?;
@@ -1000,7 +1125,7 @@ mod tests {
 
             ..Default::default()
         }];
-        let executor = SubprocessExecutor::try_new(&registry, "file", "file")?;
+        let executor = SubprocessExecutor::try_new(&registry, "file", "file", HashMap::new())?;
 
         executor.execute(task_plans).await?;
         let stream = executor.listen()?;
@@ -1053,7 +1178,7 @@ mod tests {
 
             ..Default::default()
         }];
-        let executor = SubprocessExecutor::try_new(&registry, "file", "file")?;
+        let executor = SubprocessExecutor::try_new(&registry, "file", "file", HashMap::new())?;
 
         let stream = executor.listen()?;
         executor.execute(task_plans).await?;
@@ -1109,7 +1234,7 @@ mod tests {
 
             ..Default::default()
         }];
-        let executor = SubprocessExecutor::try_new(&registry, "file", "file")?;
+        let executor = SubprocessExecutor::try_new(&registry, "file", "file", HashMap::new())?;
 
         let mut stream = executor.listen()?;
         executor.execute(task_plans).await?;
@@ -1151,7 +1276,7 @@ mod tests {
     #[tokio::test]
     async fn execute_subprocess_cancel_non_existent() -> miette::Result<()> {
         let (registry, _, _) = test_storage_registry(vec![], vec![]).await;
-        let executor = SubprocessExecutor::try_new(&registry, "file", "file")?;
+        let executor = SubprocessExecutor::try_new(&registry, "file", "file", HashMap::new())?;
 
         let loc = Location::from_usize_iter([0]);
         executor.cancel(Uuid::nil(), 0, vec![loc]).await?;
@@ -1182,7 +1307,7 @@ mod tests {
 
             ..Default::default()
         }];
-        let executor = SubprocessExecutor::try_new(&registry, "file", "file")?;
+        let executor = SubprocessExecutor::try_new(&registry, "file", "file", HashMap::new())?;
 
         let stream = executor.listen()?;
         executor.execute(task_plans).await?;

@@ -46,10 +46,10 @@ restarts. Simulator-heavy parallelism, credentialed Nexus, and HPC examples
 require deployment-specific resources and are not executed by the documentation
 build.
 
-One example remains on the legacy controller:
-
-- `signing_graph` uses arbitrary shell and stdin/stdout adapters that do not
-  have Rust-runtime equivalents.
+The `signing_graph` example shows how to adapt an arbitrary shell program to
+the worker-call protocol and select it with a subprocess `worker_commands`
+entry. Arbitrary `script()` nodes connected through stdin and stdout remain a
+legacy-only feature.
 
 The default-argument portion of `types_and_defaults` supplies the value
 explicitly because runtime support for omitted worker defaults is still pending.

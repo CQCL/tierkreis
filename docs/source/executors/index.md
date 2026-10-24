@@ -45,7 +45,8 @@ The runtime currently supports:
 
 The default configuration combines a memory executor for builtins with a
 subprocess executor for installed workers. A subprocess worker is normally
-discovered as `tkr-<namespace>-worker`.
+discovered as `tkr-<namespace>-worker`. A deployment can override that
+executable with an argv list keyed by worker namespace.
 
 ```toml
 default_executor_name = "subprocess"
@@ -58,7 +59,14 @@ output_storage_name = "memory"
 type = "Subprocess"
 subprocess_storage_name = "file"
 output_storage_name = "file"
+
+[executors.subprocess.worker_commands]
+openssl_worker = ["./workers/openssl-worker.sh"]
 ```
+
+The executor appends the generated worker-call JSON path to the configured
+arguments and launches them directly, without shell parsing. The command must
+implement the same file-based worker protocol as an installed worker.
 
 Use graph metadata and resource profiles to select a non-default executor.
 Profiles can also provide environment variables and resource requests, and a
@@ -74,4 +82,6 @@ run_id = await runtime.start_new_run(workflow_id, inputs, profile="gpu")
 and PSI/J belong to the legacy Python controller. The Rust runtime replaces
 their routing behavior with named executor configuration and worker commands.
 There is not yet a Rust-runtime equivalent for an arbitrary `script()` node
-whose input and output are redirected through stdin and stdout.
+whose input and output are redirected through stdin and stdout. Existing
+programs can instead be wrapped to consume the worker-call JSON file and
+selected with `worker_commands`.

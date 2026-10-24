@@ -3,11 +3,13 @@
 Tierkreis does not put any restrictions on workers except the general [contract](../executors/index.md).
 This means that you can also write workers in your preferred language and interface it with Tierkreis.
 To incorporate the worker into a Tierkreis graph, you can either describe the interface using a subset of [TypeSpec](https://typespec.io) to generate stubs for your worker or use the untyped functions in the graph builder.
-To run the worker you may use one of the existing executors;
-In the common case when you can run your code as a commandline script, the [ShellWorker](../executors/shell.md) is appropriate.
+To run the worker you may use one of the existing executors. In the common
+case when you can run your code as a command-line script, configure a
+[`worker_commands` entry](../executors/shell.md) for the subprocess executor.
 Alternatively you can write your own executor to launch the worker process.
 
-For a full example without stubs you can have a look at the `signing_graph.py` example.
+For a complete shell-wrapper example, see the
+[`signing_graph` notebook](../examples/signing_graph.ipynb).
 
 ## IDL
 

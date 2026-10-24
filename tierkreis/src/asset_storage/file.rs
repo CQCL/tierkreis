@@ -34,16 +34,22 @@ impl FileAssetStorage {
     /// Will return Err if the specified path does not exist and it cannot be
     /// created.
     pub fn try_new(path: &Path) -> miette::Result<Self> {
+        let path = if path.is_absolute() {
+            path.to_path_buf()
+        } else {
+            std::env::current_dir()
+                .into_diagnostic()
+                .wrap_err("Could not resolve relative FileAssetStorage path")?
+                .join(path)
+        };
         if !path.exists() {
             warn!(
                 "FileAssetStorage path not found at {}, creating directories",
                 path.display()
             );
-            create_dir_all(path).into_diagnostic()?;
+            create_dir_all(&path).into_diagnostic()?;
         }
-        Ok(Self {
-            base_dir: path.to_path_buf(),
-        })
+        Ok(Self { base_dir: path })
     }
 
     fn location(&self, key: &AssetKey) -> PathBuf {
@@ -109,5 +115,26 @@ impl AssetStorage for FileAssetStorage {
             Ok(value)
         }
         .boxed()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn relative_storage_paths_are_made_absolute() -> miette::Result<()> {
+        let current_dir = std::env::current_dir().into_diagnostic()?;
+        let directory = tempfile::tempdir_in(&current_dir).into_diagnostic()?;
+        let relative_path = directory
+            .path()
+            .strip_prefix(&current_dir)
+            .into_diagnostic()?;
+
+        let storage = FileAssetStorage::try_new(relative_path)?;
+
+        assert!(storage.base_dir.is_absolute());
+        assert_eq!(storage.base_dir, directory.path());
+        Ok(())
     }
 }

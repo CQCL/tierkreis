@@ -10,7 +10,8 @@ worker receives the runtime-generated call definition rather than a collection
 of controller-specific environment variables.
 
 The default runtime already defines a `subprocess` executor using file-backed
-assets. Override it when a deployment needs different named stores:
+assets. Override it when a deployment needs different named stores or a custom
+worker command:
 
 ```toml
 [asset_storage.shared]
@@ -21,8 +22,20 @@ asset_dir = "/shared/tierkreis/assets"
 type = "Subprocess"
 subprocess_storage_name = "shared"
 output_storage_name = "shared"
+
+[executors.subprocess.worker_commands]
+openssl_worker = ["./workers/openssl-worker.sh", "--quiet"]
 ```
+
+Each `worker_commands` entry is an argv list keyed by the worker namespace.
+The subprocess executor appends one final argument: the path to a JSON file
+containing `function_name`, input paths, and output paths. Arguments are passed
+directly to the process, so quoting or shell command composition is neither
+needed nor applied. An empty command is rejected when the runtime is created.
 
 The legacy `ShellExecutor` and `StdInOut` adapters are not part of the Rust
 runtime. Package external programs behind the Tierkreis worker protocol, or
-configure an explicit worker command on an HPC executor.
+wrap them to accept the worker-call JSON path and configure an explicit
+subprocess worker command. The
+[signing example](../examples/signing_graph.ipynb) demonstrates this with a
+shell wrapper around OpenSSL.

@@ -150,6 +150,7 @@ impl Default for RuntimeConfig {
                     ExecutorConfig::Subprocess {
                         subprocess_storage_name: "file".to_string(),
                         output_storage_name: "file".to_string(),
+                        worker_commands: HashMap::new(),
                     },
                 ),
             ]
@@ -180,6 +181,8 @@ enum ExecutorConfig {
     Subprocess {
         subprocess_storage_name: String,
         output_storage_name: String,
+        #[serde(default)]
+        worker_commands: HashMap<String, Vec<String>>,
     },
     Nexus {
         client_config: NexusClientConfig,
@@ -852,12 +855,14 @@ async fn executor_registry_from_config(
             ExecutorConfig::Subprocess {
                 subprocess_storage_name,
                 output_storage_name,
+                worker_commands,
             } => executor_registry.insert(
                 executor_name.clone(),
                 Box::new(SubprocessExecutor::try_new(
                     asset_storage_registry,
                     subprocess_storage_name,
                     output_storage_name,
+                    worker_commands.clone(),
                 )?),
             ),
             ExecutorConfig::Nexus {
@@ -997,6 +1002,37 @@ mod tests {
     use tempfile::NamedTempFile;
     use tokio::time::timeout;
     use url::Url;
+
+    #[rstest::rstest]
+    #[case(
+        "type = 'Subprocess'\nsubprocess_storage_name = 'file'\noutput_storage_name = 'file'",
+        HashMap::new()
+    )]
+    #[case(
+        "type = 'Subprocess'\nsubprocess_storage_name = 'file'\noutput_storage_name = 'file'\n[worker_commands]\nworker_alias = ['command', '--flag']",
+        HashMap::from([(
+            "worker_alias".to_string(),
+            vec!["command".to_string(), "--flag".to_string()],
+        )])
+    )]
+    fn subprocess_config_worker_commands_round_trip(
+        #[case] source: &str,
+        #[case] expected_commands: HashMap<String, Vec<String>>,
+    ) -> miette::Result<()> {
+        let config: ExecutorConfig = toml::from_str(source).into_diagnostic()?;
+        let ExecutorConfig::Subprocess {
+            worker_commands, ..
+        } = &config
+        else {
+            panic!("expected subprocess executor config");
+        };
+        assert_eq!(worker_commands, &expected_commands);
+
+        let serialized = toml::to_string(&config).into_diagnostic()?;
+        let round_tripped: ExecutorConfig = toml::from_str(&serialized).into_diagnostic()?;
+        assert_eq!(round_tripped, config);
+        Ok(())
+    }
 
     async fn run_until_finished(
         runtime: &Arc<Runtime>,

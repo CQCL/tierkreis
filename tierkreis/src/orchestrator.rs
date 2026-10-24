@@ -1513,7 +1513,10 @@ mod tests {
         );
         executor_registry.insert(
             "subprocess".to_string(),
-            Box::new(SubprocessExecutor::try_new(asset_storage_registry, "file", "file").unwrap()),
+            Box::new(
+                SubprocessExecutor::try_new(asset_storage_registry, "file", "file", HashMap::new())
+                    .unwrap(),
+            ),
         );
 
         Arc::new(executor_registry)

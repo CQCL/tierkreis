@@ -1,0 +1,24 @@
+default_storage_name = "file"
+default_executor_name = "subprocess"
+
+[asset_storage.memory]
+type = "Memory"
+
+[asset_storage.file]
+type = "File"
+asset_dir = "../../build/signing-assets"
+
+[executors.memory]
+type = "Memory"
+output_storage_name = "memory"
+
+[executors.subprocess]
+type = "Subprocess"
+subprocess_storage_name = "file"
+output_storage_name = "file"
+
+[executors.subprocess.worker_commands]
+openssl_worker = ["example_workers/openssl_worker/tkr_openssl_worker_impl/main.sh"]
+
+[runtime_state]
+type = "Memory"

@@ -199,8 +199,9 @@ tkr-worker-name-worker ...
 ```
 
 For deployments that need an alternate command, configure `worker_commands`
-on an HPC executor or install a protocol-compatible wrapper under the expected
-name. See [Runtime storage and executors](../executors/index.md).
+on a subprocess or HPC executor. The configured argv must accept the generated
+worker-call JSON path as its final argument. See
+[Runtime storage and executors](../executors/index.md).
 
 ## Prepackaged workers
 
